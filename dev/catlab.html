@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><title>catlab</title>
+<style>html,body{margin:0;background:#9ec8e8;overflow:hidden} canvas{width:100vw!important;height:100vh!important;display:block} #ui{position:fixed;left:8px;top:8px;font:13px sans-serif;background:#fff8;padding:6px;border-radius:6px}</style></head>
+<body><div id="ui"></div>
+<script src="../vendor/three-bundle.js"></script>
+<script>const Game = { speed: 1 }; const Save = { data: { flags: {} } }; const NPCS = {}; const clamp = (v, a, b) => Math.max(a, Math.min(b, v));</script>
+<script src="../js/data.js"></script>
+<script src="../js/gfx/core.js"></script>
+<script src="../js/gfx/models.js"></script>
+<script src="../js/gfx/cats.js"></script>
+<script src="../js/gfx/monsters.js"></script>
+<script>
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(innerWidth, innerHeight); r.setPixelRatio(devicePixelRatio);
+r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping; r.shadowMap.enabled = true;
+document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#9ec8e8');
+scene.add(new THREE.HemisphereLight('#fff6e8', '#6a8a5a', 1.2));
+const key = new THREE.DirectionalLight('#fff2dc', 1.8); key.position.set(3, 6, 5); key.castShadow = true; scene.add(key);
+const rim = new THREE.DirectionalLight('#a8c8ff', 1.2); rim.position.set(-4, 3, -4); scene.add(rim);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(8, 48), new THREE.MeshStandardMaterial({ color: '#8ac870' })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+const cam = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.05, 100);
+const q = new URLSearchParams(location.search);
+const keys = (q.get('k') || 'mike,kuro,shiro,tama,maou').split(',');
+const poseName = q.get('pose') || 'idle', expr = q.get('expr') || 'neutral';
+const ek = q.get('e') ? q.get('e').split(',') : null;
+const models = ek ? ek.map((k, i) => { const m = buildEnemy(k); m.group.position.x = (i - (ek.length - 1) / 2) * +(q.get('gap') || 1.8); scene.add(m.group); return m; }) : keys.map((k, i) => { const m = buildCat(k); m.group.position.x = (i - (keys.length - 1) / 2) * 0.95; scene.add(m.group); m.setPose(POSES[poseName] || POSES.idle); m.face.set(expr); return m; });
+const camD = +(q.get('d') || 4.2), camY = +(q.get('y') || 1.0), yaw = +(q.get('yaw') || 0);
+cam.position.set(Math.sin(yaw) * camD, camY, Math.cos(yaw) * camD); cam.lookAt(0, +(q.get('ly') || 0.6), 0);
+document.getElementById('ui').textContent = (ek || keys).join(' ') + ' / ' + poseName + ' / ' + expr;
+const clock = new THREE.Clock(); let t = 0;
+addEventListener('resize', () => { r.setSize(innerWidth, innerHeight); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); });
+setTimeout(() => dispatchEvent(new Event('resize')), 100);
+(function loop() { requestAnimationFrame(loop); const dt = Math.min(0.05, clock.getDelta()); t += dt; models.forEach(m => m.update(dt, t)); r.render(scene, cam); })();
+</script></body></html>

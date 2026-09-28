@@ -1,6 +1,6 @@
 'use strict';
 // ============================================================
-//  会話シーンの演出：物語の場所に立ち、キャラクターが演技をする
+//  会話シーンの演出：物語の場所に立ち、にゃんこたちが演技をする
 //  ・背景は探索フィールドの区画をそのまま組み立てる（SCENE_STAGES の zone / at / face）
 //  ・キャラクターは向き合って立ち、話し手の方を見る。行ごとの演出は台本の行の最後に
 //    { f: 表情, g: 身振り, r: 周りの反応, ... } で書く（書かなければ台詞から推測する）
@@ -55,25 +55,27 @@ const GESTURES = {
   hop: [[{}, 0.4, { hop: 0.25 }]],
   pout: [['pout', 1.8]],
 };
-// キャラクターごとの普段の立ち方と表情、戦うときの構え
+// キャラクターごとの普段の立ち方と表情、戦うときの構え、よく使う身振り
 const CHAR_ACT = {
-  aster:  { stance: 'idle', face: 'neutral', ready: 'ready', talk: ['talk', 'explain', 'tilt'] },
-  mizore: { stance: 'idle', face: 'smile', excite: 'joy', ready: 'mzGuard', talk: ['talk2', 'explain', 'fist'] },
-  yue:    { stance: 'polite', face: 'gentle', ready: 'guardStaff', talk: ['explain', 'talk', 'handChest'] },
-  kazane: { stance: 'armsCrossed', face: 'serious', ready: 'ready', talk: ['tilt', null, 'nod'] },
-  iris:   { stance: 'polite', face: 'worry', talk: ['explain', 'handChest', 'think'] },
-  polka:  { stance: 'polite', face: 'smile', excite: 'joy', talk: ['explain', 'bow', 'wave'] },
-  roa:    { stance: 'idle', face: 'serious', ready: 'ready', talk: ['explain', 'talk', 'nod'] },
-  laika:  { stance: 'hipHand', face: 'smile', excite: 'joy', ready: 'ready', talk: ['talk2', 'shrug', 'tilt'] },
+  mike:  { stance: 'idle', face: 'smile', excite: 'joy', ready: 'ready', talk: ['talk2', 'fist', 'explain', 'hop'] },
+  kuro:  { stance: 'armsCrossed', face: 'serious', ready: 'ready', talk: ['tilt', null, 'nod', 'turnAway'] },
+  shiro: { stance: 'hipHand', face: 'smug', excite: 'joy', ready: 'ready', talk: ['explain', 'point', 'handChest', 'shrug'] },
+  tama:  { stance: 'idle', face: 'sleepy', excite: 'smile', ready: 'idle', talk: ['tilt', 'lookUp', null] },
+  maou:  { stance: 'armsCrossed', face: 'smug', excite: 'joy', ready: 'ready', talk: ['explain', 'point', 'shrug', 'turnAway'] },
+  sonchou: { stance: 'idle', face: 'neutral', talk: ['explain', 'shake', 'nod'] },
+  sakanaya: { stance: 'hipHand', face: 'smile', excite: 'joy', talk: ['point', 'talk2', 'laugh'] },
+  king_npc: { stance: 'idle', face: 'sad', talk: ['lookDown', 'talk', 'shake'] },
+  piero_npc: { stance: 'idle', face: 'cry', talk: ['bothChest', 'lookDown', 'shrug'] },
+  nyahaha_ou: { stance: 'idle', face: 'sad', talk: ['explain', 'lookDown', 'shake'] },
 };
 // 台詞から表情と身振りを推し量る（台本に書かれていないとき）
 function inferAct(key, text) {
   const C = CHAR_ACT[key] || {}, t = String(text).replace('（通信）', '').trim();
   const pick = C.talk || ['talk', 'explain'];
   let f = C.face || 'neutral', g = pick[Math.floor(Math.random() * pick.length)];
-  if (/！？|！\?|^(えっ|わっ|なっ|ええっ|うそ)/.test(t)) { f = 'surprise'; g = 'surprise'; }
-  else if (/^……/.test(t) && t.length < 16) { f = key === 'kazane' ? 'serious' : 'worry'; g = 'lookDown'; }
-  else if (/？$/.test(t)) { g = 'tilt'; if (f === 'serious' && key !== 'kazane') f = 'neutral'; }
+  if (/！？|！\?|^(えっ|わっ|なっ|ええっ|うそ|にゃっ)/.test(t)) { f = 'surprise'; g = 'surprise'; }
+  else if (/^……/.test(t) && t.length < 16) { f = key === 'kuro' ? 'serious' : key === 'tama' ? 'sleepy' : 'worry'; g = 'lookDown'; }
+  else if (/？$/.test(t)) { g = 'tilt'; if (f === 'serious' && key !== 'kuro') f = 'neutral'; }
   else if (/！$/.test(t)) { f = C.excite || (f === 'serious' ? 'serious' : 'smile'); }
   if (/ありがとう|よかった|よろしく/.test(t)) f = C.excite || 'smile';
   return { f, g };
@@ -92,7 +94,7 @@ class Actor {
     this.gest = null; this.gi = 0; this.gt = 0; this.hopT = 1; this.hopH = 0; this.path = null; this.phase = 0; this.speed = 0;
     this.seed = Math.random() * 10; this.alpha = 1; this.lift = o.y || 0; this.dead = 0;
     this.headH = this.foe ? m.height * 0.6 : m.height * 0.88;
-    if (!this.foe && m.face) m.face.set(C.face || 'neutral');
+    if (!this.foe && m.face) m.face.set(C.face || defaultFace(this.base));
   }
   // ワールド座標の頭の位置
   headPos() { return V3(this.pos.x, this.pos.y + this.lift + this.headH, this.pos.z); }
@@ -219,13 +221,26 @@ class Actor {
   hold(item) {
     if (this.item) { this.item.removeFromParent(); this.item = null; }
     if (!item || !this.m.armL) return;
-    const col = { key: '#56c8ff', container: '#e8c77a' }[item] || '#ffffff';
     const g = new THREE.Group();
-    const body = new THREE.Mesh(item === 'container' ? new THREE.CylinderGeometry(0.07, 0.07, 0.2, 12) : new THREE.BoxGeometry(0.05, 0.14, 0.03), new THREE.MeshStandardMaterial({ color: '#2a2f4a', metalness: 0.8, roughness: 0.3 }));
-    const glow = new THREE.Mesh(item === 'container' ? new THREE.TorusGeometry(0.075, 0.012, 6, 20) : new THREE.BoxGeometry(0.055, 0.03, 0.035), glowMat(col, 3));
-    if (item === 'container') glow.rotation.x = Math.PI / 2;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 0.8), blending: THREE.AdditiveBlending, depthWrite: false })); sp.scale.setScalar(0.35);
-    g.add(body, glow, sp); g.position.y = -0.04;
+    if (item === 'fish') {   // 焼き魚
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 8), toon('#c8a070')); f.scale.set(0.6, 2.2, 0.9); g.add(f);
+      const t = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.07, 3), toon('#a8804a')); t.position.y = 0.16; t.scale.z = 0.3; g.add(t);
+    } else if (item === 'fruit' || item === 'fruitGray') {   // 笑いの実
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 10), item === 'fruit' ? glowMat('#ffd24a', 2.2) : toon('#9a9488')); g.add(f);
+      const lf = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), toon('#5ab04a')); lf.scale.set(1.4, 0.4, 0.8); lf.position.set(0.04, 0.09, 0); g.add(lf);
+      if (item === 'fruit') { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffd24a', 0.9), blending: THREE.AdditiveBlending, depthWrite: false })); sp.scale.setScalar(0.5); g.add(sp); }
+    } else if (item === 'jarashi') {   // 猫じゃらし
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.4, 5), toon('#8ab85a')); st.position.y = 0.18; g.add(st);
+      const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.12, 3, 8), toon('#e8d890')); ear.position.set(0.03, 0.42, 0); ear.rotation.z = -0.5; g.add(ear);
+    } else if (item === 'book') {   // 古い記録
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, 0.04), toon('#8a5a3a')); g.add(b);
+    } else if (item === 'flower') {
+      for (let i = 0; i < 3; i++) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), toon('#ffffff')); f.position.set((i - 1) * 0.04, 0.18, 0); g.add(f); }
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.18, 5), toon('#5ab04a')); st.position.y = 0.09; g.add(st);
+    } else if (item === 'star') {   // 星のかけら
+      const s2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.07), glowMat('#fff0a8', 2.6)); g.add(s2);
+    }
+    g.position.y = -0.03;
     this.m.armL.grip.add(g); this.item = g;
   }
   showWeapon(on) { if (this.m.armR && this.m.armR.grip) this.m.armR.grip.visible = on; }
@@ -236,10 +251,11 @@ class Actor {
 // ============================================================
 class StageView extends BaseView {
   constructor(scene, id) {
-    const st = SCENE_STAGES[id], Z = FIELD_ZONES[st.zone];
-    super(CHAPTERS[Z.ci].bg, 36, { field: true, bare: true, zone: Z });
-    this.st = st; this.sc = scene; this.bloomStrength = CHAPTERS[Z.ci].bg === 'snow' ? 0.35 : 0.72; this.exposure = st.exposure || { snow: 0.9, abyss: 0.85 }[CHAPTERS[Z.ci].bg] || 1;
-    this.hooks = {};
+    const st = SCENE_STAGES[id], Z = FIELD_ZONES[st.zone], bg = st.bg || Z.bg || CHAPTERS[Z.ci].bg;
+    super(bg, 36, { field: true, bare: true, zone: Z });
+    this.st = st; this.sc = scene; this.id = id; this.bg = bg;
+    this.bloomStrength = { cave: 0.7, root: 0.7, end: 0.7, night: 0.8, tower: 0.6 }[bg] || 0.45; this.exposure = st.exposure || { meadow: 0.95, road: 0.95, dream: 0.9 }[bg] || 1;
+    this.hooks = Object.assign({}, STAGE_FX);
     // 舞台の座標系：原点 O、前 F（一行が向いている方向）、右 R
     const [ox, oz] = zonePoint(Z, st.at), th = st.face * Math.PI / 180;
     this.F = V3(Math.sin(th), 0, -Math.cos(th)); this.R = V3(Math.cos(th), 0, Math.sin(th));
@@ -261,15 +277,34 @@ class StageView extends BaseView {
     const p = (this.st.points || {})[name]; return p ? this.WP(p) : null;
   }
   // ---------- 配役 ----------
+  // 舞台の cast がなければ、仲間は一行の隊列、ほかの人物は向かい、敵はさらに奥へ自動で並べる
+  autoCast() {
+    const st = this.st, lines = [];
+    const walk = ls => ls.forEach(l => { if (Array.isArray(l)) lines.push(l); else if (l.c) l.c.forEach(([t, rs]) => { lines.push([HERO, t]); walk(rs); }); });
+    walk(this.sc.lines);
+    const speakers = [...new Set(lines.map(l => l[0]).filter(k => k !== 'n'))];
+    const comm = k => lines.filter(l => l[0] === k).every(l => String(l[1]).includes('（遠くから）') || String(l[1]).includes('（声）'));
+    const party = st.party || partyAt(this.id);
+    const cast = {};
+    const slots = [[0, 0], [-1.15, 0.3], [1.15, 0.35], [-2.2, -0.35], [2.3, -0.4]];
+    party.forEach((k, i) => { cast[k] = { at: slots[i] || [i * 1.1 - 2, -1] }; });
+    const others = [...new Set([...speakers, ...(st.extra || []), ...(this.sc.cast || [])])].filter(k => !party.includes(k) && !k.startsWith('e:') && !comm(k));
+    others.forEach((k, i) => { cast[k] = { at: [(i - (others.length - 1) / 2) * 1.3, 2.6 + (others.length > 3 ? (i % 2) * 0.8 : 0)], face: HERO }; });
+    const foes = [...new Set([...speakers, ...(this.sc.cast || [])])].filter(k => k.startsWith('e:'));
+    foes.forEach((k, i) => { const d = ENEMIES[k.slice(2)]; cast[k] = { at: [(i - (foes.length - 1) / 2) * 3, d.boss ? 8 : 6] }; });
+    for (const [k, o] of Object.entries(st.cast || {})) cast[k] = o === null ? undefined : { ...(cast[k] || {}), ...o };
+    for (const k of Object.keys(cast)) if (!cast[k]) delete cast[k];
+    return cast;
+  }
   buildCast() {
     this.actors = {}; this.party = [];
     const st = this.st, lines = [];
-    const walk = ls => ls.forEach(l => { if (Array.isArray(l)) lines.push(l); else if (l.c) l.c.forEach(([t, rs]) => { lines.push(['aster', t]); walk(rs); }); });
+    const walk = ls => ls.forEach(l => { if (Array.isArray(l)) lines.push(l); else if (l.c) l.c.forEach(([t, rs]) => { lines.push([HERO, t]); walk(rs); }); });
     walk(this.sc.lines);
     const speakers = new Set(lines.map(l => l[0]).filter(k => k !== 'n'));
-    const comm = k => lines.filter(l => l[0] === k).every(l => String(l[1]).includes('（通信）'));
+    const comm = k => lines.filter(l => l[0] === k).every(l => String(l[1]).includes('（遠くから）') || String(l[1]).includes('（声）'));
     const face = f => f == null ? null : typeof f === 'number' ? f : Array.isArray(f) ? this.W(f[0], f[1]) : f;
-    for (const [key, spec] of Object.entries(st.cast)) {
+    for (const [key, spec] of Object.entries(this.autoCast())) {
       const list = Array.isArray(spec) ? spec : [spec];
       list.forEach((o, i) => {
         const foe = key.startsWith('e:'), id = i ? `${key}#${i}` : key;
@@ -277,19 +312,19 @@ class StageView extends BaseView {
         this.scene.add(m.group);
         const a = new Actor(this, id, m, { foe, stance: o.stance, y: o.y });
         a.place(this.W(o.at[0], o.at[1]));
-        // roof：建物・岩の塊の上に立つ（屋外の区画）
-        if (o.roof && this.T && this.T.top) { const i = this.T.at(a.pos.x, a.pos.z); if (i >= 0 && this.T.kind[i] <= TK.WINDOW) a.lift = this.T.top[i] - a.pos.y; }
         a.faceT = face(o.face) ?? (foe ? this.O.clone() : this.W(0, 3));
         a.yaw = a.baseYaw = a.targetYaw(a.faceT);
         if (foe) { a.scale0 = m.group.scale.x; m.color = ENEMIES[key.slice(2)].color; }
         if (o.hidden) { m.group.visible = false; a.alpha = 0; }
-        if (o.weapon === false) a.showWeapon(false);
+        // 会話のあいだ、仲間は武器をしまっておく（シロの杖だけは持ったまま）
+        if (o.weapon === false || (!foe && o.weapon !== true && key !== 'shiro')) a.showWeapon(false);
         if (o.item) a.hold(o.item);
+        if (o.f && m.face) m.face.set(o.f);
         this.actors[id] = a;
         if (!foe) this.party.push(a);
       });
     }
-    // 通信で話す人物（ホログラム）
+    // 遠くから聞こえる声（姿は見えない）
     for (const k of speakers) {
       if (this.actors[k] || k.startsWith('e:') || !comm(k)) continue;
       const m = buildCharacter(k); this.scene.add(m.group);
@@ -300,7 +335,7 @@ class StageView extends BaseView {
       a.makeHolo();
       this.actors[k] = a;
     }
-    this.host = st.host || this.party.find(a => a.key !== 'aster' && !CHARS[a.key])?.key || null;
+    this.host = st.host || this.party.find(a => a.key !== HERO && !CHARS[a.key])?.key || null;
   }
   // ---------- カメラ ----------
   snapCam() { const c = this.cam; this.camera.position.copy(c.p0); this.lookNow = c.l0.clone(); this.camera.lookAt(this.lookNow); }
@@ -328,42 +363,94 @@ class StageView extends BaseView {
     let pos, look;
     if (typeof kind === 'object') { pos = this.WP(kind.pos); look = this.WP(kind.look); }
     else if (st.shots && st.shots[kind]) { pos = this.WP(st.shots[kind].pos); look = this.WP(st.shots[kind].look); }
-    else if (kind === 'wide') { const w = st.wide || { pos: [-2.8, 2.6, -4.2], look: [0, 1.2, 2] }; pos = this.WP(w.pos); look = this.WP(w.look); }
+    else if (kind === 'wide') { const w = st.wide || { pos: [-2.6, 1.8, -3.6], look: [0, 0.75, 1.8] }; pos = this.WP(w.pos); look = this.WP(w.look); }
     else if (kind.startsWith('look:')) {   // 一行の後ろから、ある点を見上げる
-      const p = this.point(kind.slice(5)), c = this.centroid();
-      pos = c.clone().addScaledVector(this.F, -2.6).addScaledVector(this.R, 1.3); pos.y = this.O.y + 1.5; look = p;
+      // 一行のいちばん後ろの子より、さらに後ろから
+      const tgt = kind.slice(5), p = this.point(tgt), vis = this.party.filter(a => a.visible() && a.key !== tgt);
+      const c = vis.length ? vis.reduce((v, a) => v.add(a.pos), V3()).multiplyScalar(1 / vis.length) : this.O.clone();
+      const back = vis.length ? Math.min(...vis.map(a => V3().subVectors(a.pos, this.O).dot(this.F))) : 0;
+      c.addScaledVector(this.F, back - V3().subVectors(c, this.O).dot(this.F));
+      pos = c.addScaledVector(this.F, -3.4).addScaledVector(this.R, 1.2); pos.y = this.O.y + 1.0; look = p.clone();
+      // 見上げすぎると一行が画面の下（会話ウィンドウの裏）に隠れるので、仰角を抑える
+      look.y = Math.min(p.y, pos.y + Math.hypot(p.x - pos.x, p.z - pos.z) * 0.06);
     } else if (kind.startsWith('foe:')) {
-      const a = this.actors[kind.slice(4)], c = this.centroid();
-      pos = c.clone().addScaledVector(this.F, -1.4).addScaledVector(this.R, (this.lineIdx % 2 ? 1.5 : -1.5)); pos.y = this.O.y + 1.7;
+      const a = this.actors[kind.slice(4)], vis = this.party.filter(x => x.visible()), c = this.centroid();
+      const back = vis.length ? Math.min(...vis.map(x => V3().subVectors(x.pos, this.O).dot(this.F))) : 0;
+      c.addScaledVector(this.F, back - V3().subVectors(c, this.O).dot(this.F));
+      pos = c.clone().addScaledVector(this.F, -2.4).addScaledVector(this.R, (this.lineIdx % 2 ? 1.3 : -1.3)); pos.y = this.O.y + 1.25;
       look = a.pos.clone(); look.y += a.headH * 0.9;
+      const away = V3().subVectors(pos, look), need = Math.max(2.6, a.m.height * 2.2);
+      if (away.length() < need) pos = look.clone().addScaledVector(away.normalize(), need);
     } else if (kind.startsWith('ots:')) {   // 肩越し：ots:聞き手>話し手
       const [l, s] = kind.slice(4).split('>'); return this.ots(this.actors[l], this.actors[s], o);
     } else if (this.actors[kind]) return this.single(this.actors[kind], o);
-    else { const w = st.wide; pos = this.WP(w.pos); look = this.WP(w.look); }
+    else { const w = st.wide || { pos: [-2.6, 1.8, -3.6], look: [0, 0.75, 1.8] }; pos = this.WP(w.pos); look = this.WP(w.look); }
     this.cut(pos, look, o);
   }
   centroid() {
     const vis = this.party.filter(a => a.visible()); if (!vis.length) return this.O.clone();
     const c = V3(); vis.forEach(a => c.add(a.pos)); return c.multiplyScalar(1 / vis.length);
   }
+  // カメラと見る点のあいだに、ほかの人物が入っていないか
+  // （歩いている人物は行き先で判定する。画面の中ほどに、見る点より手前で大きく映るなら邪魔）
+  occluded(pos, look, skip) {
+    const d = V3().subVectors(look, pos), far = d.length(); d.normalize();
+    for (const a of Object.values(this.actors)) {
+      if (skip.includes(a) || a.comm || (!a.visible() && !a.path)) continue;
+      const sc = a.m.group.scale.y || 1, spots = [a.pos, ...(a.path ? [a.path[a.path.length - 1]] : [])];
+      for (const sp of spots) for (const hk of [0.5, 1]) {
+        const c = sp.clone(); c.y = a.pos.y + a.headH * hk;
+        const v = V3().subVectors(c, pos), dist = v.length();
+        // カメラが人物に埋まっている
+        if (dist < 0.8 * sc) return true;
+        if (dist > far - 0.2) continue;
+        const ang = Math.acos(clamp(v.dot(d) / (dist || 1), -1, 1)), size = Math.atan(0.5 * sc / Math.max(0.1, dist));
+        if (ang - size < 0.2) return true;
+      }
+    }
+    return false;
+  }
   // 話し手の寄り：顔の正面寄りから、聞き手のいる側に少しずらす
   single(a, o = {}) {
     const h = a.headPos(), dir = V3(Math.sin(a.yaw), 0, Math.cos(a.yaw)), left = V3(Math.cos(a.yaw), 0, -Math.sin(a.yaw));
     const to = o.to ? this.point(o.to) : null;
-    let s = to ? Math.sign(V3().subVectors(to, a.pos).dot(left)) || 1 : (this.lineIdx % 2 ? 1 : -1);
-    const dist = a.comm ? 3.3 : o.close ? 1.35 : 1.9;
-    const pos = h.clone().addScaledVector(dir, dist).addScaledVector(left, 0.55 * s); pos.y += 0.05;
-    const look = h.clone().addScaledVector(left, -0.18 * s); look.y -= a.comm ? 0.55 : 0.08;
+    const s0 = to ? Math.sign(V3().subVectors(to, a.pos).dot(left)) || 1 : (this.lineIdx % 2 ? 1 : -1);
+    const sc = a.m.group.scale.y || 1, dist0 = (a.comm ? 2.8 : o.close ? 2.1 : 2.6) * Math.max(1, sc);
+    // ang：顔の正面から横へ回りこむ角度（聞き手のいる側が正）
+    const make = (ang, dist) => {
+      const s = Math.sign(ang) || s0, yaw = a.yaw + ang * s0;
+      const pos = h.clone().addScaledVector(V3(Math.sin(yaw), 0, Math.cos(yaw)), dist); pos.y += 0.06;
+      // 下の会話ウィンドウに顔がかからないよう、注視点を頭より少し下にする
+      const look = h.clone().addScaledVector(left, -0.16 * s * s0 * sc); look.y -= a.comm ? 0.4 : (o.close ? 0.16 : 0.22) * sc;
+      return [pos, look];
+    };
+    // 手前に誰かが立っていたら、反対側から・回りこんで・もう少し寄って撮る
+    let pick = null;
+    for (const dist of [dist0, dist0 * 0.72]) {
+      for (const ang of [0.23, -0.23, 0.6, -0.6, 1.0, -1.0]) { const c = make(ang, dist); if (!this.occluded(c[0], c[1], [a])) { pick = c; break; } }
+      if (pick) break;
+    }
+    const [pos, look] = pick || make(-0.5, 1.5 * sc);
     this.cut(pos, look, o);
   }
   // 肩越し：聞き手 L の肩の後ろから話し手 S を見る
   ots(L, S, o = {}) {
     if (!L || !S) { if (S) this.single(S, o); return; }
     const lh = L.headPos(), sh = S.headPos(), d = V3().subVectors(sh, lh).setY(0).normalize(), p = V3(d.z, 0, -d.x);
-    const s = this.lineIdx % 2 ? 1 : -1;
-    const pos = lh.clone().addScaledVector(d, -1.15).addScaledVector(p, 0.62 * s); pos.y += 0.16;
-    const look = sh.clone().addScaledVector(p, -0.12 * s); look.y -= 0.08;
-    this.cut(pos, look, o);
+    // 聞き手の頭が画面の端に来るまで、横へずらす
+    const make = s => {
+      let pos, look;
+      for (const side of [0.9, 1.15, 1.4]) {
+        pos = lh.clone().addScaledVector(d, -1.6).addScaledVector(p, side * s); pos.y += 0.22;
+        look = sh.clone().addScaledVector(p, -0.12 * s); look.y -= 0.2;
+        const a = V3().subVectors(look, pos).normalize(), b = V3().subVectors(lh, pos), dist = b.length();
+        if (Math.acos(clamp(a.dot(b) / dist, -1, 1)) - Math.atan(0.34 / dist) > 0.1) break;
+      }
+      return [pos, look];
+    };
+    let s = this.lineIdx % 2 ? 1 : -1, c = make(s);
+    if (this.occluded(c[0], c[1], [L, S])) { const c2 = make(-s); if (!this.occluded(c2[0], c2[1], [L, S])) c = c2; else { this.single(S, o); return; } }
+    this.cut(c[0], c[1], o);
   }
   // ---------- 台本の1行 ----------
   line(sp, text, dir = {}) {
@@ -373,11 +460,11 @@ class StageView extends BaseView {
     this.stopTalk();
     this.apply(d);
     if (A) {
-      if (A.comm) { A.want = 1; this.commOn = sp; }
+      if (A.comm) this.commOn = sp;
       if (!A.foe) {
         A.setFace(d.f); A.gesture(d.g); A.talk(true);
         // 誰に話しているか：指定がなければ直前の話し手、アステルなら相手役
-        const to = d.to || (this.last && this.last !== sp && this.actors[this.last] ? this.last : sp === 'aster' ? (this.host || this.party.find(a => a.key !== 'aster')?.key) : 'aster');
+        const to = d.to || (this.last && this.last !== sp && this.actors[this.last] ? this.last : sp === HERO ? (this.host || this.party.find(a => a.key !== HERO)?.key) : HERO);
         this.addr = to;
         if (!(d.look && (d.look[sp] || d.look.all))) A.look = to && this.actors[to] ? to : null;
         // 話しかける相手の方へ体を向ける（向きの指定がある行は除く）
@@ -399,9 +486,11 @@ class StageView extends BaseView {
   camFor(sp, A, d) {
     if (d.cam) { this.shot(d.cam, { to: this.addr, drift: d.drift ?? 0.3, dur: d.dur || 5, close: d.close }); this.lastShot = d.cam; return; }
     if (!A) { this.shot('wide', { drift: 0.5, dur: 7 }); this.lastShot = 'wide'; return; }
+    // 登場しながら話す行は、歩いてくるところが映るよう引きの画にする
+    if (d.enter) { this.shot('wide', { drift: 0.3, dur: 6 }); this.lastShot = 'wide'; return; }
     if (A.foe) { this.shot('foe:' + A.key, { drift: 0.2, dur: 4 }); this.lastShot = 'foe'; return; }
     // 通信（ホログラム）は、アステルの肩越しに映す
-    if (A.comm) { if (this.lastShot !== 'sp:' + sp) this.ots(this.actors.aster, A, { dur: 6, drift: 0.2 }); else { this.cam.p0 = this.camera.position.clone(); this.cam.l0 = this.lookNow.clone(); this.cam.t = 0; } this.lastShot = 'sp:' + sp; return; }
+    if (A.comm) { const L2 = this.party.find(a => a.visible()); if (this.lastShot !== 'sp:' + sp) { if (L2) this.single(L2, { dur: 6, drift: 0.15 }); else this.shot('wide', { dur: 6 }); } else { this.cam.p0 = this.camera.position.clone(); this.cam.l0 = this.lookNow.clone(); this.cam.t = 0; } this.lastShot = 'sp:' + sp; return; }
     const L = this.actors[this.addr];
     // 同じ話し手が続くときは切らずにゆっくり寄せる
     if (this.lastShot === 'sp:' + sp) { this.cam.p0 = this.camera.position.clone(); this.cam.l0 = this.lookNow.clone(); this.cam.t = 0; return; }
@@ -412,7 +501,7 @@ class StageView extends BaseView {
     this.lastShot = 'sp:' + sp;
   }
   choice() {
-    const a = this.actors.aster; if (!a) return;
+    const a = this.actors[HERO]; if (!a) return;
     a.setFace('neutral'); a.gesture('think');
     const L = this.actors[this.last] && !this.actors[this.last].foe && !this.actors[this.last].comm ? this.actors[this.last] : null;
     if (L) this.ots(L, a, { dur: 6, drift: 0.15 }); else this.single(a, { close: true, dur: 6 });
@@ -421,7 +510,8 @@ class StageView extends BaseView {
   give(k) {
     const a = this.actors[k]; if (!a) return;
     a.setFace('serious'); a.gesture('nod');
-    for (const p of this.party) if (p !== a) { p.look = k; if (p.key === 'mizore') { p.setFace('joy'); p.gesture('cheer'); } }
+    a.m.group.visible = true; a.alpha = 1;
+    for (const p of this.party) if (p !== a) { p.look = k; if (p.key === HERO) { p.setFace('joy'); p.gesture('cheer'); } }
     this.shot('wide', { drift: 0.4, dur: 6 }); this.lastShot = 'wide';
   }
   // ---------- 行の演出 ----------
@@ -431,15 +521,17 @@ class StageView extends BaseView {
     each(d.r, (a, v) => { const [f, g] = Array.isArray(v) ? v : [v]; a.setFace(f); if (g) a.gesture(g); });
     each(d.look, (a, v) => { a.look = v === null ? null : this.point(v) && !this.actors[v] ? this.point(v) : v; });
     each(d.face, (a, v) => { a.faceT = typeof v === 'number' ? v : this.actors[v] ? v : Array.isArray(v) ? this.W(v[0], v[1]) : this.point(v); });
-    each(d.stance, (a, v) => a.setStance(v === 'ready' ? (CHAR_ACT[a.base] || {}).ready || 'ready' : v));
+    each(d.stance, (a, v) => { a.setStance(v === 'ready' ? (CHAR_ACT[a.base] || {}).ready || 'ready' : v); if (v === 'ready' && !a.foe) a.showWeapon(true); });
     each(d.move, (a, v) => { const pts = (Array.isArray(v[0]) ? v : [v]).map(p => this.W(p[0], p[1])); a.walkTo(pts, d.speed || 1.6); });
     each(d.hold, (a, v) => a.hold(v));
-    each(d.weapon, (a, v) => { a.showWeapon(v); if (v) { this.fx.sprite(a.m.handPos(), ELEMENTS[CHARS[a.key].elem].color, 1.4, 0.5); Sfx.zap(); } });
+    each(d.weapon, (a, v) => { a.showWeapon(v); if (v) { this.fx.sprite(a.m.handPos(), ELEMENTS[(CHARS[a.key] || NPCS[a.key] || {}).elem || 'physical'].color, 1.0, 0.5); Sfx.zap(); } });
+    each(d.meow, a => Sfx.meow(a.base));
     each(d.lift, (a, v) => { const y0 = a.lift; GFX.tween(0.5, e => { a.lift = lerp(y0, v, e); }); });
     if (d.enter) [].concat(d.enter).forEach(k => this.enter(k, d.enterFx));
     if (d.exit) [].concat(d.exit).forEach(k => { const a = this.actors[k]; if (a) GFX.tween(0.5, e => { a.alpha = 1 - e; }).then(() => { a.m.group.visible = false; }); });
     if (d.defeat) [].concat(d.defeat).forEach(k => Object.values(this.actors).filter(a => a.base === k).forEach(a => { a.dead = 0.001; a.m.flash('#ffffff', 1.2); }));
-    if (d.fx) [].concat(d.fx).forEach(f => { const [n, arg] = f.split(':'); const h = this.hooks[n]; if (h) h(arg ? this.handOf(arg) : undefined); else if (n === 'glow') this.chestGlow(arg); else if (n === 'open') this.openExit(arg); });
+    if (d.fx) [].concat(d.fx).forEach(f => { const [n, arg] = f.split(':'); const h = this.hooks[n]; if (h) h.call(this, arg); else if (n === 'glow') this.chestGlow(arg); });
+    if (d.bgm) Music.play(d.bgm);
     if (d.roar) [].concat(d.roar).forEach(k => Object.values(this.actors).filter(a => a.base === k).forEach(a => a.roar()));
     if (d.shake) GFX.shake(d.shake);
     if (d.flash) GFX.flash(d.flash, 0.5, 0.6);
@@ -454,7 +546,7 @@ class StageView extends BaseView {
       a.m.group.visible = true; a.alpha = 1;
       const p = a.pos.clone(); p.y += 1 + a.lift;
       if (a.foe) { this.fx.pillar(a.pos, a.m.color || '#ff4d6d', { h: 4, r: 0.8, life: 0.6 }); this.p.burst(p, a.m.color || '#ff4d6d', 40, { speed: 4, life: 0.8 }); a.roar(); }
-      else { this.p.burst(p, (CHARS[a.key] ? ELEMENTS[CHARS[a.key].elem].color : '#ffffff'), 50, { speed: 5, life: 0.9, up: 0.5 }); }
+      else { const pp = a.pos.clone(); pp.y += 0.6 + a.lift; this.p.burst(pp, (CHARS[a.key] ? ELEMENTS[CHARS[a.key].elem].color : '#ffffff'), 40, { speed: 3, life: 0.9, up: 0.5 }); }
     });
     if (list.some(a => a.foe)) { Sfx.enemy(); GFX.flash('#ff3040', 0.35, 0.4); }
     else Sfx.swing();
@@ -462,11 +554,11 @@ class StageView extends BaseView {
   // 胸の奥が熱を帯びる（星核と共鳴する光）
   chestGlow(k) {
     const a = this.actors[k]; if (!a) return;
-    let t = 0; const col = '#ff6a8a';
+    let t = 0; const col = this.glowCol || '#fff0a8';
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 1.2), blending: THREE.AdditiveBlending, depthWrite: false })); this.scene.add(sp);
     this.zoneTicks.push(dt => {
       if (t > 4) { sp.visible = false; return; }
-      t += dt; const p = a.headPos(); p.y -= 0.42; p.addScaledVector(V3(Math.sin(a.yaw), 0, Math.cos(a.yaw)), 0.14);
+      t += dt; const p = a.headPos(); p.y -= 0.3; p.addScaledVector(V3(Math.sin(a.yaw), 0, Math.cos(a.yaw)), 0.2);
       sp.position.copy(p); sp.scale.setScalar(0.5 + Math.sin(t * 6) * 0.12); sp.material.opacity = Math.min(1, t * 2, (4 - t) * 1.5);
       if (Math.random() < 0.5) this.p.emit(p, V3((Math.random() - 0.5) * 0.6, 0.6 + Math.random(), (Math.random() - 0.5) * 0.6), hdr(col, 2), { life: 0.8, size: 0.05 });
     });
@@ -517,164 +609,85 @@ class StageView extends BaseView {
     this.p.update(d);
   }
 }
+// ---------- 物語の出来事の演出（台本の fx: '名前:引数' で呼ぶ。this は StageView） ----------
+const STAGE_FX = {
+  // 流れ星が落ちる（夜の丘）
+  meteor(arg) {
+    const to = this.point(arg || 'crater') || this.W(0, 10), from = to.clone().add(V3(-40, 40, -30));
+    const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#fff0c8', 5), blending: THREE.AdditiveBlending, depthWrite: false }));
+    m.scale.setScalar(2.4);
+    this.fx.add(m, 2.2, (k, o) => { const e = Ease.in(k); o.position.lerpVectors(from, to, e); for (let i = 0; i < 6; i++) this.p.emit(o.position, V3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)), hdr(Math.random() < 0.5 ? '#fff0c8' : '#8ad8ff', 3), { life: 1.2, size: 0.5 }); });
+    GFX.delay(2.2).then(() => { GFX.flash('#ffffff', 0.9, 1.0); GFX.shake(0.5); Sfx.slam(); this.fx.ring(to, '#fff0c8', { r: 14, life: 1.2, width: 0.5 }); this.p.burst(to, '#fff0c8', 200, { speed: 12, up: 1, life: 1.6, size: 0.2 }); this.fx.pillar(to, '#fff0c8', { h: 30, r: 1.6, life: 1.4, k: 3 }); });
+  },
+  // 空から魚が降ってくる（シロの魔法の失敗）
+  fishRain(arg) {
+    const c = this.point(arg || HERO) || this.O.clone();
+    for (let i = 0; i < 16; i++) GFX.delay(i * 0.08).then(() => {
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), toon(pick(['#8ab8d8', '#b8c8d8', '#ff9a7a']))); f.scale.set(0.5, 0.6, 2);
+      const x = c.x + (Math.random() - 0.5) * 5, z = c.z + (Math.random() - 0.5) * 4; f.position.set(x, c.y + 6, z);
+      const spin = Math.random() * 10;
+      this.fx.add(f, 1.4, (k, o, dt) => { o.position.y = Math.max(this.O.y + 0.05, c.y + 6 - k * k * 14); o.rotation.x += spin * dt; if (o.position.y <= this.O.y + 0.06) o.rotation.set(0, spin, 0); });
+    });
+    Sfx.tone(600, 0.3, 'triangle', 0.05, -300);
+  },
+  // 魔法の閃光（シロ）
+  spell(arg) {
+    const a = this.actors[arg || 'shiro']; if (!a) return;
+    const p = a.m.tipPos();
+    this.fx.sprite(p, '#ffd23c', 2, 0.6, { k: 3 }); this.p.burst(p, '#ffd23c', 40, { speed: 4, life: 0.8 }); Sfx.zap();
+  },
+  // シロの毛が爆発する
+  poof(arg) { const a = this.actors[arg || 'shiro']; if (!a) return; const h = a.headPos(); this.p.burst(h, '#ffffff', 60, { speed: 3, life: 0.8, size: 0.12 }); this.fx.sprite(h, '#ffffff', 1.4, 0.4); Sfx.noise(0.3, 0.2, 1200); a.m.headPivot.scale.setScalar(1.12); GFX.delay(2).then(() => a.m.headPivot.scale.setScalar(1)); },
+  // 笑いがもどる（色とりどりの紙吹雪）
+  laugh() { const c = this.O.clone().add(V3(0, 3, 0)); for (let i = 0; i < 6; i++) GFX.delay(i * 0.15).then(() => this.p.burst(c.clone().add(V3((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6)), pick(['#ff6a8a', '#ffd27a', '#6ad8ff', '#8aff9a']), 50, { speed: 5, up: 1.2, life: 2, grav: 2, size: 0.1 })); Sfx.win(); },
+  // きらきら（喜び・友情）
+  sparkle(arg) { const a = this.actors[arg]; const c = a ? a.headPos() : this.O.clone().add(V3(0, 1, 0)); this.p.burst(c, '#fff0a8', 30, { speed: 2, up: 1, life: 1.2, size: 0.08 }); this.fx.sprite(c, '#fff0a8', 1.2, 0.5); Sfx.tone(1200, 0.2, 'sine', 0.05); Sfx.tone(1600, 0.25, 'sine', 0.04, 0, 0.08); },
+  // 闇がせまる・晴れる
+  darkness() { const U = GFX.grade.uniforms; GFX.tween(1.2, k => { U.tint.value.setRGB(1 - 0.45 * k, 1 - 0.5 * k, 1 - 0.3 * k); U.desat.value = 0.4 * k; }, Ease.out, true); Sfx.tone(60, 1.5, 'sawtooth', 0.08, 20); },
+  dawn() { const U = GFX.grade.uniforms, r = U.tint.value.r, g = U.tint.value.g, b = U.tint.value.b, d0 = U.desat.value; GFX.tween(1.6, k => { U.tint.value.setRGB(lerp(r, 1, k), lerp(g, 1, k), lerp(b, 1, k)); U.desat.value = d0 * (1 - k); }, Ease.inOut, true); GFX.flash('#fff4d8', 0.5, 1.2); },
+  // 影（コドク・過去の幻）がわき上がる
+  shadow(arg) { const c = this.point(arg) || this.W(0, 6); for (let i = 0; i < 80; i++) this.p.emit(V3(c.x + (Math.random() - 0.5) * 4, this.O.y + Math.random() * 0.5, c.z + (Math.random() - 0.5) * 3), V3(0, 1 + Math.random() * 2, 0), hdr(Math.random() < 0.3 ? '#8a5aff' : '#2a1a4a', 2), { life: 1.8, size: 0.4, drag: 0.4 }); Sfx.tone(80, 1, 'sawtooth', 0.06, -30); },
+  // 光が集まる（樹・仲間のつながり）
+  light(arg) { const c = this.point(arg) || this.O.clone().add(V3(0, 1, 0)); this.fx.pillar(c, '#fff0a8', { h: 30, r: 1.4, life: 2, k: 2 }); this.fx.ring(c, '#fff0a8', { r: 10, life: 1.6, width: 0.3 }); this.p.burst(c, '#fff0a8', 160, { speed: 8, life: 2, size: 0.12 }); GFX.flash('#fff8e0', 0.6, 1); Sfx.win(); },
+  // 世界中の猫の光（第八章）
+  voices() { const cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a']; for (let i = 0; i < 60; i++) GFX.delay(i * 0.03).then(() => this.p.emit(this.O.clone().add(V3((Math.random() - 0.5) * 20, 10 + Math.random() * 6, (Math.random() - 0.5) * 20)), V3(0, -3, 0), hdr(pick(cols), 2.6), { life: 3, size: 0.16, drag: 0.3 })); Sfx.tone(880, 0.4, 'sine', 0.05); Sfx.tone(1320, 0.5, 'sine', 0.04, 0, 0.15); },
+  // 封印の扉が開く
+  seal() { const c = this.point('door') || this.W(0, 8, 3); this.fx.ring(c, '#8affe0', { r: 5, life: 1.2, face: this.camera.position }); this.p.burst(c, '#8affe0', 120, { speed: 6, life: 1.4, size: 0.1 }); GFX.flash('#c8fff0', 0.6, 0.8); Sfx.door(); Sfx.slam(); this.scene.traverse(o => { if (o.isMesh && o.geometry && o.geometry.type === 'CircleGeometry' && o.geometry.parameters.radius > 2.5) o.visible = false; }); },
+  // 樹がよみがえる
+  revive() { Save.data.flags.treeRevived = true; Save.save(); STAGE_FX.light.call(this, 'sky'); STAGE_FX.laugh.call(this); },
+  // 猫じゃらしにじゃれる
+  lure(arg) { const a = this.actors[arg || 'maou']; if (!a) return; a.setFace('joy'); a.gesture('laugh'); Sfx.meow(a.base); },
+  // 光を失う（笑いの実が灰色に）
+  gray() { const U = GFX.grade.uniforms; GFX.tween(1.0, k => { U.desat.value = 0.55 * k; }, Ease.out, true); },
+  color() { const U = GFX.grade.uniforms, d0 = U.desat.value; GFX.tween(1.4, k => { U.desat.value = d0 * (1 - k); }, Ease.inOut, true); },
+};
+// その場面で旅をしている仲間（台本の give の順に加わる）
+function partyAt(sceneId) {
+  const joined = [HERO];
+  const gives = ls => { const out = []; const walk = l => l.forEach(x => { if (x && x.give) out.push(x.give); else if (x && x.c) x.c.forEach(([, rs]) => walk(rs)); }); walk(ls); return out; };
+  for (const ch of STORY) for (const st of ch.steps) for (const id of [st.id, st.scene, st.after].filter(Boolean)) {
+    if (id === sceneId) return joined.slice();
+    const sc = SCENES[id]; if (sc) for (const k of gives(sc.lines)) if (!joined.includes(k)) joined.push(k);
+    if (sc && sc.leave) sc.leave.forEach(k => { const i = joined.indexOf(k); if (i >= 0) joined.splice(i, 1); });
+  }
+  return joined.slice();
+}
+
 // 探索フィールドの部品（床の高さ・当たり判定・出入口）を借りる
 for (const k of ['gy', 'hitsCol', 'blocked', 'freeSpot', 'safeAt', 'buildMapExits', 'makeBulkhead', 'makeCabin', 'makeGate', 'exitTop']) StageView.prototype[k] = FieldView.prototype[k];
 
-// ============================================================
-//  会話シーンの舞台（第一章・第二章）：どの区画のどこで演じるか
-//  zone / at（マス座標）/ face（一行が向く方角：0 北・90 東・180 南・270 西）
-//  cast：立ち位置 at は舞台の座標 [右, 前]（m）。face は向く相手・舞台の点 [右, 前]
-//  points：視線やカメラが向かう点 [右, 高さ, 前]。wide / shots：カメラ { pos, look }
-// ============================================================
-const SCENE_STAGES = {
-  // カプセルホールの壇の上：目覚めたばかりのアステルを、ミゾレとユエがのぞき込む
-  c1_01: { zone: 'c1_cryo', at: [7.5, 3], face: 180,
-    cast: { aster: { at: [0, -1.4], face: 'mizore', stance: 'kneel', weapon: false }, mizore: { at: [-0.5, 0.5], face: 'aster' }, yue: { at: [0.9, 0.3], face: 'aster' } },
-    points: { exit: [0.5, 1.5, 21], alarm: [-5, 4, 8], capsule: [0, 1.4, -3.3] },
-    wide: { pos: [-4.4, 2.2, 0.8], look: [0.1, 0.9, -0.6] } },
-  // 検問扉の手前：通路をふさぐ斥候
-  c1_01b: { zone: 'c1_cryo', at: [7, 11.2], face: 180,
-    cast: { aster: { at: [0, 0], weapon: false }, mizore: { at: [-1.3, 0.4] }, yue: { at: [1.3, 0.3] },
-      'e:scout': [{ at: [1.2, 5.8] }, { at: [0, 6.6] }, { at: [-1.3, 5.9] }] },
-    wide: { pos: [2.2, 2.3, -3.2], look: [0, 1.1, 4.5] },
-    shots: { hero: { pos: [0.7, 0.55, 2.8], look: [0.1, 1.45, 0] } } },
-  // 上の回廊の奥の医務室：端末の陰に隠れていたイリス
-  c1_02: { zone: 'c1_cryo', at: [28, 21.4], face: 0, host: 'iris',
-    cast: { aster: { at: [0, 0] }, yue: { at: [-1.3, 0.35] }, mizore: { at: [1.3, 0.4] }, iris: { at: [-1.4, 4.9], face: 'aster', stance: 'crouch' } },
-    points: { storage: [-12, 1.5, 0], door: [-6, 1.8, -0.2] },
-    wide: { pos: [2.4, 2.3, -2.6], look: [-0.6, 1.1, 3.2] } },
-  // 保管棚ギャラリー、C-7 の棚の前：ミゾレがキーを見つけ、ギャラリーの奥から敵が迫る
-  c1_03: { zone: 'c1_storage', at: [4.2, 12], face: 180,
-    cast: { aster: { at: [0, 0] }, yue: { at: [1.4, 0.4] }, mizore: { at: [0.8, 2.6], face: [0.8, 6] },
-      'e:drone': { at: [-4.6, 1.4], hidden: true }, 'e:plunderer': [{ at: [-5.4, -0.4], hidden: true }, { at: [-5.1, 3.0], hidden: true }] },
-    points: { key: [0.8, 1.6, 3.4] },
-    wide: { pos: [2.2, 2.6, -3.4], look: [-0.8, 1.2, 2.4] },
-    shots: { rack: { pos: [-0.4, 1.9, 0.9], look: [0.9, 1.5, 3.4] } } },
-  // 同じ場所、戦いのあと：風とともにカザネが駆け込んでくる。イリスから通信
-  c1_04: { zone: 'c1_storage', at: [4.2, 12], face: 180,
-    cast: { aster: { at: [0, 0] }, yue: { at: [1.4, 0.4] }, mizore: { at: [0.6, 1.5], item: 'key' }, kazane: { at: [-4.4, -8], hidden: true, face: 'aster' } },
-    comm: [1.9, 2.3],
-    wide: { pos: [2.4, 2.2, 2.6], look: [-1.6, 1.2, 0.2] } },
-  // エレベーターを出た先の切り通し：中央管制室を埋める反物質軍団
-  c1_04b: { zone: 'c1_control', at: [18, 21.5], face: 0,
-    cast: { aster: { at: [0, 0] }, yue: { at: [-1.3, 0.5] }, mizore: { at: [1.3, 0.4] }, kazane: { at: [2.5, 1.2] },
-      'e:knight': { at: [0, 13] }, 'e:scout': [{ at: [-2.4, 11.6] }, { at: [2.6, 11.8] }] },
-    comm: [-1.8, 2.6],
-    wide: { pos: [-2.2, 3.4, -4.6], look: [0.5, 1.6, 8] },
-    shots: { hero: { pos: [0.6, 0.6, 3.0], look: [0.2, 1.5, 0] } } },
-  // 炉へ入る前室：桟橋の入口に立ちはだかる巨像
-  c1_05: { zone: 'c1_reactor', at: [8.5, 17], face: 90,
-    cast: { aster: { at: [0, 0] }, yue: { at: [-1.3, 0.4] }, mizore: { at: [1.3, 0.4] }, kazane: { at: [0.4, 1.6] }, 'e:golem': { at: [0, 8.8] } },
-    comm: [-1.7, 2.6],
-    points: { core: [1, 8, 28] },
-    wide: { pos: [-2.6, 2.6, -3.4], look: [0, 2.2, 7] },
-    shots: { hero: { pos: [0.8, 0.6, 3.0], look: [0.2, 1.5, 0] } } },
-  // 炉の底、炉心の足もとの制御端末：炉を止めると、北の隔壁がひとりでに開く
-  c1_05b: { zone: 'c1_reactor', at: [22.5, 24.6], face: 0, flags: { reactorStopped: false },
-    cast: { aster: { at: [0, 0.9] }, mizore: { at: [1.2, 0.4], item: 'key' }, yue: { at: [-1.3, 0.3] }, kazane: { at: [-2.4, -0.5] } },
-    comm: [2.3, 2.0],
-    points: { core: [0, 8, 14.2], terminal: [0, 1.1, 2.6], bulkhead: [1, 3, 49] },
-    wide: { pos: [2.6, 2.2, -3.4], look: [0, 3.2, 6] },
-    shots: { core: { pos: [1.8, 1.3, -1], look: [0, 7.5, 14] }, bulkhead: { pos: [9, 8, 18], look: [1, 2.5, 49] }, terminal: { pos: [1.6, 1.8, 3.8], look: [0, 1.2, 1.2] } } },
-  // 深淵に架かる橋の上：壇の上で脈打つ星核と、目を覚ます番人
-  c1_06: { zone: 'c1_core', at: [12.5, 10], face: 0, flags: { coreTaken: false },
-    cast: { aster: { at: [0, 0] }, yue: { at: [-1.3, 0.4] }, mizore: { at: [1.3, 0.4] }, kazane: { at: [2.5, -0.6] }, 'e:boss_core': { at: [0, 8.5], hidden: true } },
-    points: { core: [0, 6.5, 14] },
-    wide: { pos: [-2.4, 2.2, -4.4], look: [0, 3.5, 8] },
-    shots: { core: { pos: [1.2, 1.2, -1.6], look: [0, 6, 14] }, hero: { pos: [0.6, 0.6, 3.0], look: [0.2, 1.5, 0] } } },
-  // 星核の壇の前：番人を倒し、アステルが星核を鎮め、ユエが封じる
-  c1_06b: { zone: 'c1_core', at: [12.5, 6.8], face: 0, flags: { coreTaken: false },
-    cast: { aster: { at: [0, 0], stance: 'ready' }, yue: { at: [-1.3, 0.3], stance: 'guardStaff' }, mizore: { at: [1.3, 0.3], stance: 'mzGuard' }, kazane: { at: [2.6, -0.5], stance: 'ready' }, 'e:boss_core': { at: [0, 2.8] } },
-    comm: [-2.2, 1.9],
-    points: { core: [0, 6.5, 7.6] },
-    wide: { pos: [-2.6, 2.4, -4.2], look: [0, 3, 4] },
-    shots: { core: { pos: [1.4, 1.1, -1.8], look: [0, 6, 7.6] }, reach: { pos: [-0.5, 1.15, -1.0], look: [0.35, 2.7, 5.5] }, seal: { pos: [-4.0, 1.5, -1.6], look: [-0.4, 2.3, 3.2] } } },
-  // 停泊ドックのホーム：列車の前でポルカが出迎える
-  c1_07: { zone: 'c1_dock', at: [11.5, 10], face: 270, host: 'polka',
-    cast: { polka: { at: [0.3, 3.0], face: 'aster' }, aster: { at: [0, 0] }, mizore: { at: [-1.3, 0.3] }, yue: { at: [1.3, 0.3] }, kazane: { at: [2.5, -0.5] } },
-    points: { train: [11, 2.5, 14] },
-    wide: { pos: [-3.2, 2.4, -2.6], look: [0.8, 1.6, 6] },
-    shots: { depart: { pos: [-4.5, 3.2, -4], look: [4, 2, 12] } } },
-
-  // ---------------- 第二章 ----------------
-  // 雪原の外縁の停車場：列車を降りた一行のもとへ、谷の階段からロアが上がってくる（右が北、前が西）
-  c2_01: { zone: 'c2_outskirts', at: [41, 21], face: 270, host: 'roa',
-    cast: { aster: { at: [0, 0] }, mizore: { at: [-1.3, 0.4] }, yue: { at: [1.3, 0.3] }, kazane: { at: [2.6, -0.6] }, roa: { at: [-1, 10], face: 'aster' } },
-    points: { valley: [0, -1, 20], train: [0, 2, -9], gate: [2, 5, 80] },
-    wide: { pos: [-3.8, 2.2, -2.6], look: [0.5, 1.3, 3] },
-    shots: { arrive: { pos: [2.6, 3, 7], look: [0, 1.4, -3] } } },
-  // 凍てついた街路、運河の橋の先：大階段を背にロアが立ち、東の屋根の上にライカが現れる（前が北）
-  c2_02: { zone: 'c2_street', at: [20, 38], face: 0, host: 'roa',
-    cast: { aster: { at: [0, 0] }, yue: { at: [-1.3, 0.3] }, mizore: { at: [1.3, 0.4] }, kazane: { at: [2.6, -0.5] }, roa: { at: [0.3, 2.6], face: 'aster' },
-      laika: { at: [11.3, 3], roof: true, hidden: true, face: 'aster' } },
-    points: { stair: [0, 3, 14], roof: [11.3, 10.5, 3], mine: [15, 0.5, -14] },
-    wide: { pos: [-3.2, 2.4, -3.6], look: [1.5, 2, 4] },
-    shots: { roofUp: { pos: [-6, 0.8, -1], look: [11.3, 10.6, 3] } } },
-  // 地下鉱区・深層、中央の足場：青く光る古い鉱脈の前で（前が北、奥に北の岩棚）
-  c2_03: { zone: 'c2_mine_deep', at: [23, 24.5], face: 0, host: 'roa',
-    cast: { aster: { at: [0, 0] }, yue: { at: [-1.3, 0.3] }, mizore: { at: [1.3, 0.4] }, kazane: { at: [2.6, -0.6] }, laika: { at: [-2.6, -0.6] }, roa: { at: [-0.9, 2.8], face: 'aster' } },
-    points: { vein: [0, 2.5, 6.6], north: [-3, 1.5, 47] },
-    wide: { pos: [-3.4, 2.4, -2.4], look: [0.4, 1.8, 4] },
-    shots: { vein: { pos: [3.4, 2.9, -3.4], look: [0, 2.2, 6.6] }, shaft: { pos: [4.6, 2.4, -1.2], look: [-2, 1.5, 30] } } },
-  // 城塞の門の東、見張りの死角：前庭の先に門と鋼鉄の巨像（右が北、前が西）
-  c2_04: { zone: 'c2_gate', at: [45.5, 19], face: 270, host: 'roa',
-    cast: { aster: { at: [0, 0] }, yue: { at: [-1.3, 0.3] }, mizore: { at: [1.3, 0.4] }, kazane: { at: [2.6, -0.5] }, roa: { at: [-0.6, 2.4], face: 'aster' }, laika: { at: [3.4, 1.6], face: 'aster' } },
-    points: { gate: [36, 6, 40], golems: [16, 6, 40] },
-    wide: { pos: [-3.6, 2.4, -3.2], look: [1, 1.4, 3] },
-    shots: { gate: { pos: [-14, 3.2, 39.5], look: [26, 5.5, 39.5] }, hero: { pos: [0.6, 0.6, 3.0], look: [0.2, 1.5, 0] } } },
-  // 玉座の間、壇の階段の手前：玉座の前に女帝、頭上に氷の星核（前が北）
-  c2_05: { zone: 'c2_palace', at: [19.5, 10], face: 0, host: 'roa',
-    cast: { aster: { at: [0, 0] }, yue: { at: [-1.3, 0.3] }, mizore: { at: [1.3, 0.4] }, kazane: { at: [2.6, -0.5] }, laika: { at: [-2.6, -0.5] }, roa: { at: [-0.5, 1.5] },
-      'e:boss_empress': { at: [0, 12.2] } },
-    points: { core: [0, 10, 15] },
-    wide: { pos: [-3.4, 2.6, -3.6], look: [0, 2.4, 6] },
-    shots: { throne: { pos: [1.8, 1.3, -2.8], look: [0, 3.5, 12] }, hero: { pos: [0.6, 0.6, 3.0], look: [0.2, 1.5, 0] } } },
-  // 同じ場所、戦いのあと：星核が砕けて氷が溶け、ロアが女帝のもとへ駆け寄る
-  c2_06: { zone: 'c2_palace', at: [19.5, 10], face: 0, host: 'roa',
-    cast: { aster: { at: [0, 0] }, yue: { at: [-1.3, 0.3] }, mizore: { at: [1.3, 0.4] }, kazane: { at: [2.6, -0.5] }, laika: { at: [-2.6, -0.5] }, roa: { at: [-0.5, 1.5] },
-      'e:boss_empress': { at: [0, 12.2] } },
-    comm: [0.4, 3.2],
-    points: { core: [0, 10, 15] },
-    wide: { pos: [-3.4, 2.6, -3.6], look: [0, 2.4, 6] },
-    shots: { throne: { pos: [1.8, 1.3, -2.8], look: [0, 4.5, 13] }, reunion: { pos: [4.4, 2.4, 5.2], look: [-0.4, 3.9, 11] }, window: { pos: [-5, 4, -6], look: [0, 3.5, 9] } } },
-};
-
-// ============================================================
-//  戦闘の舞台（第一章・第二章）：区画のどこで戦うか
-//  at（マス座標）が戦場の中心、face は味方が敵を向く方角（0 北・90 東・180 南・270 西）。
-//  戦闘は中心の手前（+Z）に味方、奥（-Z）に敵が並ぶので、そのまま区画を回して重ねる
-// ============================================================
-const BATTLE_SETS = {
-  '1-1': { zone: 'c1_cryo', at: [7.5, 9.2], face: 180 },                   // カプセルホール、検問扉の方へ
-  '1-2': { zone: 'c1_storage', at: [23, 11], face: 270 },                  // 倉庫の床、コンテナの通路
-  '1-3': { zone: 'c1_control', at: [17.5, 17.5], face: 0 },                // 中央管制室、ホロテーブルの前
-  '1-4': { zone: 'c1_reactor', at: [19, 23], face: 0, flags: () => ({ reactorStopped: typeof Story !== 'undefined' && Story.seen('c1_05b') }) },   // 炉の底
-  '1-5': { zone: 'c1_core', at: [12.5, 9.5], face: 0, flags: { coreTaken: false } },   // 深淵の橋、背後に星核
-  dock: { zone: 'c1_dock', at: [26.5, 17], face: 0 },                      // コンコース
-  // 第二章
-  '2-1': { zone: 'c2_outskirts', at: [25, 29], face: 0 },                  // 谷の雪原、奥に氷の裂け目と北の尾根
-  '2-2': { zone: 'c2_street', at: [20, 45], face: 0 },                     // 凍てついた街路、運河の橋の手前
-  '2-3': { zone: 'c2_mine_deep', at: [23, 24.2], face: 0 },                // 大縦穴の中央の足場、背後に古い鉱脈
-  '2-4': { zone: 'c2_gate', at: [26, 23], face: 0 },                       // 城塞の前庭、奥に大階段と門
-  '2-5': { zone: 'c2_palace', at: [19.5, 12.4], face: 0 },                 // 玉座の間、壇の前
-  mineUpper: { zone: 'c2_mine', at: [17, 21], face: 0 },                  // 上層坑道の大空洞
-  mineNorth: { zone: 'c2_mine_north', at: [20, 32], face: 0 },            // 北坑道の下の広間
-  palaceHall: { zone: 'c2_palace_hall', at: [21.5, 26], face: 0 },        // 大広間、奥に大階段
-  gallery: { zone: 'c2_palace_gallery', at: [19.5, 36], face: 0 },        // 肖像の回廊
-  garden: { zone: 'c2_palace_garden', at: [24, 31], face: 0 },            // 凍てついた庭園、奥に凍った泉
-};
-// 探索中の戦闘：区画ごとの戦場
-const ZONE_ARENAS = { c1_dock: 'dock', c1_cryo: '1-1', c1_storage: '1-2', c1_control: '1-3', c1_reactor: '1-4',
-  c1_core: { zone: 'c1_core', at: [12.5, 9.5], face: 0 },
-  c2_outskirts: '2-1', c2_street: '2-2', c2_mine: 'mineUpper', c2_mine_deep: '2-3', c2_mine_north: 'mineNorth', c2_gate: '2-4',
-  c2_palace_hall: 'palaceHall', c2_palace_gallery: 'gallery', c2_palace_garden: 'garden', c2_palace: '2-5' };
 function resolveBattleSet(loc) {
   const s = typeof loc === 'string' ? BATTLE_SETS[loc] : loc;
   return s && FIELD_ZONES[s.zone] ? s : null;
 }
+// 戦場の空と光：区画の bg（なければ章の bg）
+function battleTheme(loc, fallback) {
+  const s = loc && resolveBattleSet(loc); if (!s) return fallback;
+  const Z = FIELD_ZONES[s.zone]; return Z.bg || CHAPTERS[Z.ci].bg;
+}
 // 区画を組み立てて、戦場の中心が原点・敵の方向が -Z になるよう回して置く
 function buildBattleSet(view, loc) {
-  const Z = FIELD_ZONES[loc.zone], [cx, cz] = zonePoint(Z, loc.at);
+  const Z = FIELD_ZONES[loc.zone], [cx, cz] = loc.world ? loc.at : zonePoint(Z, loc.at);
   const root = new THREE.Group(); view.scene.add(root);
   const lp = new Particles(root, 1500);
   // 組み立て用の代理：部品は root に、区画の粒子は root の座標で出す

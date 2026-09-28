@@ -4,7 +4,8 @@
 //  - 行動値（AV）：距離10000 / 速度
 //  - SP共有（最大5）、通常攻撃+1 / スキル-1
 //  - 必殺技はEP満タンでいつでも割り込み可能（1〜4キー）
-//  - 靭性・弱点撃破・撃破効果（裂創/燃焼/凍結/感電/風化/もつれ/禁錮）
+//  - 靭性・弱点撃破・撃破効果（裂創/燃焼/凍結/感電/風化/くらやみ/まぶしさ）
+//  - にゃんこファンタジー：「話す」（第三章から）、友情ゲージとコンボスキル、にゃんこオールスターズ
 // ============================================================
 const Game = { speed: 1, auto: false, activeBattle: null, activeField: null };
 const wait = ms => new Promise(r => setTimeout(r, ms / Game.speed));
@@ -19,8 +20,14 @@ const DOT_INFO = { burn: ['燃焼', 'fire'], shock: ['感電', 'lightning'], win
 const BREAK_COEF = { physical: 2, fire: 2, ice: 1, lightning: 1, wind: 1.5, quantum: 0.5, imaginary: 0.5 };
 const ENEMY_TARGETS = new Set(['single', 'blast', 'bounce', 'aoe']);
 const NEEDS_TARGET = new Set(['single', 'blast', 'bounce', 'ally']);
+// 「話す」：敵の気持ちを聞いて、なごませる
+const TALK_AB = { name: 'はなす', target: 'single', desc: '敵に話しかけて気持ちを聞く。はじめて話した敵は、なごんで攻撃力-20%（2ターン）・行動順が25%遅れる。SPは増減しない。' };
+const talkOn = () => !!(Save.data.flags && Save.data.flags.talk);
 
 let UID = 0;
+// 敵の体力の全体倍率（にゃんこの戦いは、テンポよく）
+const FOE_HP = 0.55;
+
 class Unit {
   constructor(side, key, level, opts = {}) {
     this.uid = ++UID; this.side = side; this.key = key; this.level = level;
@@ -61,6 +68,7 @@ class Battle {
     this.waveIdx = 0; this.over = false; this.paused = false;
     this.enemies = []; this.ultQueue = []; this.extraQueue = [];
     this.input = null; this.current = null; this.lastTarget = null; this.lastSel = {};
+    this.bond = 0; this.comboQueue = []; this.said = 0;
     this.allies = opts.team.map(m => {
       const u = new Unit('ally', m.key, m.lv, m);
       this.applyModStats(u, 'stats');
@@ -110,10 +118,13 @@ class Battle {
         <div class="ab-btns">
           <button class="ab-btn" data-ab="basic"><span class="ab-ic">⚔</span><span class="k">Q</span><span class="l">通常攻撃</span></button>
           <button class="ab-btn" data-ab="skill"><span class="ab-ic">✦</span><span class="k">E</span><span class="l">戦闘スキル</span></button>
+          <button class="ab-btn talk ${talkOn() ? '' : 'hidden'}" data-ab="talk"><span class="ab-ic">💬</span><span class="k">R</span><span class="l">はなす</span></button>
         </div>
         <div class="ult-hint">Space / クリックで発動　Esc でキャンセル</div>
       </div>
-      <div class="help">Q 通常攻撃 ／ E スキル ／ A・D 対象選択 ／ Space 決定 ／ 1〜4 必殺技</div>
+      <div class="bond hidden"><div class="bond-l">友情ゲージ</div><div class="bond-bar"><i></i></div><button class="bond-btn" data-combo disabled><span class="k">C</span><b>コンボ</b></button></div>
+      <div class="combo-menu hidden"></div>
+      <div class="help">Q 通常攻撃 ／ E スキル${talkOn() ? ' ／ R はなす' : ''} ／ A・D 対象選択 ／ Space 決定 ／ 1〜4 必殺技 ／ C コンボ</div>
       <div class="ultfx"></div>
       <div class="cutin"></div>
       <div class="overlay hidden"></div>`;
@@ -145,6 +156,7 @@ class Battle {
     });
 
     r.querySelectorAll('.ab-btn').forEach(b => b.addEventListener('click', () => this.selectAbility(b.dataset.ab)));
+    r.querySelector('[data-combo]').addEventListener('click', e => { e.stopPropagation(); this.requestCombo(); });
     r.querySelector('.bf-ctrl').addEventListener('click', e => {
       const c = e.target.closest('[data-c]'); if (!c) return;
       if (c.dataset.c === 'auto') this.toggleAuto();
@@ -196,7 +208,9 @@ class Battle {
     }
     for (const d of u.dots) out.push(`<span class="st dot" style="--c:${ELEMENTS[d.elem].color}">${DOT_INFO[d.type][0]}${d.stacks > 1 ? '×' + d.stacks : ''}<em>${d.turns}</em></span>`);
     if (u.frozen) out.push(`<span class="st dot" style="--c:${ELEMENTS.ice.color}">凍結</span>`);
-    if (u.entangle) out.push(`<span class="st dot" style="--c:${ELEMENTS.quantum.color}">もつれ×${u.entangle.stacks}</span>`);
+    if (u.entangle) out.push(`<span class="st dot" style="--c:${ELEMENTS.quantum.color}">くらやみ×${u.entangle.stacks}</span>`);
+    if (u.flags && u.flags.isolated) out.push(`<span class="st de">ひとりぼっち<em>${u.flags.isolated}</em></span>`);
+    if (u.flags && u.flags.skip) out.push(`<span class="st bu">夢中</span>`);
     return out.join('');
   }
 
@@ -226,7 +240,7 @@ class Battle {
   renderAll() {
     this.allies.forEach(u => this.updateUnit(u));
     this.enemies.forEach(u => this.updateUnit(u));
-    this.renderSp(); this.renderOrder();
+    this.renderSp(); this.renderOrder(); this.renderBond();
   }
 
   renderSp() {
@@ -357,10 +371,16 @@ class Battle {
     await this.loop();
   }
 
+  // 敵の強さ：にゃんこの人数が少ないうちは、敵の体力と攻撃を控えめにする
+  foeScale(u) {
+    const n = this.allies.length, hp = [0.5, 0.5, 0.7, 0.85, 1][n] ?? 1, atk = [0.85, 0.85, 0.9, 0.95, 1][n] ?? 1;
+    u.base.maxHp *= FOE_HP * hp * (u.def.boss ? 0.75 : 1); u.base.atk *= atk; u.hp = u.maxHp;
+    return u;
+  }
   async spawnWave() {
     const w = this.opts.waves[this.waveIdx];
     this.enemies = w.map(e => {
-      const u = new Unit('enemy', e.key, e.lv);
+      const u = this.foeScale(new Unit('enemy', e.key, e.lv));
       this.applyModStats(u, 'enemyStats');
       return u;
     });
@@ -459,6 +479,13 @@ class Battle {
       }
       u.def.talent.onTurnStart && u.def.talent.onTurnStart(this, u);
       for (const m of this.mods) m.onTurnStart && m.onTurnStart(this, u);
+      if (u.flags.isolated && --u.flags.isolated <= 0) { u.flags.isolated = 0; this.float(u, 'ひとりぼっちが解けた', 'info'); }
+      if (u.def.talent.skipTurn && u.def.talent.skipTurn(this, u)) {
+        if (this.v) this.v.napFx(u);
+        this.gainEnergy(u, 10); this.renderAll();
+        await wait(1100); return;
+      }
+      this.banter(u);
     } else {
       u.def.talent.onExtraStart && u.def.talent.onExtraStart(this, u);
       this.announce('追加ターン', u.name, ELEMENTS[u.elem].color);
@@ -472,9 +499,10 @@ class Battle {
       if (this.battleBlocked() || !u.alive) break;
       if (ulted && this.v) this.v.onTurn(u);
       const choice = Game.auto ? await this.aiChoice(u) : await this.awaitChoice(u);
-      if (choice.kind === 'ult') continue;
+      if (choice.kind === 'ult' || choice.kind === 'combo') continue;
       if (this.battleBlocked() || !u.alive) break;
-      await this.useAbility(u, choice.kind, choice.target);
+      if (choice.kind === 'talk') await this.useTalk(u, choice.target);
+      else await this.useAbility(u, choice.kind, choice.target);
       break;
     }
     if (extra && u.def.talent.onExtraEnd) u.def.talent.onExtraEnd(this, u);
@@ -492,12 +520,165 @@ class Battle {
     await this.resolveDeaths(u, kind);
     this.gainEnergy(u, kind === 'basic' ? 20 : 30);
     u.def.talent.afterAction && u.def.talent.afterAction(this, u, kind, res);
+    this.addBond(kind === 'basic' ? 10 : 14);
+    this.callBack(u);
     this.renderAll();
     await wait(350);
   }
 
+  // ---------------- 話す ----------------
+  async useTalk(u, t) {
+    this.lastSel[u.uid] = 'basic';
+    if (!t || !t.alive) return;
+    if (this.v) await this.v.talkFx(u, t);
+    Sfx.meow(u.key);
+    const first = !t.flags.talked; t.flags.talked = true;
+    if (t.def.lure && !t.flags.lured) {
+      t.flags.lured = true; t.flags.skip = 1;
+      this.announce(`${u.name}は猫じゃらしを見せた！`, `${t.name}は夢中になっている……（1ターン行動できない）`, '#ffcf4a');
+      this.say(t, '「……！？　こ、これは……っ」');
+      if (this.v) this.v.lureFx(t);
+    } else {
+      this.announce(`${u.name}は${t.name}に話しかけた`, t.def.talk || '……', ELEMENTS[u.elem].color);
+      this.say(t, t.def.talk || '……');
+      if (first) {
+        this.debuff(u, t, 1, { key: 'nagomi', name: 'なごみ', stat: 'atk', value: -0.2, turns: 2 }, true);
+        this.delay(t, 0.25); this.float(t, 'なごんだ', 'info');
+      } else this.float(t, 'もう聞いた', 'res');
+    }
+    this.gainEnergy(u, 15); this.addBond(8);
+    this.renderAll();
+    await wait(1400);
+    if (this.v) await this.v.attackEnd(u);
+  }
+
+  // ---------------- 友情ゲージとコンボ ----------------
+  addBond(n) {
+    if (!this.bondOn()) return;
+    this.bond = clamp(this.bond + n, 0, 100); this.renderBond();
+  }
+  bondOn() { return this.allies.length >= 2; }
+  // 使えるコンボ（友情Lv3の組み合わせ。最終決戦では「にゃんこオールスターズ」）
+  combos() {
+    const al = this.aliveAllies(), has = k => al.find(a => a.key === k);
+    if (this.opts.final && this.allstars) return [ALLSTARS];
+    return COMBOS.filter(c => {
+      const [a, b] = c.pair;
+      if (!has(a)) return false;
+      if (b === '*') { const others = al.filter(x => x.key !== a); return others.length >= 2 && others.every(x => bondLv(a, x.key) >= 3); }
+      return has(b) && bondLv(a, b) >= 3;
+    });
+  }
+  renderBond() {
+    const el = this.$('.bond'); if (!el) return;
+    el.classList.toggle('hidden', !this.bondOn());
+    el.querySelector('.bond-bar i').style.width = this.bond + '%';
+    const list = this.bond >= 100 ? this.combos() : [];
+    const btn = el.querySelector('[data-combo]');
+    btn.disabled = !list.length || this.over;
+    btn.classList.toggle('ready', !!list.length);
+    btn.querySelector('b').textContent = list.length === 1 ? list[0].name : 'コンボ';
+    el.classList.toggle('full', this.bond >= 100);
+    el.classList.toggle('allstars', !!this.allstars);
+  }
+  requestCombo(id) {
+    if (this.over || this.bond < 100 || this.comboQueue.length) return;
+    const list = this.combos(); if (!list.length) return;
+    const menu = this.$('.combo-menu');
+    if (!id && list.length > 1) {
+      menu.innerHTML = list.map(c => `<button data-cid="${c.id}"><b>${c.name}</b><small>${c.desc}</small></button>`).join('') + '<button class="x" data-cid="">やめる</button>';
+      menu.classList.remove('hidden');
+      menu.querySelectorAll('[data-cid]').forEach(b => b.onclick = e => { e.stopPropagation(); menu.classList.add('hidden'); if (b.dataset.cid) this.requestCombo(b.dataset.cid); });
+      Sfx.click(); return;
+    }
+    const c = id ? list.find(x => x.id === id) : list[0]; if (!c) return;
+    this.comboQueue.push(c); Sfx.select();
+    if (this.input && this.input.mode === 'turn') { const r = this.input.resolve; this.input = null; this.renderInput(); r({ kind: 'combo' }); }
+  }
+  comboMembers(c) {
+    const al = this.aliveAllies();
+    if (c.id === 'allstars') return al;
+    const [a, b] = c.pair;
+    return b === '*' ? [al.find(x => x.key === a), ...al.filter(x => x.key !== a)] : [al.find(x => x.key === a), al.find(x => x.key === b)];
+  }
+  async castCombo(c) {
+    const mem = this.comboMembers(c).filter(Boolean);
+    this.bond = 0; this.renderBond();
+    this.announce(c.id === 'allstars' ? '最終スキル' : 'コンボスキル', c.name, '#ffcf4a');
+    Sfx.ult();
+    await this.comboCutin(c, mem);
+    const target = this.lastTarget && this.lastTarget.alive ? this.lastTarget : this.aiTarget(mem[0], { target: 'single' });
+    if (c.id === 'allstars') await this.allStars(mem);
+    else {
+      if (this.v && c.target === 'allies') await this.v.support(mem[0], this.aliveAllies());
+      await c.run(this, mem, target);
+      if (this.v && c.target !== 'allies') await this.v.attackEnd(mem[mem.length - 1]);
+      await this.resolveDeaths(mem[0], 'combo');
+    }
+    mem.forEach(m => this.gainEnergy(m, 10));
+    for (let i = 0; i < mem.length; i++) for (let j = i + 1; j < mem.length; j++) addBond(mem[i].key, mem[j].key, 2);
+    this.renderAll();
+    await wait(300);
+  }
+  async comboCutin(c, mem) {
+    const box = this.$('.cutin');
+    box.innerHTML = `<div class="ci-combo ${c.id === 'allstars' ? 'all' : ''}"><div class="ci-faces">${mem.map(m => `<div class="ci-f" style="--c:${ELEMENTS[m.elem].color}">${avatarSVG(m.key)}</div>`).join('')}</div><div class="ci-ult">${c.name}</div></div>`;
+    box.classList.remove('show'); void box.offsetWidth; box.classList.add('show');
+    if (this.v) await this.v.comboIntro(mem, c);
+    else await wait(1200);
+    box.classList.remove('show');
+  }
+  // にゃんこオールスターズ：世界中の猫たちの「つながり」
+  async allStars(mem) {
+    const lines = [['mike', '「俺たちは――」'], ['all', '「ずっと仲間だ！」']];
+    for (const [k, line] of lines) {
+      if (k === 'all') mem.forEach(m => this.say(m, line)); else { const m = mem.find(x => x.key === k) || mem[0]; this.say(m, line); }
+      await wait(1300);
+    }
+    if (this.v) await this.v.allStarsFx(mem);
+    const sum = mem.reduce((a, m) => a + m.stat('atk'), 0), lv = Math.max(...mem.map(m => m.level));
+    for (const t of this.aliveEnemies()) {
+      const v = Math.max(sum * 3 * this.defResMult(lv, t, 'imaginary', mem[0]), t.maxHp * 0.62);
+      if (this.v) this.v.hit(t, 'imaginary', true, true);
+      this.applyDamage(t, v, mem[0], 'imaginary', 'crit');
+      if (!t.broken && t.alive) { t.toughness = 0; await this.doBreak(mem[0], t, 'imaginary'); }
+    }
+    this.shake(true);
+    await wait(500);
+    await this.resolveDeaths(mem[0], 'combo');
+  }
+  // 掛け合い（友情Lv2から）：ターンのはじめに、ときどき仲間とひとこと
+  banter(u) {
+    if (this.said > 0) { this.said--; return; }
+    if (Math.random() > 0.3) return;
+    const others = this.aliveAllies().filter(a => a !== u && bondLv(u.key, a.key) >= 2 && (BANTER[u.key + '>' + a.key]));
+    if (!others.length) return;
+    const a = pick(others), [l1, l2] = pick(BANTER[u.key + '>' + a.key]);
+    this.say(u, l1);
+    if (l2) setTimeout(() => this.say(a, l2), 1100 / Game.speed);
+    this.said = 2;
+  }
+  // 吹き出し
+  say(u, text) {
+    const host = u.anchor || u.el; if (!host) return;
+    const b = document.createElement('div'); b.className = 'say ' + u.side; b.textContent = text;
+    host.querySelector('.fx').appendChild(b);
+    setTimeout(() => b.remove(), 2600);
+  }
+  // ひとりぼっちの仲間を呼び戻す（「一人じゃない！」）
+  callBack(u) {
+    for (const a of this.aliveAllies()) {
+      if (a === u || !a.flags.isolated) continue;
+      if (Math.random() < (bondLv(u.key, a.key) >= 3 ? 1 : 0.6)) {
+        a.flags.isolated = 0; this.say(u, '「一人じゃない！」'); this.float(a, '呼び戻された', 'info');
+        this.heal(u, a, a.maxHp * 0.08); this.updateUnit(a);
+      }
+    }
+  }
+
   // ---------------- 必殺技 ----------------
   queueAutoUlts() {
+    if (this.bond >= 100 && !this.comboQueue.length) { const l = this.combos(); if (l.length) this.comboQueue.push(l[0]); }
     for (const a of this.aliveAllies())
       if (a.energy >= a.energyMax && !this.ultQueue.includes(a)) this.ultQueue.push(a);
   }
@@ -517,6 +698,11 @@ class Battle {
   // 必殺技を1つでも処理したら true（カメラを行動中のキャラへ戻すため）
   async processUlts() {
     let handled = false;
+    while (this.comboQueue.length && !this.battleBlocked()) {
+      await this.gate();
+      const c = this.comboQueue.shift(); handled = true;
+      await this.castCombo(c);
+    }
     while (this.ultQueue.length && !this.battleBlocked()) {
       await this.gate();
       const u = this.ultQueue[0];
@@ -546,7 +732,7 @@ class Battle {
 
   // 専用演出の画面側（HUDを隠す・技名・光条・集中線）
   ultUi(kind, u) {
-    const fx = this.$('.ultfx'), col = (ULT_CINE[u.key] || {}).col || ELEMENTS[u.elem].color;
+    const fx = this.$('.ultfx'), col = ELEMENTS[u.elem].color;
     const add = (cls, ms, html = '') => {
       const d = document.createElement('div'); d.className = cls; d.style.setProperty('--c', col); d.innerHTML = html; fx.appendChild(d);
       if (ms) setTimeout(() => d.remove(), ms);
@@ -574,7 +760,7 @@ class Battle {
     const res = (await ult.run(this, u, target)) || [];
     if (this.v && ENEMY_TARGETS.has(ult.target)) await this.v.attackEnd(u);
     await this.resolveDeaths(u, 'ult');
-    this.gainEnergy(u, 5);
+    this.gainEnergy(u, 5); this.addBond(15); this.callBack(u);
     u.def.talent.afterAction && u.def.talent.afterAction(this, u, 'ult', res);
     for (const m of this.mods) m.afterUlt && m.afterUlt(this, u);
     this.renderAll();
@@ -582,7 +768,7 @@ class Battle {
   }
 
   // ---------------- 入力 ----------------
-  abilityOf(inp) { return inp.mode === 'ult' ? inp.unit.def.ult : inp.unit.def[inp.sel]; }
+  abilityOf(inp) { return inp.mode === 'ult' ? inp.unit.def.ult : inp.sel === 'talk' ? TALK_AB : inp.unit.def[inp.sel]; }
 
   targetList(u, ab) {
     if (ab.target === 'ally') return this.aliveAllies().filter(a => !(ab.notSelf && a === u));
@@ -636,7 +822,7 @@ class Battle {
 
   flashSp() {
     const s = this.$('.sp'); s.classList.remove('flash'); void s.offsetWidth; s.classList.add('flash');
-    this.announce('SP不足', 'スキルポイントが足りません', '#ff6b6b');
+    this.announce('にくきゅう不足', 'にくきゅうポイント（SP）が足りない', '#ff6b6b');
   }
 
   confirm() {
@@ -685,12 +871,12 @@ class Battle {
     if (!inp) return;
     const ab = this.abilityOf(inp), u = inp.unit;
     panel.style.setProperty('--c', ELEMENTS[u.elem].color);
-    this.$('.ab-kind').textContent = inp.mode === 'ult' ? `${u.name}・必殺技` : `${u.name}・${inp.sel === 'basic' ? '通常攻撃' : '戦闘スキル'}`;
+    this.$('.ab-kind').textContent = inp.mode === 'ult' ? `${u.name}・必殺技` : `${u.name}・${inp.sel === 'basic' ? '通常攻撃' : inp.sel === 'talk' ? 'はなす' : '戦闘スキル'}`;
     this.$('.ab-name').textContent = ab.name;
     this.$('.ab-desc').textContent = ab.desc;
     this.root.querySelectorAll('.ab-btn').forEach(b => {
       b.classList.toggle('sel', inp.mode === 'turn' && b.dataset.ab === inp.sel);
-      b.querySelector('.l').textContent = u.def[b.dataset.ab].name;
+      b.querySelector('.l').textContent = b.dataset.ab === 'talk' ? TALK_AB.name : u.def[b.dataset.ab].name;
     });
     this.$('[data-ab=skill]').classList.toggle('disabled', this.sp < 1);
 
@@ -709,6 +895,8 @@ class Battle {
     if (this.over) return;
     if (this.paused) { if (k === 'escape') this.togglePause(); return; }
     if (k === 'q') this.selectAbility('basic');
+    else if (k === 'r' && talkOn()) this.selectAbility('talk');
+    else if (k === 'c') this.requestCombo();
     else if (k === 'e') this.selectAbility('skill');
     else if (k === ' ' || k === 'enter') { e.preventDefault(); this.confirm(); }
     else if (k === 'a' || k === 'arrowleft') this.moveTarget(-1);
@@ -873,7 +1061,7 @@ class Battle {
     let broke = false;
     if (t.side === 'enemy' && tough > 0 && !t.broken && t.isWeak(r.elem) && t.alive) {
       t.toughness = Math.max(0, t.toughness - tough * (1 + src.stat('toughBoost')));
-      if (t.toughness <= 0 && t.hp > 0) { broke = true; await this.doBreak(src, t); }
+      if (t.toughness <= 0 && t.hp > 0) { broke = true; await this.doBreak(src, t, r.elem); }
     }
     if (t.entangle && t.side === 'enemy') t.entangle.stacks = Math.min(5, t.entangle.stacks + 1);
     if (src.side === 'ally' && src.def.talent.onHitEnemy) src.def.talent.onHitEnemy(this, src, t, kind);
@@ -881,9 +1069,10 @@ class Battle {
     return { t, dmg: r.value, crit: r.crit, broke };
   }
 
-  async doBreak(src, t) {
+  async doBreak(src, t, elem = src.elem) {
     t.broken = true;
-    const elem = src.elem, lvM = lvMult(src.level), tm = 0.5 + t.maxTough / 120, be = 1 + src.stat('be');
+    this.addBond(15);
+    const lvM = lvMult(src.level), tm = 0.5 + t.maxTough / 120, be = 1 + src.stat('be');
     const col = ELEMENTS[elem].color;
     Sfx.brk(); this.shake(true);
     if (this.v) this.v.breakFx(t, elem);
@@ -901,10 +1090,10 @@ class Battle {
       case 'lightning': this.setDot(t, { ...dotBase, type: 'shock', elem, raw: 2 * lvM * be }); break;
       case 'wind': { const st = t.def.boss || t.def.elite ? 3 : 1; this.setDot(t, { ...dotBase, type: 'wind', elem, raw: lvM * be * st, stacks: st }); break; }
       case 'ice': t.frozen = { raw: lvM * be, srcLv: src.level }; this.float(t, '凍結', 'info'); break;
-      case 'quantum': t.gauge += 2000 * be; t.entangle = { raw: 0.6 * lvM * tm * be, srcLv: src.level, stacks: 1 }; this.float(t, 'もつれ', 'info'); break;
+      case 'quantum': t.gauge += 2000 * be; t.entangle = { raw: 0.6 * lvM * tm * be, srcLv: src.level, stacks: 1 }; this.float(t, 'くらやみ', 'info'); break;
       case 'imaginary': t.gauge += 3000 * be;
-        t.buffs.push({ key: 'imprison', name: '禁錮', stat: 'spd', value: -0.1, turns: 1, debuff: true });
-        this.float(t, '禁錮', 'info'); break;
+        t.buffs.push({ key: 'imprison', name: 'まぶしさ', stat: 'spd', value: -0.1, turns: 1, debuff: true });
+        this.float(t, 'まぶしい！', 'info'); break;
     }
     if (t.charging) { t.charging = null; this.float(t, '溜め中断！', 'info'); }
     src.def.talent.onBreak && src.def.talent.onBreak(this, src, t);
@@ -1034,14 +1223,31 @@ class Battle {
     this.renderOrder();
   }
 
+  // 最終決戦：世界中の猫たちの声が届き、友情ゲージが満ちる
+  async finale() {
+    if (this.allstars) return;
+    this.allstars = true;
+    for (const [name, line] of this.opts.final.voices || []) {
+      this.announce(name, line, '#ffcf4a'); Sfx.tone(880, 0.2, 'sine', 0.05); Sfx.tone(1320, 0.3, 'sine', 0.04, 0, 0.1);
+      if (this.v) this.v.voiceFx();
+      await wait(1500);
+      if (this.over) return;
+    }
+    this.bond = 100; this.renderBond();
+    this.announce('友情ゲージ MAX', '「にゃんこオールスターズ」が使える！（C キー）', '#ffcf4a');
+    this.aliveAllies().forEach(a => { a.flags.isolated = 0; a.buffs = a.buffs.filter(b => b.key !== 'e_iso'); this.say(a, '「一人じゃない！」'); this.updateUnit(a); });
+    Sfx.win();
+  }
+
   async phaseShift(e) {
     e.phase++;
     const ph = e.def.phases[e.phase - 1];
-    e.hp = e.maxHp; e.weak = [...ph.weak]; e.implants = [];
+    e.hp = e.maxHp * 0.5; e.weak = [...ph.weak]; e.implants = [];
     e.maxTough += 20; e.toughness = e.maxTough; e.broken = false;
     e.dots = []; e.frozen = null; e.entangle = null; e.charging = null;
     e.buffs = e.buffs.filter(b => !b.debuff);
     this.announce(`PHASE ${e.phase + 1}`, `${e.name}が力を解放した！`, '#ff4d6d');
+    if (this.opts.final && e.def.final && e.phase >= e.def.phases.length) setTimeout(() => this.finale(), 1600 / Game.speed);
     this.pulse(e, 'phase', 1200); this.shake(true); Sfx.brk();
     this.updateUnit(e);
     if (this.v) { await this.v.phaseFx(e); await wait(300); }
@@ -1067,6 +1273,11 @@ class Battle {
       await wait(500); await this.resolveDeaths(null);
       e.gauge = 5000; this.updateUnit(e);
       return;
+    }
+    if (e.flags.skip) {
+      e.flags.skip = 0; this.float(e, '猫じゃらしに夢中……', 'info'); this.say(e, '「ま、まて……もう少しだけ……」');
+      if (this.v) this.v.lureFx(e);
+      this.updateUnit(e); await wait(1100); return;
     }
     let mv;
     if (e.charging) { mv = ENEMY_MOVES[e.charging]; e.charging = null; }
@@ -1102,7 +1313,7 @@ class Battle {
       const lv = e.level;
       const n = Math.min(2, 5 - this.aliveEnemies().length);
       for (let i = 0; i < n; i++) {
-        const u = new Unit('enemy', key, lv); this.applyModStats(u, 'enemyStats');
+        const u = this.foeScale(new Unit('enemy', key, lv)); this.applyModStats(u, 'enemyStats');
         if (i === 0) this.enemies.unshift(u); else this.enemies.push(u);
       }
       this.renderEnemies(); await wait(800); return;
@@ -1124,11 +1335,15 @@ class Battle {
       Sfx.hit();
       this.applyDamage(t, r.value, e);
       this.gainEnergy(t, 10);
+      this.addBond(4);
       if (mv.eff && t.alive && t.hp > 0) {
         const f = mv.eff;
         if (f.kind === 'dot') this.dot(e, t, f);
         else if (f.kind === 'freeze') this.freeze(e, t, f.chance, e.stat('atk') * 0.5);
         else if (f.kind === 'buff') this.debuff(e, t, f.chance, f.buff);
+        else if (f.kind === 'isolate') { t.flags.isolated = 2; this.float(t, 'ひとりぼっち', 'res'); this.debuff(e, t, 1, { key: 'e_iso', name: 'ひとりぼっち', stat: 'dmg', value: -0.3, turns: 2 }, true); }
+        else if (f.kind === 'energy') { t.energy = Math.max(0, t.energy - f.value); this.float(t, f.value >= 30 ? '思い出が薄れる…' : 'EP減少', 'res'); }
+        else if (f.kind === 'bondDrain') { if (this.bond > 0) { this.bond = Math.max(0, this.bond - f.value); this.renderBond(); this.float(t, '疑心…', 'res'); } }
       }
     }
     if (mv.type === 'aoe' || mv.mult > 1.2) this.shake(mv.mult > 1.2);
@@ -1154,10 +1369,16 @@ class Battle {
     win ? Sfx.win() : Sfx.lose();
     if (win && this.v) { this.v.victory(); await wait(900); }
     const res = { win, team: this.teamState() };
-    const info = this.opts.onResult ? this.opts.onResult(res) : '';
+    let info = this.opts.onResult ? this.opts.onResult(res) : '';
+    if (win) {
+      const before = (Save.data.bondNews || []).length;
+      afterBattleBonds(this.allies.map(a => a.key), this.opts.waves.some(w => w.some(e => ENEMIES[e.key].boss)));
+      const news = (Save.data.bondNews || []).slice(before);
+      if (news.length) info += news.map(n => { const [a, b] = n.k.split('|'); return `<div class="rw bondup">♥ ${CHARS[a].name}と${CHARS[b].name}の友情が Lv.${n.lv} になった！<small>${BOND_INFO[n.lv - 1]}</small></div>`; }).join('');
+    }
     const o = this.$('.overlay');
     o.innerHTML = `<div class="ov-box result ${win ? 'win' : 'lose'}">
-      <div class="res-title">${win ? '戦闘勝利' : '戦闘失敗'}</div>
+      <div class="res-title">${win ? 'しょうり！' : 'まけちゃった……'}</div>
       <div class="res-sub">${win ? 'VICTORY' : 'DEFEAT'}</div>
       <div class="res-info">${info || ''}</div>
       <div class="res-btns">
