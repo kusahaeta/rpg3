@@ -1,0 +1,13 @@
+{
+  "name": "galaxy-rail-nocturne",
+  "private": true,
+  "scripts": {
+    "build:vendor": "esbuild tools/vendor-entry.js --bundle --minify --format=iife --outfile=vendor/three-bundle.js",
+    "serve": "node .claude/serve.js",
+    "build:models": "sh tools/blender/build.sh"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "three": "^0.186.1"
+  }
+}
