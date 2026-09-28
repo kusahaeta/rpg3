@@ -4,7 +4,7 @@
     {
       "name": "nyanko",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["/Users/tibi/Documents/rpg3/.claude/serve.js"],
+      "runtimeArgs": [".claude/serve.js"],
       "port": 8912
     }
   ]
