@@ -157,7 +157,7 @@ class BattleView extends BaseView {
     const loc = battle.opts.loc && typeof resolveBattleSet === 'function' ? resolveBattleSet(battle.opts.loc) : null;
     super(loc ? battleTheme(loc, theme) : theme, 38, loc ? { field: true, bare: true, zone: FIELD_ZONES[loc.zone] } : {});
     this.b = battle;
-    if (loc) buildBattleSet(this, loc);
+    if (loc) { buildBattleSet(this, loc); this.initCutaway(); }
     this.bloomStrength = 0.55;
     this.ents = new Map();
     this.markGeo = new THREE.RingGeometry(0.75, 0.9, 64);
@@ -195,9 +195,20 @@ class BattleView extends BaseView {
       const e = this.ent(u); if (!e) return;
       const w = widths[i];
       const d = u.def;
-      e.home = V3(x + w / 2, 0, d.boss ? -5.6 : d.elite ? -3.4 : -2.9);
+      e.home = this.clearOfProps(V3(x + w / 2, 0, d.boss ? -5.6 : d.elite ? -3.4 : -2.9), (e.model.radius || 0.6) * 0.8);
       x += w;
     });
+  }
+  // 戦場の小物（机・柱など）に埋まらないよう、手前へずらす
+  clearOfProps(p, r) {
+    const cols = this.set && this.toSet && this.set.pv.colliders; if (!cols || !cols.length) return p;
+    const l = V3();
+    while (p.z < -1.5) {
+      l.copy(p).applyMatrix4(this.toSet);
+      if (!cols.some(c => this.hitsCol(c, l.x, l.z, r, null))) break;
+      p.z += 0.25;
+    }
+    return p;
   }
   syncEnemies(list) {
     const ids = new Set(list.map(u => u.uid));
@@ -266,6 +277,59 @@ class BattleView extends BaseView {
       this.setCam(P.lerpVectors(p0, p1, t), L.lerpVectors(l0, l1, t), { snap: true });
       this.setFov(lerp(fov0, fov1, t)); this.roll = lerp(roll0, roll1, t);
     }, ease);
+  }
+  // ---------- 壁の切り取り ----------
+  // 戦場の区画の壁・柱・天井は、カメラと味方・敵のあいだに入ると、視線に垂直な面で手前を切り落とす
+  // （床・水面は切らない。切らないときは面をカメラの位置に置く）
+  initCutaway() {
+    const S = this.set, outl = new Set(Object.values(OutlineCache)), nm = new THREE.Matrix3(), n = V3();
+    GFX.renderer.localClippingEnabled = true;
+    this.cutPlane = new THREE.Plane(V3(0, 0, -1), 0); this.cutDepth = 0;
+    S.root.updateMatrixWorld(true);
+    this.toSet = S.root.matrixWorld.clone().invert();
+    S.root.traverse(o => {
+      if (!o.isMesh || !o.material) return;
+      const na = o.geometry.getAttribute('normal');
+      if (na) {
+        nm.getNormalMatrix(o.matrixWorld);
+        let flat = true;
+        for (let i = 0; i < na.count && flat; i++) if (n.fromBufferAttribute(na, i).applyMatrix3(nm).normalize().y < 0.9) flat = false;
+        if (flat) return;
+      }
+      for (const m of [].concat(o.material)) if (!outl.has(m)) { m.clippingPlanes = [this.cutPlane]; m.needsUpdate = true; }
+    });
+  }
+  // カメラから点 p までの視線をさえぎる地形・大きな小物のうち、いちばん奥のものの深さ（なければ 0）
+  blockDepth(cam, p, fwd) {
+    const T = this.set.pv.T, cols = this.set.pv.colliders || [], d = V3().subVectors(p, cam), len = d.length();
+    const q = V3(), l = V3(); let deep = 0;
+    for (let s = 0.25; s < len - 0.3; s += 0.3) {
+      q.copy(cam).addScaledVector(d, s / len); l.copy(q).applyMatrix4(this.toSet);
+      const hit = (T && T.blocksView(l.x, l.y, l.z)) || cols.some(c => (c.box || c.r > 0.5) && (c.top == null || l.y - (c.y || 0) < c.top + 0.2) && this.hitsCol(c, l.x, l.z, 0.1, null));
+      if (hit) deep = V3().subVectors(q, cam).dot(fwd);
+    }
+    return deep;
+  }
+  updateCutaway(dt) {
+    if (!this.cutPlane) return;
+    const cam = this.camera.position, fwd = this.camera.getWorldDirection(V3());
+    let need = 0, cap = Infinity;
+    const see = (p, r) => {
+      const depth = V3().subVectors(p, cam).dot(fwd); if (depth < 0.3) return;
+      cap = Math.min(cap, depth - r - 0.25);
+      need = Math.max(need, this.blockDepth(cam, p, fwd));
+    };
+    for (const e of this.ents.values()) {
+      const g = e.model.group; if (!g.visible) continue;
+      const r = e.ally ? 0.4 : e.model.radius || 0.6, h = e.model.height || 1;
+      see(V3(g.position.x, g.position.y + h * 0.9, g.position.z), r);
+      see(V3(g.position.x, g.position.y + 0.3, g.position.z), r);
+    }
+    const target = need > 0 ? Math.max(0, Math.min(need + 0.5, cap)) : 0;
+    // 切るときはすぐ、戻すときはゆっくり（壁がちらつかないように）
+    this.cutDepth = target > this.cutDepth ? target : lerp(this.cutDepth, target, 1 - Math.exp(-2 * dt));
+    this.cutPlane.normal.copy(fwd);
+    this.cutPlane.constant = -(fwd.dot(cam) + this.cutDepth);
   }
   onTurn(u) {
     const e = this.ent(u); if (!e) return;
@@ -792,6 +856,7 @@ class BattleView extends BaseView {
     this.swayOff.set(Math.sin(t * 0.53) * 0.06, Math.sin(t * 0.41 + 1.3) * 0.035, Math.sin(t * 0.31) * 0.04).multiplyScalar(this.sway);
     this.camera.position.add(this.swayOff);
     if (this.roll) this.camera.rotateZ(this.roll);
+    this.updateCutaway(rdt || dt);
     const cam = this.camera, v = V3();
     const b = this.b;
     if (this.set) this.set.update(dt, t);

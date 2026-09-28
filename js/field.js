@@ -1667,9 +1667,11 @@ function worldMapHTML(here) {
     </div>`;
 }
 
-// 区画の戦場：区画の arena（なければ、出会った場所）で戦う
+// 区画の戦場：battleAt があればそこ、なければ区画の arena（それもなければ、出会った場所）で戦う
 function zoneArena(zoneId, pos) {
-  const A = zoneArenas(FIELD_ZONES[zoneId]);
+  const Z = FIELD_ZONES[zoneId];
+  if (Z.battleAt) return Z.battleAt;
+  const A = zoneArenas(Z);
   if (!A.length) return pos ? { zone: zoneId, at: [pos.x, pos.z], face: 0, world: true } : null;
   const best = pos ? A.reduce((b, a) => Math.hypot(a.x - pos.x, a.z - pos.z) < Math.hypot(b.x - pos.x, b.z - pos.z) ? a : b) : A[0];
   return { zone: zoneId, at: [best.x, best.z], face: best.face, world: true };

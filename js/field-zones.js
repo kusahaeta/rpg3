@@ -822,6 +822,8 @@ const FIELD_ZONES = {
   demon_castle_2f: { ci: 5, name: '魔王城・回廊', floor: '2F', parent: 'demon_castle', stage: '6-3', pool: '6-2', build: 'demonCastle2f', arch: 'castle', bg: 'demon', groups: 4, chests: 3, crystals: 2, calmAfter: '6-3',
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.016, light: 1.1 }, chestAt: [[6, 6], [17, 6], [16, 16]],
     // 2F：吹き抜けをぐるりと囲む回廊。四すみの部屋（おもちゃ部屋・没収品の倉庫など）と、吹き抜けを渡る橋
+    // 回廊は狭くて敵と味方が並べないので、戦闘は1Fの広間で行う
+    battleAt: { zone: 'demon_castle', at: [11.5, 15], face: 0 },
     map: [
       '###########uu###########',
       '##########0000##########',
