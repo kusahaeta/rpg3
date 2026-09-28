@@ -155,11 +155,13 @@ const GFX = {
   },
 
   // ---------- キャラクター肖像（3Dモデルから描画） ----------
-  portraits: {},
+  // portraitsWide：戦闘の味方カードの横長の枠（150×52）用。耳の先からあごまで入るように引いて、
+  // 右上の必殺技ボタンにかからないよう顔を少し左に寄せる
+  portraits: {}, portraitsWide: {},
   buildPortraits() {
-    const size = 256;
+    const size = 256, WW = 300, WH = 104;
     const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    r.setSize(size, size); r.outputColorSpace = THREE.SRGBColorSpace;
+    r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
     for (const key of Object.keys(CHARS)) {
       const scene = new THREE.Scene();
@@ -173,8 +175,16 @@ const GFX = {
       const bg = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ map: radialTex(col, '#fff6ea'), toneMapped: false }));
       bg.position.copy(cam.position).add(cam.getWorldDirection(V3()).multiplyScalar(3)); bg.lookAt(cam.position);
       scene.add(bg);
+      r.setSize(size, size);
       r.render(scene, cam);
       this.portraits[key] = r.domElement.toDataURL('image/png');
+      // 横長：正方形の肖像の上 84% の高さを切り出し、横は枠の比率まで広げる（背景の板も広げる）
+      const vh = 0.84 * size, vw = vh * WW / WH;
+      cam.setViewOffset(size, size, size * 0.5 - vw * 0.4, -0.04 * size, vw, vh);
+      bg.scale.setScalar(2.2);
+      r.setSize(WW, WH);
+      r.render(scene, cam);
+      this.portraitsWide[key] = r.domElement.toDataURL('image/png');
       disposeTree(scene);
     }
     r.dispose(); r.forceContextLoss();

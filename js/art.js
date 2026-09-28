@@ -5,7 +5,9 @@
 let SVG_SEQ = 0;
 
 // にゃんこの顔（3Dの肖像がないとき・住人など）
+// opts.wide：戦闘の味方カードの横長の枠に合わせた肖像
 function avatarSVG(key, opts = {}) {
+  if (opts.wide && typeof GFX !== 'undefined' && GFX.portraitsWide[key]) return `<img class="avatar" src="${GFX.portraitsWide[key]}" alt="" draggable="false">`;
   if (typeof GFX !== 'undefined' && GFX.portraits[key]) return `<img class="avatar" src="${GFX.portraits[key]}" alt="" draggable="false">`;
   const c = CHARS[key] || NPCS[key], L = c.look || {}, col = (L.accent) || ELEMENTS[c.elem || 'physical'].color;
   const id = 'av' + (++SVG_SEQ), fur = L.fur || '#f4e8d8', P = L.patches || [], mouse = L.species === 'mouse';
@@ -146,6 +148,35 @@ function enemySVG(key) {
 function enemyMini(key) {
   const d = ENEMIES[key];
   return `<div class="mini-enemy" style="--c:${d.color}">${d.name.replace(/^.*[・ ]/, '').slice(0, 1)}</div>`;
+}
+
+// 必殺技のしるし（戦闘の丸い必殺技ボタン）。色は属性の色（currentColor）
+const ULT_ICONS = {
+  // 流星ねこぎり：流れ星の尾を引く剣
+  mike: `<path d="M28 6 L16 18 M44 20 L32 32" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
+    <path d="M16 30 L38 8 L42 6 L40 10 L18 32Z" fill="#fff" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M10 26 L22 38" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M16 32 L9 39" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><circle cx="7.5" cy="40.5" r="3" fill="currentColor"/>
+    <path d="M41 1 L42.2 4.8 L46 6 L42.2 7.2 L41 11 L39.8 7.2 L36 6 L39.8 4.8Z" fill="#fff"/>`,
+  // 月影一閃：三日月と、横一文字の斬撃
+  kuro: `<path d="M30 6 A18 18 0 1 0 42 32 A14 14 0 1 1 30 6Z" fill="currentColor"/>
+    <path d="M4 30 Q24 22 46 20 Q26 26 6 33Z" fill="#fff"/>`,
+  // ちょう天才メテオ：いなずまと、降ってくる星
+  shiro: `<path d="M26 4 L12 26 L22 26 L16 44 L36 18 L25 18 L32 4Z" fill="currentColor" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M40 6 L41.5 10.5 L46 12 L41.5 13.5 L40 18 L38.5 13.5 L34 12 L38.5 10.5Z" fill="#fff"/>`,
+  // おひさまのうた：おひさまと音符
+  tama: `<g stroke="currentColor" stroke-width="3" stroke-linecap="round">${[0, 45, 90, 135, 180, 225, 270, 315].map(a => { const r = a * Math.PI / 180, c = Math.cos(r), s = Math.sin(r); return `<line x1="${(20 + c * 12).toFixed(1)}" y1="${(20 + s * 12).toFixed(1)}" x2="${(20 + c * 17).toFixed(1)}" y2="${(20 + s * 17).toFixed(1)}"/>`; }).join('')}</g>
+    <circle cx="20" cy="20" r="9" fill="currentColor"/>
+    <path d="M38 22 L38 38 M38 22 L46 20 L46 24 L38 26" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" fill="#fff"/><ellipse cx="34.5" cy="39" rx="4.5" ry="3.5" fill="#fff"/>`,
+  // 暗黒ねこ波：ねこ耳の形に立ちのぼる闇の波
+  maou: `<path d="M4 40 Q12 30 20 40 Q28 50 36 40 Q40 35 44 38" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <path d="M8 30 Q16 20 24 30 Q32 40 40 30" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>
+    <path d="M13 22 L15 6 L22 14 Q24 13 26 14 L33 6 L35 22 Q24 28 13 22Z" fill="currentColor" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
+    <circle cx="20" cy="18" r="1.8" fill="#fff"/><circle cx="28" cy="18" r="1.8" fill="#fff"/>`,
+};
+function ultIcon(key) {
+  const c = CHARS[key], col = ELEMENTS[c.elem].color;
+  const body = ULT_ICONS[key] || `<path d="M24 4 L29 18 L44 18 L32 27 L36 42 L24 33 L12 42 L16 27 L4 18 L19 18Z" fill="currentColor" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>`;
+  return `<svg class="ult-icon" viewBox="0 0 48 48" style="color:${col}" aria-label="${c.ult.name}">${body}</svg>`;
 }
 
 function elemIcon(el, extra = '') {
