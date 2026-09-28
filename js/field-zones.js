@@ -71,7 +71,7 @@ const FIELD_ZONES = {
       '############bb############',
     ],
     anchor: [8, 12], exits: [{ key: 'a', to: 'pokapoka' }, { key: 'b', to: 'tree_root' }],
-    notes: [{ at: [-6, -6], title: '流れ星のかけら', text: '焦げた地面に、星の形の小さな石が残っている。ほんのりあたたかい。' }],
+    notes: [{ at: [-6, -6], title: '友情の実のかけら', text: '焦げた地面に、流れ星に見えた実のかけらが残っている。ほんのりあたたかく、かすかに光っている。' }],
     map2d: [470, 450] },
 
   forest_in: { ci: 0, name: 'ほしふる森・入口', w: 60, d: 72, stage: '1-1', arenas: [[-2, -18, 0]], build: 'forest', bg: 'forest', groups: 5, chests: 3, crystals: 3,
@@ -1616,7 +1616,7 @@ class ZoneKit {
     this.mesh(new THREE.CircleGeometry(r * 0.95, 32), new THREE.MeshStandardMaterial({ color: '#5a4a38', roughness: 1 }), x, 0.03, z, { rx: -Math.PI / 2, noShadow: true });
     for (let i = 0; i < 14; i++) { const a = this.r() * Math.PI * 2, d = r * (1.2 + this.r() * 0.6); this.mesh(new THREE.DodecahedronGeometry(0.2 + this.r() * 0.3, 0), 'rockDark', x + Math.cos(a) * d, 0.1, z + Math.sin(a) * d); }
   }
-  // 星のかけら（流れ星の残り）
+  // 友情の実のかけら（流れ星に見えた、樹から落ちた実の残り）
   starRock(x, z, s = 1, col = '#fff0a8') {
     const m = this.mesh(new THREE.OctahedronGeometry(0.6 * s, 0), new THREE.MeshStandardMaterial({ color: '#fff8e0', emissive: col, emissiveIntensity: 1.2, roughness: 0.3, flatShading: true }), x, 0.5 * s, z, { ry: 0.4 });
     m.scale.y = 1.3;
