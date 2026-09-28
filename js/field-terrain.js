@@ -414,6 +414,10 @@ const ARCH_STYLES = {
   // 宮殿の庭：大理石の壁に囲まれた、空の見える庭
   // 城塞：窓のない切り石の城壁（上端に狭間）
   fort: { look: 'town', facade: 'stone', roof: false, wallH: 11, wall: '#c4c8d2', wall2: '#a4aab8', trim: '#5c5660', cliff: '#9aa0ae', step: '#aab0bc', glass: '#bfe8ff', glow: '#ffd27a', rail: 'iron', door: 'swing', lift: 'cage', exit: 'gate' },
+  // にゃんこファンタジー：笑顔の塔（ピンクの大理石と金の灯り）・黒影洞窟（紫の水晶）・魔王城（暗い紫の石）
+  tower: { look: 'palace', roof: true, wallH: 7, wall: '#f6d6e8', wall2: '#eab8d6', trim: '#8a4a7a', cliff: '#e8c0da', ceil: '#6a3a6a', step: '#f4d8e6', glass: '#ffd8f0', glow: '#ffd27a', light: '#fff0f8', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
+  cave: { look: 'mine', roof: true, wallH: 7, rock: '#6a5a7e', trim: '#3a2a4a', cliff: '#6a5a7e', ceil: '#3a3048', step: '#5a4a6a', glass: '#bfe8ff', glow: '#a07bff', light: '#b89aff', rail: 'wood', door: 'swing', lift: 'cage', exit: 'tunnel' },
+  castle: { look: 'palace', roof: true, wallH: 9, wall: '#6a5a80', wall2: '#54466a', trim: '#2a1a3a', cliff: '#5a4a70', ceil: '#2e2240', step: '#7a6a90', glass: '#d8b0ff', glow: '#ff8ad8', light: '#ffd8f8', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   court: { look: 'palace', roof: false, skyline: 'town', wallH: 10, wall: '#dfe8f4', wall2: '#c4d2e4', trim: '#6c84a8', cliff: '#b4c4d8', step: '#d8e2ee', glass: '#bfeaff', glow: '#9fd8ff', light: '#dff4ff', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
 };
 
@@ -506,17 +510,20 @@ function bulkheadTex() {
   return (TexCache.bulk = t);
 }
 // 看板（ホログラムの文字）
-function signTex(text, sub, color = '#8ae0ff') {
+function signTex(text, sub, color = '#ffd27a') {
   const k = 'sign' + text + '|' + sub + color; if (TexCache[k]) return TexCache[k];
   const c = document.createElement('canvas'); c.width = 512; c.height = 128;
   const g = c.getContext('2d');
-  g.fillStyle = 'rgba(10,16,34,.82)'; g.fillRect(0, 0, 512, 128);
-  g.strokeStyle = color; g.lineWidth = 4; g.strokeRect(4, 4, 504, 120);
-  g.fillStyle = color; g.fillRect(4, 4, 16, 120);
-  g.fillStyle = '#ffffff'; g.textAlign = 'left'; g.textBaseline = 'middle';
-  g.font = `900 ${sub ? 46 : 54}px "Hiragino Sans","Yu Gothic",sans-serif`;
-  g.fillText(text, 40, sub ? 52 : 66, 450);
-  if (sub) { g.fillStyle = color; g.font = '700 22px "Hiragino Sans","Yu Gothic",sans-serif'; g.fillText(sub, 42, 98, 450); }
+  // 木の看板
+  const gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, '#9a6a40'); gr.addColorStop(1, '#6a4428');
+  g.fillStyle = gr; g.beginPath(); g.roundRect(4, 4, 504, 120, 18); g.fill();
+  g.strokeStyle = 'rgba(60,34,18,.5)'; g.lineWidth = 2; for (let y = 22; y < 120; y += 22) { g.beginPath(); g.moveTo(14, y + Math.sin(y) * 3); g.bezierCurveTo(180, y - 4, 330, y + 5, 498, y); g.stroke(); }
+  g.strokeStyle = '#4a2c18'; g.lineWidth = 6; g.beginPath(); g.roundRect(4, 4, 504, 120, 18); g.stroke();
+  g.fillStyle = color; g.beginPath(); g.arc(34, 64, 12, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#fff6e0'; g.strokeStyle = '#3a200e'; g.lineWidth = 7; g.lineJoin = 'round'; g.textAlign = 'left'; g.textBaseline = 'middle';
+  g.font = `900 ${sub ? 44 : 52}px "Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",sans-serif`;
+  g.strokeText(text, 60, sub ? 50 : 66, 430); g.fillText(text, 60, sub ? 50 : 66, 430);
+  if (sub) { g.fillStyle = color; g.font = '800 24px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.lineWidth = 5; g.strokeText(sub, 62, 96, 430); g.fillText(sub, 62, 96, 430); }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return (TexCache[k] = t);
 }
@@ -629,7 +636,7 @@ function buildArchitecture(view, T) {
       : style === 'palace' ? std(S.ceil, { map: marbleTex(), roughness: 0.4, metalness: 0.1 }) : std(S.ceil || '#23283e', { map: ceilTex(), metalness: 0.3, roughness: 0.7 }),
     step: style === 'station' ? std(S.step, { metalness: 0.35, roughness: 0.45 }) : style === 'mine' ? std(S.step, { map: woodTex(), roughness: 0.9, metalness: 0 })
       : style === 'palace' ? std(S.step, { map: marbleTex(), roughness: 0.35, metalness: 0.12 }) : std(S.step, { map: stoneTex(), roughness: 0.9, metalness: 0.02 }),
-    cap: std('#f2f6ff', { roughness: 0.95, metalness: 0 }),
+    cap: std(S.cap || '#f2f6ff', { roughness: 0.95, metalness: 0 }),
     wood: std('#8a6040', { map: woodTex(), roughness: 0.9, metalness: 0 }),
     iron: std('#2e3038', { metalness: 0.7, roughness: 0.45 }),
     pit: std('#0c0e1a', { metalness: 0.4, roughness: 0.6 }),

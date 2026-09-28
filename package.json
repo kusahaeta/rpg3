@@ -1,10 +1,9 @@
 {
-  "name": "galaxy-rail-nocturne",
+  "name": "nyanko-fantasy",
   "private": true,
   "scripts": {
     "build:vendor": "esbuild tools/vendor-entry.js --bundle --minify --format=iife --outfile=vendor/three-bundle.js",
-    "serve": "node .claude/serve.js",
-    "build:models": "sh tools/blender/build.sh"
+    "serve": "python3 -m http.server 8912"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

@@ -32,24 +32,27 @@ class BaseView {
   }
 }
 
-// 台座に立つキャラクター（ハブ・キャラ画面・ワープ演出）
+// ふかふかの座布団に立つにゃんこ（ハブ・キャラ画面）。ドラッグで回せる
 class ShowcaseView extends BaseView {
-  constructor(key, { screenX = 640, dist = 4.4, height = 1.0 } = {}) {
-    super('space', 32);
-    this.bloomStrength = 0.9;
+  constructor(key, { screenX = 640, dist = 3.1, height = 0.62, theme = 'meadow' } = {}) {
+    super(theme, 32, { skyTree: true });
+    this.bloomStrength = 0.3; this.exposure = 1.0;
     this.rotY = -0.35; this.targetRot = -0.35; this.spin = 0;
     this.dist = dist; this.lookH = height;
+    this.env.floor.visible = false;
     const plat = new THREE.Group(); this.scene.add(plat); this.plat = plat;
-    const disk = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.45, 0.2, 64), new THREE.MeshStandardMaterial({ color: '#12152a', metalness: 0.4, roughness: 0.55 }));
-    disk.position.y = -0.1; disk.receiveShadow = true; plat.add(disk);
-    this.rings = [1.32, 1.1, 0.7].map((r, i) => {
-      const m = new THREE.Mesh(new THREE.RingGeometry(r - 0.02, r, 96), glowMat(i ? '#9d8cff' : '#e8c77a', 2.5, { side: THREE.DoubleSide }));
-      m.rotation.x = -Math.PI / 2; m.position.y = 0.005 + i * 0.001; plat.add(m); return m;
-    });
-    this.halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#7d6bff', 0.25), blending: THREE.AdditiveBlending, depthWrite: false }));
-    this.halo.scale.set(3.2, 3.2, 1); this.halo.position.set(0, 1.1, -1.2); this.scene.add(this.halo);
+    // 丸い敷物と座布団
+    const rug = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.3, 0.05, 48), toon('#f4e2c8')); rug.position.y = -0.02; rug.receiveShadow = true; plat.add(rug);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(1.27, 0.035, 8, 64), toon('#e0453a')); rim.rotation.x = Math.PI / 2; rim.position.y = 0.01; plat.add(rim);
+    const cushion = new THREE.Mesh(new THREEX.RoundedBoxGeometry(0.95, 0.12, 0.95, 4, 0.06), toon('#ff9ab8')); cushion.position.y = 0.05; cushion.receiveShadow = true; plat.add(cushion);
+    for (const [x, z] of [[-0.44, -0.44], [0.44, -0.44], [-0.44, 0.44], [0.44, 0.44]]) { const t = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), toon('#ffd76a')); t.position.set(x, 0.1, z); plat.add(t); }
+    // 草原と花
+    const grass = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshStandardMaterial({ color: '#8ac468', roughness: 1 })); grass.rotation.x = -Math.PI / 2; grass.position.y = -0.05; grass.receiveShadow = true; this.scene.add(grass);
+    const fcols = ['#ffffff', '#ffe07a', '#ffb8d8', '#b8d8ff'];
+    for (let i = 0; i < 120; i++) { const a = Math.random() * Math.PI * 2, r = 1.6 + Math.random() * 10; const f = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 6, 4), toon(fcols[i % 4])); f.position.set(Math.cos(a) * r, 0.02, Math.sin(a) * r); this.scene.add(f); }
+    this.cushion = cushion;
     this.frame(screenX);
-    this.setCam(V3(0, 1.3, dist), V3(0, height, 0), { snap: true });
+    this.setCam(V3(0, 1.0, dist), V3(0, height, 0), { snap: true });
     if (key) this.setChar(key, false);
   }
   frame(screenX) { this.camera.setViewOffset(1280, 720, 640 - screenX, 0, 1280, 720); }
@@ -58,15 +61,14 @@ class ShowcaseView extends BaseView {
     this.model = null;
     if (!key) return;
     const m = buildCharacter(key); this.model = m; this.scene.add(m.group);
-    m.setPose(POSES.idle); m.group.rotation.y = this.rotY;
-    const col = ELEMENTS[CHARS[key].elem].color;
-    this.halo.material.color.copy(hdr(col, 0.3));
-    this.rings[1].material.color.copy(hdr(col, 2.5));
+    m.group.position.y = 0.11;
+    m.setPose(POSES.idle); m.group.rotation.y = this.rotY; m.face.set('smile');
     if (burst) {
-      this.fx.pillar(V3(0, 0, 0), col, { h: 6, r: 0.9, life: 0.9 });
-      this.fx.ring(V3(0, 0.05, 0), col, { r: 3, life: 0.8 });
-      this.p.burst(V3(0, 1, 0), col, 80, { speed: 4, life: 1.2, size: 0.1, up: 0.5 });
-      m.flash('#ffffff', 1.5);
+      const col = ELEMENTS[CHARS[key].elem].color;
+      this.fx.ring(V3(0, 0.12, 0), col, { r: 2, life: 0.7 });
+      this.p.burst(V3(0, 0.7, 0), col, 50, { speed: 3, life: 1, size: 0.07, up: 0.6 });
+      m.flash('#ffffff', 1.2);
+      Sfx.meow && Sfx.meow(key);
     }
   }
   bindDrag(el) {
@@ -81,111 +83,42 @@ class ShowcaseView extends BaseView {
     if (this.model) {
       this.model.group.rotation.y = this.rotY + this.spin;
       this.model.update(rdt, t);
-      // 時々ポーズを変える
-      const ph = Math.floor(t / 6) % 3;
-      const pose = ph === 2 ? POSES.ready : POSES.idle;
-      for (const k of POSE_KEYS) this.model.pose[k] += ((pose[k] || 0) - this.model.pose[k]) * (1 - Math.exp(-3 * rdt));
+      // ときどき身振り（手を振る・のびをする）
+      const ph = Math.floor(t / 5) % 4;
+      const pose = ph === 1 ? { ...POSES.idle, armRx: -2.4, armRz: -0.75, elbowR: -0.9 + Math.sin(t * 10) * 0.4 } : ph === 3 ? POSES.ready : POSES.idle;
+      for (const k of POSE_KEYS) this.model.pose[k] += ((pose[k] || 0) - this.model.pose[k]) * (1 - Math.exp(-5 * rdt));
+      if (ph === 1 && this.model.face) this.model.face.set('joy'); else if (this.model.face && this.model.face.expr === 'joy') this.model.face.set('smile');
     }
-    this.rings.forEach((r, i) => { r.rotation.z = t * (0.2 + i * 0.15) * (i % 2 ? -1 : 1); });
-    this.camera.position.x += Math.sin(t * 0.25) * 0.002;
-    if (Math.random() < rdt * 12) this.p.emit(V3((Math.random() - 0.5) * 2.4, 0.05, (Math.random() - 0.5) * 2.4), V3(0, 0.6 + Math.random() * 0.8, 0), hdr('#9d8cff', 1.5), { life: 2, size: 0.05, drag: 0 });
+    this.camera.position.x += Math.sin(t * 0.25) * 0.001;
   }
 }
 
-// タイトル：宇宙と星海列車
+// タイトル：草原の丘から、遠くのにゃんだーの樹を見上げる5匹
 class TitleView extends BaseView {
   constructor() {
-    super('space', 45);
-    this.bloomStrength = 1.0;
-    this.setCam(V3(-10, 8, 22), V3(10, 6, -40), { snap: true, speed: 0.4 });
-  }
-  update(dt, t, rdt) {
-    this.camPos.set(-10 + Math.sin(t * 0.05) * 6, 8 + Math.sin(t * 0.08) * 2, 22);
-    super.update(rdt, t);
-  }
-}
-
-// ワープ：星のトンネル → キャラ登場
-class WarpView extends ShowcaseView {
-  constructor() {
-    super(null, { screenX: 440, dist: 4.6 });
-    this.tunnel = 0; this.meteorCol = null;
-    this.plat.visible = false;
-    // ハイパースペースの光条
-    const N = 700, pos = new Float32Array(N * 6), col = new Float32Array(N * 6);
-    this.streak = { N, pos, col, z: new Float32Array(N), sp: new Float32Array(N), ang: new Float32Array(N), rad: new Float32Array(N) };
-    for (let i = 0; i < N; i++) this.resetStreak(i, true);
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    this.lines = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false }));
-    this.lines.frustumCulled = false; this.lines.visible = false; this.scene.add(this.lines);
-  }
-  resetStreak(i, init) {
-    const s = this.streak;
-    s.z[i] = init ? -Math.random() * 120 : -120 - Math.random() * 20;
-    s.sp[i] = 40 + Math.random() * 60; s.ang[i] = Math.random() * Math.PI * 2; s.rad[i] = 1.2 + Math.pow(Math.random(), 0.6) * 14;
-    const c = Math.random() < 0.35 && this.meteorCol ? hdr(this.meteorCol, 3) : hdr(Math.random() < 0.5 ? '#bcd0ff' : '#e6dcff', 2.2);
-    for (let k = 0; k < 2; k++) { s.col[i * 6 + k * 3] = c.r * (k ? 0.1 : 1); s.col[i * 6 + k * 3 + 1] = c.g * (k ? 0.1 : 1); s.col[i * 6 + k * 3 + 2] = c.b * (k ? 0.1 : 1); }
-  }
-  startTunnel(color) {
-    this.tunnel = 1; this.tunnelT = 0; this.meteorCol = color; this.plat.visible = false; this.setChar(null); this.frame(640);
-    for (let i = 0; i < this.streak.N; i++) this.resetStreak(i, true);
-    this.lines.visible = true;
-    this.setCam(V3(0, 40, 6), V3(0, 40, -20), { snap: true });
-    const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(color, 6), blending: THREE.AdditiveBlending, depthWrite: false }));
-    m.scale.setScalar(1.2);
-    const from = V3(-14, 48, -40), to = V3(0, 40, -6);
-    this.fx.add(m, 2.0, (tt, o) => {
-      const e = Ease.in(tt);
-      o.position.lerpVectors(from, to, e);
-      o.scale.setScalar(1.2 + e * 4);
-      for (let i = 0; i < 6; i++) this.p.emit(o.position, V3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)), hdr(color, 4), { life: 0.8, size: 0.4 + e * 0.6 });
+    super('meadow', 42, { skyTree: false });
+    this.bloomStrength = 0.3;
+    const { g, fruits } = worldTree(0.95, 1.4); g.position.set(8, -8, -150); this.scene.add(g); this.fruits = fruits;
+    this.cats = ['mike', 'kuro', 'shiro', 'tama', 'maou'].map((k, i) => {
+      const m = buildCharacter(k); m.group.position.set((i - 2) * 0.95, 0, 2.5 + Math.abs(i - 2) * 0.35); m.group.rotation.y = Math.PI + (i - 2) * 0.08; m.setPose(POSES.idle); this.scene.add(m.group); return m;
     });
-    GFX.tween(2.0, () => {}, Ease.linear, true).then(() => { if (this.tunnel) GFX.flash(color, 0.9, 0.6); });
-  }
-  reveal(key, rarity) {
-    this.tunnel = 0; this.plat.visible = true; this.lines.visible = false; this.frame(440); this.camera.rotation.z = 0;
-    this.setCam(V3(0, 1.3, this.dist), V3(0, this.lookH, 0), { snap: true });
-    this.targetRot = this.rotY = -0.3; this.spin = rarity >= 5 ? Math.PI * 2 : 0;
-    GFX.tween(1.0, t => { this.spin = (rarity >= 5 ? Math.PI * 2 : 0) * (1 - t); }, Ease.out, true);
-    if (key) this.setChar(key, true);
-    else {
-      this.setChar(null);
-      const book = new THREE.Mesh(new THREEX.RoundedBoxGeometry(0.7, 0.9, 0.15, 3, 0.04), toon('#4b77d8', { emissive: new THREE.Color('#2a4aa8'), emissiveIntensity: 0.4 }));
-      book.position.y = 1.1; this.fx.add(book, 60, (t, o, dt) => { o.rotation.y += dt; });
-      this.fx.pillar(V3(0, 0, 0), '#7fb6ff', { h: 5, r: 0.7 });
-    }
-    const col = rarity === 5 ? '#ffd66b' : rarity === 4 ? '#c58bff' : '#7fb6ff';
-    this.fx.ring(V3(0, 0.05, 0), col, { r: 4, life: 1.2 });
-    this.p.burst(V3(0, 1.2, 0), col, rarity * 30, { speed: 6, life: 1.5, size: 0.12 });
+    this.setCam(V3(-1.6, 1.3, 7.2), V3(0.6, 3.5, -40), { snap: true, speed: 0.4 });
   }
   update(dt, t, rdt) {
-    if (this.tunnel) {
-      const s = this.streak, acc = 1 + this.tunnelT * 1.5;
-      this.tunnelT = (this.tunnelT || 0) + rdt;
-      for (let i = 0; i < s.N; i++) {
-        s.z[i] += s.sp[i] * rdt * acc;
-        if (s.z[i] > 8) this.resetStreak(i, false);
-        const x = Math.cos(s.ang[i]) * s.rad[i], y = 40 + Math.sin(s.ang[i]) * s.rad[i], len = s.sp[i] * 0.06 * acc;
-        s.pos.set([x, y, s.z[i], x, y, s.z[i] - len], i * 6);
-      }
-      this.lines.geometry.attributes.position.needsUpdate = true;
-      this.lines.geometry.attributes.color.needsUpdate = true;
-      this.camera.rotation.z = Math.sin(t * 0.8) * 0.05;
-    } else this.tunnelT = 0;
-    super.update(dt, t, rdt);
+    this.camPos.set(-1.6 + Math.sin(t * 0.07) * 0.8, 1.3 + Math.sin(t * 0.1) * 0.15, 7.2);
+    super.update(rdt, t);
+    this.cats.forEach((m, i) => {
+      m.update(rdt, t + i);
+      const wave = Math.sin(t * 0.5 + i * 1.3) > 0.93;
+      m.pose.armRx += ((wave ? -2.5 : -0.1) - m.pose.armRx) * (1 - Math.exp(-4 * rdt));
+    });
+    this.fruits.forEach((f, i) => f.scale.setScalar(1 + Math.sin(t * 2 + i) * 0.2));
   }
 }
 
 // ============================================================
 //  バトルビュー（演出ディレクター）
 // ============================================================
-// 専用の必殺技演出を持つキャラ（ready＝対象選択前の発動演出、strike＝攻撃）
-// splash / aim はポーズ名、aura は光らせる物（weapon＝武器、shield＝盾）
-const ULT_CINE = {
-  aster:  { ready: 'asterReady', strike: 'asterStrike', col: '#4f9dff', splash: 'ultSplash', aim: 'ultAim', aura: 'weapon' },
-  mizore: { ready: 'mizoreReady', strike: 'mizoreStrike', col: '#6fd6f5', splash: 'mzSplash', aim: 'mzAim', aura: 'shield', snow: true },
-};
 // 魔法陣のテクスチャ（加算合成用、白地に黒は透過扱い）
 function runeTex() {
   if (TexCache.rune) return TexCache.rune;
@@ -205,23 +138,27 @@ function runeTex() {
 }
 
 // 第二形態の演出の型：星核の番人は赤黒い雷、氷刃の女帝は吹雪と氷の棘
+// 第二形態の演出の型（ボスごと）：足もとの魔法陣・周りを巡る結晶・渦・稲妻や棘
 const P2_STYLES = {
-  boss_core: { sub: '#ffb0c0', dark: '#ff1030', crown: { color: '#2a0810', ei: 1.6 }, pulse: '#b0001c', fog: '#3a0612', swirl: ['#ffffff', null, '#8a0018'],
-    tint: [0.45, 0.7, 0.65], desat: 0.35, charge: '#200008', hook: 'coreSurge', bolts: true, tone: [70, 55, 52] },
-  boss_empress: { sub: '#e8fbff', dark: '#3aa8ff', crown: { color: '#cfefff', emissive: '#3aa0e0', ei: 0.9, opacity: 0.9 }, pulse: '#bff0ff', fog: '#3a5a8e', swirl: ['#ffffff', null, '#bfeaff'],
-    tint: [0.5, 0.25, 0.02], desat: 0.3, charge: '#e8f8ff', hook: 'blizzard', spikes: true, snow: true, tone: [180, 90, 70] },
+  king_nezumi: { sub: '#fff0b8', dark: '#8a5a10', crown: { color: '#ffcf4a', emissive: '#ffb020', ei: 0.8 }, pulse: '#ffb040', fog: '#8a7a50', swirl: ['#ffffff', null, '#ffcf4a'], tint: [0.1, 0.25, 0.45], desat: 0.2, charge: '#fff0b8', tone: [110, 90, 80] },
+  inoshishi: { sub: '#ffd8a8', dark: '#8a3a10', crown: { color: '#8a5a3a', ei: 0.4 }, pulse: '#ff8a3a', fog: '#8a6a4a', swirl: ['#ffffff', null, '#ff9a4a'], tint: [0.1, 0.3, 0.45], desat: 0.2, charge: '#ffd8a8', tone: [90, 70, 64] },
+  piero: { sub: '#ffe8f4', dark: '#ff3a9a', crown: { color: '#ffd76a', emissive: '#ff6ab8', ei: 0.9 }, pulse: '#ff6ab8', fog: '#6a2a5a', swirl: ['#ffffff', '#6ad8ff', '#ffd76a'], tint: [0.2, 0.45, 0.2], desat: 0.3, charge: '#ffe8f4', tone: [180, 140, 120] },
+  kako_kuro: { sub: '#e8d8ff', dark: '#5a2aff', crown: { color: '#2a1a4a', emissive: '#8a4aff', ei: 1.2 }, pulse: '#6a3aff', fog: '#2a1a48', swirl: ['#ffffff', null, '#6a3aff'], tint: [0.4, 0.5, 0.15], desat: 0.4, charge: '#1a0a38', bolts: true, tone: [80, 62, 56] },
+  guardian: { sub: '#fff8d8', dark: '#e8b830', crown: { color: '#e8d8a8', emissive: '#ffd24a', ei: 0.9 }, pulse: '#ffd24a', fog: '#8a8a60', swirl: ['#ffffff', '#8affe0', '#ffd24a'], tint: [0.15, 0.2, 0.5], desat: 0.2, charge: '#fff8d8', spikes: true, tone: [140, 110, 100] },
+  boss_maou: { sub: '#ffd8ff', dark: '#8a2aff', crown: { color: '#2a1040', emissive: '#c04aff', ei: 1.3 }, pulse: '#9a3aff', fog: '#3a1450', swirl: ['#ffffff', '#ff6ad8', '#8a2aff'], tint: [0.35, 0.6, 0.2], desat: 0.3, charge: '#1a0428', bolts: true, tone: [74, 58, 52] },
+  kodoku_kage: { sub: '#d8c8ff', dark: '#2a0a5a', crown: { color: '#0a0418', emissive: '#6a3aff', ei: 1.1 }, pulse: '#3a1a8a', fog: '#140a28', swirl: ['#ffffff', null, '#3a1a8a'], tint: [0.5, 0.55, 0.3], desat: 0.55, charge: '#05020c', bolts: true, tone: [64, 50, 46] },
+  kodoku: { sub: '#e8e0ff', dark: '#1a0a4a', crown: { color: '#05020c', emissive: '#8a5aff', ei: 1.4 }, pulse: '#2a1070', fog: '#0c0620', swirl: ['#ffffff', '#ff8ab8', '#2a1070'], tint: [0.55, 0.6, 0.35], desat: 0.65, charge: '#020108', bolts: true, tone: [56, 44, 40] },
+  nekogami: { sub: '#fffff0', dark: '#ffd24a', crown: { color: '#fff4c8', emissive: '#ffe08a', ei: 1.0 }, pulse: '#ffe08a', fog: '#f8e8f0', swirl: ['#ffffff', '#ff9ad8', '#ffe08a'], tint: [0.05, 0.15, 0.4], desat: 0.1, charge: '#fffff0', spikes: false, tone: [220, 180, 160] },
 };
 
 class BattleView extends BaseView {
   constructor(battle, theme) {
     // 物語の場所で戦う（第一章）：探索フィールドの区画を背景に組み立てる
     const loc = battle.opts.loc && typeof resolveBattleSet === 'function' ? resolveBattleSet(battle.opts.loc) : null;
-    super(theme, 38, loc ? { field: true, bare: true, zone: FIELD_ZONES[loc.zone] } : {});
+    super(loc ? battleTheme(loc, theme) : theme, 38, loc ? { field: true, bare: true, zone: FIELD_ZONES[loc.zone] } : {});
     this.b = battle;
     if (loc) buildBattleSet(this, loc);
-    this.bloomStrength = 0.85;
-    // 雪の場所は白が飛びやすいので、光のにじみと露出を抑える
-    if (loc && theme === 'snow') { this.bloomStrength = 0.45; this.exposure = 0.9; }
+    this.bloomStrength = 0.55;
     this.ents = new Map();
     this.markGeo = new THREE.RingGeometry(0.75, 0.9, 64);
     this.sway = 0.4; this.swayOff = V3(); this.roll = 0;
@@ -235,7 +172,7 @@ class BattleView extends BaseView {
   ent(u) { return this.ents.get(u.uid); }
   addAlly(u, i, n) {
     const m = buildCharacter(u.key);
-    const home = V3((i - (n - 1) / 2) * 1.6, 0, 3.0);
+    const home = V3((i - (n - 1) / 2) * 1.25, 0, 2.6);
     m.group.position.copy(home); m.group.rotation.y = Math.PI;
     m.setPose(POSES.ready);
     this.scene.add(m.group);
@@ -306,14 +243,14 @@ class BattleView extends BaseView {
   wide() {
     const hasBoss = this.b.enemies.some(e => e.def.boss);
     this.unfocus(); this.setFov(38); this.roll = 0; this.sway = 0.4;
-    this.setCam(V3(0, hasBoss ? 3.0 : 2.5, hasBoss ? 10.8 : 9.6), V3(0, hasBoss ? 2.4 : 1.5, -2.5), { speed: 2.5 });
+    this.setCam(V3(0, hasBoss ? 2.8 : 2.1, hasBoss ? 10.2 : 8.2), V3(0, hasBoss ? 2.1 : 1.0, -2.5), { speed: 2.5 });
   }
   // 本家風の肩越し視点：手前左に行動キャラ、奥の中央に敵
   shoulder(e, { snap = false, speed = 2.6 } = {}) {
     const h = e.home, c = this.enemyCenter(), boss = this.b.enemies.some(x => x.def.boss);
     const f = V3(c.x - h.x, 0, c.z - h.z).normalize(), r = V3(-f.z, 0, f.x);
-    const pos = h.clone().addScaledVector(f, -3.3).addScaledVector(r, 1.3); pos.y = 1.4;
-    const look = h.clone().addScaledVector(f, 6).addScaledVector(r, 2.05); look.y = boss ? 1.9 : 1.25;
+    const pos = h.clone().addScaledVector(f, -3.5).addScaledVector(r, 2.0); pos.y = 1.4;
+    const look = h.clone().addScaledVector(f, 6).addScaledVector(r, 1.0); look.y = boss ? 1.6 : 0.8;
     this.setFov(38); this.roll = 0; this.sway = 1;
     this.setCam(pos, look, { snap, speed });
   }
@@ -339,13 +276,13 @@ class BattleView extends BaseView {
       e.model.flash(e.model.elemCol, 0.5);
     } else {
       this.unfocus(); this.sway = 0.4;
-      this.setCam(V3(e.home.x * 0.4 - 1.2, 2.6, 9.8), V3(e.home.x * 0.5, 1.6, e.home.z * 0.5), { speed: 2.5 });
+      this.setCam(V3(e.home.x * 0.4 - 1.2, 2.3, 8.6), V3(e.home.x * 0.5, 1.2, e.home.z * 0.5), { speed: 2.5 });
     }
   }
   intro() {
     const hasBoss = this.b.enemies.some(e => e.def.boss);
     this.setCam(V3(-6, 4, hasBoss ? -12 : -9), V3(0, hasBoss ? 3 : 1.4, -3), { snap: true });
-    this.setCam(V3(0, hasBoss ? 3.0 : 2.5, hasBoss ? 10.8 : 9.6), V3(0, hasBoss ? 2.4 : 1.5, -2.5), { speed: 1.1 });
+    this.setCam(V3(0, hasBoss ? 2.8 : 2.1, hasBoss ? 10.2 : 8.2), V3(0, hasBoss ? 2.1 : 1.0, -2.5), { speed: 1.1 });
   }
 
   // ---------- 位置ヘルパー ----------
@@ -368,15 +305,14 @@ class BattleView extends BaseView {
     const main = tEnts[0]; if (!main) return;
     const ult = kind === 'ult';
     this.lastAttack = { src, moved: false };
-    if (ult && ULT_CINE[src.key]) return this[ULT_CINE[src.key].strike](e, tEnts);
     this.unfocus(); this.sway = 0;
     if (m.style === 'melee' && !opt.ranged) {
       const multi = tEnts.length > 2;
       const c = this.enemyCenter();
       const dest = multi ? V3(c.x, 0, Math.max(...tEnts.map(t => t.home.z)) + 2.2)
-        : main.home.clone().add(V3(0, 0, main.model.radius + 0.95));
+        : main.home.clone().add(V3(0, 0, main.model.radius + 0.7));
       if (multi || main.u.def.boss) dest.z = Math.min(dest.z, 1.0);
-      this.setCam(V3(dest.x + 4.2, 1.9, dest.z + 3.4), V3(dest.x - 0.4, 1.2, dest.z - 1.4), { speed: 5 });
+      this.setCam(V3(dest.x + 3.3, 1.5, dest.z + 2.8), V3(dest.x - 0.4, 0.9, dest.z - 1.4), { speed: 5 });
       this.face(e, dest);
       const from = e.model.group.position.clone();
       this.tweenPose(m, multi ? POSES.jump : POSES.windup, 0.22);
@@ -392,7 +328,7 @@ class BattleView extends BaseView {
       for (const t of tEnts) this.fx.slash(this.hitPoint(t.u), col, { cam: this.camera, size: ult ? 3.6 : 2.4 });
       if (ult) for (const t of tEnts) { this.fx.pillar(t.home, col, { h: 10, r: 1.0 }); this.fx.slash(this.hitPoint(t.u), '#ffffff', { cam: this.camera, size: 3.0, angle: Math.random() * 3 }); }
     } else {
-      this.setCam(V3(e.home.x + 1.6, 2.1, e.home.z + 3.4), V3(main.home.x * 0.7, 1.4, main.home.z), { speed: 5 });
+      this.setCam(V3(e.home.x + 1.3, 1.6, e.home.z + 2.8), V3(main.home.x * 0.7, 1.0, main.home.z), { speed: 5 });
       this.face(e, main.home);
       await this.tweenPose(m, tEnts.length > 1 ? POSES.cast2 : POSES.cast, 0.2);
       const tip = m.tipPos();
@@ -424,7 +360,6 @@ class BattleView extends BaseView {
   async attackEnd(src) {
     const e = this.ent(src); if (!e) return;
     const m = e.model;
-    if (this.ultArmed === e) await this.ultFinish(e);
     if (this.lastAttack && this.lastAttack.src === src && this.lastAttack.moved && src.alive) {
       await GFX.delay(0.12);
       const from = m.group.position.clone();
@@ -441,7 +376,7 @@ class BattleView extends BaseView {
     const e = this.ent(src); if (!e) return;
     const col = ELEMENTS[src.elem].color;
     this.unfocus(); this.sway = 0;
-    this.setCam(V3(e.home.x + 2.4, 1.75, e.home.z - 1.9), V3(e.home.x - 0.2, 1.25, e.home.z + 0.3), { speed: 4 });
+    this.setCam(V3(e.home.x + 2.0, 1.3, e.home.z - 1.6), V3(e.home.x - 0.2, 0.8, e.home.z + 0.3), { speed: 4 });
     e.model.group.rotation.y = 0.9;
     await this.tweenPose(e.model, POSES.cast2, 0.22);
     const tip = e.model.tipPos();
@@ -681,8 +616,8 @@ class BattleView extends BaseView {
     // 他の味方は一時的に隠す（カメラの邪魔になるため）
     const others = [...this.ents.values()].filter(x => x.ally && x !== e);
     others.forEach(x => { x.model.group.visible = false; });
-    this.setCam(V3(h.x + 0.3, 1.7, h.z + 1.05), V3(h.x, 1.66, h.z), { snap: true });
-    this.setCam(V3(h.x + 1.1, 1.15, h.z + 3.0), V3(h.x, 1.3, h.z), { speed: 1.8 });
+    this.setCam(V3(h.x + 0.25, 0.95, h.z + 1.15), V3(h.x, 0.88, h.z), { snap: true });
+    this.setCam(V3(h.x + 0.9, 0.75, h.z + 2.5), V3(h.x, 0.75, h.z), { speed: 1.8 });
     this.tweenPose(m, POSES.ult, 0.45);
     this.fx.pillar(h.clone().add(V3(0, 0, -1.2)), col, { h: 14, r: 0.7, life: 1.3, k: 1.2 });
     this.fx.ring(h.clone().add(V3(0, 0.05, 0)), col, { r: 3, life: 1.0 });
@@ -690,7 +625,7 @@ class BattleView extends BaseView {
     await GFX.tween(1.15, t => {
       for (let i = 0; i < 4; i++) {
         const a = t * 20 + i * Math.PI / 2, r = 0.75 - t * 0.3;
-        this.p.emit(V3(h.x + Math.cos(a) * r, 0.2 + t * 2.0, h.z - 0.2 + Math.sin(a) * r * 0.6), V3(0, 1.2, 0), hdr(col, 2), { life: 0.45, size: 0.045 });
+        this.p.emit(V3(h.x + Math.cos(a) * r * 0.7, 0.15 + t * 1.2, h.z - 0.2 + Math.sin(a) * r * 0.5), V3(0, 0.9, 0), hdr(col, 2), { life: 0.45, size: 0.04 });
       }
     }, Ease.linear);
     GFX.grade.uniforms.desat.value = 0;
@@ -702,441 +637,105 @@ class BattleView extends BaseView {
   }
 
   // ============================================================
-  //  専用の必殺技演出（発動 → スプラッシュ → クローズアップ → 肩越しで対象選択 → 叩きつけ）
+  //  必殺技の対象選択（肩越し視点）
   // ============================================================
   // dur 秒のあいだに n 回、等間隔で fn を呼ぶ（フレームレートに依存しない）
   every(dur, n, fn) {
     let i = 0;
     return GFX.tween(dur, (_, p) => { const k = Math.floor(p * n); while (i < k) fn(i++); }, Ease.linear);
   }
-  hasUltCine(u) { return !!ULT_CINE[u.key] && !!this.ent(u); }
+  hasUltCine() { return false; }
   ui(kind, u) { if (this.b.ultUi) this.b.ultUi(kind, u); }
-  // キャラの向きを基準にした座標（+Z が正面、+X がキャラの左手側）
-  loc(e, x, y, z) {
-    const g = e.model.group, a = g.rotation.y, c = Math.cos(a), s = Math.sin(a);
-    return V3(g.position.x + x * c + z * s, g.position.y + y, g.position.z - x * s + z * c);
-  }
   headPos(e) { e.model.group.updateMatrixWorld(true); return e.model.headPivot.getWorldPosition(V3()); }
-  gripPos(e) { return e.model.armR.grip.getWorldPosition(V3()); }
-
-  // 指定した物以外（環境・敵・他の味方）を一時的に非表示にする
-  isolate(keep) {
-    const hidden = [], keepSet = new Set([...keep, this.camera, this.p.points]);
-    for (const root of this.scene.children) {
-      if (keepSet.has(root) || root.isLight) continue;
-      root.traverse(o => { if ((o.isMesh || o.isPoints || o.isSprite || o.isLine) && o.visible) { o.visible = false; hidden.push(o); } });
-    }
-    return hidden;
-  }
-  unisolate(hidden) { hidden.forEach(o => { o.visible = true; }); }
-
-  // スプラッシュの背景：星海を閉じ込めた円盤と光条（カメラに固定）
-  splashBackdrop(col) {
-    const mat = new THREE.ShaderMaterial({
-      uniforms: { time: { value: 0 }, amt: { value: 0 }, c: { value: hdr(col, 1) } },
-      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader: `uniform float time, amt; uniform vec3 c; varying vec2 vUv;
-        float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-        float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
-          return mix(mix(hash(i), hash(i+vec2(1,0)), f.x), mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y); }
-        float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
-        float stars(vec2 p, float d){ vec2 id = floor(p), f = fract(p) - 0.5; float h = hash(id);
-          return step(d, h) * smoothstep(0.16, 0.0, length(f + (vec2(hash(id+3.1), hash(id+7.7)) - 0.5) * 0.6)) * (0.5 + 0.5 * sin(time * 3.0 + h * 40.0)); }
-        void main(){
-          vec2 p = (vUv - 0.5) * vec2(1.7778, 1.0);
-          vec3 col = mix(vec3(0.004, 0.006, 0.02), vec3(0.02, 0.03, 0.09), vUv.y);
-          vec2 cc = p - vec2(-0.26, 0.0); float d = length(cc), R = 0.42;
-          float inside = smoothstep(R, R - 0.006, d);
-          float n = fbm(cc * 3.2 + vec2(time * 0.06, -time * 0.03));
-          float ra = d * 7.0 - time * 0.35; vec2 q = mat2(cos(ra), -sin(ra), sin(ra), cos(ra)) * cc;
-          float sw = fbm(q * vec2(9.0, 2.5) + 3.0);
-          vec3 neb = mix(vec3(0.01, 0.03, 0.16), c * 0.45, n * n * 1.2) + vec3(0.15, 0.3, 0.8) * pow(sw, 4.0) * 1.2;
-          neb += vec3(0.4, 0.6, 1.2) * pow(1.0 - d / R, 4.0) * 0.35;
-          col = mix(col, neb, inside);
-          col += vec3(0.5, 0.7, 1.4) * exp(-abs(d - R) * 120.0) * 0.9;
-          col += vec3(0.3, 0.45, 1.0) * exp(-abs(d - R * 1.12) * 260.0) * 0.5;
-          col += vec3(1.0) * stars(p * 70.0, 0.93) * (inside * 1.6 + 0.5);
-          col += vec3(0.8, 0.9, 1.0) * stars(p * 28.0 + 5.0, 0.975) * inside * 2.2;
-          float beam = pow(max(0.0, 1.0 - abs(p.y - p.x * 0.42 - 0.05) * 7.0), 10.0) * (1.0 - inside * 0.7);
-          col += vec3(0.3, 0.5, 1.1) * beam * 0.45;
-          gl_FragColor = vec4(col * amt, 1.0);
-        }`,
-      depthWrite: false, fog: false,
-    });
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
-    const d = 7, hgt = 2 * d * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * 1.08;
-    m.scale.set(hgt * 1.7778, hgt, 1); m.position.set(0, 0, -d); m.renderOrder = -5;
-    this.camera.add(m);
-    return m;
-  }
-
-  // 武器・盾に纏う光（level 0〜1）
-  chargeWeapon(e, col, level, dur = 0.25) {
-    if (!e.aura) e.aura = (ULT_CINE[e.u.key] || {}).aura === 'shield' ? this.shieldAura(e, col) : this.weaponAura(e, col);
-    const a = e.aura; if (!a) return;
-    const from = a.level;
-    return GFX.tween(dur, t => { a.level = lerp(from, level, t); });
-  }
-  // 武器（バット）：縞の流れる光の筒と先端の光、稲妻
-  weaponAura(e, col) {
-    const tip = e.model.extras && e.model.extras.tip; if (!tip || !tip.parent) return null;
-    const len = tip.position.y || 0.75;
-    const mat = new THREE.ShaderMaterial({
-      uniforms: { c: { value: hdr(col, 1) }, time: { value: 0 }, amt: { value: 0 } },
-      vertexShader: 'varying vec3 vN; varying vec3 vV; varying vec2 vUv; void main(){ vUv = uv; vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
-      fragmentShader: `uniform vec3 c; uniform float time, amt; varying vec3 vN; varying vec3 vV; varying vec2 vUv;
-        void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 1.5);
-          float band = 0.6 + 0.4 * sin(vUv.y * 34.0 - time * 16.0 + vUv.x * 18.85);
-          float ends = smoothstep(0.0, 0.18, vUv.y) * smoothstep(1.0, 0.85, vUv.y);
-          gl_FragColor = vec4((c * (f * 2.4 + 0.3) * band + vec3(0.6, 0.8, 1.0) * pow(f, 4.0)) * ends * amt, 1.0); }`,
-      blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide,
-    });
-    const shell = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.07, len * 1.25, 20, 1, true), mat);
-    shell.position.y = len * 0.55; shell.renderOrder = 12;
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 1.4), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
-    halo.position.y = len; halo.renderOrder = 12;
-    tip.parent.add(shell); tip.parent.add(halo);
-    return {
-      level: 0, col,
-      update: (L, dt, t) => {
-        mat.uniforms.time.value = t; mat.uniforms.amt.value = L * 0.75;
-        shell.scale.set(0.6 + L * 1.4, 1, 0.6 + L * 1.4);
-        halo.material.opacity = Math.min(0.8, L); halo.scale.setScalar(0.15 + L * 0.4 + Math.sin(t * 20) * 0.03 * L);
-        if (L < 0.05) return;
-        // 武器から青い光の粒と火花がこぼれる
-        const g = this.gripPos(e), tp = e.model.tipPos();
-        const n = Math.random() < dt * 60 * L ? 2 : 0;
-        for (let i = 0; i < n; i++) {
-          const p = g.clone().lerp(tp, 0.2 + Math.random() * 0.85);
-          this.p.emit(p, V3((Math.random() - 0.5) * 0.6, 0.3 + Math.random() * 0.8, (Math.random() - 0.5) * 0.6), hdr(Math.random() < 0.2 ? '#ffb45a' : col, 3), { life: 0.35 + Math.random() * 0.3, size: 0.03 + Math.random() * 0.04, drag: 2 });
-        }
-        if (L > 0.6 && Math.random() < dt * 5 * L) this.fx.bolt(() => this.gripPos(e), () => e.model.tipPos(), '#cfe6ff', { life: 0.12, jag: 0.06, r: 0.008 });
-      },
-    };
-  }
-  // 盾：表面に雪の結晶の紋が灯り、縁が光り、細かな氷の粒が舞う
-  shieldAura(e, col) {
-    const hold = e.model.extras && e.model.extras.shield; if (!hold) return null;
-    const g = new THREE.Group(); g.position.z = 0.06; hold.add(g);
-    const add = (geo, map, k) => {
-      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map, color: hdr(col, k), blending: THREE.AdditiveBlending, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false }));
-      m.renderOrder = 12; g.add(m); return m;
-    };
-    const face = add(new THREE.PlaneGeometry(0.62, 0.62), snowTex(), 1.2);
-    const rim = add(new THREE.RingGeometry(0.3, 0.325, 6), null, 1.8); rim.rotation.z = Math.PI / 2;
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 1.2), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
-    halo.renderOrder = 12; g.add(halo);
-    return {
-      level: 0, col,
-      update: (L, dt, t) => {
-        face.material.opacity = Math.min(0.85, L); face.rotation.z = t * 0.7;
-        rim.material.opacity = Math.min(1, L * 1.5);
-        g.scale.setScalar(1 + L * 0.15 + Math.sin(t * 6) * 0.02 * L);
-        halo.material.opacity = Math.min(0.45, L * 0.5); halo.scale.setScalar(0.3 + L * 0.5);
-        if (L < 0.05) return;
-        const c = g.getWorldPosition(V3());
-        if (Math.random() < dt * 50 * L) {
-          const a = Math.random() * Math.PI * 2, r = 0.2 + Math.random() * 0.4;
-          this.p.emit(c.clone().add(V3(Math.cos(a) * r, Math.sin(a) * r, (Math.random() - 0.5) * 0.3)), V3((Math.random() - 0.5) * 0.3, 0.2 + Math.random() * 0.4, (Math.random() - 0.5) * 0.3), hdr(Math.random() < 0.5 ? '#ffffff' : col, 2.5), { life: 0.6 + Math.random() * 0.5, size: 0.025 + Math.random() * 0.03, drag: 1 });
-        }
-      },
-    };
-  }
-  updateAuras(dt, t) {
-    for (const e of this.ents.values()) if (e.aura) e.aura.update(e.aura.level, dt, t);
-  }
-
-  // 発動演出。共通の「発動 → スプラッシュ」のあとにキャラごとのクローズアップ（C.ready）を流し、
-  // 最後は肩越し視点・武器が光った状態で対象選択に入る
-  async ultReady(u) {
-    const e = this.ent(u); if (!e) return;
-    const C = ULT_CINE[u.key], m = e.model, g = m.group, h = e.home, col = C.col, U = GFX.grade.uniforms;
-    this.ultArmed = e;
-    this.focus(e); this.sway = 0;
-
-    // ① 発動：肩越しのまま画面が沈む
-    this.face(e, this.enemyCenter()); this.shoulder(e, { snap: true }); this.sway = 0;
-    this.ui('cine', u);
-    m.flash(col, 0.9);
-    this.fx.ring(h.clone().add(V3(0, 0.05, 0)), col, { r: 2.6, life: 0.5 });
-    this.p.burst(this.hitPoint(u), col, 40, { speed: 3, life: 0.6, size: 0.06 });
-    GFX.tween(0.3, t => { U.tint.value.setScalar(1 - 0.65 * t); U.desat.value = 0.5 * t; }, Ease.out);
-    await GFX.delay(0.42);
-
-    // ② スプラッシュ：星海の円盤を背に決めポーズ、右に技名
-    const hidden = this.isolate([g]);
-    U.tint.value.setScalar(1); U.desat.value = 0;
-    g.rotation.y = C.splashRot ?? 0.4; g.position.y = 0.1;
-    m.setPose(POSES[C.splash]); m.idleAmp = 0.4;
-    this.chargeWeapon(e, col, 0.3, 0.01);
-    const bd = this.splashBackdrop(col);
-    this.fx.add(new THREE.Object3D(), 1.25, t => { bd.material.uniforms.time.value = t * 3; bd.material.uniforms.amt.value = Math.min(1, t * 8); });
-    this.ui('splash', u);
-    GFX.flash('#ffffff', 0.6, 0.25);
-    for (let i = 0; i < 26; i++) this.p.emit(V3(h.x + (Math.random() - 0.5) * 2.4, 0.2 + Math.random() * 2.2, h.z + (Math.random() - 0.5) * 1.2), V3(0, C.snow ? -0.25 : 0.15, 0), hdr(Math.random() < 0.5 ? '#ffffff' : col, 3), { life: 1.2, size: 0.03 + Math.random() * 0.05, drag: 0 });
-    await this.rail(1.25, V3(h.x + 0.55, 0.85, h.z + 3.9), V3(h.x + 0.5, 0.95, h.z + 3.4), V3(h.x + 0.65, 1.0, h.z), V3(h.x + 0.6, 1.05, h.z), { ease: Ease.out, fov0: 36, fov1: 34 });
-    this.ui('splash-off', u);
-    this.camera.remove(bd); disposeTree(bd);
-    this.unisolate(hidden);
-    g.position.y = 0; m.idleAmp = 1;
-
-    // ③〜⑤ キャラ固有のクローズアップ
-    await this[C.ready](e, col);
-    GFX.flash('#ffffff', 0.7, 0.3);
-
-    // ⑥ 肩越しに戻して対象選択へ（武器は光ったまま）
-    this.ui('cine-off', u);
-    this.face(e, this.enemyCenter()); m.setPose(POSES[C.aim]);
-    this.shoulder(e, { snap: true });
-  }
-
-  // アステル：顔のアップ → バットを水平に構えて帯電 → あおりで光のバットを構える
-  async asterReady(e, col) {
-    const m = e.model, g = m.group, h = e.home, u = e.u;
-    // ③ 顔のアップ：振り抜いたバットと青い光の帯が渦巻く
-    g.rotation.y = 0.15;
-    m.setPose(POSES.windup); this.tweenPose(m, POSES.ultSwing, 0.3); Sfx.swing();
-    this.chargeWeapon(e, col, 0.55, 0.3);
-    for (let i = 0; i < 5; i++) GFX.delay(i * 0.1).then(() => this.fx.swirl(V3(h.x, 1.0 + i * 0.12, h.z), i % 2 ? '#8fc8ff' : col, { r: 0.5 + i * 0.07, life: 0.6, tilt: (Math.random() - 0.5) * 0.9, speed: 10 + i * 2, y0: -0.3, y1: 0.4, width: 0.012 + Math.random() * 0.012, k: 2.2 }));
-    this.every(0.8, 30, () => this.p.emit(this.gripPos(e), V3((Math.random() - 0.5) * 3, Math.random() * 2, (Math.random() - 0.5) * 3), hdr('#ffa040', 3), { life: 0.5, size: 0.03, drag: 1.5 }));
-    await this.rail(0.8, this.loc(e, 0.45, 1.45, 1.25), this.loc(e, -0.35, 1.48, 1.15), this.loc(e, 0.05, 1.36, 0), this.loc(e, 0.0, 1.38, 0), { ease: Ease.inOut, fov0: 36, fov1: 33, roll0: 0.14, roll1: -0.08 });
-    // 青い光条で画面を払う
-    this.ui('wipe', u); GFX.flash('#9fd0ff', 0.55, 0.25);
-
-    // ④ 横顔：バットを水平に構え、稲妻が這う
-    g.rotation.y = 0;
-    m.setPose(POSES.ultCharge);
-    this.chargeWeapon(e, col, 0.7, 0.6);
-    const zap = this.every(0.95, 16, i => {
-      if (i % 4 === 0) Sfx.zap();
-      this.fx.bolt(() => this.gripPos(e), () => m.tipPos(), i % 3 ? '#d8ecff' : col, { life: 0.1 + Math.random() * 0.1, jag: 0.05, r: 0.006 + Math.random() * 0.006 });
-      for (let k = 0; k < 2; k++) this.p.emit(m.tipPos(), V3((Math.random() - 0.5) * 2, Math.random(), (Math.random() - 0.5) * 2), hdr('#ffb45a', 3), { life: 0.4, size: 0.025 });
-    });
-    await this.rail(0.95, this.loc(e, 0.5, 1.45, 1.3), this.loc(e, 0.4, 1.43, 1.05), this.loc(e, -0.3, 1.35, 0), this.loc(e, -0.25, 1.34, 0), { ease: Ease.out, fov0: 38, fov1: 35, roll0: -0.05, roll1: 0.03 });
-    await zap;
-
-    // ⑤ あおり：バットを掲げると光が膨れ上がり、振り下ろして構える
-    g.rotation.y = 0;
-    m.setPose(POSES.ultRaise);
-    this.chargeWeapon(e, col, 1, 0.5);
-    this.fx.pillar(h.clone().add(V3(0, 0, -0.4)), col, { h: 12, r: 0.5, life: 1.0, k: 2 });
-    GFX.delay(0.22).then(() => {
-      this.tweenPose(m, POSES.ultAim, 0.16); Sfx.swing();
-      for (let i = 0; i < 3; i++) this.fx.swirl(V3(h.x, 0.7 + i * 0.25, h.z), i % 2 ? '#8fc8ff' : col, { r: 0.7, life: 0.45, tilt: 0.5 - i * 0.3, speed: 16, width: 0.015, k: 2.5 });
-    });
-    for (let i = 0; i < 6; i++) GFX.delay(0.15 + i * 0.1).then(() => {
-      const tp = m.tipPos(); if (i % 2) Sfx.zap();
-      this.fx.bolt(tp, tp.clone().add(V3((Math.random() - 0.5) * 2.4, Math.random() * 1.6, (Math.random() - 0.5) * 2.4)), '#cfe6ff', { life: 0.14, jag: 0.14, r: 0.01 });
-    });
-    await this.rail(1.0, this.loc(e, -0.9, 0.4, 1.7), this.loc(e, -1.15, 0.5, 2.05), this.loc(e, -0.3, 1.35, 0), this.loc(e, -0.28, 1.22, 0), { ease: Ease.out, fov0: 46, fov1: 42, roll0: 0.1, roll1: 0.04 });
-  }
-
-  // 雪が舞う（カメラまわりに降らせる）
-  snowfall(center, n, spread = 1.6) {
-    for (let i = 0; i < n; i++) this.p.emit(center.clone().add(V3((Math.random() - 0.5) * spread * 2, Math.random() * spread, (Math.random() - 0.5) * spread * 2)),
-      V3((Math.random() - 0.5) * 0.3, -0.3 - Math.random() * 0.4, (Math.random() - 0.5) * 0.3), hdr(Math.random() < 0.6 ? '#ffffff' : '#9fe6ff', 2.2), { life: 1.2 + Math.random() * 0.8, size: 0.02 + Math.random() * 0.035, drag: 0 });
-  }
-  // ミゾレ：雪の舞う顔のアップ → 盾を突き出し結晶の紋が咲く → あおりで氷柱が足元から噴き出す
-  async mizoreReady(e, col) {
-    const m = e.model, g = m.group, h = e.home, u = e.u;
-    // ③ 顔のアップ：盾を胸に構え、背後に雪の結晶の紋、冷気の帯が渦巻く
-    g.rotation.y = 0.15;
-    m.setPose(POSES.idle); this.tweenPose(m, POSES.mzGuard, 0.3);
-    this.chargeWeapon(e, col, 0.5, 0.4);
-    const cam0 = this.loc(e, 0.45, 1.42, 1.25);
-    this.fx.sigil(this.loc(e, 0, 1.4, -0.45), col, { r: 0.9, life: 0.9, face: cam0, spin: 0.8, k: 1.8 });
-    for (let i = 0; i < 4; i++) GFX.delay(i * 0.12).then(() => this.fx.swirl(V3(h.x, 0.9 + i * 0.15, h.z), i % 2 ? '#ffffff' : col, { r: 0.55 + i * 0.06, life: 0.65, tilt: (Math.random() - 0.5) * 0.8, speed: 7 + i, y0: -0.2, y1: 0.35, width: 0.01 + Math.random() * 0.01, k: 1.8 }));
-    this.every(0.8, 8, () => this.snowfall(this.loc(e, 0, 1.2, 0.5), 5, 0.9));
-    await this.rail(0.8, cam0, this.loc(e, -0.35, 1.46, 1.15), this.loc(e, 0.05, 1.34, 0), this.loc(e, 0.0, 1.36, 0), { ease: Ease.inOut, fov0: 36, fov1: 33, roll0: -0.12, roll1: 0.08 });
-    this.ui('wipe', u); GFX.flash('#dff6ff', 0.55, 0.25);
-
-    // ④ 盾の寄り：突き出した盾に結晶の紋が咲き、氷の粒が吸い寄せられる
-    g.rotation.y = 0;
-    m.setPose(POSES.mzThrust);
-    this.chargeWeapon(e, col, 0.8, 0.6);
-    m.update(0, 0); g.updateMatrixWorld(true);
-    const sc = e.model.extras.shield.getWorldPosition(V3());
-    const camA = this.loc(e, -0.75, 1.4, 1.25), camB = this.loc(e, -0.6, 1.38, 1.0);
-    this.fx.sigil(sc.clone().add(this.loc(e, 0, 0, 0.3).sub(g.position)), col, { r: 0.7, life: 1.0, face: camA, spin: -1.2, k: 1.6 });
-    const draw = this.every(0.95, 24, i => {
-      const a = Math.random() * Math.PI * 2, r = 0.9 + Math.random() * 0.6, p = sc.clone().add(V3(Math.cos(a) * r, Math.sin(a) * r, 0.3 + Math.random() * 0.4));
-      for (let k = 0; k < 2; k++) this.p.emit(p, sc.clone().sub(p).multiplyScalar(1.6), hdr(k ? '#ffffff' : col, 3), { life: 0.55, size: 0.03, drag: 0 });
-      if (i % 6 === 0) Sfx.zap();
-    });
-    await this.rail(0.95, camA, camB, this.loc(e, 0.2, 1.3, 0.2), this.loc(e, 0.2, 1.3, 0.25), { ease: Ease.out, fov0: 38, fov1: 34, roll0: 0.04, roll1: -0.02 });
-    await draw;
-
-    // ⑤ あおり：右手を掲げると足元に紋が広がり、氷柱が輪になって噴き出す
-    g.rotation.y = 0;
-    this.tweenPose(m, POSES.mzCast, 0.2);
-    this.chargeWeapon(e, col, 1, 0.5);
-    this.fx.sigil(h.clone().add(V3(0, 0.04, 0)), col, { r: 2.6, life: 1.1, spin: 0.6 });
-    this.fx.pillar(h.clone().add(V3(0, 0, -0.3)), col, { h: 12, r: 0.5, life: 1.0, k: 1.8 });
-    GFX.delay(0.25).then(() => {
-      Sfx.slam(); GFX.shake(0.15);
-      for (let i = 0; i < 9; i++) {
-        const a = i / 9 * Math.PI * 2 + 0.3;
-        this.fx.iceSpike(h.clone().add(V3(Math.cos(a) * 1.3, 0, Math.sin(a) * 1.3)), { h: 0.7 + Math.random() * 0.8, r: 0.12 + Math.random() * 0.08, tilt: 0.35, dir: a + Math.PI / 2, life: 0.9, color: col });
-      }
-      this.p.burst(h.clone().add(V3(0, 0.3, 0)), '#ffffff', 60, { speed: 4, up: 2, life: 1.0, size: 0.05, drag: 1.5 });
-    });
-    this.every(1.0, 10, () => this.snowfall(h.clone().add(V3(0, 1.4, 0)), 4, 1.4));
-    await this.rail(1.0, this.loc(e, -0.9, 0.4, 1.9), this.loc(e, -1.15, 0.5, 2.25), this.loc(e, -0.2, 1.4, 0), this.loc(e, -0.2, 1.25, 0), { ease: Ease.out, fov0: 46, fov1: 42, roll0: 0.1, roll1: 0.04 });
-    this.tweenPose(m, POSES.mzAim, 0.15);
-  }
-
-  // 専用演出のないキャラ：対象選択は肩越し視点で
   ultAim(u) {
     const e = this.ent(u); if (!e) return;
     this.focus(e); this.face(e, this.enemyCenter()); this.shoulder(e);
     e.model.flash(e.model.elemCol, 0.6);
   }
-  // 対象選択でキャンセルされた
   ultCancel(u) {
     const e = this.ent(u); if (!e) return;
-    if (this.ultArmed === e) {
-      this.chargeWeapon(e, e.aura ? e.aura.col : '#ffffff', 0, 0.3);
-      this.tweenPose(e.model, POSES.ready, 0.3);
-      this.ultArmed = null;
-    }
+    this.tweenPose(e.model, POSES.ready, 0.3);
     e.model.group.rotation.y = Math.PI;
     this.wide();
   }
-  async ultFinish(e) {
-    await GFX.delay(0.5);
-    this.ui('lines-off', e.u);
-    this.chargeWeapon(e, e.aura ? e.aura.col : '#ffffff', 0, 0.4);
-    GFX.grade.uniforms.aberr.value = 0;
-    this.ultArmed = null;
+
+  // ---------- にゃんこファンタジーの演出 ----------
+  // 話す：敵のほうへ歩み寄って手を振る
+  async talkFx(u, t) {
+    const e = this.ent(u), te = this.ent(t); if (!e || !te) return;
+    this.unfocus(); this.sway = 0.2;
+    const m = e.model;
+    this.face(e, te.home);
+    if (m.face) m.face.set('smile');
+    this.setCam(V3(e.home.x + 1.6, 1.3, e.home.z + 2.2), V3((e.home.x + te.home.x) / 2, 0.9, (e.home.z + te.home.z) / 2), { speed: 4 });
+    const wave = { ...POSES.idle, armRx: -2.4, armRz: -0.75, elbowR: -0.9 };
+    await this.tweenPose(m, wave, 0.2);
+    for (let i = 0; i < 3; i++) this.fx.sprite(this.hitPoint(u).add(V3(0.2 + i * 0.25, 0.5 + i * 0.15, -0.3 - i * 0.4)), '#fff4c8', 0.3 + i * 0.1, 0.8, { k: 2 });
+    await GFX.delay(0.35);
+    te.model.flash('#ffe8f0', 0.8);
+    this.fx.ring(this.hitPoint(t), '#ffb8d8', { r: 1.2, life: 0.6, face: this.camera.position });
   }
-
-  // アステル「星屑の終曲」：踏み込み → 跳躍 → 光のバットを叩きつける
-  async asterStrike(e, tEnts) {
-    const m = e.model, g = m.group, main = tEnts[0], col = ULT_CINE[e.u.key].col, U = GFX.grade.uniforms;
-    this.ultArmed = e; this.focus(e); this.sway = 0;
-    if (!e.aura || e.aura.level < 0.9) this.chargeWeapon(e, col, 1, 0.2);
-    const from = g.position.clone();
-    const dest = main.home.clone().add(V3(0, 0, main.model.radius + 1.0));
-    if (main.u.def.boss) dest.z = Math.min(dest.z, 1.0);
-    const tc = main.home;
-
-    // S1 踏み込み：横から追うカメラ、集中線
-    this.ui('lines-on', e.u);
-    this.face(e, dest); this.tweenPose(m, POSES.dash, 0.1);
-    Sfx.swing();
-    // 走る向きの右側から並走するカメラ
-    const dir = V3(dest.x - from.x, 0, dest.z - from.z).normalize(), side = V3(-dir.z, 0, dir.x);
-    this.setFov(46); this.roll = -0.04;
-    await GFX.tween(0.34, t => {
-      g.position.lerpVectors(from, dest, t); g.position.y = Math.sin(t * Math.PI) * 0.15;
-      const c = g.position;
-      this.setCam(c.clone().addScaledVector(side, 2.5).addScaledVector(dir, 0.9 - t * 0.6).add(V3(0, 1.15, 0)), c.clone().addScaledVector(dir, 1.2).add(V3(0, 1.0, 0)), { snap: true });
-      for (let i = 0; i < 3; i++) this.p.emit(this.hitPoint(e.u).add(V3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.8, 0)), V3(0, 0.2, 0), hdr(col, 2.5), { life: 0.35, size: 0.08, drag: 3 });
-    }, Ease.in);
-
-    // S2 跳躍：下からあおって光のバットを振りかぶる
-    this.face(e, tc); this.tweenPose(m, POSES.windup, 0.16);
-    const apex = dest.clone().add(V3(0, 1.8, 0.35));
-    GFX.slowmo(0.4, 0.45);
-    this.rail(0.42, apex.clone().add(V3(2.6, -1.5, -1.4)), apex.clone().add(V3(2.2, -1.4, -1.1)), apex.clone().add(V3(0, 0.3, 0)), apex.clone().add(V3(0, 0.1, 0)), { ease: Ease.out, fov0: 50, fov1: 46, roll0: -0.14, roll1: -0.08 });
-    this.every(0.42, 7, () => this.fx.bolt(m.tipPos(), m.tipPos().add(V3((Math.random() - 0.5) * 1.6, Math.random() * 1.2, (Math.random() - 0.5) * 1.6)), '#cfe6ff', { life: 0.1, jag: 0.12, r: 0.009 }));
-    await GFX.tween(0.42, t => g.position.lerpVectors(dest, apex, Ease.out(t)), Ease.linear);
-
-    // S3 叩きつけ
-    this.tweenPose(m, POSES.slam, 0.08);
-    await GFX.tween(0.1, t => g.position.lerpVectors(apex, dest, t), Ease.in);
-    this.lastAttack.moved = true;
-    const ip = this.hitPoint(main.u);
-    Sfx.slam && Sfx.slam();
-    this.cut(tc.clone().add(V3(-3.6, 1.5, main.model.radius + 4.2)), tc.clone().add(V3(0.2, 1.1, 0)), { fov: 48, roll: 0.06 });
-    this.rail(0.9, tc.clone().add(V3(-3.6, 1.5, main.model.radius + 4.2)), tc.clone().add(V3(-3.0, 1.4, main.model.radius + 3.6)), tc.clone().add(V3(0.2, 1.1, 0)), tc.clone().add(V3(0.1, 1.2, 0)), { ease: Ease.out, fov0: 48, fov1: 44, roll0: 0.06, roll1: 0.02 });
-    GFX.slowmo(0.12, 0.3);
-    GFX.flash('#ffffff', 0.85, 0.3);
-    GFX.shake(0.7);
-    GFX.tween(0.6, t => { U.aberr.value = 0.035 * (1 - t); }, Ease.out, true);
-    this.ui('impact', e.u);
-    for (const t of tEnts) {
-      const p = this.hitPoint(t.u);
-      this.fx.pillar(t.home, col, { h: 18, r: 1.5, life: 0.9, k: 2.5 });
-      this.fx.pillar(t.home, '#ffffff', { h: 18, r: 0.35, life: 0.5, k: 4 });
-      this.fx.ring(t.home.clone().add(V3(0, 0.06, 0)), col, { r: 8, life: 0.9, width: 0.35 });
-      this.fx.ring(t.home.clone().add(V3(0, 0.08, 0)), '#ffffff', { r: 5, life: 0.5, width: 0.1 });
-      this.fx.ring(p, col, { r: 4, life: 0.5, face: this.camera.position, width: 0.15 });
-      this.fx.sprite(p, col, 7, 0.6, { k: 3 });
-      this.fx.sprite(p, '#ffffff', 3, 0.3, { k: 5 });
-      for (let i = 0; i < 3; i++) this.fx.slash(p, i ? col : '#ffffff', { cam: this.camera, size: 7 - i, angle: -0.3 + i * 1.1, life: 0.45 });
-      this.fx.shards(p, col, 26, 8);
-      for (let i = 0; i < 8; i++) {
-        const a = Math.random() * Math.PI * 2;
-        this.fx.bolt(p, p.clone().add(V3(Math.cos(a) * (2 + Math.random() * 2), (Math.random() - 0.3) * 2.5, Math.sin(a) * (2 + Math.random() * 2))), i % 2 ? '#ffffff' : col, { life: 0.25, jag: 0.25, r: 0.02, segs: 12 });
-      }
-      this.p.burst(p, col, 140, { speed: 12, life: 0.9, size: 0.1, drag: 3 });
-      this.p.burst(p, '#ffb45a', 50, { speed: 9, life: 0.7, size: 0.05, drag: 2 });
-    }
+  // 猫じゃらしに夢中（マオウ）
+  lureFx(t) {
+    const te = this.ent(t); if (!te) return;
+    const p = this.hitPoint(t).add(V3(0.6, 0.6, 0.8));
+    const g = new THREE.Group(); g.position.copy(p);
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.8, 6), toon('#c8a060')); stick.position.y = -0.4; g.add(stick);
+    const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), toon('#fff0a8')); tuft.scale.set(0.6, 1.4, 0.6); tuft.position.y = 0.05; g.add(tuft);
+    this.fx.add(g, 2.2, (k, o) => { o.rotation.z = Math.sin(k * 30) * 0.6; o.position.x = p.x + Math.sin(k * 20) * 0.3; });
+    for (let i = 0; i < 12; i++) GFX.delay(i * 0.12).then(() => this.p.emit(this.hitPoint(t).add(V3(0, 0.8, 0)), V3((Math.random() - 0.5), 1.2, 0), hdr('#ff8ab8', 2.4), { life: 0.9, size: 0.14 }));
   }
-
-  // ミゾレ「永久凍土」：盾を地面に叩きつける → 冷気が床を走る → 敵全員の足元から氷山が噴き出す
-  async mizoreStrike(e, tEnts) {
-    const m = e.model, g = m.group, h = e.home, col = ULT_CINE[e.u.key].col, U = GFX.grade.uniforms;
-    this.ultArmed = e; this.focus(e); this.sway = 0;
-    if (!e.aura || e.aura.level < 0.9) this.chargeWeapon(e, col, 1, 0.2);
+  // おひるね（タマ）：丸くなって Zzz
+  napFx(u) {
+    const e = this.ent(u); if (!e) return;
+    const m = e.model;
+    if (m.face) m.face.set('sleepy');
+    this.tweenPose(m, POSES.sleep, 0.4);
+    const h = this.hitPoint(u);
+    for (let i = 0; i < 3; i++) GFX.delay(i * 0.3).then(() => { const z = this.zSprite(); z.position.copy(h).add(V3(0.2, 0.4, 0)); this.fx.add(z, 1.4, (k, o) => { o.position.y += 0.012; o.position.x += Math.sin(k * 8) * 0.004; o.material.opacity = 1 - k; }); });
+    GFX.delay(1.2).then(() => { if (u.alive) { this.tweenPose(m, POSES.ready, 0.3); if (m.face) m.face.set('neutral'); } });
+  }
+  zSprite() {
+    if (!TexCache.zzz) { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.font = '800 48px sans-serif'; g.fillStyle = '#ffffff'; g.strokeStyle = '#6a8aff'; g.lineWidth = 6; g.textAlign = 'center'; g.textBaseline = 'middle'; g.strokeText('Z', 32, 34); g.fillText('Z', 32, 34); TexCache.zzz = new THREE.CanvasTexture(c); }
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TexCache.zzz, transparent: true, depthWrite: false })); sp.scale.setScalar(0.3); return sp;
+  }
+  // コンボ：ふたり（みんな）が並んで光る
+  async comboIntro(mem, c) {
+    const es = mem.map(u => this.ent(u)).filter(Boolean); if (!es.length) return;
+    this.unfocus(); this.sway = 0;
+    const cx = es.reduce((a, e) => a + e.home.x, 0) / es.length;
+    this.setCam(V3(cx + 0.4, 1.0, 5.4), V3(cx, 0.7, 2.6), { snap: true });
+    this.setCam(V3(cx + 0.9, 0.9, 4.6), V3(cx, 0.75, 2.6), { speed: 1.5 });
+    es.forEach((e, i) => { e.model.group.rotation.y = 0; if (e.model.face) e.model.face.set('joy'); GFX.delay(i * 0.08).then(() => this.tweenPose(e.model, POSES.ult, 0.35)); e.model.flash(ELEMENTS[e.u.elem].color, 0.8); this.fx.pillar(e.home, ELEMENTS[e.u.elem].color, { h: 6, r: 0.5, life: 1.1, k: 1.4 }); });
+    if (es.length > 1) for (let i = 0; i < es.length - 1; i++) this.fx.beam(this.hitPoint(es[i].u), this.hitPoint(es[i + 1].u), '#ffcf4a', { life: 1.0, r: 0.03 });
+    this.p.burst(V3(cx, 0.8, 2.6), '#ffcf4a', 80, { speed: 4, life: 1.2, size: 0.08, up: 0.8 });
+    GFX.flash('#fff4c8', 0.35, 0.5);
+    await GFX.delay(1.2);
+    es.forEach(e => { e.model.group.rotation.y = Math.PI; this.tweenPose(e.model, POSES.ready, 0.2); });
+    this.wide();
+  }
+  // にゃんこオールスターズ：世界中の猫の光が集まり、虹の柱が敵を貫く
+  async allStarsFx(mem) {
     const c = this.enemyCenter();
-    this.face(e, c);
-
-    // S1 盾を振り上げて叩きつける（右斜め前の低い位置から）
-    this.tweenPose(m, POSES.mzCast, 0.14);
-    this.rail(0.5, this.loc(e, -1.9, 0.45, 1.3), this.loc(e, -1.6, 0.4, 1.0), this.loc(e, 0.1, 1.0, -0.2), this.loc(e, 0.2, 0.8, -0.6), { ease: Ease.out, fov0: 44, fov1: 40, roll0: 0.08, roll1: 0.03 });
-    await GFX.delay(0.2);
-    await this.tweenPose(m, POSES.mzSlam, 0.08);
-    const front = this.loc(e, 0.05, 0.05, 0.55);
-    Sfx.slam(); GFX.shake(0.35); GFX.flash('#dff6ff', 0.4, 0.2);
-    this.fx.sigil(front.clone().setY(0.04), col, { r: 3.2, life: 1.6, spin: 0.5 });
-    this.fx.ring(front.clone().setY(0.06), '#ffffff', { r: 4, life: 0.5, width: 0.08 });
-    this.p.burst(front.clone().setY(0.2), '#ffffff', 70, { speed: 5, up: 1.5, life: 0.8, size: 0.05, drag: 2 });
-    for (let i = 0; i < 5; i++) { const a = Math.random() * Math.PI * 2; this.fx.iceSpike(front.clone().add(V3(Math.cos(a) * 0.5, 0, Math.sin(a) * 0.5)), { h: 0.5 + Math.random() * 0.5, r: 0.1, tilt: 0.5, dir: a + Math.PI / 2, life: 1.2, color: col }); }
-    await GFX.delay(0.12);
-
-    // S2 冷気が床を走り、各敵へ小さな氷柱の列が伸びる（後ろ上方から見下ろす）
-    this.ui('lines-on', e.u);
-    const back = V3(h.x - c.x, 0, h.z - c.z).normalize();
-    this.rail(0.42, h.clone().addScaledVector(back, 1.2).add(V3(1.6, 3.4, 0)), h.clone().addScaledVector(back, -0.6).add(V3(1.4, 3.0, 0)), front.clone().lerp(c, 0.35).setY(0), c.clone().setY(0.4), { ease: Ease.inOut, fov0: 50, fov1: 46 });
-    const N = 7;
-    await this.every(0.42, N, i => {
-      const k = (i + 1) / (N + 1);
-      for (const t of tEnts) {
-        const p = front.clone().lerp(t.home, k); p.x += (Math.random() - 0.5) * 0.3; p.y = 0;
-        this.fx.iceSpike(p, { h: 0.35 + k * 0.6, r: 0.09 + k * 0.06, tilt: 0.45, dir: Math.random() * Math.PI * 2, life: 1.6 - k * 0.3, color: col });
-        this.p.burst(p.clone().setY(0.1), '#dff6ff', 6, { speed: 1.5, up: 1, life: 0.5, size: 0.04 });
-      }
-      if (i % 2 === 0) Sfx.zap();
+    this.unfocus();
+    this.setCam(V3(0, 3.6, 9.5), V3(c.x, 2.2, c.z), { speed: 1.2 });
+    const cols = ['#ff6a8a', '#ffb84a', '#ffe84a', '#6aff8a', '#6ad8ff', '#8a6aff', '#ff8ad8'];
+    await this.every(1.4, 40, i => {
+      const a = Math.random() * Math.PI * 2, r = 14 + Math.random() * 8, from = V3(Math.cos(a) * r, 6 + Math.random() * 6, Math.sin(a) * r - 3);
+      this.fx.projectile(from, c.clone().add(V3(0, 1.5, 0)), cols[i % 7], { dur: 0.6, size: 0.6, arc: 1.5 });
     });
-
-    // S3 氷山が噴き出す：敵の正面斜めから、ヒットストップと色収差
-    const pos0 = c.clone().add(V3(-4.2, 1.3, 6.2)), pos1 = c.clone().add(V3(-3.6, 1.5, 5.4));
-    this.cut(pos0, c.clone().add(V3(0.3, 1.4, 0)), { fov: 50, roll: 0.05 });
-    this.rail(1.0, pos0, pos1, c.clone().add(V3(0.3, 1.4, 0)), c.clone().add(V3(0.2, 1.7, 0)), { ease: Ease.out, fov0: 50, fov1: 46, roll0: 0.05, roll1: 0.02 });
-    Sfx.slam();
-    GFX.slowmo(0.15, 0.3);
-    GFX.flash('#e8fbff', 0.8, 0.3);
-    GFX.shake(0.6);
-    GFX.tween(0.6, t => { U.aberr.value = 0.03 * (1 - t); }, Ease.out, true);
-    this.ui('impact', e.u);
-    for (const t of tEnts) {
-      const b = t.home, R = t.model.radius, p = this.hitPoint(t.u);
-      this.fx.sigil(b.clone().setY(0.05), col, { r: R * 3 + 0.8, life: 1.8, spin: -0.8 });
-      this.fx.iceSpike(b.clone().add(V3(0, 0, 0.1)), { h: t.model.height * 1.5 + 0.8, r: R * 0.55 + 0.15, tilt: 0.08, life: 2.2, color: col, grow: 0.1 });
-      for (let i = 0; i < 7; i++) {
-        const a = i / 7 * Math.PI * 2 + Math.random() * 0.4, d = R * 0.8 + 0.25 + Math.random() * 0.3;
-        this.fx.iceSpike(b.clone().add(V3(Math.cos(a) * d, 0, Math.sin(a) * d)), { h: t.model.height * (0.6 + Math.random() * 0.6) + 0.3, r: 0.14 + Math.random() * 0.12, tilt: 0.45 + Math.random() * 0.2, dir: a + Math.PI / 2, life: 2.0 + Math.random() * 0.3, color: col, grow: 0.12 + i * 0.015 });
-      }
-      this.fx.pillar(b, '#e8fbff', { h: 14, r: 0.22, life: 0.45, k: 1.5 });
-      this.fx.ring(b.clone().add(V3(0, 0.06, 0)), '#ffffff', { r: 6, life: 0.7, width: 0.2 });
-      this.fx.sprite(p, col, 3, 0.25, { k: 1.5 });
-      this.p.burst(p, '#ffffff', 90, { speed: 9, life: 1.0, size: 0.06, drag: 2.5 });
-      this.p.burst(p, col, 80, { speed: 6, up: 2, life: 1.2, size: 0.09, drag: 2 });
-    }
-    // 空から細かな雪が降り続ける
-    this.every(1.4, 14, () => this.snowfall(c.clone().add(V3(0, 2.5, 0)), 8, 3.5));
+    GFX.flash('#ffffff', 0.9, 0.8); GFX.shake(0.6); GFX.slowmo(0.35, 0.8);
+    cols.forEach((col, i) => GFX.delay(i * 0.05).then(() => this.fx.pillar(c, col, { h: 30, r: 1.2 + i * 0.25, life: 1.4, k: 2 })));
+    this.fx.ring(c.clone().add(V3(0, 0.1, 0)), '#ffffff', { r: 16, life: 1.2, width: 0.4 });
+    this.p.burst(c.clone().add(V3(0, 2, 0)), '#ffffff', 220, { speed: 14, life: 1.8, size: 0.14 });
+    Sfx.slam(); Sfx.win();
+    await GFX.delay(0.9);
+  }
+  // 世界中の猫の声が届く（光の粒が空から降りてくる）
+  voiceFx() {
+    const cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a'];
+    for (let i = 0; i < 30; i++) this.p.emit(V3((Math.random() - 0.5) * 16, 8 + Math.random() * 4, (Math.random() - 0.5) * 8 + 1), V3(0, -3 - Math.random() * 2, 0), hdr(pick(cols), 2.4), { life: 2.2, size: 0.14, drag: 0.4 });
+    for (const e of this.ents.values()) if (e.ally && e.u.alive) e.model.flash('#fff4c8', 0.6);
   }
 
   // ---------- 敵の攻撃 ----------
@@ -1180,8 +779,8 @@ class BattleView extends BaseView {
   victory() {
     this.unfocus();
     const al = [...this.ents.values()].filter(e => e.ally && e.u.alive);
-    al.forEach((e, i) => { e.model.group.rotation.y = 0; GFX.delay(i * 0.1).then(() => this.tweenPose(e.model, POSES.victory, 0.5)); });
-    this.setCam(V3(0.6, 1.6, -1.2), V3(0, 1.2, 3), { speed: 1.6 });
+    al.forEach((e, i) => { e.model.group.rotation.y = 0; if (e.model.face) e.model.face.set('joy'); GFX.delay(i * 0.1).then(() => this.tweenPose(e.model, i % 2 ? POSES.victory : POSES.ult, 0.5)); });
+    this.setCam(V3(0.5, 1.15, -0.4), V3(0, 0.72, 2.6), { speed: 1.6 });
     for (const e of al) this.p.burst(this.hitPoint(e.u), '#ffd66b', 40, { speed: 3, up: 1, life: 1.5 });
   }
 
@@ -1195,7 +794,6 @@ class BattleView extends BaseView {
     if (this.roll) this.camera.rotateZ(this.roll);
     const cam = this.camera, v = V3();
     const b = this.b;
-    this.updateAuras(dt, t);
     if (this.set) this.set.update(dt, t);
     for (const e of this.ents.values()) {
       const u = e.u, m = e.model;
@@ -1232,10 +830,10 @@ class BattleView extends BaseView {
             fragmentShader: 'uniform vec3 c; uniform float time; varying vec3 vN; varying vec3 vV; varying vec3 vP; void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 2.5); float hex = step(0.92, fract(vP.y * 10.0 + time * 0.5)) * 0.3; gl_FragColor = vec4(c * (f + hex * f), 1.0); }',
             blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
           }));
-          e.bubble.scale.set(0.75, 1.05, 0.75); this.scene.add(e.bubble);
+          e.bubble.scale.set(0.62, 0.72, 0.62); this.scene.add(e.bubble);
         }
         if (e.bubble) {
-          e.bubble.position.set(m.group.position.x, 0.95, m.group.position.z);
+          e.bubble.position.set(m.group.position.x, 0.6, m.group.position.z);
           e.bubble.material.uniforms.time.value = t;
           if (!(u.shield > 0) || !u.alive) { this.scene.remove(e.bubble); disposeTree(e.bubble); e.bubble = null; }
         }
@@ -1274,7 +872,7 @@ class BattleView extends BaseView {
 
 // メニュー背景：ステージの風景をゆっくり周回（敵を並べることも可能）
 class SceneryView extends BaseView {
-  constructor(theme, { screenX = 640, screenY = 360, radius = 13, height = 3.2, close = false } = {}) {
+  constructor(theme = 'meadow', { screenX = 640, screenY = 360, radius = 13, height = 3.2, close = false } = {}) {
     super(theme, 40);
     this.bloomStrength = 0.8;
     this.radius = radius; this.h = height; this.models = []; this.enemyKeys = ''; this.close = close;

@@ -96,8 +96,8 @@ const GFX = {
     if (view) {
       this.renderPass.scene = view.scene;
       this.renderPass.camera = view.camera;
-      this.bloom.strength = view.bloomStrength ?? 0.7;
-      this.bloom.threshold = view.bloomThreshold ?? 0.92;
+      this.bloom.strength = view.bloomStrength ?? 0.4;
+      this.bloom.threshold = view.bloomThreshold ?? 1.6;
       this.renderer.toneMappingExposure = view.exposure ?? 1.0;
     }
     this.canvas.style.opacity = view ? 1 : 0;
@@ -160,21 +160,19 @@ const GFX = {
     const size = 256;
     const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     r.setSize(size, size); r.outputColorSpace = THREE.SRGBColorSpace;
-    r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.1;
-    for (const key of [...Object.keys(CHARS), ...Object.keys(NPCS)]) {
+    r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
+    for (const key of Object.keys(CHARS)) {
       const scene = new THREE.Scene();
-      const col = ELEMENTS[(CHARS[key] || NPCS[key]).elem].color;
-      const bg = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ map: radialTex(col, '#0a0e1c'), toneMapped: false }));
-      bg.position.set(0, 1.65, -1.2);
-      scene.add(bg);
-      addStudioLights(scene, col);
+      const col = ELEMENTS[CHARS[key].elem].color;
+      addStudioLights(scene, '#fff0dc');
       const m = buildCharacter(key);
-      m.group.rotation.y = -0.35;
-      m.setPose(POSES.idle); m.update(0, 0.8);
+      m.group.rotation.y = -0.3;
+      m.setPose(POSES.idle); m.face.set('smile'); m.update(0, 0.8);
       scene.add(m.group);
-      const cam = new THREE.PerspectiveCamera(26, 1, 0.1, 20);
-      cam.position.set(0.22, 1.74, 1.45);
-      cam.lookAt(0.04, 1.66, 0);
+      const cam = catPortraitCam(m);
+      const bg = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ map: radialTex(col, '#fff6ea'), toneMapped: false }));
+      bg.position.copy(cam.position).add(cam.getWorldDirection(V3()).multiplyScalar(3)); bg.lookAt(cam.position);
+      scene.add(bg);
       r.render(scene, cam);
       this.portraits[key] = r.domElement.toDataURL('image/png');
       disposeTree(scene);
@@ -191,7 +189,7 @@ function disposeTree(obj) {
 }
 
 function addStudioLights(scene, rimColor) {
-  scene.add(new THREE.HemisphereLight(0xdfe6ff, 0x2a2440, 0.9));
+  scene.add(new THREE.HemisphereLight(0xfff4e8, 0x8a7a6a, 1.1));
   const key = new THREE.DirectionalLight(0xfff4e6, 1.8); key.position.set(2, 4, 3); scene.add(key);
   const rim = new THREE.DirectionalLight(rimColor || 0x9fb4ff, 2.2); rim.position.set(-3, 2, -3); scene.add(rim);
 }

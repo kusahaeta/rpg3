@@ -1,7 +1,8 @@
 'use strict';
 // ============================================================
 //  フィールド探索（3D）— 章ごとに複数の区画がゲートでつながる
-//  WASD 移動／ドラッグで視点／クリック・J で攻撃（先制）／E 秘技／F 調べる・話す／M 区画マップ
+//  WASD 移動／ドラッグで視点／クリック・J で攻撃（先制）／E 秘技／F 調べる・話す／M ワールドマップ
+//  仲間は先頭の子のうしろを一列になってついてくる
 // ============================================================
 function seeded(seed) {
   return () => {
@@ -19,10 +20,9 @@ const lerpAngle = (a, b, t) => { let d = ((b - a + Math.PI) % (Math.PI * 2) + Ma
 function stagePools(stageId) {
   const st = allStages().find(s => s.id === stageId), normals = new Set(), elites = new Set();
   st.waves.flat().forEach(k => { const d = ENEMIES[k]; if (!d.boss) (d.elite ? elites : normals).add(k); });
-  if (!normals.size) normals.add('scout');
+  if (!normals.size) normals.add('slime');
   return { normals: [...normals], elites: [...elites], lv: st.lv };
 }
-function fieldUnlocked(ci) { return stageUnlocked(CHAPTERS[ci].stages[0].id); }
 
 // 探索セッション：区画を移動しても引き継ぐ状態
 class FieldSession {
@@ -37,13 +37,13 @@ class FieldSession {
 
 class FieldView extends BaseView {
   constructor(session, zoneId, arrival = { spawn: true }) {
-    const zone = FIELD_ZONES[zoneId], ch = CHAPTERS[zone.ci];
-    super(ch.bg, 50, { field: true, bare: true, zone });
-    this.s = session; this.zoneId = zoneId; this.zone = zone; this.ci = zone.ci; this.ch = ch;
-    this.persist = true; this.bloomStrength = ch.bg === 'abyss' ? 0.55 : 0.75;
-    this.exposure = { abyss: 0.85, snow: 0.9 }[ch.bg] || 1.0;
+    const zone = FIELD_ZONES[zoneId], ch = CHAPTERS[zone.ci], bg = zone.bg || ch.bg;
+    super(bg, 50, { field: true, bare: true, zone });
+    this.s = session; this.zoneId = zoneId; this.zone = zone; this.ci = zone.ci; this.ch = ch; this.bg = bg;
+    this.persist = true; this.bloomStrength = { cave: 0.7, root: 0.7, end: 0.7, tower: 0.6 }[bg] || 0.45;
+    this.exposure = { meadow: 0.95, road: 0.95, dream: 0.9 }[bg] || 1.0;
     this.keys = new Set(); this.busy = false; this.grace = 1.5;
-    this.camYaw = 0; this.camPitch = 0.3; this.camDist = 6.5;
+    this.camYaw = 0; this.camPitch = 0.4; this.camDist = 4.8;
     this.colliders = [];
     this.zoneTicks = []; this.emitters = [];
     this.rand = seeded(hashStr(zoneId));
@@ -55,7 +55,7 @@ class FieldView extends BaseView {
       (zone.exits || []).forEach(e => { if (!e.lift && !zoneOpen(e.to)) this.T.locked.add(e.key); });
     }
     // 安全エリア（人が暮らす区画・区画内の居住地）：敵が出現せず、中へ追ってもこない
-    this.town = !!zone.town;
+    this.town = zoneCalm(zone);
     this.safe = (zone.safe || []).map(a => ({ x: a.at[0], z: a.at[1], r: a.r, name: a.name }));
     (Save.data.fieldVisited || (Save.data.fieldVisited = {}))[zoneId] = true; Save.save();
     this.buildWorld();
@@ -70,8 +70,9 @@ class FieldView extends BaseView {
     // 目的地の上から再開した場合は、一度離れるまで到着扱いにしない
     this.questHold = !!(this.quest && !this.quest.gate && Math.hypot(this.quest.pos.x - sp.x, this.quest.pos.z - sp.z) < 2.4);
     this.rememberPos();
+    Music.play(zone.bgm || (zone.town ? 'village' : ['cave', 'root', 'end'].includes(bg) ? 'dark' : 'field'));
   }
-  // 探索を離れた位置を記録し、同じ章に戻ったときにそこから再開する
+  // 探索を離れた位置を記録し、次に探索するときにそこから再開する
   rememberPos() {
     const p = this.player.pos;
     Save.data.fieldResume = { ci: this.ci, zone: this.zoneId, x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: +this.player.yaw.toFixed(3) };
@@ -92,7 +93,13 @@ class FieldView extends BaseView {
     }
     // 前回の位置（地形が変わって立てない場所になっていたら時空アンカーから）
     if (a.pos && (!this.T || this.T.fits(a.pos.x, a.pos.z, 0.4))) return a.pos;
-    if (a.anchor) return { x: Z.anchor[0], z: Z.anchor[1] + 2, yaw: Math.PI };
+    // ねこ地蔵のそばに、区画の中ほどを向いて立つ（カメラが地蔵にかからないよう少し横へ）
+    if (a.anchor) {
+      const [ax, az] = Z.anchor, l = Math.hypot(ax, az), dx = l > 1 ? -ax / l : 0, dz = l > 1 ? -az / l : 1;
+      const x = ax + dx * 5 + dz * 0.6, z = az + dz * 5 - dx * 0.6;
+      if (!this.T || this.T.fits(x, z, 0.4)) return { x, z, yaw: Math.atan2(dx, dz) };
+      return { x: ax, z: az + 2, yaw: Math.PI };
+    }
     const s = Z.spawn || Z.anchor;
     return { x: s[0], z: s[1] + (Z.spawn ? 0 : 2), yaw: Math.PI };
   }
@@ -172,13 +179,14 @@ class FieldView extends BaseView {
     const Z = this.zone, P = (a, r) => ({ x: a[0], z: a[1], r });
     // 物語でまだ出会っていない人物はいない
     const npcDefs = (Z.npcs || []).filter(n => !n.after || typeof Story === 'undefined' || Story.seen(n.after));
-    this.reserved = [P(Z.anchor, 3.5)];
+    const noteDefs = (Z.notes || []).filter(n => !n.when || storyCond(n.when));
+    this.reserved = [P(Z.anchor, 3.5), ...zoneArenas(Z).map(a => ({ x: a.x, z: a.z, r: 7 }))];
     if (Z.spawn) this.reserved.push(P(Z.spawn, 4));
     if (Z.portal) this.reserved.push(P(Z.portal, 4));
     if (this.T) Object.values(this.T.exits).forEach(E => this.reserved.push({ x: E.inner.x + E.nx * 2, z: E.inner.z + E.nz * 2, r: 4 }));
     else Z.exits.forEach(e => { const p = exitPos(Z, e); this.reserved.push({ x: p.x + p.nx * 3, z: p.z + p.nz * 3, r: 4.5 }); });
     npcDefs.forEach(n => this.reserved.push(P(n.at, 2)));
-    (Z.notes || []).forEach(n => this.reserved.push(P(n.at, 2)));
+    noteDefs.forEach(n => this.reserved.push(P(n.at, 2)));
     const cur = typeof Story !== 'undefined' ? Story.current() : null;
     if (cur && cur.step.t === 'field' && cur.step.zone === this.zoneId) this.reserved.push(P(zonePoint(Z, cur.step.at), 4));
 
@@ -191,14 +199,12 @@ class FieldView extends BaseView {
     this.kit = new ZoneKit(this);
     ZONE_BUILD[Z.build](this.kit);
     this.kit.flush();
-    // 広い区画の外周を土地に合った小物で埋める（住む人のいる区画・作り込んだ地形の区画は除く）
-    if (!Z.town && !this.T) this.kit.fill(ZONE_FILL[Z.build] || ['station', 'snow', 'xian', 'void'][Z.ci]);
 
     // ゲート（区画の出入口）
     if (this.T) this.buildMapExits();
-    else this.gates = Z.exits.map(e => {
+    else this.gates = Z.exits.filter(e => zoneOpen(e.to) || !CHAPTERS[FIELD_ZONES[e.to].ci].hidden).map(e => {
       const p = exitPos(Z, e), locked = !zoneOpen(e.to);
-      const g = this.makeGate(locked);
+      const g = this.makeFieldGate(locked, FIELD_ZONES[e.to].name);
       g.g.position.set(p.x, 0, p.z); g.g.rotation.y = Math.atan2(p.nx, p.nz);
       this.scene.add(g.g);
       const side = V3(p.nz, 0, -p.nx);
@@ -210,14 +216,9 @@ class FieldView extends BaseView {
     // 時空アンカー
     this.anchor = this.makeAnchor(); put(this.anchor.g, Z.anchor[0], Z.anchor[1]); this.scene.add(this.anchor.g);
     col(Z.anchor[0], Z.anchor[1], 0.7);
-    // 任務ポータル（到着区画のみ）
-    if (Z.portal) {
-      this.portal = this.makePortal(); put(this.portal.g, Z.portal[0], Z.portal[1]); this.scene.add(this.portal.g);
-      col(Z.portal[0] - 1.7, Z.portal[1], 0.4); col(Z.portal[0] + 1.7, Z.portal[1], 0.4);
-    }
     // 住人
     this.npcs = npcDefs.map(n => {
-      const m = buildCharacter(n.key); m.setPose(POSES.idle);
+      const m = buildCharacter(n.key); m.setPose(POSES.idle); if (m.face) m.face.set(defaultFace(n.key));
       const y = put(m.group, n.at[0], n.at[1]); m.group.rotation.y = n.face != null ? n.face : Math.atan2(-n.at[0], -n.at[1] + 6);
       this.scene.add(m.group);
       // 歩き回る住人は固定の当たり判定を持たない
@@ -225,7 +226,7 @@ class FieldView extends BaseView {
       return { ...n, m, pos: V3(n.at[0], y, n.at[1]), home: V3(n.at[0], y, n.at[1]), yaw: m.group.rotation.y, line: 0, wait: this.rand() * 3, wp: null, speed: 0, phase: 0 };
     });
     // 記録（端末・石碑）
-    this.notes = (Z.notes || []).map(n => {
+    this.notes = noteDefs.map(n => {
       const o = this.makeNote(), y = put(o.g, n.at[0], n.at[1]); o.g.rotation.y = n.face != null ? n.face : Math.atan2(-n.at[0], -n.at[1]);
       this.scene.add(o.g); col(n.at[0], n.at[1], 0.5);
       return { ...n, pos: V3(n.at[0], y, n.at[1]), ...o };
@@ -255,7 +256,7 @@ class FieldView extends BaseView {
     const pool = stagePools(Z.pool || Z.stage), dead = this.s.set(this.s.defeated, this.zoneId);
     this.groups = [];
     const spawnSafe = [...this.reserved.slice(0, 3).map(p => ({ ...p, r: p.r + 6 })), ...this.safe.map(a => ({ ...a, r: a.r + 8 }))];
-    for (let i = 0; i < (Z.town ? 0 : Z.groups); i++) {
+    for (let i = 0; i < (this.town ? 0 : Z.groups); i++) {
       const p = this.freeSpot(1.6, [...spawnSafe, ...this.groups.map(g => ({ x: g.home.x, z: g.home.z, r: 6 }))]);
       const elite = pool.elites.length > 0 && (this.rand() < 0.3 || (i === Z.groups - 1 && pool.elites.length > 0));
       const n = () => pool.normals[Math.floor(this.rand() * pool.normals.length)];
@@ -264,7 +265,7 @@ class FieldView extends BaseView {
       const keys = elite ? [[n(), lead, n()]] : this.rand() < 0.35 ? [[lead, n()], [n(), n(), n()]] : [[n(), lead, n()]];
       if (dead.has(i)) continue;
       const model = buildEnemy(lead);
-      model.group.scale.multiplyScalar(0.85); model.radius *= 0.85; model.height *= 0.85;
+      if (model.isBoss) { model.group.scale.multiplyScalar(0.7); model.radius *= 0.7; model.height *= 0.7; }
       const home = V3(p.x, this.gy(p.x, p.z), p.z);
       model.group.position.copy(home); model.group.rotation.y = this.rand() * Math.PI * 2;
       this.scene.add(model.group);
@@ -278,14 +279,14 @@ class FieldView extends BaseView {
   // 開拓任務：この区画が目的地なら目印を、別区画ならそこへ続くゲートに案内を出す
   setupQuest() {
     const cur = typeof Story !== 'undefined' ? Story.current() : null;
-    if (!cur || cur.step.t !== 'field' || cur.step.ci !== this.ci) return;
+    if (!cur || cur.step.t !== 'field') return;
     const step = cur.step;
     if (step.zone !== this.zoneId) {
       const path = zonePath(this.zoneId, step.zone);
       const gate = path && this.gates.find(g => g.exit.to === path[1]);
       if (gate) {
         const x = gate.x + gate.nx * 1.5, z = gate.z + gate.nz * 1.5;
-        this.quest = { step, pos: V3(x, this.gy(x, z), z), gate, via: FIELD_ZONES[path[1]].name, lift: !!(gate.phys && gate.phys.cabin) };
+        this.quest = { step, pos: V3(x, this.gy(x, z), z), gate, via: FIELD_ZONES[path[1]].name, lift: !!(gate.phys && gate.phys.cabin), far: path.length > 2 ? FIELD_ZONES[step.zone].name : null };
       }
       return;
     }
@@ -326,7 +327,7 @@ class FieldView extends BaseView {
     this.root.querySelector('.fd-wipe').classList.add('on');
     const banner = this.root.querySelector('.fd-banner');
     banner.className = 'fd-banner show zone'; banner.textContent = FIELD_ZONES[to].name;
-    Sfx.warp(3);
+    Sfx.door();
     setTimeout(() => {
       this.persist = false;
       const v = new FieldView(this.s, to, arrival);
@@ -342,90 +343,87 @@ class FieldView extends BaseView {
   showZoneTitle() {
     const t = this.root.querySelector('.fd-title');
     t.innerHTML = `<small>${this.ch.name}</small><b>${this.zone.name}</b>`;
+    if (this.zone.town) Sfx.meow(this.team[this.leader].key);
     t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
   }
 
   // ============================================================
   //  オブジェクト
   // ============================================================
-  makeGate(locked) {
-    const g = new THREE.Group(), col = locked ? '#ff4d6d' : THEMES[this.ch.bg].line;
-    const pm = new THREE.MeshStandardMaterial({ color: '#2a2d48', metalness: 0.6, roughness: 0.35 });
-    for (const sd of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.7, 5.2, 0.7), pm); p.position.set(sd * 2.5, 2.6, 0); p.castShadow = true; g.add(p);
-      const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 4.6, 0.74), glowMat(col, 2.5)); l.position.set(sd * 2.5, 2.6, 0); g.add(l); }
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.6, 0.8), pm); beam.position.y = 5.3; beam.castShadow = true; g.add(beam);
-    const face = new THREE.Mesh(new THREE.PlaneGeometry(4.3, 4.9), new THREE.MeshBasicMaterial({ map: radialTex(locked ? '#ff8098' : '#ffffff', '#000000'), color: hdr(col, locked ? 0.9 : 0.7),
-      transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-    face.position.y = 2.55; g.add(face);
+  // 平らな区画の出入口：木のアーチと行き先の立て札。封鎖中は板でふさがれている
+  makeFieldGate(locked, to) {
+    const g = new THREE.Group();
+    const wood = toon('#8a5a36'), dark = toon('#5a3a22'), leaf = toon('#5ab04a');
+    for (const sd of [-1, 1]) {
+      const p = outlined(new THREE.CylinderGeometry(0.22, 0.26, 4.2, 8), wood, { thick: 0.002 }); p.position.set(sd * 2.4, 2.1, 0); g.add(p);
+      for (let i = 0; i < 3; i++) { const l = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), leaf); l.position.set(sd * 2.4 + (Math.random() - 0.5) * 0.6, 3.6 + i * 0.35, (Math.random() - 0.5) * 0.4); g.add(l); }
+    }
+    const beam = outlined(new THREE.BoxGeometry(5.6, 0.45, 0.45), dark, { thick: 0.002 }); beam.position.y = 4.1; g.add(beam);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.85), new THREE.MeshBasicMaterial({ map: signTex(to, locked ? '通れない' : '▶ この先', locked ? '#ff6a6a' : '#ffd27a'), transparent: true, toneMapped: false, side: THREE.DoubleSide }));
+    sign.position.set(0, 4.75, 0.05); g.add(sign);
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(4.3, 3.8), new THREE.MeshBasicMaterial({ map: radialTex('#ffffff', '#000000'), color: hdr(locked ? '#ff8a8a' : '#fff0c8', 0.5),
+      transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    face.position.y = 1.9; g.add(face);
+    if (locked) for (const y of [1.0, 2.2]) { const b = outlined(new THREE.BoxGeometry(5, 0.3, 0.15), wood, { thick: 0.002 }); b.position.set(0, y, 0.1); b.rotation.z = (y > 2 ? -1 : 1) * 0.18; g.add(b); }
     const arrows = [];
     if (!locked) for (let i = 0; i < 3; i++) {
-      const a = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 3), glowMat(col, 2.2)); a.rotation.set(-Math.PI / 2, 0, 0); a.scale.set(1, 1, 0.2);
-      a.position.set(0, 0.05, 1.4 + i * 0.9); a.rotation.z = Math.PI; g.add(a); arrows.push(a);
+      const a = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.5, 3), glowMat('#ffd27a', 2)); a.rotation.set(-Math.PI / 2, 0, Math.PI); a.scale.set(1, 1, 0.2);
+      a.position.set(0, 0.05, 1.4 + i * 0.8); g.add(a); arrows.push(a);
     }
     return { g, face, arrows };
   }
+  // 記録：石碑
   makeNote() {
-    const g = new THREE.Group(), bg = this.ch.bg;
-    if (bg === 'station' || bg === 'abyss') {
-      const base = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.1, 0.5), new THREE.MeshStandardMaterial({ color: '#23263f', metalness: 0.6, roughness: 0.4 }));
-      base.position.y = 0.55; base.castShadow = true; g.add(base);
-      const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.55), glowMat(bg === 'abyss' ? '#ff6b8a' : '#56c8ff', 1.8));
-      scr.position.set(0, 1.25, 0.12); scr.rotation.x = -0.5; g.add(scr);
-    } else {
-      const stele = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.6, 0.25), new THREE.MeshStandardMaterial({ color: bg === 'snow' ? '#8a9ab4' : '#8a8078', roughness: 0.9 }));
-      stele.position.y = 0.8; stele.castShadow = true; g.add(stele);
-      const rune = new THREE.Mesh(new THREE.CircleGeometry(0.22, 6), glowMat(bg === 'snow' ? '#9fd8ff' : '#ffcf6a', 2));
-      rune.position.set(0, 1.1, 0.13); g.add(rune);
-    }
+    const g = new THREE.Group();
+    const stele = outlined(new THREEX.RoundedBoxGeometry(0.9, 1.4, 0.28, 2, 0.08), toon('#b8b0a0'), { thick: 0.002 });
+    stele.position.y = 0.7; g.add(stele);
+    const rune = new THREE.Mesh(new THREE.CircleGeometry(0.2, 6), glowMat('#ffd27a', 1.8)); rune.position.set(0, 1.0, 0.15); g.add(rune);
     const mark = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffffff', 0.6), blending: THREE.AdditiveBlending, depthWrite: false }));
-    mark.scale.setScalar(0.8); mark.position.y = 2; g.add(mark);
+    mark.scale.setScalar(0.8); mark.position.y = 1.8; g.add(mark);
     return { g, mark };
   }
+  // 宝箱
   makeChest() {
     const g = new THREE.Group();
-    const body = toon('#2c3f7a'), gold = toon('#e8c77a', { emissive: new THREE.Color('#e8c77a'), emissiveIntensity: 0.3 });
-    const base = outlined(new THREEX.RoundedBoxGeometry(0.95, 0.5, 0.62, 2, 0.06), body); base.position.y = 0.25; g.add(base);
-    const band = outlined(new THREE.BoxGeometry(0.98, 0.08, 0.65), gold); band.position.y = 0.42; g.add(band);
-    const lid = new THREE.Group(); lid.position.set(0, 0.5, -0.31); g.add(lid);
-    const top = outlined(new THREE.CylinderGeometry(0.31, 0.31, 0.95, 16, 1, false, 0, Math.PI), body);
-    top.rotation.z = Math.PI / 2; top.position.set(0, 0, 0.31); lid.add(top);
-    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.07), glowMat('#7fd8ff', 4)); gem.position.set(0, 0.02, 0.63); lid.add(gem);
+    const body = toon('#b0503a'), gold = toon('#ffd24a', { emissive: new THREE.Color('#ffd24a'), emissiveIntensity: 0.3 });
+    const base = outlined(new THREEX.RoundedBoxGeometry(0.9, 0.5, 0.6, 2, 0.06), body); base.position.y = 0.25; g.add(base);
+    const band = outlined(new THREE.BoxGeometry(0.93, 0.08, 0.63), gold); band.position.y = 0.42; g.add(band);
+    const lid = new THREE.Group(); lid.position.set(0, 0.5, -0.3); g.add(lid);
+    const top = outlined(new THREE.CylinderGeometry(0.3, 0.3, 0.9, 16, 1, false, 0, Math.PI), body);
+    top.rotation.z = Math.PI / 2; top.position.set(0, 0, 0.3); lid.add(top);
+    const gem = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), glowMat('#8ad8ff', 3)); gem.position.set(0, 0.02, 0.61); lid.add(gem);
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffd66b', 0.8), blending: THREE.AdditiveBlending, depthWrite: false }));
-    glow.scale.setScalar(2.2); glow.position.y = 0.6; g.add(glow);
+    glow.scale.setScalar(2.0); glow.position.y = 0.6; g.add(glow);
     return { g, lid, glow };
   }
+  // またたびの茂み（叩くと、またたびポイントが回復）
   makeCrystal() {
     const g = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 0.2, 8), new THREE.MeshStandardMaterial({ color: '#23213a', metalness: 0.6, roughness: 0.4 }));
-    base.position.y = 0.1; g.add(base);
-    const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.32), new THREE.MeshStandardMaterial({ color: '#b4a9ff', emissive: '#7d6bff', emissiveIntensity: 1.6, roughness: 0.1, transparent: true, opacity: 0.9 }));
-    gem.scale.y = 1.6; gem.position.y = 0.9; g.add(gem);
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#7d6bff', 0.9), blending: THREE.AdditiveBlending, depthWrite: false }));
-    sp.scale.setScalar(1.6); sp.position.y = 0.9; g.add(sp);
+    const lm = toon('#6ac05a'), fm = toon('#ffc8e8', { emissive: new THREE.Color('#ff9ad8'), emissiveIntensity: 0.6 });
+    for (let i = 0; i < 4; i++) { const m = outlined(new THREE.IcosahedronGeometry(0.42, 1), lm, { thick: 0.002 }); m.position.set((i % 2 - 0.5) * 0.5, 0.38 + (i > 1 ? 0.28 : 0), (i > 1 ? 0 : 0.2)); m.scale.y = 0.8; g.add(m); }
+    const gem = new THREE.Group(); gem.position.y = 0.9; g.add(gem);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; const f = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), fm); f.position.set(Math.cos(a) * 0.4, Math.sin(i * 2) * 0.1, Math.sin(a) * 0.4); gem.add(f); }
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ff9ad8', 0.6), blending: THREE.AdditiveBlending, depthWrite: false }));
+    sp.scale.setScalar(1.8); sp.position.y = 0.7; g.add(sp);
     return { g, gem, sp };
   }
+  // ねこ地蔵（ここで休める。赤いよだれかけ）
   makeAnchor() {
     const g = new THREE.Group();
-    const m = new THREE.MeshStandardMaterial({ color: '#e8e4f5', metalness: 0.5, roughness: 0.3 });
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 0.3, 6), m); base.position.y = 0.15; base.castShadow = true; g.add(base);
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 2.6, 8), m); pole.position.y = 1.5; pole.castShadow = true; g.add(pole);
-    const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), glowMat('#6fd6ff', 3)); core.position.y = 2.9; g.add(core);
-    const rings = [0.5, 0.75].map(r => { const t = new THREE.Mesh(new THREE.TorusGeometry(r, 0.025, 8, 48), glowMat('#6fd6ff', 2.5)); t.position.y = 2.9; g.add(t); return t; });
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#6fd6ff', 0.9), blending: THREE.AdditiveBlending, depthWrite: false }));
-    sp.scale.setScalar(2.5); sp.position.y = 2.9; g.add(sp);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(1.5, 1.6, 64), glowMat('#6fd6ff', 2, { side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
+    const stone = toon('#b8b4a8'), red = toon('#e0453a');
+    const base = outlined(new THREE.CylinderGeometry(0.7, 0.8, 0.35, 10), toon('#8a847a')); base.position.y = 0.17; g.add(base);
+    const body = outlined(new THREE.SphereGeometry(0.42, 16, 12), stone); body.scale.set(1, 1.2, 0.9); body.position.y = 0.8; g.add(body);
+    const head = outlined(new THREE.SphereGeometry(0.4, 16, 12), stone); head.scale.set(1.12, 0.95, 1); head.position.y = 1.45; g.add(head);
+    for (const sd of [-1, 1]) { const eg = new THREE.ConeGeometry(0.13, 0.26, 4); eg.rotateY(Math.PI / 4); const e = outlined(eg, stone); e.scale.z = 0.5; e.position.set(sd * 0.24, 1.8, 0); e.rotation.z = -sd * 0.35; g.add(e); }
+    for (const sd of [-1, 1]) { const ey = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 6, 12, Math.PI), new THREE.MeshBasicMaterial({ color: '#3a3430' })); ey.position.set(sd * 0.15, 1.5, 0.37); g.add(ey); }
+    const bib = new THREE.Mesh(new THREE.CircleGeometry(0.34, 16, Math.PI, Math.PI), red); bib.position.set(0, 1.17, 0.36); bib.rotation.x = -0.25; g.add(bib);
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), glowMat('#8affc8', 2.6)); core.position.set(0, 2.35, 0); g.add(core);
+    const rings = [0.3, 0.45].map(r => { const t = new THREE.Mesh(new THREE.TorusGeometry(r, 0.018, 8, 40), glowMat('#8affc8', 2.2)); t.position.y = 2.35; g.add(t); return t; });
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#8affc8', 0.7), blending: THREE.AdditiveBlending, depthWrite: false }));
+    sp.scale.setScalar(1.8); sp.position.y = 2.35; g.add(sp);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.5, 64), glowMat('#8affc8', 1.6, { side: THREE.DoubleSide, transparent: true, opacity: 0.6 }));
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring);
     return { g, core, rings };
-  }
-  makePortal() {
-    const g = new THREE.Group();
-    const frame = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.12, 12, 64), glowMat('#e8c77a', 2.6)); frame.position.y = 1.9; g.add(frame);
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(1.6, 48), new THREE.MeshBasicMaterial({ map: radialTex('#fff2c8', '#4a2a8a'), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }));
-    disc.position.y = 1.9; g.add(disc);
-    for (const sd of [-1, 1]) {
-      const p = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.5), toon('#2a2d48')); p.position.set(sd * 1.7, 0.2, 0); g.add(p);
-    }
-    return { g, frame, disc };
   }
 
   // ============================================================
@@ -667,6 +665,42 @@ class FieldView extends BaseView {
     this.scene.add(m.group);
     this.player = { m, pos: pos.clone(), y: 0, vy: 0, yaw, phase: 0, speed: 0, dir: V3(Math.sin(yaw), 0, Math.cos(yaw)), atk: 0, hitDone: true };
     this.placePlayer(0);
+    this.spawnFollowers();
+  }
+  // 仲間：先頭の子の足あとをたどって一列でついてくる
+  spawnFollowers() {
+    (this.followers || []).forEach(f => { this.scene.remove(f.m.group); disposeTree(f.m.group); });
+    const p = this.player, back = V3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
+    this.trail = [];
+    for (let i = 0; i < 40; i++) this.trail.push(p.pos.clone().addScaledVector(back, i * 0.2));
+    this.followers = this.team.map((mem, i) => ({ mem, i })).filter(x => x.i !== this.leader && x.mem.hpRatio > 0).map((x, k) => {
+      const m = buildCharacter(x.mem.key); m.setPose(POSES.idle); this.scene.add(m.group);
+      // 二匹ずつ横にならんで、先頭の子の後ろをついてくる（カメラと先頭の子のあいだをふさがない）
+      const gap = [1.0, 1.0, 2.0][k] ?? 1.0 * (k + 1), side = [-0.62, 0.62, 0][k] ?? 0;
+      const pos = p.pos.clone().addScaledVector(back, gap).add(V3(back.z, 0, -back.x).multiplyScalar(side));
+      return { m, pos, yaw: p.yaw, phase: k, speed: 0, gap, side };
+    });
+  }
+  updateFollowers(d, t) {
+    const p = this.player, tr = this.trail;
+    if (tr[0].distanceTo(p.pos) > 0.2) { tr.unshift(p.pos.clone()); if (tr.length > 60) tr.pop(); }
+    for (const f of this.followers) {
+      // 足あとの列にそって gap だけ後ろの点
+      let need = f.gap, target = tr[tr.length - 1].clone(), dir = null;
+      for (let i = 1; i < tr.length; i++) { const seg = tr[i - 1].distanceTo(tr[i]); if (need <= seg) { target = tr[i - 1].clone().lerp(tr[i], need / seg); dir = V3().subVectors(tr[i - 1], tr[i]).setY(0).normalize(); break; } need -= seg; }
+      if (f.side) { const fw = dir && dir.lengthSq() > 0.5 ? dir : V3(Math.sin(p.yaw), 0, Math.cos(p.yaw)); target.x += fw.z * f.side; target.z -= fw.x * f.side; }
+      const dx = target.x - f.pos.x, dz = target.z - f.pos.z, dist = Math.hypot(dx, dz);
+      const want = dist > 0.05 ? Math.min(9, dist * 6) : 0;
+      f.speed += (want - f.speed) * (1 - Math.exp(-10 * d));
+      if (dist > 0.02) { const st = Math.min(dist, f.speed * d); f.pos.x += dx / dist * st; f.pos.z += dz / dist * st; f.yaw = lerpAngle(f.yaw, Math.atan2(dx, dz), 1 - Math.exp(-10 * d)); }
+      if (dist > 6) f.pos.copy(target);
+      f.pos.y = this.gy(f.pos.x, f.pos.z);
+      this.walkPose(f, d, f.speed > 6);
+      f.m.group.position.set(f.pos.x, f.pos.y, f.pos.z); f.m.group.rotation.y = f.yaw;
+      // カメラのすぐ前に来たら見えなくする
+      f.m.group.visible = this.camera.position.distanceTo(V3(f.pos.x, f.pos.y + 0.5, f.pos.z)) > 1.3;
+      f.m.update(d, t + f.phase);
+    }
   }
   switchLeader(i) {
     if (this.busy || !this.team[i] || i === this.leader) return;
@@ -674,9 +708,9 @@ class FieldView extends BaseView {
     this.leader = i;
     this.spawnPlayer(this.player.pos, this.player.yaw);
     const col = ELEMENTS[CHARS[this.team[i].key].elem].color;
-    this.fx.ring(this.player.pos.clone().add(V3(0, 0.05, 0)), col, { r: 1.8, life: 0.6 });
-    this.p.burst(this.player.pos.clone().add(V3(0, 1, 0)), col, 40, { speed: 3, life: 0.7 });
-    Sfx.select(); this.renderTeam();
+    this.fx.ring(this.player.pos.clone().add(V3(0, 0.05, 0)), col, { r: 1.4, life: 0.6 });
+    this.p.burst(this.player.pos.clone().add(V3(0, 0.6, 0)), col, 40, { speed: 3, life: 0.7 });
+    Sfx.meow(this.team[i].key); this.renderTeam();
   }
 
   updatePlayer(d) {
@@ -689,7 +723,7 @@ class FieldView extends BaseView {
     const sprint = k.has('shift');
     const attacking = p.atk > 0;
     let target = 0;
-    if (len > 0 && !this.busy) { mx /= len; mz /= len; target = sprint ? 8.2 : 4.6; p.dir.set(mx, 0, mz); }
+    if (len > 0 && !this.busy) { mx /= len; mz /= len; target = sprint ? 7.4 : 4.2; p.dir.set(mx, 0, mz); }
     if (attacking) target *= 0.15;
     p.speed += (target - p.speed) * (1 - Math.exp(-10 * d));
     if (len > 0 && !attacking) p.yaw = lerpAngle(p.yaw, Math.atan2(p.dir.x, p.dir.z), 1 - Math.exp(-14 * d));
@@ -697,7 +731,7 @@ class FieldView extends BaseView {
     p.vy -= 20 * d; p.y = Math.max(0, p.y + p.vy * d);
     if (p.y === 0) p.vy = Math.max(0, p.vy);
     this.placePlayer(d);
-    if (p.speed > 6 && p.y === 0 && Math.random() < d * 20) this.p.emit(p.pos.clone().add(V3(0, 0.1, 0)), V3((Math.random() - 0.5), 0.6, (Math.random() - 0.5)), hdr('#c8d0ff', 0.8), { life: 0.5, size: 0.12 });
+    if (p.speed > 5.5 && p.y === 0 && Math.random() < d * 20) this.p.emit(p.pos.clone().add(V3(0, 0.1, 0)), V3((Math.random() - 0.5), 0.6, (Math.random() - 0.5)), hdr('#e8dcc8', 0.6), { life: 0.5, size: 0.12 });
     if (attacking) {
       p.atk -= d;
       if (!p.hitDone && p.atk <= 0.29) { p.hitDone = true; this.attackHit(); }
@@ -739,7 +773,7 @@ class FieldView extends BaseView {
   // 歩き・走りのポーズ（プレイヤーと住人で共用）
   walkPose(w, d, sprint) {
     const P = w.m.pose;
-    const amp = Math.min(1.3, w.speed / 4.6);
+    const amp = Math.min(1.3, w.speed / 4.2);
     w.phase += d * (4 + w.speed * 1.35);
     const s = Math.sin(w.phase);
     for (const k of POSE_KEYS) P[k] = POSES.idle[k] || 0;
@@ -783,13 +817,13 @@ class FieldView extends BaseView {
   attackHit() {
     const p = this.player, fwd = V3(Math.sin(p.yaw), 0, Math.cos(p.yaw));
     const col = ELEMENTS[CHARS[this.team[this.leader].key].elem].color;
-    const at = p.pos.clone().addScaledVector(fwd, 1.1).add(V3(0, 1.0, 0));
-    this.fx.slash(at, col, { cam: this.camera, size: 2.2 });
+    const at = p.pos.clone().addScaledVector(fwd, 0.9).add(V3(0, 0.55, 0));
+    this.fx.slash(at, col, { cam: this.camera, size: 1.6 });
     this.p.burst(at, col, 14, { speed: 3, life: 0.35, size: 0.08 });
     for (const g of this.groups) {
       if (!g.alive) continue;
       const to = g.pos.clone().sub(p.pos); const dist = to.length();
-      if (dist < 2.2 + g.model.radius * 0.6 && to.normalize().dot(fwd) > 0.1) {
+      if (dist < 1.9 + g.model.radius * 0.6 && to.normalize().dot(fwd) > 0.1) {
         g.model.flash('#ffffff', 1.5); Sfx.hit(); GFX.shake(0.15);
         this.encounter(g, 'player');
         return;
@@ -798,10 +832,10 @@ class FieldView extends BaseView {
     for (const c of this.crystals) {
       if (c.broken || c.pos.distanceTo(p.pos) > 1.9) continue;
       c.broken = true; c.g.visible = false; this.s.set(this.s.broken, this.zoneId).add(c.id);
-      this.fx.shards(c.pos.clone().add(V3(0, 0.9, 0)), '#9d8cff', 16, 4);
-      this.fx.sprite(c.pos.clone().add(V3(0, 0.9, 0)), '#9d8cff', 2.5, 0.4);
-      Sfx.brk();
-      if (Save.data.tp < 5) { Save.data.tp++; Save.save(); this.toast('秘技ポイント +1'); } else this.toast('秘技ポイントは最大です');
+      this.p.burst(c.pos.clone().add(V3(0, 0.8, 0)), '#ff9ad8', 40, { speed: 3, up: 1, life: 0.9 });
+      this.fx.sprite(c.pos.clone().add(V3(0, 0.8, 0)), '#ff9ad8', 2.2, 0.4);
+      Sfx.meow(this.team[this.leader].key);
+      if (Save.data.tp < 5) { Save.data.tp++; Save.save(); this.toast('またたびの香り……！　またたびポイント +1'); } else this.toast('またたびポイントは満タンです');
       this.renderHud();
     }
   }
@@ -809,13 +843,13 @@ class FieldView extends BaseView {
     if (this.busy) return;
     const key = this.team[this.leader].key, c = CHARS[key];
     if (this.techs.has(key)) { this.toast(`${c.name}の秘技はすでに準備済みです`); return; }
-    if (Save.data.tp < 1) { this.toast('秘技ポイントが足りません（結晶を壊すと回復）'); return; }
+    if (Save.data.tp < 1) { this.toast('またたびポイントが足りません（またたびの茂みを叩くと回復）'); return; }
     Save.data.tp--; Save.save();
     this.techs.add(key);
     const col = ELEMENTS[c.elem].color, pos = this.player.pos;
-    this.fx.pillar(pos, col, { h: 5, r: 0.7, life: 0.7, k: 1.5 });
-    this.fx.ring(pos.clone().add(V3(0, 0.05, 0)), col, { r: 2.5, life: 0.6 });
-    this.p.burst(pos.clone().add(V3(0, 1, 0)), col, 50, { speed: 4, life: 0.8, up: 0.8 });
+    this.fx.pillar(pos, col, { h: 3.5, r: 0.5, life: 0.7, k: 1.5 });
+    this.fx.ring(pos.clone().add(V3(0, 0.05, 0)), col, { r: 2, life: 0.6 });
+    this.p.burst(pos.clone().add(V3(0, 0.6, 0)), col, 50, { speed: 4, life: 0.8, up: 0.8 });
     this.player.m.flash(col, 0.8);
     Sfx.ult();
     this.toast(`秘技「${c.technique.name}」：次の戦闘開始時に発動`);
@@ -827,12 +861,11 @@ class FieldView extends BaseView {
   // ============================================================
   nearestInteract() {
     const p = this.player.pos, Z = this.zone;
-    for (const n of this.npcs) if (n.pos.distanceTo(p) < 2.2) return { type: 'npc', n, text: `${speakerName(n.key)}と話す` };
+    for (const n of this.npcs) if (n.pos.distanceTo(p) < 2.2) return { type: 'npc', n, text: `${speakerName(n.key)}と話す${n.shop ? '（' + SHOP_NAMES[n.shop] + '）' : ''}` };
     for (const n of this.notes) if (n.pos.distanceTo(p) < 2.0) return { type: 'note', n, text: `調べる：${n.title}` };
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
     const same = (x, z) => Math.abs(this.gy(x, z) - p.y) < 1.5;
-    if (Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && same(Z.anchor[0], Z.anchor[1])) return { type: 'anchor', text: '時空アンカー：HP回復／区画マップ' };
-    if (Z.portal && Math.hypot(p.x - Z.portal[0], p.z - Z.portal[1]) < 3.0 && same(Z.portal[0], Z.portal[1])) return { type: 'portal', text: '任務へ向かう（ステージ選択）' };
+    if (Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && same(Z.anchor[0], Z.anchor[1])) return { type: 'anchor', text: 'ねこ地蔵：ひと休み（HP回復）／ワールドマップ' };
     if (this.T) {
       const i = this.T.at(p.x, p.z);
       // 区画間エレベーターの籠の中
@@ -859,21 +892,21 @@ class FieldView extends BaseView {
     if (this.busy) return;
     const it = this.nearestInteract(); if (!it) return;
     if (it.type === 'npc') {
-      const n = it.n; this.startTalk(speakerName(n.key), n.lines, n);
+      const n = it.n; this.startTalk(speakerName(n.key), npcLines(n), n);
     } else if (it.type === 'note') {
       this.startTalk(it.n.title, [it.n.text], null, true);
     } else if (it.type === 'chest') {
       const c = it.c; c.opened = true;
       const all = Save.data.fieldChests || (Save.data.fieldChests = {});
       (all[this.zoneId] = all[this.zoneId] || []).push(c.id);
-      const jade = 20 + Math.floor(Math.random() * 7) * 5, exp = 300;
-      Save.data.jade += jade; Save.data.expPool += exp; Save.save();
+      const nib = 40 + Math.floor(Math.random() * 7) * 10, exp = 200 + this.ci * 120;
+      Save.data.niboshi += nib; Save.data.expPool += exp; Save.save();
       GFX.tween(0.5, t => { c.lid.rotation.x = -1.9 * t; }, Ease.back);
       c.glow.visible = false;
-      this.fx.pillar(c.pos, '#ffd66b', { h: 4, r: 0.5, life: 0.8 });
+      this.fx.pillar(c.pos, '#ffd66b', { h: 3, r: 0.4, life: 0.8 });
       this.p.burst(c.pos.clone().add(V3(0, 0.7, 0)), '#ffd66b', 60, { speed: 4, up: 1.2, life: 1.0 });
       Sfx.win();
-      this.toast(`宝箱：星玉 +${jade}　旅情の記録 +${exp}`);
+      this.toast(`宝箱：にぼし +${nib}　けいけんち +${exp}`);
       this.renderHud();
     } else if (it.type === 'anchor') {
       this.team.forEach(m => { m.hpRatio = 1; });
@@ -881,11 +914,10 @@ class FieldView extends BaseView {
       this.fx.ring(V3(Z.anchor[0], this.gy(Z.anchor[0], Z.anchor[1]) + 0.05, Z.anchor[1]), '#6fd6ff', { r: 3, life: 0.8 });
       this.p.burst(this.player.pos.clone().add(V3(0, 1, 0)), '#6dff9e', 50, { speed: 2, up: 2, life: 1 });
       Sfx.heal();
-      this.toast('チーム全員のHPが回復した');
+      this.toast('ねこ地蔵に手を合わせた。みんなのHPが回復した');
+      this.spawnFollowers();
       this.renderTeam();
       this.mapMenu();
-    } else if (it.type === 'portal') {
-      this.leave(() => App.go(StageScreen, this.ci, CHAPTERS[this.ci].stages[0].id));
     } else if (it.type === 'lift') this.rideLift(it.L);
     else if (it.type === 'call') { this.moveLift(it.L, it.lv); this.toast('エレベーターを呼んだ'); }
     else if (it.type === 'cabin') this.cabinMenu(it.g);
@@ -896,13 +928,14 @@ class FieldView extends BaseView {
     const el = this.root.querySelector('.fd-talk');
     el.classList.remove('hidden'); el.classList.toggle('note', !!isNote);
     el.querySelector('.fd-talk-name').textContent = name;
-    if (npc) { npc.m.setPose(POSES.talk || POSES.idle); }
+    if (npc) { npc.m.setPose(POSES.talk || POSES.idle); if (npc.m.face) { npc.m.face.set(npc.face2 || (defaultFace(npc.key) === 'neutral' ? 'smile' : defaultFace(npc.key))); npc.m.face.talking = true; setTimeout(() => { if (npc.m.face) npc.m.face.talking = false; }, 900); } }
     this.showTalkLine();
     Sfx.select();
   }
   showTalkLine() {
     const el = this.root.querySelector('.fd-talk'), t = this.talk;
     el.querySelector('.fd-talk-text').textContent = t.lines[t.i];
+    if (t.npc && t.npc.m.face) { t.npc.m.face.talking = true; clearTimeout(this.talkT); this.talkT = setTimeout(() => { if (t.npc.m.face) t.npc.m.face.talking = false; }, 300 + t.lines[t.i].length * 45); }
     el.querySelector('.fd-talk-next').textContent = t.i < t.lines.length - 1 ? '▼ F' : '× F';
   }
   advanceTalk() {
@@ -910,8 +943,9 @@ class FieldView extends BaseView {
     t.i++;
     if (t.i >= t.lines.length) {
       this.root.querySelector('.fd-talk').classList.add('hidden');
-      if (t.npc) t.npc.m.setPose(POSES.idle);
+      if (t.npc) { t.npc.m.setPose(POSES.idle); if (t.npc.m.face) t.npc.m.face.talking = false; }
       this.talk = null; this.busy = false;
+      if (t.npc && t.npc.shop) this.shopMenu(t.npc);
       return;
     }
     Sfx.click(); this.showTalkLine();
@@ -1038,8 +1072,8 @@ class FieldView extends BaseView {
     this.techs.clear();
     const b = new Battle({
       team: this.team.map(m => ({ ...m, energy: m.energy == null ? undefined : m.energy })),
-      techs, ambush, bg: this.ch.bg, canRetry: false, waves: g.waves, loc: typeof ZONE_ARENAS !== 'undefined' ? ZONE_ARENAS[this.zoneId] : null,
-      title: `探索　${this.zone.name}`,
+      techs, ambush, bg: this.bg, canRetry: false, waves: g.waves, loc: zoneArena(this.zoneId, g.pos),
+      title: `${this.zone.name}`,
       onResult: res => this.battleResult(g, res),
       onExit: res => this.backFromBattle(g, res),
     });
@@ -1052,8 +1086,8 @@ class FieldView extends BaseView {
     const d = Save.data, exp = Math.round((60 + g.lv * 28) * g.waves.length);
     d.expPool += g.lv * 8;
     let html = '';
-    if (g.elite) { d.jade += 20; html += '<div class="rw"><i class="ic-jade"></i>星玉 +20（強敵）</div>'; }
-    html += `<div class="rw"><i class="ic-exp"></i>旅情の記録 +${g.lv * 8}</div>`;
+    const nib = 10 + g.lv * 2 + (g.elite ? 40 : 0); d.niboshi += nib;
+    html += `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}${g.elite ? '（つよい敵）' : ''}　<i class="ic-exp"></i>けいけんち +${g.lv * 8}</div>`;
     html += '<div class="rw-team">' + this.team.map(m => {
       const up = grantExp(m.key, exp);
       m.lv = d.owned[m.key].lv;
@@ -1076,7 +1110,7 @@ class FieldView extends BaseView {
       this.team.forEach(m => { m.hpRatio = 1; m.energy = null; });
       const a = this.zone.anchor, sp = this.T ? this.T.nearestStandable(a[0], a[1] + 2, 0.5) : { x: a[0], z: a[1] + 2 };
       this.player.pos.set(sp.x, 0, sp.z);
-      setTimeout(() => this.toast('全滅した…時空アンカーで態勢を立て直した'), 400);
+      setTimeout(() => this.toast('やられちゃった……ねこ地蔵のところで目を覚ました'), 400);
     }
     if (this.team[this.leader].hpRatio <= 0) {
       const i = this.team.findIndex(m => m.hpRatio > 0);
@@ -1092,6 +1126,8 @@ class FieldView extends BaseView {
     this.root.querySelector('.fd-wipe').classList.remove('on');
     this.root.querySelector('.fd-banner').className = 'fd-banner';
     this.busy = false; this.grace = 2.5;
+    this.spawnFollowers();
+    Music.play(this.zone.bgm || (this.zone.town ? 'village' : ['cave', 'root', 'end'].includes(this.bg) ? 'dark' : 'field'));
     this.renderHud(); this.renderTeam();
     if (res.win && this.groups.every(x => !x.alive)) setTimeout(() => this.toast(`${this.zone.name}の敵をすべて倒した！`), 600);
   }
@@ -1112,11 +1148,11 @@ class FieldView extends BaseView {
     const q = this.quest;
     r.innerHTML = `
       <div class="fd-world"></div>
-      <div class="fd-zone"><small>第${this.ci + 1}章　${this.ch.name}</small><b>${this.zone.name}</b><em class="fd-safe hidden">安全エリア　敵は現れない</em></div>
-      ${q ? `<div class="fd-quest"><small>開拓任務</small><div>◆ ${q.step.g}<b class="fd-qd"></b></div>${q.via ? `<em>→ ${q.lift ? 'エレベーターで' : ''}${q.via}へ進む</em>` : ''}</div>` : ''}
+      <div class="fd-zone"><small>${this.ch.name}</small><b>${this.zone.name}</b><em class="fd-safe hidden">安全なところ　敵は出ない</em></div>
+      ${q ? `<div class="fd-quest"><small>ぼうけんの目的</small><div>◆ ${q.step.g}<b class="fd-qd"></b></div>${q.via ? `<em>→ ${q.via}へ進む${q.far ? `（目的地：${q.far}）` : ''}</em>` : ''}</div>` : ''}
       <div class="fd-tr">
         <div class="currency"></div>
-        <button class="ctl" data-map title="区画マップ (M)">MAP</button>
+        <button class="ctl" data-map title="ワールドマップ (M)">MAP</button>
         <button class="ctl" data-menu title="メニュー (Esc)">≡</button>
       </div>
       <canvas class="fd-map" width="200" height="200"></canvas>
@@ -1125,7 +1161,7 @@ class FieldView extends BaseView {
         <div class="fd-act"><kbd>クリック / J</kbd>攻撃・先制</div>
         <div class="fd-act tech"><kbd>E</kbd>秘技 <b class="tp"></b></div>
         <div class="fd-act"><kbd>Shift</kbd>ダッシュ</div>
-        <div class="fd-act"><kbd>M</kbd>区画マップ</div>
+        <div class="fd-act"><kbd>M</kbd>ワールドマップ</div>
       </div>
       <div class="fd-prompt hidden"><kbd>F</kbd><span></span></div>
       <div class="fd-talk hidden"><div class="fd-talk-name"></div><div class="fd-talk-text"></div><div class="fd-talk-next"></div></div>
@@ -1133,7 +1169,7 @@ class FieldView extends BaseView {
       <div class="fd-title"></div>
       <div class="fd-banner"></div>
       <div class="fd-wipe"></div>
-      <div class="fd-help">WASD 移動 ／ ドラッグ 視点 ／ ホイール ズーム ／ F 調べる・話す${this.T ? '・エレベーター' : ''} ／ 1〜4 操作キャラ切替</div>
+      <div class="fd-help">WASD 移動 ／ Space ジャンプ ／ ドラッグ 視点 ／ ホイール ズーム ／ F 調べる・話す ／ 1〜4 先頭の子を交代</div>
       <div class="overlay hidden"></div>`;
     this.root = r;
     this.map = r.querySelector('.fd-map').getContext('2d');
@@ -1165,7 +1201,7 @@ class FieldView extends BaseView {
       this.camYaw -= dx * 0.006; this.camPitch = clamp(this.camPitch + dy * 0.004, -0.05, 1.1);
     });
     r.addEventListener('pointerup', () => { if (down && down.moved < 6) this.attack(); down = null; });
-    r.addEventListener('wheel', e => { this.camDist = clamp(this.camDist + e.deltaY * 0.004, 3, 11); e.preventDefault(); }, { passive: false });
+    r.addEventListener('wheel', e => { this.camDist = clamp(this.camDist + e.deltaY * 0.004, 2.4, 9); e.preventDefault(); }, { passive: false });
     r.querySelector('[data-menu]').onclick = () => this.menu();
     r.querySelector('[data-map]').onclick = () => this.mapMenu();
     r.querySelector('.fd-talk').onclick = () => this.talk && this.advanceTalk();
@@ -1175,7 +1211,7 @@ class FieldView extends BaseView {
   renderHud() {
     const d = Save.data;
     this.root.querySelector('.currency').innerHTML =
-      `<span class="c-item"><i class="ic-jade"></i>${fmt(d.jade)}</span><span class="c-item"><i class="ic-tp"></i>${d.tp}/5</span>`;
+      `<span class="c-item" title="にぼし"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><span class="c-item" title="またたびポイント"><i class="ic-tp"></i>${d.tp}/5</span>`;
     this.root.querySelector('.fd-act.tech .tp').textContent = `${d.tp}/5`;
   }
   renderTeam() {
@@ -1202,51 +1238,30 @@ class FieldView extends BaseView {
     if (this.busy) return;
     this.busy = true; this.overlayOpen = true; this.keys.clear();
     const left = this.groups.filter(g => g.alive).length, chests = this.chests.filter(c => !c.opened).length;
-    o.innerHTML = `<div class="ov-box"><h2>探索メニュー</h2>
-      <div class="dim">${this.zone.name}：${this.town ? '安全エリア' : `残りの敵 ${left}`} ／ 未開封の宝箱 ${chests}</div>
-      <button class="btn gold" data-m="resume">探索を続ける</button>
-      <button class="btn" data-m="map">区画マップ</button>
+    o.innerHTML = `<div class="ov-box"><h2>メニュー</h2>
+      <div class="dim">${this.zone.name}：${this.town ? '安全なところ' : `残りの敵 ${left}`} ／ まだ開けていない宝箱 ${chests}</div>
+      <button class="btn gold" data-m="resume">冒険を続ける</button>
+      <button class="btn" data-m="map">ワールドマップ</button>
       <button class="btn" data-m="recap">あらすじ</button>
-      <button class="btn" data-m="stage">任務へ（ステージ選択）</button>
-      <button class="btn" data-m="hub">列車に戻る</button></div>`;
+      <button class="btn" data-m="hub">おうちに帰る</button></div>`;
     o.classList.remove('hidden');
     o.querySelector('[data-m=resume]').onclick = () => this.closeOverlay();
     o.querySelector('[data-m=map]').onclick = () => { this.closeOverlay(); this.mapMenu(); };
     o.querySelector('[data-m=recap]').onclick = () => renderRecap(o, () => this.closeOverlay(),
-      id => this.leave(() => App.go(DialogueScreen, id, () => App.go(FieldScreen, this.ci))));
-    o.querySelector('[data-m=stage]').onclick = () => this.leave(() => App.go(StageScreen, this.ci, CHAPTERS[this.ci].stages[0].id));
+      id => this.leave(() => App.go(DialogueScreen, id, () => App.go(FieldScreen))));
     o.querySelector('[data-m=hub]').onclick = () => this.leave(() => App.go(HubScreen));
   }
-  // 区画マップ：訪れた区画の時空アンカーへワープできる
+  // ワールドマップ：訪れた場所のねこ地蔵へひとっとび
   mapMenu() {
     const o = this.root.querySelector('.overlay');
     if (this.overlayOpen) { this.closeOverlay(); return; }
     if (this.busy) return;
     this.busy = true; this.overlayOpen = true; this.keys.clear();
-    const ids = CHAPTER_ZONES[this.ci], visited = Save.data.fieldVisited || {};
-    const cur = typeof Story !== 'undefined' ? Story.current() : null;
-    const qz = cur && cur.step.t === 'field' && cur.step.ci === this.ci ? cur.step.zone : null;
-    // 簡易レイアウト：BFS の深さで列、同じ深さで行
-    const depth = { [ids[0]]: 0 }, q = [ids[0]];
-    while (q.length) { const z = q.shift(); for (const e of FIELD_ZONES[z].exits) if (!(e.to in depth)) { depth[e.to] = depth[z] + 1; q.push(e.to); } }
-    const cols = {}; ids.forEach(id => (cols[depth[id]] = cols[depth[id]] || []).push(id));
-    const pos = {}; Object.entries(cols).forEach(([dp, list]) => list.forEach((id, i) => { pos[id] = { x: 90 + dp * 170, y: 160 + (i - (list.length - 1) / 2) * 120 }; }));
-    const W = 90 + (Math.max(...Object.keys(cols).map(Number)) + 1) * 170;
-    const lines = []; ids.forEach(id => FIELD_ZONES[id].exits.forEach(e => { if (id < e.to) lines.push(`<line x1="${pos[id].x}" y1="${pos[id].y}" x2="${pos[e.to].x}" y2="${pos[e.to].y}" class="${zoneOpen(e.to) && zoneOpen(id) ? '' : 'locked'}"/>`); }));
-    const chestsLeft = id => FIELD_ZONES[id].chests - ((Save.data.fieldChests || {})[id] || []).length;
-    o.innerHTML = `<div class="ov-box fd-mapbox"><h2>${this.ch.name}</h2>
-      <div class="fd-graph" style="width:${W}px"><svg width="${W}" height="320">${lines.join('')}</svg>
-      ${ids.map(id => { const Z = FIELD_ZONES[id], open = zoneOpen(id), vis = visited[id], here = id === this.zoneId;
-        return `<button class="fd-node ${here ? 'here' : ''} ${open ? '' : 'locked'} ${vis ? 'vis' : ''}" data-z="${id}" style="left:${pos[id].x}px;top:${pos[id].y}px" ${open && vis && !here ? '' : 'disabled'}>
-          ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${Z.name}</b><small>${here ? '現在地' : !open ? '未開放' : vis ? 'ワープ可能' : '未踏'}　宝箱 ${chestsLeft(id)}</small></button>`; }).join('')}
-      </div>
-      <div class="dim">訪れたことのある区画の時空アンカーへワープできる</div>
-      <button class="btn gold" data-close>閉じる</button></div>`;
+    o.innerHTML = worldMapHTML(this.zoneId) + '<div class="wm-foot"><span class="dim">行ったことのある場所の「ねこ地蔵」へ、ひとっとびできる</span><button class="btn gold" data-close>閉じる</button></div></div>';
     o.classList.remove('hidden');
     o.querySelector('[data-close]').onclick = () => this.closeOverlay();
     o.querySelectorAll('[data-z]').forEach(b => b.onclick = () => { this.closeOverlay(); this.gotoZone(b.dataset.z, { anchor: true }); });
   }
-
   onKey(e, isDown) {
     const k = e.key.toLowerCase();
     if (isDown && k === 'escape') { this.talk ? this.advanceTalk() : this.menu(); return; }
@@ -1420,6 +1435,7 @@ class FieldView extends BaseView {
     if (this.T) this.updateMapParts(d, t);
     if (!this.busy) this.updatePlayer(d);
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
+    if (this.followers) this.updateFollowers(d, t);
     this.updateEnemies(d, t);
     const p = this.player;
     p.m.update(d, t);
@@ -1429,18 +1445,17 @@ class FieldView extends BaseView {
     this.notes.forEach((n, i) => { n.mark.material.opacity = 0.5 + Math.sin(t * 3 + i) * 0.4; });
     this.anchor.rings.forEach((r, i) => { r.rotation.x = t * (0.8 + i * 0.5); r.rotation.y = t * (0.5 + i * 0.3); });
     this.anchor.core.rotation.y = t;
-    if (this.portal) this.portal.disc.rotation.z = t * 0.6;
     const cam = this.camera.position;
     if (!this.T) this.gates.forEach(g => {
       g.arrows.forEach((a, i) => { a.scale.setScalar(0.8 + ((t * 1.5 + i * 0.33) % 1) * 0.4); });
       // カメラがゲートの光の面に近づいたら消す（画面全体が染まるのを防ぐ）
       g.face.material.opacity = 0.55 * clamp((Math.hypot(cam.x - g.x, cam.z - g.z) - 2.5) / 4, 0, 1);
     });
-    this.crystals.forEach(c => { if (!c.broken) { c.gem.rotation.y = t * 1.2; c.gem.position.y = 0.9 + Math.sin(t * 2 + c.pos.x) * 0.08; } });
+    this.crystals.forEach(c => { if (!c.broken) { c.gem.rotation.y = t * 0.8; c.gem.position.y = 0.9 + Math.sin(t * 2 + c.pos.x) * 0.06; } });
     this.chests.forEach(c => { if (!c.opened) c.glow.material.opacity = 0.6 + Math.sin(t * 3 + c.id) * 0.3; });
     // カメラ（壁・天井・障害物にめり込まないよう距離を縮める）
     const T = this.T, foot = p.vis ?? 0;
-    const head = V3(p.pos.x, foot + p.y + 1.45, p.pos.z);
+    const head = V3(p.pos.x, foot + p.y + 0.8, p.pos.z);
     const off = V3(Math.sin(this.camYaw) * Math.cos(this.camPitch), Math.sin(this.camPitch), Math.cos(this.camYaw) * Math.cos(this.camPitch));
     const ceil = T ? T.ceilOf(T.at(p.pos.x, p.pos.z)) - 0.45 : 1e9;
     let dist = this.camDist;
@@ -1451,7 +1466,7 @@ class FieldView extends BaseView {
     }
     this.curDist = this.curDist == null ? dist : dist < this.curDist ? dist : lerp(this.curDist, dist, 1 - Math.exp(-4 * d));
     const cp = head.clone().addScaledVector(off, this.curDist);
-    cp.y = clamp(cp.y, foot + 0.35, ceil);
+    cp.y = clamp(cp.y, foot + 0.3, ceil);
     this.camera.position.lerp(cp, 1 - Math.exp(-12 * d));
     this.curLook.lerp(head, 1 - Math.exp(-14 * d));
     this.camera.lookAt(this.curLook);
@@ -1475,12 +1490,12 @@ class FieldView extends BaseView {
     for (const g of this.T ? this.exitsPhys : this.gates) {
       // 地形のある区画では、近づくと看板が読めるのでラベルは遠くからだけ
       const dd = Math.hypot(g.x - p.pos.x, g.z - p.pos.z);
-      const s = dd < 30 && (!this.T || dd > 7) && this.toScreen(g.x, this.T ? g.h + g.H + 2.2 : 6.1, g.z, v);
+      const s = dd < 30 && (!this.T || dd > 7) && dd > 6 && this.toScreen(g.x, this.T ? g.h + g.H + 2.2 : 5.6, g.z, v);
       g.label.style.display = s ? '' : 'none';
       if (s) g.label.style.transform = `translate(${s[0].toFixed(1)}px, ${s[1].toFixed(1)}px)`;
     }
     for (const n of this.npcs) {
-      const s = n.pos.distanceTo(p.pos) < 12 && this.toScreen(n.pos.x, n.pos.y + 2.15 * (n.m.group.scale.y || 1), n.pos.z, v);
+      const s = n.pos.distanceTo(p.pos) < 12 && this.toScreen(n.pos.x, n.pos.y + 1.45 * (n.m.group.scale.y || 1), n.pos.z, v);
       n.label.style.display = s ? '' : 'none';
       if (s) n.label.style.transform = `translate(${s[0].toFixed(1)}px, ${s[1].toFixed(1)}px)`;
     }
@@ -1499,7 +1514,7 @@ class FieldView extends BaseView {
       }
       q.label.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
       q.label.classList.toggle('edge', !onScreen);
-      q.label.textContent = onScreen ? (q.gate ? `◆ ${q.lift ? 'エレベーターで' : ''}${q.via}へ ${Math.round(dist)}m` : `◆ ${Math.round(dist)}m`) : '◆';
+      q.label.textContent = onScreen ? (q.gate ? `◆ ${q.via}へ ${Math.round(dist)}m` : `◆ ${Math.round(dist)}m`) : '◆';
       if (dist >= 2.4) this.questHold = false;
       else if (!q.gate && !this.questHold && !this.busy) this.questArrive();
     }
@@ -1519,13 +1534,20 @@ class FieldView extends BaseView {
     const el = this.root.querySelector('.fd-safe');
     el.classList.toggle('hidden', !name);
     if (first) return;
-    if (name) this.toast(this.town ? `${name}：人々が暮らす安全エリア` : `安全エリア：${name}`);
-    else if (!this.town) this.toast('安全エリアを離れた');
+    if (name) this.toast(this.town ? `${name}：にゃんこたちが暮らす、安全なところ` : `安全なところ：${name}`);
+    else if (!this.town) this.toast('安全なところを離れた');
   }
 
   dispose() {
     this.groups.forEach(g => g.label.remove());
     super.dispose();
+  }
+
+  // ---------------- お店（武器屋・道具屋・宿屋・魚屋） ----------------
+  shopMenu(n) {
+    const o = this.root.querySelector('.overlay');
+    this.busy = true; this.overlayOpen = true; this.keys.clear();
+    renderShop(o, n.shop, speakerName(n.key), () => { this.closeOverlay(); this.renderHud(); this.renderTeam(); }, this);
   }
 }
 
@@ -1549,38 +1571,46 @@ function buildZoneSet(v, zoneId, o = {}) {
 // ------------------------------------------------------------
 //  画面
 // ------------------------------------------------------------
-function FieldScreen(ci, zoneId) {
+// zoneId を指定すればその区画のねこ地蔵から。なければ前回の場所（なければ物語の場所か、ぽかぽか村）から
+function FieldScreen(zoneId) {
   if (!GFX.ok) { alert('探索には WebGL（3D表示）が必要です。'); return HubScreen(); }
   if (GFX.view && GFX.view.persist) GFX.view.persist = false;
-  const s = new FieldSession(ci);
-  // 区画の指定がなければ、前回この章で離れた位置から再開する
+  const s = new FieldSession();
   const r = Save.data.fieldResume;
-  const resume = !zoneId && r && r.ci === ci && FIELD_ZONES[r.zone] && zoneOpen(r.zone) ? r : null;
-  const z = zoneId || (resume ? resume.zone : CHAPTER_ZONES[ci][0]);
+  const resume = !zoneId && r && FIELD_ZONES[r.zone] && zoneOpen(r.zone) ? r : null;
+  const cur = typeof Story !== 'undefined' ? Story.current() : null;
+  const z = zoneId || (resume ? resume.zone : cur && cur.step.zone && zoneOpen(cur.step.zone) ? cur.step.zone : 'pokapoka');
   const v = new FieldView(s, z, resume ? { pos: resume } : zoneId ? { anchor: true } : { spawn: true });
   v.key = 'field:' + z;
   GFX.setView(v);
   Game.activeField = v;
-  setTimeout(() => { v.showZoneTitle(); v.toast(v.T ? 'WASDで移動、クリックで敵を先制攻撃。扉やエレベーターから別の区画・別の階へ進める' : 'WASDで移動、クリックで敵を先制攻撃。ゲートから別の区画へ進める'); }, 300);
+  setTimeout(() => { v.showZoneTitle(); if (!Save.data.fieldTips) { Save.data.fieldTips = true; Save.save(); v.toast('WASDで移動。敵に先にクリックで攻撃すると「先制攻撃」！ Fで話す・調べる'); } }, 300);
   return v.root;
 }
 
-function FieldSelect() {
-  const v3 = GFX.show('scene:space', () => new SceneryView('space'));
-  if (v3) v3.setEnemies([]);
-  const s = h(`<div class="screen field-select">${topBar('探索')}
-    <div class="fs-intro"><h2>探索</h2><p>各地の区画を歩き回り、徘徊する敵との戦闘、宝箱の回収、住人との会話ができます。区画はゲートでつながっています。<br>敵に先に攻撃を当てると「先制攻撃」、敵に接触されると「奇襲」になります。</p></div>
-    <div class="fs-list">${CHAPTERS.map((c, i) => {
-      const open = fieldUnlocked(i), ids = CHAPTER_ZONES[i];
-      const total = ids.reduce((a, id) => a + FIELD_ZONES[id].chests, 0), done = ids.reduce((a, id) => a + ((Save.data.fieldChests || {})[id] || []).length, 0);
-      const zones = ids.map(id => `<span class="${zoneOpen(id) ? '' : 'off'}">${FIELD_ZONES[id].name}</span>`).join('');
-      return `<button class="fs-item bg-${c.bg} ${open ? '' : 'locked'}" data-ci="${i}">
-        <small>第${i + 1}章</small><b>${c.name}</b><div class="fs-zones">${zones}</div>
-        <em>宝箱 ${done}/${total}　${open ? '' : '（未開放）'}</em></button>`;
-    }).join('')}</div></div>`);
-  wireBack(s);
-  on(s, '[data-ci]', 'click', el => { if (!el.classList.contains('locked')) App.go(FieldScreen, +el.dataset.ci); });
-  return s;
+// ワールドマップ（ミャオニアの地図）の HTML。here = 現在地
+function worldMapHTML(here) {
+  const visited = Save.data.fieldVisited || {}, cur = typeof Story !== 'undefined' ? Story.current() : null;
+  const qz = cur && cur.step.t === 'field' ? cur.step.zone : null;
+  const ids = Object.keys(FIELD_ZONES).filter(id => !CHAPTERS[FIELD_ZONES[id].ci].hidden || zoneOpen(id));
+  const lines = [];
+  ids.forEach(id => FIELD_ZONES[id].exits.forEach(e => { if (id < e.to && ids.includes(e.to)) { const a = FIELD_ZONES[id].map2d, b = FIELD_ZONES[e.to].map2d; lines.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="${zoneOpen(e.to) && zoneOpen(id) ? '' : 'locked'}"/>`); } }));
+  const chestsLeft = id => FIELD_ZONES[id].chests - ((Save.data.fieldChests || {})[id] || []).length;
+  return `<div class="ov-box wm-box"><h2>ミャオニアの地図</h2>
+    <div class="wm-graph"><svg width="1000" height="580" viewBox="0 0 1000 580"><defs><radialGradient id="wmtree"><stop offset="0" stop-color="#8ad86a"/><stop offset="1" stop-color="#8ad86a" stop-opacity="0"/></radialGradient></defs>
+      <circle cx="470" cy="522" r="70" fill="url(#wmtree)" opacity=".35"/>${lines.join('')}</svg>
+    ${ids.map(id => { const Z = FIELD_ZONES[id], open = zoneOpen(id), vis = visited[id], h = id === here;
+      return `<button class="wm-node ${h ? 'here' : ''} ${open ? '' : 'locked'} ${vis ? 'vis' : ''} ${Z.town ? 'town' : ''}" data-z="${id}" style="left:${Z.map2d[0]}px;top:${Z.map2d[1]}px" ${open && vis && !h ? '' : 'disabled'}>
+        ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${open ? Z.name : '？？？'}</b><small>${h ? '現在地' : !open ? 'まだ行けない' : vis ? 'ひとっとび' : 'まだ行ってない'}${open ? `　宝箱 ${chestsLeft(id)}` : ''}</small></button>`; }).join('')}
+    </div>`;
+}
+
+// 区画の戦場：区画の arena（なければ、出会った場所）で戦う
+function zoneArena(zoneId, pos) {
+  const A = zoneArenas(FIELD_ZONES[zoneId]);
+  if (!A.length) return pos ? { zone: zoneId, at: [pos.x, pos.z], face: 0, world: true } : null;
+  const best = pos ? A.reduce((b, a) => Math.hypot(a.x - pos.x, a.z - pos.z) < Math.hypot(b.x - pos.x, b.z - pos.z) ? a : b) : A[0];
+  return { zone: zoneId, at: [best.x, best.z], face: best.face, world: true };
 }
 
 document.addEventListener('keydown', e => { if (Game.activeField) Game.activeField.onKey(e, true); });

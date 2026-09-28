@@ -4,68 +4,32 @@
 // ============================================================
 let SVG_SEQ = 0;
 
+// にゃんこの顔（3Dの肖像がないとき・住人など）
 function avatarSVG(key, opts = {}) {
   if (typeof GFX !== 'undefined' && GFX.portraits[key]) return `<img class="avatar" src="${GFX.portraits[key]}" alt="" draggable="false">`;
-  const c = CHARS[key] || NPCS[key], L = c.look, col = ELEMENTS[c.elem].color;
-  const id = 'av' + (++SVG_SEQ);
-  const skin = L.skin || '#f9e2d2';
-  const hair = L.hair;
-  const bg = opts.noBg ? '' : `<rect width="100" height="100" fill="url(#${id}b)"/>
-    <circle cx="80" cy="18" r="30" fill="${col}" opacity=".18"/>`;
-
-  const back = {
-    long: `<path d="M27 46 Q22 80 26 100 L74 100 Q78 80 73 46 Q72 18 50 18 Q28 18 27 46Z" fill="${hair}"/>`,
-    twin: `<path d="M30 40 Q10 58 16 96 Q24 84 29 70 Q32 56 33 46Z M70 40 Q90 58 84 96 Q76 84 71 70 Q68 56 67 46Z" fill="${hair}"/>
-           <circle cx="29" cy="36" r="4" fill="${L.accent}"/><circle cx="71" cy="36" r="4" fill="${L.accent}"/>`,
-    pony: `<path d="M64 26 Q92 30 88 70 Q86 86 78 96 Q80 72 70 52Z" fill="${hair}"/>`,
-    bob: `<path d="M27 48 Q24 72 32 76 L68 76 Q76 72 73 48 Q72 20 50 20 Q28 20 27 48Z" fill="${hair}"/>`,
-    short: `<path d="M30 50 Q28 64 33 66 L67 66 Q72 64 70 50 Q70 22 50 22 Q30 22 30 50Z" fill="${hair}"/>`,
-    spiky: `<path d="M29 50 Q24 66 30 70 L70 70 Q76 66 71 50 Q72 22 50 21 Q28 22 29 50Z" fill="${hair}"/>`,
-  }[L.style] || '';
-
-  const spikes = L.style === 'spiky'
-    ? `<path d="M34 30 L28 14 L42 24 L46 8 L54 22 L64 10 L64 26 L76 20 L68 34Z" fill="${hair}"/>` : '';
-
-  const acc = {
-    ahoge: `<path d="M50 22 Q56 8 64 10 Q56 12 52 23Z" fill="${hair}"/>`,
-    halo: `<ellipse cx="50" cy="16" rx="18" ry="4" fill="none" stroke="${L.accent}" stroke-width="2" opacity=".9"/>`,
-    pin: `<path d="M62 30 l6 -3 l1 6 z" fill="${L.accent}"/><circle cx="66" cy="31" r="2" fill="#fff" opacity=".8"/>`,
-    horn: `<path d="M36 28 L30 14 L40 25Z M64 28 L70 14 L60 25Z" fill="${L.accent}"/>`,
-    star: `<path d="M68 26 l2 4 4 .5 -3 3 .8 4 -3.8 -2 -3.8 2 .8 -4 -3 -3 4 -.5z" fill="${L.accent}"/>`,
-    butterfly: `<path d="M64 28 q6 -8 10 -2 q-4 4 -10 2z M64 28 q8 0 8 6 q-6 0 -8 -6z" fill="${L.accent}" opacity=".95"/>`,
-    phones: `<rect x="26" y="44" width="6" height="12" rx="3" fill="${L.accent}"/><rect x="68" y="44" width="6" height="12" rx="3" fill="${L.accent}"/>
-             <path d="M29 46 Q30 20 50 20 Q70 20 71 46" fill="none" stroke="#222" stroke-width="2"/>`,
-  }[L.acc] || '';
-
+  const c = CHARS[key] || NPCS[key], L = c.look || {}, col = (L.accent) || ELEMENTS[c.elem || 'physical'].color;
+  const id = 'av' + (++SVG_SEQ), fur = L.fur || '#f4e8d8', P = L.patches || [], mouse = L.species === 'mouse';
+  const bg = opts.noBg ? '' : `<rect width="100" height="100" fill="url(#${id}b)"/>`;
+  const ears = mouse ? `<circle cx="26" cy="30" r="15" fill="${fur}" stroke="#3a2a2a" stroke-width="2"/><circle cx="74" cy="30" r="15" fill="${fur}" stroke="#3a2a2a" stroke-width="2"/><circle cx="26" cy="30" r="9" fill="${L.earIn || '#f2b8c0'}"/><circle cx="74" cy="30" r="9" fill="${L.earIn || '#f2b8c0'}"/>`
+    : `<path d="M18 46 L24 12 L44 30Z M82 46 L76 12 L56 30Z" fill="${fur}" stroke="#3a2a2a" stroke-width="2" stroke-linejoin="round"/><path d="M24 36 L27 20 L38 31Z M76 36 L73 20 L62 31Z" fill="${L.earIn || '#f7b8c0'}"/>`;
+  const patch = L.pattern === 'calico' ? `<ellipse cx="34" cy="38" rx="16" ry="12" fill="${P[0]}"/><ellipse cx="68" cy="34" rx="10" ry="9" fill="${P[1]}"/>`
+    : L.pattern === 'tabby' ? `<path d="M42 30 L46 38 L50 32 L54 38 L58 30" stroke="${P[0]}" stroke-width="3" fill="none"/>` : '';
+  const eye = (x, ec) => L.sleepy ? `<path d="M${x - 7} 58 Q${x} 62 ${x + 7} 58" stroke="#2a1c22" stroke-width="3" fill="none" stroke-linecap="round"/>`
+    : `<ellipse cx="${x}" cy="57" rx="7" ry="9" fill="${ec}" stroke="#2a1c22" stroke-width="2"/><ellipse cx="${x}" cy="58" rx="3.6" ry="6" fill="#2a1c22"/><circle cx="${x - 2.5}" cy="53" r="2.2" fill="#fff"/>`;
   return `<svg class="avatar" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-  <defs>
-    <radialGradient id="${id}b" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="${col}" stop-opacity=".55"/><stop offset="1" stop-color="#0a0e1c"/></radialGradient>
-    <linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
-  </defs>
+  <defs><radialGradient id="${id}b" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="${col}" stop-opacity=".6"/><stop offset="1" stop-color="#fff6ea"/></radialGradient>
+  <clipPath id="${id}c"><ellipse cx="50" cy="58" rx="36" ry="30"/></clipPath></defs>
   ${bg}
-  ${back}
-  <path d="M16 100 Q18 80 38 75 L50 82 L62 75 Q82 80 84 100Z" fill="${L.outfit}"/>
-  <path d="M38 75 L50 90 L62 75" fill="none" stroke="${L.accent}" stroke-width="2.2"/>
-  <circle cx="50" cy="93" r="2.6" fill="${L.accent}"/>
-  <rect x="45" y="63" width="10" height="14" fill="${skin}"/>
-  <rect x="45" y="63" width="10" height="5" fill="#000" opacity=".12"/>
-  <path d="M33 49 Q33 70 50 73 Q67 70 67 49 Q67 31 50 31 Q33 31 33 49Z" fill="${skin}"/>
-  <ellipse cx="40" cy="61" rx="3.4" ry="1.6" fill="#ff8d8d" opacity=".35"/>
-  <ellipse cx="60" cy="61" rx="3.4" ry="1.6" fill="#ff8d8d" opacity=".35"/>
-  <g>
-    <ellipse cx="42.5" cy="54" rx="3.6" ry="4.8" fill="${L.eye}"/>
-    <ellipse cx="57.5" cy="54" rx="3.6" ry="4.8" fill="${L.eye}"/>
-    <ellipse cx="42.5" cy="55.5" rx="2" ry="2.6" fill="#000" opacity=".45"/>
-    <ellipse cx="57.5" cy="55.5" rx="2" ry="2.6" fill="#000" opacity=".45"/>
-    <circle cx="43.8" cy="52.2" r="1.3" fill="#fff"/><circle cx="58.8" cy="52.2" r="1.3" fill="#fff"/>
-    <path d="M38 50 Q42.5 47.6 47 49.4" stroke="#2a1d22" stroke-width="1.3" fill="none"/>
-    <path d="M53 49.4 Q57.5 47.6 62 50" stroke="#2a1d22" stroke-width="1.3" fill="none"/>
-  </g>
-  <path d="M47.8 64.5 Q50 65.8 52.2 64.5" stroke="#b0605a" stroke-width="1" fill="none"/>
-  <path d="M31 54 Q27 23 50 22 Q73 23 69 54 Q68 42 62 36 Q59 45 53 39 Q47 47 42 38 Q37 45 31 54Z" fill="${hair}"/>
-  <path d="M31 54 Q27 23 50 22 Q73 23 69 54 Q68 42 62 36 Q59 45 53 39 Q47 47 42 38 Q37 45 31 54Z" fill="url(#${id}h)"/>
-  ${spikes}
-  ${acc}
+  <path d="M22 100 Q24 84 50 82 Q76 84 78 100Z" fill="${fur}" stroke="#3a2a2a" stroke-width="2"/>
+  ${ears}
+  <ellipse cx="50" cy="58" rx="36" ry="30" fill="${fur}" stroke="#3a2a2a" stroke-width="2.4"/>
+  <g clip-path="url(#${id}c)">${patch}<ellipse cx="50" cy="72" rx="15" ry="10" fill="${L.muzzle || fur}"/></g>
+  ${eye(37, L.eye || '#6a8a3a')}${eye(63, L.eye2 || L.eye || '#6a8a3a')}
+  <path d="M47 66 L53 66 L50 69Z" fill="${L.nose || '#f08aa0'}"/>
+  <path d="M50 69 Q46 74 43 71 M50 69 Q54 74 57 71" stroke="#2a1c22" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <ellipse cx="30" cy="68" rx="5" ry="2.6" fill="#ff8d9d" opacity=".4"/><ellipse cx="70" cy="68" rx="5" ry="2.6" fill="#ff8d9d" opacity=".4"/>
+  ${L.hat ? `<path d="M26 34 L50 2 L74 34Z" fill="${L.hat}" stroke="#3a2a2a" stroke-width="2"/>` : ''}${L.crown ? `<path d="M36 28 L38 16 L44 24 L50 12 L56 24 L62 16 L64 28Z" fill="${L.crown}" stroke="#6a4a10" stroke-width="1.5"/>` : ''}
+  ${L.band ? `<path d="M15 44 Q50 30 85 44" stroke="${L.band}" stroke-width="6" fill="none"/>` : ''}${L.sprout ? `<path d="M50 30 L50 18 M50 20 Q42 14 40 20 Q46 22 50 20 M50 20 Q58 14 60 20 Q54 22 50 20" stroke="${L.sprout}" stroke-width="2.5" fill="${L.sprout}"/>` : ''}
 </svg>`;
 }
 
@@ -73,6 +37,8 @@ function avatarSVG(key, opts = {}) {
 //  敵スプライト
 // ------------------------------------------------------------
 function enemySVG(key) {
+  const dd = ENEMIES[key];
+  if (!['humanoid', 'brute', 'drone', 'beast', 'spirit', 'wraith', 'knight', 'golem', 'boss', 'empress', 'dragon', 'deity'].includes(dd.shape)) return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><ellipse cx="50" cy="60" rx="34" ry="30" fill="${dd.color}" stroke="#2a1c22" stroke-width="3"/><circle cx="38" cy="54" r="7" fill="#fff"/><circle cx="62" cy="54" r="7" fill="#fff"/><circle cx="39" cy="55" r="3.5" fill="#2a1c22"/><circle cx="63" cy="55" r="3.5" fill="#2a1c22"/></svg>`;
   const d = ENEMIES[key], c = d.color, id = 'en' + (++SVG_SEQ);
   const body = '#191628', edge = c;
   const core = `<radialGradient id="${id}c"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="${c}"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></radialGradient>`;

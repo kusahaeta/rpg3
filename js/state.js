@@ -1,39 +1,33 @@
 'use strict';
 // ============================================================
-//  セーブデータ・育成・ワープ
+//  セーブデータ・育成・友情
 // ============================================================
-const SAVE_KEY = 'galaxy_rail_nocturne_v1';
+const SAVE_KEY = 'nyanko_fantasy_v1';
 
 const Save = {
   data: null,
   defaults() {
     return {
-      jade: 4800, expPool: 2000, tp: 5,
-      owned: {
-        aster: { lv: 1, exp: 0, eid: 0 }, mizore: { lv: 1, exp: 0, eid: 0 },
-        yue: { lv: 1, exp: 0, eid: 0 },
-      },
-      team: ['aster', 'mizore', 'yue'],
+      niboshi: 300, expPool: 600, tp: 3,
+      owned: { mike: { lv: 1, exp: 0, eid: 0 } },
+      team: ['mike'],
       cleared: {},
-      gacha: { limited: { p5: 0, p4: 0, guarantee: false }, standard: { p5: 0, p4: 0 } },
-      history: [],
-      suBest: 0, suClears: {},
-      auto: false, speed: 1, ver: 2,
+      flags: {},          // 物語の進み具合で変わること（talk＝「話す」解禁、kuroGuard＝守護 など）
+      bond: {},           // 友情値（2匹の組み合わせごと）
+      bondNews: [],       // 友情レベルが上がった知らせ（ハブで表示）
+      bondSeen: {},       // 見た特別イベント
+      usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
+      gear: {},           // 武器の強化段階
+      auto: false, speed: 1, ver: 1,
     };
   },
   load() {
     try { this.data = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { this.data = null; }
     const def = this.defaults();
     if (!this.data) this.data = def;
-    // ver 2：カザネは第一章「風の刺客」で仲間になる。まだ出会っていない初期データのカザネは外す
-    // （第一章の段階4が「風の刺客」。育成・星魂の跡があれば、ワープ等で得たものとして残す）
-    if (!this.data.ver) {
-      const st = this.data.story, k = this.data.owned.kazane;
-      if (k && k.lv === 1 && !k.exp && !k.eid && (!st || (st.ch === 0 && st.step <= 4))) delete this.data.owned.kazane;
-      this.data.ver = 2;
-    }
     for (const k in def) if (this.data[k] === undefined) this.data[k] = def[k];
     this.data.team = this.data.team.filter(k => this.data.owned[k]);
+    if (!this.data.team.length) this.data.team = ['mike'];
     Game.auto = !!this.data.auto; Game.speed = this.data.speed || 1;
   },
   save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { /* 保存不可の環境 */ } },
@@ -54,47 +48,32 @@ function teamMembers() {
   return Save.data.team.map(k => ({ key: k, lv: Save.data.owned[k].lv, eid: Save.data.owned[k].eid }));
 }
 
-// ------------------------------------------------------------
-//  ワープ（本家準拠：5★基礎0.6%、74連目から確率上昇、90連天井／4★は10連保証）
-// ------------------------------------------------------------
-function warpOnce(bannerKey) {
-  const g = Save.data.gacha[bannerKey], banner = BANNERS[bannerKey];
-  g.p5++; g.p4++;
-  const rate5 = g.p5 >= 90 ? 1 : g.p5 >= 74 ? 0.006 + (g.p5 - 73) * 0.06 : 0.006;
-  let rarity, key;
-  if (Math.random() < rate5) {
-    rarity = 5; g.p5 = 0;
-    if (banner.type === 'limited') {
-      if (g.guarantee || Math.random() < 0.5) { key = banner.featured; g.guarantee = false; }
-      else { key = pick(POOL5); g.guarantee = true; }
-    } else key = pick(POOL5);
-  } else if (g.p4 >= 10 || Math.random() < 0.051) {
-    rarity = 4; g.p4 = 0;
-    key = banner.rateUp4 && Math.random() < 0.5 ? pick(banner.rateUp4) : pick(POOL4);
-  } else rarity = 3;
-
-  const res = { rarity, key, isNew: false, bonus: '' };
-  if (rarity === 3) { Save.data.expPool += 300; res.bonus = '旅情の記録 ×300EXP'; }
-  else {
-    const o = Save.data.owned[key];
-    if (!o) {
-      const top = Math.max(...Object.values(Save.data.owned).map(x => x.lv));
-      Save.data.owned[key] = { lv: Math.max(1, top - 5), exp: 0, eid: 0 };
-      res.isNew = true;
-    } else if (o.eid < 6) { o.eid++; res.bonus = `星魂 ${o.eid} 解放`; }
-    else { const j = rarity === 5 ? 40 : 8; Save.data.jade += j; res.bonus = `星玉 +${j}`; }
+// 仲間になる（編成に空きがあれば編成にも加わる）
+function joinParty(k, lv) {
+  const d = Save.data;
+  if (!d.owned[k]) {
+    const top = Math.max(...Object.values(d.owned).map(x => x.lv));
+    d.owned[k] = { lv: lv || Math.max(1, top - 1), exp: 0, eid: 0 };
   }
-  Save.data.history.unshift({ key: key || null, rarity, banner: bannerKey, t: Date.now() });
-  Save.data.history = Save.data.history.slice(0, 100);
-  return res;
+  if (d.team.length < 4 && !d.team.includes(k)) d.team.push(k);
+  Save.save();
 }
 
-function warp(bannerKey, n) {
-  const cost = 160 * n;
-  if (Save.data.jade < cost) return null;
-  Save.data.jade -= cost;
-  const out = [];
-  for (let i = 0; i < n; i++) out.push(warpOnce(bannerKey));
+// 戦闘に勝ったあと：一緒に戦った仲間どうしの友情が深まり、出番が記録される
+function afterBattleBonds(keys, boss) {
+  const d = Save.data;
+  keys.forEach(k => { d.usage[k] = (d.usage[k] || 0) + 1; });
+  for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) addBond(keys[i], keys[j], boss ? 8 : 3);
   Save.save();
-  return out;
 }
+
+// 武器の強化（にぼしを使う）
+const GEAR_MAX = 5;
+const gearCost = lv => 150 + lv * 200;
+const GEAR_NAMES = {
+  mike: ['木のつるぎ', '銅のつるぎ', '勇者のつるぎ', '流星のつるぎ', 'ひだまりの剣', 'にゃんだーの剣'],
+  kuro: ['古びた黒刀', '研いだ黒刀', '月影の刀', '守護の刀', '夜明けの刀', '絆の黒刀'],
+  shiro: ['見習いの杖', '星の杖', '天才の杖', '大天才の杖', '失敗しない杖（自称）', '成長の杖'],
+  tama: ['ふつうのまくら', 'ふかふかまくら', 'ひだまりまくら', '夢見まくら', '世界樹のまくら', 'みんなのまくら'],
+  maou: ['魔王の笏', '尊大な笏', '暗黒の笏', '元魔王の笏', 'カフェの笏', '友だちの笏'],
+};
