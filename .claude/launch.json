@@ -4,8 +4,11 @@
     {
       "name": "nyanko",
       "runtimeExecutable": "node",
-      "runtimeArgs": [".claude/serve.js"],
-      "port": 8912
+      "runtimeArgs": [
+        ".claude/serve.js"
+      ],
+      "port": 8912,
+      "autoPort": true
     }
   ]
 }

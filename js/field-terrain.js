@@ -1,14 +1,15 @@
 'use strict';
 // ============================================================
-//  区画の地形（グリッド）：部屋・通路・高低差・階段・昇降機・自動扉
+//  区画の地形（グリッド）：部屋・通路・高低差・階段・昇降機・自動扉、野外の木立・崖・川
 //  zone.map の1文字が1マス（CELL m 四方）。1行目が北（-Z）。
 //  凡例：
-//   #  壁              W  窓（外の宇宙が見えるガラス壁）      （空白） 奈落
+//   #  壁（屋外の区画では木立・崖）   W  窓            （空白） 奈落
 //   0〜9  床（数字 = 床の高さ m）
+//   ,  土の道（床。高さはとなりの床と同じ）   =  橋（床。下は川）   ~  川・池（通れない）
 //   ^ v < >  階段（矢印の向きへ上る。両端の床の高さを結ぶ）
 //   E  昇降機（となり合う床の高さのあいだを上下する）
 //   D  自動扉（近づくと開く。扉の上は壁）
-//   a〜z  区画の出入口（zone.exits の key。隔壁扉、または区画間エレベーターの籠）
+//   a〜z  区画の出入口（zone.exits の key。門・階段・区画間エレベーターの籠）
 //  部屋（扉で区切られた範囲）ごとに天井があり、高さは部屋の最も高い床 + wallH。
 // ============================================================
 const CELL = 2, STEP = 0.6, ABYSS = -40;
@@ -26,6 +27,7 @@ class Terrain {
     this.wallH = zone.wallH || (ARCH_STYLES[zone.arch || 'station'] || {}).wallH || 6;
     const n = this.cols * this.rows;
     this.ch = new Array(n); this.kind = new Uint8Array(n); this.h = new Float32Array(n); this.fixed = new Uint8Array(n);
+    this.water = new Uint8Array(n); this.paint = new Uint8Array(n); this.bridge = new Uint8Array(n);
     this.stairs = new Map();
     this.liftOf = new Int16Array(n).fill(-1); this.doorOf = new Int16Array(n).fill(-1); this.roomOf = new Int16Array(n).fill(-1);
     this.locked = new Set();     // 封鎖中の出入口の key
@@ -35,19 +37,45 @@ class Terrain {
       this.ch[i] = ch;
       if (ch === '#') this.kind[i] = TK.SOLID;
       else if (ch === 'W') this.kind[i] = TK.WINDOW;
+      else if (ch === '~') { this.kind[i] = TK.SOLID; this.water[i] = 1; }
       else if (ch === ' ') { this.kind[i] = TK.VOID; this.h[i] = ABYSS; }
       else if (ch >= '0' && ch <= '9') { this.kind[i] = TK.FLOOR; this.h[i] = +ch; this.fixed[i] = 1; }
       else if (STAIR_DIR[ch]) this.kind[i] = TK.STAIR;
       else if (ch === 'E') this.kind[i] = TK.LIFT;
       else if (ch === 'D') this.kind[i] = TK.DOOR;
       else if (ch >= 'a' && ch <= 'z') this.kind[i] = TK.EXIT;
-      else this.kind[i] = TK.FLOOR;   // その他の記号は、となりの床と同じ高さの床
+      else { this.kind[i] = TK.FLOOR; this.paint[i] = ch === ',' ? 1 : 0; this.bridge[i] = ch === '=' ? 1 : 0; }   // その他の記号は、となりの床と同じ高さの床
     }
     this.resolveHeights(); this.buildStairs(); this.buildLifts(); this.buildDoors(); this.buildExits(); this.buildRooms();
-    // 屋外の区画（天井なし）：壁の塊ごとに上端の高さを決める（町は建物の並び、崖は岩の起伏）
+    // 屋外の区画（天井なし）：壁の塊ごとに上端の高さを決める（町は建物の並び、崖は岩の起伏、木立は地面の高さ）
     this.style = ARCH_STYLES[zone.arch || 'station'] || ARCH_STYLES.station;
     this.open = this.style.roof === false;
+    this.outdoor = this.style.outdoor || null;
+    this.computeBase();
     if (this.open) this.computeTops();
+  }
+  // 歩けないマスの地面の高さ：いちばん近い床の高さ（同じ近さなら高いほう）。dist = 床からのマス数
+  computeBase() {
+    const n = this.kind.length, base = new Float32Array(n).fill(NaN), dist = new Int16Array(n).fill(-1), q = [];
+    for (let i = 0; i < n; i++) if (this.isWalkKind(this.kind[i])) {
+      const s = this.stairs.get(i);
+      base[i] = s ? Math.max(s.h0, s.h1) : this.kind[i] === TK.LIFT ? this.lifts[this.liftOf[i]].levels[0] : this.h[i];
+      dist[i] = 0; q.push(i);
+    }
+    for (let qi = 0; qi < q.length; qi++) {
+      const i = q[qi], c = this.colOf(i), r = this.rowOf(i);
+      for (const [dc, dr] of DIR4) {
+        const j = this.idx(c + dc, r + dr);
+        if (j < 0 || this.isWalkKind(this.kind[j]) || this.kind[j] === TK.VOID) continue;
+        if (dist[j] < 0) { dist[j] = dist[i] + 1; base[j] = base[i]; q.push(j); }
+        else if (dist[j] === dist[i] + 1 && base[i] > base[j]) base[j] = base[i];
+      }
+    }
+    for (let i = 0; i < n; i++) if (Number.isNaN(base[i])) base[i] = 0;
+    this.base = base; this.dist = dist;
+    // 川・池の水面
+    this.cap = new Float32Array(n);
+    for (let i = 0; i < n; i++) if (this.water[i]) this.cap[i] = base[i] - 0.45;
   }
   computeTops() {
     const n = this.kind.length, top = new Float32Array(n), S = this.style, wallH = this.zone.wallH || S.wallH || 7;
@@ -57,6 +85,9 @@ class Terrain {
     const hash = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 1000 / 1000;
     for (let i = 0; i < n; i++) {
       if (this.kind[i] > TK.WINDOW) continue;
+      if (this.water[i]) { top[i] = this.cap[i]; continue; }
+      // 木立：地面はとなりの床と同じ高さ。カメラは木の高さより下に入れない
+      if (S.outdoor === 'flora') { this.cap[i] = this.base[i]; top[i] = this.base[i] + (S.canopy || 3.2); continue; }
       const c = this.colOf(i), r = this.rowOf(i);
       let base = -1e9;
       for (let rad = 1; rad <= 3 && base < -1e8; rad++) for (let dr = -rad; dr <= rad; dr++) for (let dc = -rad; dc <= rad; dc++) {
@@ -66,6 +97,7 @@ class Terrain {
       const v = S.skyline === 'town' ? Math.floor(hash(Math.floor(c / 3), Math.floor(r / 3)) * 3) * 1.8
         : S.skyline === 'rock' ? hash(c, r) * 2.6 + hash(Math.floor(c / 2), Math.floor(r / 2)) * 2 : 0;
       top[i] = base + wallH + v;
+      this.cap[i] = top[i];
     }
     this.top = top;
   }
@@ -183,18 +215,19 @@ class Terrain {
   // 扉で区切られた部屋ごとの天井の高さ
   buildRooms() {
     this.rooms = [];
-    const roomy = k => k === TK.FLOOR || k === TK.STAIR || k === TK.LIFT || k === TK.VOID || k === TK.EXIT;
+    // 地底湖などの水面の上にも天井を張る
+    const roomy = j => { const k = this.kind[j]; return k === TK.FLOOR || k === TK.STAIR || k === TK.LIFT || k === TK.VOID || k === TK.EXIT || !!this.water[j]; };
     for (let i = 0; i < this.kind.length; i++) {
-      if (!roomy(this.kind[i]) || this.roomOf[i] >= 0) continue;
+      if (!roomy(i) || this.roomOf[i] >= 0) continue;
       const id = this.rooms.length, cab = this.kind[i] === TK.EXIT && this.cabinKeys.has(this.ch[i]);
-      const same = k => this.roomOf[k] < 0 && roomy(this.kind[k]) && (cab ? this.ch[k] === this.ch[i] : !(this.kind[k] === TK.EXIT && this.cabinKeys.has(this.ch[k])));
+      const same = k => this.roomOf[k] < 0 && roomy(k) && (cab ? this.ch[k] === this.ch[i] : !(this.kind[k] === TK.EXIT && this.cabinKeys.has(this.ch[k])));
       const cells = this.flood(i, same, k => { this.roomOf[k] = id; });
       let top = -1e9;
       for (const j of cells) {
         const k = this.kind[j];
         if (k === TK.STAIR) { const s = this.stairs.get(j); top = Math.max(top, s.h0, s.h1); }
         else if (k === TK.LIFT) top = Math.max(top, ...this.lifts[this.liftOf[j]].levels);
-        else if (k !== TK.VOID) top = Math.max(top, this.h[j]);
+        else if (k !== TK.VOID && !this.water[j]) top = Math.max(top, this.h[j]);
       }
       this.rooms.push({ id, cells, cabin: cab, ceil: cab ? top + 4 : Math.max(top, 0) + this.wallH });
     }
@@ -224,6 +257,7 @@ class Terrain {
     const i = this.at(x, z);
     if (i >= 0 && this.isWalkKind(this.kind[i])) return this.groundOf(i, x, z);
     if (i < 0) return 0;
+    if (this.outdoor || this.water[i]) return this.cap[i];   // 屋外の木立・崖・水面は、その上
     let best = -1e9; const c = this.colOf(i), r = this.rowOf(i);
     for (const [dc, dr] of DIR4) { const k = this.idx(c + dc, r + dr); if (k >= 0 && this.isWalkKind(this.kind[k])) best = Math.max(best, this.h[k]); }
     return best > -1e9 ? best : 0;
@@ -267,8 +301,8 @@ class Terrain {
     const d = Math.hypot(bx - ax, bz - az), n = Math.ceil(d / 0.8);
     for (let s = 1; s < n; s++) {
       const x = ax + (bx - ax) * s / n, z = az + (bz - az) * s / n, i = this.at(x, z);
-      if (i < 0 || this.kind[i] <= TK.WINDOW) return false;
-      if (this.kind[i] !== TK.VOID && Math.abs(this.groundOf(i, x, z) - h) > 1.6) return false;
+      if (i < 0 || (this.kind[i] <= TK.WINDOW && !this.water[i])) return false;
+      if (this.kind[i] !== TK.VOID && !this.water[i] && Math.abs(this.groundOf(i, x, z) - h) > 1.6) return false;
     }
     return true;
   }
@@ -277,6 +311,7 @@ class Terrain {
     const i = this.at(x, z);
     if (i < 0) return true;
     const k = this.kind[i];
+    if (this.water[i]) return y < this.cap[i] + 0.15 || y > this.ceilOf(i) - 0.35;
     if (k <= TK.WINDOW) return !this.open || y < this.top[i] + 0.3;
     if (y > this.ceilOf(i) - 0.35) return true;
     if (k === TK.DOOR) return y > this.h[i] + 3.7;
@@ -332,8 +367,8 @@ class Terrain {
     }
     return { x, z };
   }
-  // その高さの呼び名（ミニマップ用）
-  floorLabel(h) { return h < 2.5 ? '1F' : h < 7.5 ? '2F' : '3F'; }
+  // その高さの呼び名（ミニマップ用。区画が階を持つときはその名前、屋外は出さない）
+  floorLabel(h) { return this.zone.floor || (this.outdoor ? null : h < 2.5 ? '1F' : h < 7.5 ? '2F' : '3F'); }
 }
 
 // ============================================================
@@ -419,6 +454,18 @@ const ARCH_STYLES = {
   cave: { look: 'mine', roof: true, wallH: 7, rock: '#6a5a7e', trim: '#3a2a4a', cliff: '#6a5a7e', ceil: '#3a3048', step: '#5a4a6a', glass: '#bfe8ff', glow: '#a07bff', light: '#b89aff', rail: 'wood', door: 'swing', lift: 'cage', exit: 'tunnel' },
   castle: { look: 'palace', roof: true, wallH: 9, wall: '#6a5a80', wall2: '#54466a', trim: '#2a1a3a', cliff: '#5a4a70', ceil: '#2e2240', step: '#7a6a90', glass: '#d8b0ff', glow: '#ff8ad8', light: '#ffd8f8', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   court: { look: 'palace', roof: false, skyline: 'town', wallH: 10, wall: '#dfe8f4', wall2: '#c4d2e4', trim: '#6c84a8', cliff: '#b4c4d8', step: '#d8e2ee', glass: '#bfeaff', glow: '#9fd8ff', light: '#dff4ff', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
+  // にゃんこファンタジーの野外：木立（# は木の茂る地面。ZoneKit の flora で木を植える）と、岩の崖（# は切り立った岩）
+  // outdoor：flora ＝ 木立、cliff ＝ 岩の崖。cap ＝ 崖の上端の草の色、path ＝ 土の道の色、exit: arch ＝ 木のアーチの門
+  woods: { look: 'cliff', outdoor: 'flora', roof: false, canopy: 3.2, rock: '#8a7458', cap: '#6aa048', path: '#c2a070', trim: '#5a3a22', step: '#b0a288', glass: '#bfe8ff', glow: '#ffd27a', rail: 'wood', door: 'swing', lift: 'cage', exit: 'arch' },
+  crag: { look: 'cliff', outdoor: 'cliff', roof: false, skyline: 'rock', wallH: 5, rock: '#8a8478', cap: '#7aa858', path: '#b89a70', trim: '#5a3a22', step: '#aaa294', glass: '#bfe8ff', glow: '#ffd27a', rail: 'wood', door: 'swing', lift: 'cage', exit: 'arch' },
+  // 世界の果て：奈落に浮かぶ石の道（手すりなし）。# は浮かぶ岩
+  abyss: { look: 'cliff', outdoor: 'cliff', roof: false, skyline: 'rock', wallH: 3, rock: '#3a3048', cap: '#4a3a5a', path: '#8a7ab0', trim: '#2a1a3a', step: '#5a4a6a', glass: '#bfe8ff', glow: '#b8a8ff', rail: 'none', door: 'swing', lift: 'cage', exit: 'arch' },
+  // ねこ神の夢：お菓子の木立
+  sweets: { look: 'cliff', outdoor: 'flora', roof: false, canopy: 3, rock: '#e8b8d8', cap: '#ffd8e8', path: '#fff0c8', trim: '#c88ab8', step: '#ffe8f0', glass: '#bfe8ff', glow: '#ff9ad8', rail: 'wood', door: 'swing', lift: 'cage', exit: 'arch' },
+  // 壁画の回廊：苔むした古い石の回廊（天井あり、青緑に光る縁取り）
+  ruin: { look: 'palace', roof: true, wallH: 8, wall: '#c8c0a4', wall2: '#a8a088', trim: '#5a5a48', cliff: '#b0aa90', ceil: '#6a6a58', step: '#b8b098', glass: '#bfffe8', glow: '#8affe0', light: '#e8fff4', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
+  // 樹の地下・黒影洞窟の奥：根と土の洞窟
+  roots: { look: 'mine', roof: true, wallH: 7, rock: '#5a4a38', trim: '#4a3420', cliff: '#5a4a38', ceil: '#2a2218', step: '#6a5238', glass: '#bfe8ff', glow: '#b8ff8a', light: '#d8ffc8', rail: 'wood', door: 'swing', lift: 'cage', exit: 'tunnel', water: '#4ac88a', waterGlow: '#2a9a5a', waterBed: '#10241a' },
 };
 
 // 壁パネルのテクスチャ（4m 四方）
@@ -645,6 +692,9 @@ function buildArchitecture(view, T) {
     lamp: glowMat(S.light || line, 1.6),
     glass: new THREE.MeshStandardMaterial({ color: S.glass, transparent: true, opacity: 0.16, metalness: 0.9, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }),
     rail: new THREE.MeshStandardMaterial({ color: S.glass, transparent: true, opacity: style === 'palace' ? 0.35 : 0.22, metalness: 0.6, roughness: 0.1, depthWrite: false, side: THREE.DoubleSide }),
+    // 川・池・地底湖の水面と底
+    water: new THREE.MeshStandardMaterial({ color: th.water || S.water || '#5ab8e8', transparent: true, opacity: 0.8, roughness: 0.06, metalness: 0.25, emissive: th.waterGlow || S.waterGlow || '#2a78b8', emissiveIntensity: 0.3, depthWrite: false }),
+    bed: std(th.waterBed || S.waterBed || '#23404a', { roughness: 1, metalness: 0 }),
   };
   // 床：区画のテーマの模様（1マス = 1タイル）
   const [fmap, femap] = floorTextures(th, view.ch.bg);
@@ -657,6 +707,8 @@ function buildArchitecture(view, T) {
   const hAt = (i, x, z) => kind[i] === K.LIFT ? T.lifts[T.liftOf[i]].levels[0] : kind[i] === K.VOID ? ABYSS : T.groundOf(i, x, z);
   const cabinRoom = i => T.roomOf[i] >= 0 && T.rooms[T.roomOf[i]].cabin;
   const hasRoof = i => !open || cabinRoom(i);
+  const flora = T.outdoor === 'flora', EDGE = -1.3;   // 屋外の区画の外側の地面（環境の床）の高さ
+  const flat = (key, y, x0, z0, x1, z1, s = 4) => acc(key, s).quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]);
 
   // 岩肌：面を細かく割り、ワールド座標のノイズで内側の頂点を凹凸させる（隣の面とつながる）
   function rockFace(key, ex, ez, nx, nz, w, ya, yb, amp = 0.4) {
@@ -675,9 +727,40 @@ function buildArchitecture(view, T) {
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const i = r * cols + c, k = kind[i];
     const x0 = X(c), x1 = X(c + 1), z0 = Zc(r), z1 = Zc(r + 1), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-    // 床
-    if (k === K.FLOOR || k === K.DOOR || k === K.EXIT) acc('floor', 16).quad([x0, T.h[i], z1], [x1, T.h[i], z1], [x1, T.h[i], z0], [x0, T.h[i], z0]);
+    // 床（橋は板張り。下に川が流れる）
+    if (T.bridge[i]) {
+      const y = T.h[i];
+      acc('wood', 4).box(x0, y - 0.22, z0, x1, y, z1, 'b');
+      flat('water', y - 0.45, x0, z0, x1, z1, 8); flat('bed', y - 1.25, x0, z0, x1, z1, 8);
+    } else if (k === K.FLOOR || k === K.DOOR || k === K.EXIT) acc('floor', 16).quad([x0, T.h[i], z1], [x1, T.h[i], z1], [x1, T.h[i], z0], [x0, T.h[i], z0]);
     if (k === K.LIFT) { const y = T.lifts[T.liftOf[i]].levels[0] - 0.45; acc('pit').quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]); }
+    // 水面：底と、壁・地図の端に面した側面（屋内は天井も）
+    if (T.water[i]) {
+      const y = T.cap[i];
+      flat('water', y, x0, z0, x1, z1, 8); flat('bed', y - 0.8, x0, z0, x1, z1, 8);
+      DIR4.forEach(([dc, dr]) => {
+        const j = T.idx(c + dc, r + dr), ex = cx + dc * CELL / 2, ez = cz + dr * CELL / 2;
+        if (j < 0) { if (open) rockFace('rock', ex, ez, dc, dr, CELL, [EDGE, y], [EDGE, y], 0); }
+        else if (!open && kind[j] <= K.WINDOW && !T.water[j]) rockFace('rock', ex, ez, -dc, -dr, CELL, [y - 0.9, T.ceilOf(i)], [y - 0.9, T.ceilOf(i)], 0.4);
+      });
+      if (hasRoof(i)) acc('ceil', 4).quad([x0, T.ceilOf(i), z0], [x1, T.ceilOf(i), z0], [x1, T.ceilOf(i), z1], [x0, T.ceilOf(i), z1]);
+      continue;
+    }
+    // 木立：地面は床と同じ草地。低いとなり（道・水面・別の高さ）に向いた土の崖
+    if (flora && k <= K.WINDOW) {
+      const y = T.cap[i];
+      acc('floor', 16).quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]);
+      DIR4.forEach(([dc, dr]) => {
+        const j = T.idx(c + dc, r + dr), ex = cx + dc * CELL / 2, ez = cz + dr * CELL / 2;
+        const A = [ex - dr * CELL / 2, ez + dc * CELL / 2], B = [ex + dr * CELL / 2, ez - dc * CELL / 2];
+        const low = p => j < 0 ? EDGE : walk(j) ? hAt(j, p[0] + dc * 0.02, p[1] + dr * 0.02) : kind[j] === K.VOID ? ABYSS : T.cap[j];
+        const la = low(A), lb = low(B);
+        if (Math.max(la, lb) > y - 0.05) return;
+        rockFace('rock', ex, ez, dc, dr, CELL, [la, y], [lb, y], j < 0 ? 0 : 0.3);
+        if (j >= 0 && walk(j)) snowLip(ex, ez, dc, dr, CELL, y);
+      });
+      continue;
+    }
     // 屋外の壁の塊：上面の雪と、隣の塊より高い部分の側面
     if (open && k <= K.WINDOW) {
       const y = T.top[i];
@@ -724,6 +807,13 @@ function buildArchitecture(view, T) {
       if (nk <= K.WINDOW) {
         // 出入口の外側（隔壁扉）とエレベーターの籠の内壁は別に作る
         if (k === K.EXIT && !T.exits[T.ch[i]].cabin && T.exits[T.ch[i]].nx === dc * -1 && T.exits[T.ch[i]].nz === dr * -1) return;
+        // 水辺：橋は欄干、岸は水面の下まで続く土の斜面
+        if (j >= 0 && T.water[j]) {
+          if (T.bridge[i]) railing(pa, pb, yA, yB, nx, nz, 'wood');
+          else rockFace('rock', ex, ez, dc, dr, CELL, [T.cap[j] - 0.8, yB], [T.cap[j] - 0.8, yA], 0.15);
+          return;
+        }
+        if (flora) return;   // 木立の側（崖）は木立のマスで作る
         if (nk === K.WINDOW) wallWindow(ex, ez, nx, nz, base, top, c, r, dc, dr);
         else wallFace(ex, ez, nx, nz, base, top, c, r, dc, dr, k, yA, yB);
         return;
@@ -842,16 +932,17 @@ function buildArchitecture(view, T) {
     for (const s of [-1, 1]) trim.slab(ex + rx * s * (CELL / 2 - 0.08), ez + rz * s * (CELL / 2 - 0.08), nx, nz, 0.16, y0 + 0.85, winTop, 0.12, -0.3);
   }
   // 手すり：ガラス（ステーション）／氷の欄干（宮殿）／鉄柵（町）／木の柵（崖・坑道）
-  function railing(pa, pb, ya, yb, nx, nz) {
+  function railing(pa, pb, ya, yb, nx, nz, kindOf = S.rail) {
+    if (kindOf === 'none') return;
     const ins = 0.12, a = [pa[0] + nx * ins, pa[1] + nz * ins], b = [pb[0] + nx * ins, pb[1] + nz * ins];
     const mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
     const bar = (key, h0, h1) => { acc(key, 4).wall(mx, mz, nx, nz, CELL, 0, 0, 0.03, [ya + h0, ya + h1], [yb + h0, yb + h1]); acc(key, 4).wall(mx, mz, -nx, -nz, CELL, 0, 0, 0.03, [yb + h0, yb + h1], [ya + h0, ya + h1]); };
     const post = (key, p, y, w, h) => acc(key, 4).box(p[0] - w, y, p[1] - w, p[0] + w, y + h, p[1] + w);
-    if (S.rail === 'glass' || S.rail === 'ice') {
+    if (kindOf === 'glass' || kindOf === 'ice') {
       acc('rail').wall(mx, mz, nx, nz, CELL, 0, 0, 0, [ya + 0.05, ya + 1.0], [yb + 0.05, yb + 1.0]);
       bar('glow', 1.0, 1.08);
-      for (const [p, y] of [[a, ya], [b, yb]]) post(S.rail === 'ice' ? 'wall2' : 'trim', p, y, S.rail === 'ice' ? 0.09 : 0.05, 1.1);
-    } else if (S.rail === 'iron') {
+      for (const [p, y] of [[a, ya], [b, yb]]) post(kindOf === 'ice' ? 'wall2' : 'trim', p, y, kindOf === 'ice' ? 0.09 : 0.05, 1.1);
+    } else if (kindOf === 'iron') {
       bar('iron', 1.0, 1.07); bar('iron', 0.12, 0.18);
       for (const f of [0, 0.25, 0.5, 0.75]) { const y = lerp(ya, yb, f); post('iron', [lerp(a[0], b[0], f), lerp(a[1], b[1], f)], y, f ? 0.02 : 0.05, 1.05); }
       bar('cap', 1.07, 1.12);
@@ -985,18 +1076,53 @@ function buildArchitecture(view, T) {
     return { L, plat, arrows, gates, update };
   });
 
+  // 土の道（,）：マスの形がそのまま出ないよう、ぼかした塗り絵を床に重ねる
+  if (T.paint.some(v => v)) {
+    const P = 16, cv = document.createElement('canvas'); cv.width = cols * P; cv.height = rows * P;
+    const g = cv.getContext('2d'), col = th.path || S.path || '#b8946a', rnd = seeded(cols * 31 + rows);
+    g.filter = `blur(${P * 0.32}px)`; g.fillStyle = col;
+    for (let i = 0; i < kind.length; i++) if (T.paint[i]) {
+      const c = T.colOf(i), r = T.rowOf(i);
+      g.beginPath(); g.ellipse((c + 0.5) * P + (rnd() - 0.5) * P * 0.3, (r + 0.5) * P + (rnd() - 0.5) * P * 0.3, P * 0.72, P * 0.72, 0, 0, Math.PI * 2); g.fill();
+    }
+    g.filter = 'none';
+    // 小石とわだち
+    for (let i = 0; i < kind.length; i++) if (T.paint[i]) for (let n = 0; n < 5; n++) {
+      g.fillStyle = rnd() < 0.5 ? 'rgba(255,245,220,.35)' : 'rgba(70,50,30,.3)';
+      g.beginPath(); g.arc((T.colOf(i) + rnd()) * P, (T.rowOf(i) + rnd()) * P, 0.6 + rnd() * 1.2, 0, Math.PI * 2); g.fill();
+    }
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+    const pm = new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const G = new GeoAcc(), W = cols * CELL, D = rows * CELL, uv = (x, z) => [(x + T.hw) / W, 1 - (z + T.hd) / D];
+    for (let i = 0; i < kind.length; i++) {
+      if (!(kind[i] === K.FLOOR || kind[i] === K.EXIT) || T.bridge[i]) continue;
+      const c = T.colOf(i), r = T.rowOf(i);
+      let near = false;
+      for (let dr = -1; dr <= 1 && !near; dr++) for (let dc = -1; dc <= 1; dc++) { const j = T.idx(c + dc, r + dr); if (j >= 0 && T.paint[j] && Math.abs(T.h[j] - T.h[i]) < 0.05) { near = true; break; } }
+      if (!near) continue;
+      const x0 = X(c), x1 = X(c + 1), z0 = Zc(r), z1 = Zc(r + 1), y = T.h[i] + 0.01;
+      G.quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0], [uv(x0, z1), uv(x1, z1), uv(x1, z0), uv(x0, z0)]);
+    }
+    const pmesh = G.mesh(pm); if (pmesh) { pmesh.renderOrder = 1; scene.add(pmesh); }
+  }
+  // 水面のきらめき
+  if (A.water && view.zoneTicks) view.zoneTicks.push((dt, t) => { mats.water.emissiveIntensity = 0.26 + Math.sin(t * 1.3) * 0.06; });
+
   // まとめて追加
-  const noRecv = ['glow', 'glowSoft', 'lamp', 'glass', 'rail'];
-  for (const [k, G] of Object.entries(A)) { const m = G.mesh(mats[k], { receive: !noRecv.includes(k) }); if (m) { if (k === 'glass' || k === 'rail') m.renderOrder = 2; scene.add(m); } }
+  const noRecv = ['glow', 'glowSoft', 'lamp', 'glass', 'rail', 'water'];
+  for (const [k, G] of Object.entries(A)) { const m = G.mesh(mats[k], { receive: !noRecv.includes(k) }); if (m) { if (k === 'glass' || k === 'rail' || k === 'water') m.renderOrder = 2; scene.add(m); } }
   return { doors, lifts, mats };
 }
 
 // 屋内：空の映り込みを弱め、環境光を明るく白っぽく（探索と会話シーンで共用）
 function interiorLighting(view, zone) {
-  const th = zone.th || {};
+  const th = zone.th || {}, S = ARCH_STYLES[zone.arch || 'station'] || {};
   view.env.floor.visible = false;
-  // 屋外（雪の町・崖）は空とテーマの光のまま
-  if ((ARCH_STYLES[zone.arch || 'station'] || {}).roof === false) { if (th.fog) view.scene.fog.color.set(th.fog); if (th.fogD) view.scene.fog.density = th.fogD; return; }
+  // 屋外（雪の町・崖・木立）は空とテーマの光のまま。野外の区画は地図の外にも地面が続く（少し低く）
+  if (S.roof === false) {
+    if (S.outdoor) { view.env.floor.visible = true; view.env.floor.position.y = -1.3; }
+    if (th.fog) view.scene.fog.color.set(th.fog); if (th.fogD) view.scene.fog.density = th.fogD; return;
+  }
   view.scene.environmentIntensity = 0.12;
   view.env.root.traverse(o => {
     if (o.isHemisphereLight) { o.color.set(th.sky || '#dfe6ff'); o.groundColor.set(th.ground || '#3a3a58'); o.intensity = 1.25 * (th.light || 1); }
@@ -1008,8 +1134,9 @@ function interiorLighting(view, zone) {
 // ------------------------------------------------------------
 //  区画データの整理：マップのある区画は寸法を決め、マス座標をワールド座標に直す
 // ------------------------------------------------------------
+// world：地図があっても座標はワールド（m）で書く区画（野外の区画）
 function zonePoint(zone, p) {
-  if (!zone.map || !p) return p;
+  if (!zone.map || !p || zone.world) return p;
   const w = zone.map[0].length * CELL, d = zone.map.length * CELL;
   return [(p[0] + 0.5) * CELL - w / 2, (p[1] + 0.5) * CELL - d / 2];
 }
@@ -1020,6 +1147,7 @@ function prepareMapZones(zones) {
     Z.w = Z.map[0].length * CELL; Z.d = Z.map.length * CELL;
     for (const k of ['anchor', 'spawn', 'portal']) if (Z[k]) Z[k] = zonePoint(Z, Z[k]);
     for (const list of [Z.npcs, Z.notes, Z.safe]) (list || []).forEach(o => { o.at = zonePoint(Z, o.at); });
+    if (Z.chestAt) Z.chestAt = Z.chestAt.map(p => zonePoint(Z, p));
     // エレベーターの行き先ごとに出口を分ける（区画の経路探索・区画マップ用）
     Z.exits = Z.exits.flatMap(e => e.lift ? e.lift.map(to => ({ key: e.key, to, lift: e.lift, name: e.name })) : [e]);
   }
