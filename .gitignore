@@ -2,4 +2,3 @@ node_modules/
 *.blend1
 .claude/tmp/
 .DS_Store
-.claude/
