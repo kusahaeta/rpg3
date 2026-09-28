@@ -137,8 +137,8 @@ class Battle {
       c.className = 'ally';
       c.style.setProperty('--c', ELEMENTS[u.elem].color);
       c.innerHTML = `
-        <div class="a-face">${avatarSVG(u.key)}<div class="a-el">${elemIcon(u.elem)}</div></div>
-        <div class="ult" data-ult="${i}"><div class="ult-ring"></div><div class="ult-face">${avatarSVG(u.key, { noBg: true })}</div><span class="ult-key">${i + 1}</span></div>
+        <div class="a-face">${avatarSVG(u.key, { wide: true })}<div class="a-el">${elemIcon(u.elem)}</div></div>
+        <div class="ult" data-ult="${i}" title="${u.def.ult.name}"><div class="ult-ring"></div><div class="ult-face">${ultIcon(u.key)}</div><span class="ult-key">${i + 1}</span></div>
         <div class="a-name">${u.name}<span>Lv.${u.level}</span></div>
         <div class="bar hp"><i></i><s></s></div>
         <div class="a-hp"></div>
