@@ -179,7 +179,7 @@ class FieldView extends BaseView {
     const Z = this.zone, P = (a, r) => ({ x: a[0], z: a[1], r });
     // 物語でまだ出会っていない人物はいない
     const npcDefs = (Z.npcs || []).filter(n => !n.after || typeof Story === 'undefined' || Story.seen(n.after));
-    const noteDefs = (Z.notes || []).filter(n => !n.when || storyCond(n.when));
+    const noteDefs = (Z.notes || []).filter(n => (!n.when || storyCond(n.when)) && !(n.until && storyCond(n.until)));
     this.reserved = [P(Z.anchor, 3.5), ...zoneArenas(Z).map(a => ({ x: a.x, z: a.z, r: 7 }))];
     if (Z.spawn) this.reserved.push(P(Z.spawn, 4));
     if (Z.portal) this.reserved.push(P(Z.portal, 4));

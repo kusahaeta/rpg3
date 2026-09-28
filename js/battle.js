@@ -630,7 +630,7 @@ class Battle {
   }
   // にゃんこオールスターズ：世界中の猫たちの「つながり」
   async allStars(mem) {
-    const lines = [['mike', '「俺たちは――」'], ['all', '「ずっと仲間だ！」']];
+    const lines = [['mike', '「ぼくたちは――」'], ['all', '「ずっと仲間だ！」']];
     for (const [k, line] of lines) {
       if (k === 'all') mem.forEach(m => this.say(m, line)); else { const m = mem.find(x => x.key === k) || mem[0]; this.say(m, line); }
       await wait(1300);
