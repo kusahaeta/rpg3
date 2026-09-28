@@ -20,7 +20,10 @@ function speakerColor(key) {
 const Story = {
   get state() {
     if (!Save.data.story) Save.data.story = { ch: 0, step: 0 };
-    return Save.data.story;
+    const s = Save.data.story;
+    // 台本から段階が減ったときの古いセーブ：その章は終えたことにする
+    while (STORY[s.ch] && s.step >= STORY[s.ch].steps.length) { s.ch++; s.step = 0; }
+    return s;
   },
   current() {
     const s = this.state, ch = STORY[s.ch];
@@ -79,7 +82,7 @@ const Story = {
         App.go(ChapterClearScreen, cur.chIdx, step.niboshi);
         break;
       }
-      case 'ending': this.advance(); App.go(EndingScreen, step.kind); break;
+      case 'ending': this.advance(); App.go(EndingScreen); break;
     }
   },
   // フィールドで目的地に着いた
@@ -410,15 +413,14 @@ function ChapterClearScreen(ci, niboshi) {
 }
 
 // エンディング：Fin
-function EndingScreen(kind) {
+function EndingScreen() {
   const v3 = GFX.ok ? GFX.show('title', () => new TitleView()) : null;
   Music.play('hope');
-  const t = kind === 'true';
-  const s = h(`<div class="screen ending ${t ? 'true' : ''}">
+  const s = h(`<div class="screen ending">
     <div class="en-roll">
-      ${t ? '<p>……俺、仲間ができたよ。</p><p>今度は、ちゃんと守る。</p>' : `<p>にゃんだーの樹はよみがえり、</p><p>世界に笑顔がもどった。</p><p>——この世界を救ったのは、</p><p>最初から強かった誰かじゃない。</p><p>旅の中で出会った猫たちと、</p><p>少しずつ仲間になっていったからだ。</p>`}
+      <p>にゃんだーの樹はよみがえり、</p><p>世界に笑顔がもどった。</p><p>——この世界を救ったのは、</p><p>最初から強かった誰かじゃない。</p><p>旅の中で出会った猫たちと、</p><p>少しずつ仲間になっていったからだ。</p>
       <h1>Fin</h1>
-      ${t ? '' : '<p class="dim">クリアおめでとう！　村の猫神社の奥で、ふしぎな夢の世界への道が開いたらしい……</p>'}
+      <p class="dim">クリアおめでとう！　村の猫神社の奥で、ふしぎな夢の世界への道が開いたらしい……</p>
     </div>
     <button class="btn gold" data-ok>おうちに帰る</button></div>`);
   s.querySelector('[data-ok]').onclick = () => { Sfx.click(); App.go(HubScreen); };
