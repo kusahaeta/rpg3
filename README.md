@@ -5,10 +5,10 @@
 
 ## 起動
 
-ビルド不要。`index.html` をブラウザで開くだけで遊べます（WebGL 対応ブラウザ推奨）。ローカルサーバーを使う場合（静的ファイルを配るだけなので、どのサーバーでも可）：
+ビルド不要。`index.html` をブラウザで開くだけで遊べます（WebGL 対応ブラウザ推奨）。ローカルサーバーを使う場合：
 
 ```bash
-python3 -m http.server 8912
+node .claude/serve.js
 ```
 
 → http://localhost:8912

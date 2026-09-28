@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build:vendor": "esbuild tools/vendor-entry.js --bundle --minify --format=iife --outfile=vendor/three-bundle.js",
-    "serve": "python3 -m http.server 8912"
+    "serve": "node .claude/serve.js"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
