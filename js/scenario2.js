@@ -346,20 +346,6 @@ Object.assign(SCENES, {
       ['sakanaya', 'まったく……うちのライバルになるとはねえ！', { enter: 'sakanaya', f: 'smile', g: 'laugh' }],
       ['n', 'ぽかぽか村は、今日も、ぽかぽかだ。', { cam: 'wide', dur: 8, fx: 'sparkle:mike' }],
     ] },
-  c9_02: { title: '墓標の丘', bgm: 'sad',
-    stage: { zone: 'valley', at: [-16, -7.5], face: 0, party: ['kuro'], cast: { kuro: { at: [0, 1.4], item: 'flower' } },
-      points: { graves: [0, 1, 8.5] } },
-    lines: [
-      ['n', 'くろねこ谷の丘。三つの墓標と、名前のない石。', { cam: 'look:graves', dur: 7, look: { kuro: 'graves' } }],
-      ['kuro', '……ハヤテ、リン、ゴロウ。', { f: 'gentle', g: 'lookDown', look: { kuro: 'graves' } }],
-      ['kuro', '……この石は、まだ空けておく。当分、行く気はないからな。', { f: 'smile', g: 'handChest' }],
-      ['kuro', '……俺、仲間ができたよ。', { f: 'gentle', cam: 'kuro', close: true }],
-      ['kuro', '今度は、ちゃんと守る。', { f: 'serious', g: 'nod' }],
-      ['mike', '（遠くから）クローー！　早くしろーー！', 'ミケ'],
-      ['kuro', '……うるさいな。', { f: 'serious', g: 'turnAway', face: { kuro: [0, -6] } }],
-      ['kuro', '……聞こえたか。あれが、今の俺の仲間だ。', { f: 'gentle', face: { kuro: 'graves' }, look: { kuro: 'graves' } }],
-      ['n', 'クロが、少し笑った。', { r: { kuro: 'smile' }, cam: 'kuro', close: true, dur: 7 }],
-    ] },
 
   // ================= おまけ　ねこ神の夢 =================
   c10_01: { title: '夢の入口', cast: ['e:sakana'], bgm: 'field',
@@ -542,7 +528,6 @@ const RECAP_2 = {
   c8_04: 'コドクとの最後の戦い。「五匹じゃない！　ぼくたちの後ろには、旅で出会ったみんながいる！」',
   c8_05: '世界中の「つながり」が、コドクを光に変えた。にゃんだーの樹がよみがえり、世界に笑い・友情・思い出・優しさが戻る。「ぼくたちは――」「ずっと仲間だ！」',
   c9_01: '数年後。マオウは猫カフェ、クロは冒険者ギルド、シロは魔法学校、タマは樹の管理人。そしてミケは、魚屋になった。「なんで勇者が魚屋なんじゃ」「魚が好きだから！」',
-  c9_02: 'くろねこ谷の墓標の丘で、クロは昔の仲間に「今度は、ちゃんと守る」と伝えた。自分の分の四つ目の石は、まだ当分、空けておく。丘の下では、新しい仲間たちが待っていた。',
   c10_01: '猫神社の奥の、お菓子と魚の浮かぶ夢の世界へ。',
   c10_02: 'ミケの偽物、クロのぬいぐるみ、100匹のタマ。へんてこな夢はまだ続く。',
   c10_03: '夢の奥で待っていたのは、この世界を作った「ねこ神」。世界を救うのは「面倒なのでお前に任せた」らしい。',
@@ -614,9 +599,7 @@ const STORY = [
   ] },
   { title: 'エピローグ　それから', steps: [
     { t: 'scene', id: 'c9_01', g: 'それから' },
-    { t: 'ending', kind: 'normal', g: 'Fin' },
-    { t: 'field', zone: 'valley', at: [-16, -8], scene: 'c9_02', g: '（クリア後）くろねこ谷の、墓標の丘へ' },
-    { t: 'ending', kind: 'true', g: '真のエンディング' },
+    { t: 'ending', g: 'Fin' },
   ] },
   { title: 'おまけ　ねこ神の夢', hidden: true, steps: [
     { t: 'field', zone: 'dream', at: [0, 20], scene: 'c10_01', battle: '9-1', g: '猫神社の奥から、夢の世界へ' },
