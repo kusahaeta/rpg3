@@ -318,7 +318,7 @@ const SCENES = {
       ['n', '【目的】城下町の北東、笑顔の塔へ。', { cam: 'wide', dur: 5 }],
     ] },
   c3_03: { title: '笑顔の塔', cast: ['e:ghost'], bgm: 'dark',
-    stage: { zone: 'tower', at: [10.5, 20.5], face: 0, cast: { 'e:ghost': [{ at: [-2.4, 5], hidden: true }, { at: [2.2, 5.6], hidden: true }] }, points: { top: [0, 9, 18] } },
+    stage: { zone: 'tower', at: [10.5, 13], face: 0, cast: { 'e:ghost': [{ at: [-2.4, 5], hidden: true }, { at: [2.2, 5.6], hidden: true }] }, points: { top: [0, 9, 18] } },
     lines: [
       ['n', '笑顔の塔。色あせたポスター、しぼんだ風船。……舞台のほうから、笑い声のような声が聞こえる。', { cam: 'look:top', dur: 7 }],
       ['e:ghost', 'ゲラ……ゲラゲラ……', { enter: 'e:ghost', r: { all: 'surprise' } }],
@@ -328,7 +328,7 @@ const SCENES = {
       ['tama', '……ないてる、みたい。', { f: 'sad', g: 'tilt' }],
     ] },
   c3_04: { title: '泣き虫ピエロ', cast: ['e:piero'], bgm: 'boss',
-    stage: { zone: 'tower', at: [10.5, 5.2], face: 0, cast: { 'e:piero': { at: [0, 4.2] } }, wide: { pos: [-3, 1.8, -2], look: [0, 1.2, 4] } },
+    stage: { zone: 'tower_top', at: [10.5, 5.5], face: 0, cast: { 'e:piero': { at: [0, 4.2] } }, wide: { pos: [-3, 1.8, -2], look: [0, 1.2, 4] } },
     lines: [
       ['n', '塔の最上階は、大きなサーカスの舞台だった。……客席には、誰もいない。', { cam: 'wide', dur: 7 }],
       ['e:piero', '……いらっしゃい、いらっしゃい！　ピエロのショーの始まりだよ！'],
@@ -339,7 +339,7 @@ const SCENES = {
       ['kuro', '……止めるぞ。', { f: 'serious', stance: { all: 'ready' } }],
     ] },
   c3_05: { title: '「笑いたかったんだ」', bgm: 'sad',
-    stage: { zone: 'tower', at: [10.5, 5.2], face: 0, host: 'piero_npc', cast: { piero_npc: { at: [0, 3.2], stance: 'kneel', face: 'mike', f: 'cry' } } },
+    stage: { zone: 'tower_top', at: [10.5, 5.5], face: 0, host: 'piero_npc', cast: { piero_npc: { at: [0, 3.2], stance: 'kneel', face: 'mike', f: 'cry' } } },
     lines: [
       ['piero_npc', '……どうして……ぼくのショーじゃ、誰も笑ってくれないんだ……。', { f: 'cry', g: 'lookDown' }],
       ['piero_npc', '笑いの実がなくなって、みんなの笑顔が消えて……ぼくは、みんなを笑わせるのが仕事なのに……。', { f: 'cry', g: 'bothChest' }],
@@ -418,7 +418,7 @@ const SCENES = {
       ['n', '闇の中から、影と、さまよう鎧が現れた！', { enter: ['e:kageneko', 'e:yoroi'], cam: 'wide', stance: { all: 'ready' } }],
     ] },
   c4_04: { title: '過去の影', cast: ['e:kako_kuro'], bgm: 'boss',
-    stage: { zone: 'cave', at: [14, 5], face: 0, cast: { 'e:kako_kuro': { at: [0, 3.6] } } },
+    stage: { zone: 'cave_deep', at: [14.5, 5], face: 0, cast: { 'e:kako_kuro': { at: [0, 3.6] } } },
     lines: [
       ['n', '洞窟の最奥。四本の古い剣が、地面に突き立っている。', { cam: 'wide', dur: 6 }],
       ['e:kako_kuro', '……来たのか。また、仲間なんか連れて。'],
@@ -432,7 +432,7 @@ const SCENES = {
       ['kuro', '……失わない。今度は、守る！', { f: 'angry', stance: { all: 'ready' } }],
     ] },
   c4_05: { title: '「もういいんだ」', bgm: 'sad',
-    stage: { zone: 'cave', at: [14, 5], face: 0,
+    stage: { zone: 'cave_deep', at: [14.5, 5], face: 0,
       cast: { kuro: { at: [0, 0.6] }, mike: { at: [-1.3, 0] }, hayate: { at: [0, 4.2], hidden: true, face: 'kuro' }, rin: { at: [-1.4, 4], hidden: true, face: 'kuro' }, gorou: { at: [1.5, 4.1], hidden: true, face: 'kuro' } } },
     lines: [
       ['n', '影が消えると、淡い光の中に、三匹の猫が立っていた。', { fx: 'light:hayate', enter: ['hayate', 'rin', 'gorou'], cam: 'wide', dur: 7, r: { all: 'surprise' } }],

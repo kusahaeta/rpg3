@@ -183,6 +183,7 @@ class FieldView extends BaseView {
     this.reserved = [P(Z.anchor, 3.5), ...zoneArenas(Z).map(a => ({ x: a.x, z: a.z, r: 7 }))];
     if (Z.spawn) this.reserved.push(P(Z.spawn, 4));
     if (Z.portal) this.reserved.push(P(Z.portal, 4));
+    (Z.chestAt || []).forEach(p => this.reserved.push(P(p, 2)));
     if (this.T) Object.values(this.T.exits).forEach(E => this.reserved.push({ x: E.inner.x + E.nx * 2, z: E.inner.z + E.nz * 2, r: 4 }));
     else Z.exits.forEach(e => { const p = exitPos(Z, e); this.reserved.push({ x: p.x + p.nx * 3, z: p.z + p.nz * 3, r: 4.5 }); });
     npcDefs.forEach(n => this.reserved.push(P(n.at, 2)));
@@ -235,7 +236,8 @@ class FieldView extends BaseView {
     const opened = (Save.data.fieldChests || {})[this.zoneId] || [];
     this.chests = [];
     for (let i = 0; i < Z.chests; i++) {
-      const p = this.freeSpot(1.5);
+      // 置き場所が決まっている宝箱（行き止まりなど）。なければ空いているところ
+      const at = Z.chestAt && Z.chestAt[i], p = at ? { x: at[0], z: at[1] } : this.freeSpot(1.5);
       const c = this.makeChest(), y = put(c.g, p.x, p.z); c.g.rotation.y = this.rand() * Math.PI * 2;
       const done = opened.includes(i);
       if (done) { c.lid.rotation.x = -1.9; c.glow.visible = false; }
@@ -351,20 +353,20 @@ class FieldView extends BaseView {
   //  オブジェクト
   // ============================================================
   // 平らな区画の出入口：木のアーチと行き先の立て札。封鎖中は板でふさがれている
-  makeFieldGate(locked, to) {
-    const g = new THREE.Group();
+  makeFieldGate(locked, to, W = 4.8) {
+    const g = new THREE.Group(), hw = W / 2;
     const wood = toon('#8a5a36'), dark = toon('#5a3a22'), leaf = toon('#5ab04a');
     for (const sd of [-1, 1]) {
-      const p = outlined(new THREE.CylinderGeometry(0.22, 0.26, 4.2, 8), wood, { thick: 0.002 }); p.position.set(sd * 2.4, 2.1, 0); g.add(p);
-      for (let i = 0; i < 3; i++) { const l = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), leaf); l.position.set(sd * 2.4 + (Math.random() - 0.5) * 0.6, 3.6 + i * 0.35, (Math.random() - 0.5) * 0.4); g.add(l); }
+      const p = outlined(new THREE.CylinderGeometry(0.22, 0.26, 4.2, 8), wood, { thick: 0.002 }); p.position.set(sd * hw, 2.1, 0); g.add(p);
+      for (let i = 0; i < 3; i++) { const l = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), leaf); l.position.set(sd * hw + (Math.random() - 0.5) * 0.6, 3.6 + i * 0.35, (Math.random() - 0.5) * 0.4); g.add(l); }
     }
-    const beam = outlined(new THREE.BoxGeometry(5.6, 0.45, 0.45), dark, { thick: 0.002 }); beam.position.y = 4.1; g.add(beam);
+    const beam = outlined(new THREE.BoxGeometry(W + 0.8, 0.45, 0.45), dark, { thick: 0.002 }); beam.position.y = 4.1; g.add(beam);
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.85), new THREE.MeshBasicMaterial({ map: signTex(to, locked ? '通れない' : '▶ この先', locked ? '#ff6a6a' : '#ffd27a'), transparent: true, toneMapped: false, side: THREE.DoubleSide }));
     sign.position.set(0, 4.75, 0.05); g.add(sign);
-    const face = new THREE.Mesh(new THREE.PlaneGeometry(4.3, 3.8), new THREE.MeshBasicMaterial({ map: radialTex('#ffffff', '#000000'), color: hdr(locked ? '#ff8a8a' : '#fff0c8', 0.5),
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.5, 3.8), new THREE.MeshBasicMaterial({ map: radialTex('#ffffff', '#000000'), color: hdr(locked ? '#ff8a8a' : '#fff0c8', 0.5),
       transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
     face.position.y = 1.9; g.add(face);
-    if (locked) for (const y of [1.0, 2.2]) { const b = outlined(new THREE.BoxGeometry(5, 0.3, 0.15), wood, { thick: 0.002 }); b.position.set(0, y, 0.1); b.rotation.z = (y > 2 ? -1 : 1) * 0.18; g.add(b); }
+    if (locked) for (const y of [1.0, 2.2]) { const b = outlined(new THREE.BoxGeometry(W + 0.2, 0.3, 0.15), wood, { thick: 0.002 }); b.position.set(0, y, 0.1); b.rotation.z = (y > 2 ? -1 : 1) * 0.18; g.add(b); }
     const arrows = [];
     if (!locked) for (let i = 0; i < 3; i++) {
       const a = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.5, 3), glowMat('#ffd27a', 2)); a.rotation.set(-Math.PI / 2, 0, Math.PI); a.scale.set(1, 1, 0.2);
@@ -440,8 +442,9 @@ class FieldView extends BaseView {
       const ph = { key, cabin: E.cabin, cells: E.cells, x: pl.x, z: pl.z, nx: E.nx, nz: E.nz, h: E.h, width: E.width, depth: E.nz ? E.d : E.w,
         cx: E.x, cz: E.z, dests, locked: !E.cabin && dests[0].locked, open: 0 };
       ph.name = (list.find(e => e.name) || {}).name;
-      const st = ARCH_STYLES[this.zone.arch || 'station'];
-      Object.assign(ph, E.cabin ? this.makeCabin(ph, st) : st.exit === 'bulkhead' ? this.makeBulkhead(ph) : this.makeGate(ph, st));
+      const st = ARCH_STYLES[this.zone.arch || 'station'], stair = (list.find(e => e.stair) || {}).stair;
+      Object.assign(ph, E.cabin ? this.makeCabin(ph, st) : stair ? this.makeStairGate(ph, st, stair) : st.exit === 'arch' ? this.makeArchGate(ph)
+        : st.exit === 'bulkhead' ? this.makeBulkhead(ph) : this.makeGate(ph, st));
       if (!ph.apply) ph.apply = o => ph.panels.forEach(q => { q.p.position.x = q.s * o * (ph.width / 2 - 0.3); });
       this.exitsPhys.push(ph);
       for (const d of dests) this.gates.push({ exit: d.exit, x: ph.x, z: ph.z, nx: ph.nx, nz: ph.nz, locked: d.locked, phys: ph });
@@ -540,6 +543,52 @@ class FieldView extends BaseView {
     sign.position.set(0, H + 1.3, 0.62); g.add(sign);
     const lamps = [-1, 1].map(s => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.36, 0.26), glowMat(col, 3)); m.position.set(s * (W / 2 + 0.15), H - 0.6, 0.6); g.add(m); return m; });
     return { g, panels, lamps, H, apply };
+  }
+  // 野外の区画の出入口：木のアーチと行き先の立て札（地図の端に立つ）
+  makeArchGate(ph) {
+    const { g, face, arrows } = this.makeFieldGate(ph.locked, FIELD_ZONES[ph.dests[0].to].name, ph.width + 0.4);
+    g.position.set(ph.x, ph.h, ph.z); g.rotation.y = Math.atan2(ph.nx, ph.nz);
+    this.scene.add(g);
+    return { g, face, arrows, panels: [], apply() {}, H: 4.2 };
+  }
+  // 階段の出入口（塔・城・洞窟の上の階／下の階へ）：アーチの奥に、上り（up）または下り（down）の階段が続く
+  makeStairGate(ph, st, dir) {
+    const g = new THREE.Group(), W = ph.width, up = dir === 'up', H = 4.4, L = 7, n = 12, rise = up ? 3.6 : -3.6;
+    const col = ph.locked ? '#ff4d6d' : st.glow || THEMES[this.ch.bg].line;
+    g.position.set(ph.x, ph.h, ph.z); g.rotation.y = Math.atan2(ph.nx, ph.nz);   // ローカル +Z が区画の内側
+    this.scene.add(g);
+    const M = this.arch.mats, cave = (st.look || this.zone.arch) === 'mine', frameM = cave ? M.wood : M.wall2 || M.stone;
+    const hw = W / 2 - 0.35;
+    // 段（奥へ上る／下る）と、両側の壁・天井
+    const A = new GeoAcc(4), B = new GeoAcc(4);
+    for (let k = 0; k < n; k++) {
+      const z0 = -k * L / n, z1 = -(k + 1) * L / n, y = rise * (k + 1) / n;
+      if (up) A.box(-hw, 0, z1, hw, y, z0, 'b'); else A.box(-hw, y - 0.3, z1, hw, y, z0, 'b');
+    }
+    const lo = Math.min(0, rise) - 0.3, hi = Math.max(H, rise + H);
+    B.quad([-hw, lo, 0], [-hw, lo, -L], [-hw, hi, -L], [-hw, hi, 0]);
+    B.quad([hw, lo, -L], [hw, lo, 0], [hw, hi, 0], [hw, hi, -L]);
+    B.quad([-hw, H, -0.01], [hw, H, -0.01], [hw, rise + H, -L], [-hw, rise + H, -L]);
+    B.quad([hw, rise - 1, -L], [-hw, rise - 1, -L], [-hw, rise + H, -L], [hw, rise + H, -L]);
+    if (!up) B.quad([-hw, lo, 0], [hw, lo, 0], [hw, 0, 0], [-hw, 0, 0]);
+    g.add(A.mesh(M.step)); g.add(B.mesh(cave ? M.rock : M.wall));
+    // 奥の暗がりと、先の階の灯り
+    const dark = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.8, H), new THREE.MeshBasicMaterial({ color: '#05030a', transparent: true, opacity: 0.85 }));
+    dark.position.set(0, rise + H / 2 - 0.5, -L + 0.05); g.add(dark);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 0.5), blending: THREE.AdditiveBlending, depthWrite: false }));
+    glow.scale.setScalar(3); glow.position.set(0, rise + 2.4, -L + 0.8); g.add(glow);
+    // アーチの枠
+    const top = Math.max(H + 1.2, this.exitTop(ph));
+    const above = new THREE.Mesh(new THREE.PlaneGeometry(W, top - H), M.wall); above.position.set(0, H + (top - H) / 2, 0); g.add(above);
+    for (const s of [-1, 1]) { const j = new THREE.Mesh(new THREE.BoxGeometry(0.6, H + 0.4, 0.7), frameM); j.position.set(s * (W / 2 - 0.3), (H + 0.4) / 2, 0.15); j.castShadow = true; g.add(j); }
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(W + 0.2, 0.7, 0.8), frameM); lintel.position.set(0, H + 0.3, 0.15); g.add(lintel);
+    const d = ph.dests[0], label = FIELD_ZONES[d.to].floor || FIELD_ZONES[d.to].name;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: signTex(`${up ? '▲' : '▼'} ${label}`, ph.locked ? '封鎖中' : up ? '上り階段' : '下り階段', col), transparent: true, toneMapped: false }));
+    sign.position.set(0, H + 1.25, 0.6); g.add(sign);
+    const lamps = [-1, 1].map(s => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.36, 0.26), glowMat(col, 3)); m.position.set(s * (W / 2 + 0.2), H - 0.7, 0.6); g.add(m); return m; });
+    // 封鎖中は柵でふさぐ
+    if (ph.locked) for (const y of [0.9, 2.0]) { const b = new THREE.Mesh(new THREE.BoxGeometry(W - 0.6, 0.25, 0.14), M.wood || M.trim); b.position.set(0, y, 0.2); b.rotation.z = (y > 1.5 ? -1 : 1) * 0.12; g.add(b); }
+    return { g, panels: [], apply() {}, lamps, H };
   }
   // 区画間エレベーターの籠（入口に扉、奥に操作盤）。ステーション以外は鉄格子の籠
   makeCabin(ph, st = ARCH_STYLES.station) {
@@ -744,7 +793,7 @@ class FieldView extends BaseView {
         const dx = p.pos.x - ph.x, dz = p.pos.z - ph.z, along = dx * ph.nx + dz * ph.nz, lat = Math.abs(dx * ph.nz - dz * ph.nx);
         const near = along < 3.2 && lat < ph.width / 2 + 1 && Math.abs(p.pos.y - ph.h) < 2;
         if (ph.locked) {
-          if (near && !ph.warned) { ph.warned = true; this.toast(`${FIELD_ZONES[ph.dests[0].to].name}：隔壁が封鎖されている（任務を進めると開く）`); Sfx.enemy(); }
+          if (near && !ph.warned) { ph.warned = true; this.toast(`${FIELD_ZONES[ph.dests[0].to].name}：まだ先へは進めない（物語を進めると通れる）`); Sfx.enemy(); }
           else if (!near && along > 6) ph.warned = false;
         } else if (along < 0.75 && lat < ph.width / 2) { this.gotoZone(ph.dests[0].to, { from: this.zoneId }); return; }
       }
@@ -1287,11 +1336,16 @@ class FieldView extends BaseView {
     cv.width = T.cols * s; cv.height = T.rows * s;
     const g = cv.getContext('2d'), K = TK;
     const mix = (a, b, t) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
+    // 野外は草地の緑・土の道・水の青・木立の濃い緑、屋内は高さで青の濃さを変える
+    const out = !!T.outdoor, lo = out ? '#3a6a34' : '#243054', hi = out ? '#a8d878' : '#6a8fd6';
     for (let r = 0; r < T.rows; r++) for (let c = 0; c < T.cols; c++) {
       const i = T.idx(c, r), kd = T.kind[i], x = c * s, y = r * s;
-      if (kd < K.FLOOR) continue;
+      if (T.water[i]) { g.fillStyle = '#3a8ad0'; g.fillRect(x, y, s + 0.5, s + 0.5); continue; }
+      if (kd < K.FLOOR) { if (out && kd === K.SOLID) { g.fillStyle = T.outdoor === 'flora' ? '#16301c' : '#3a3530'; g.fillRect(x, y, s + 0.5, s + 0.5); } continue; }
       const st = T.stairs.get(i), h = st ? (st.h0 + st.h1) / 2 : T.h[i];
-      g.fillStyle = mix('#243054', '#6a8fd6', clamp(h / 7, 0, 1)); g.fillRect(x, y, s + 0.5, s + 0.5);
+      g.fillStyle = mix(lo, hi, clamp(h / 7, 0, 1)); g.fillRect(x, y, s + 0.5, s + 0.5);
+      if (T.paint[i]) { g.fillStyle = mix('#a8845a', '#e8c890', clamp(h / 7, 0, 1)); g.fillRect(x, y, s + 0.5, s + 0.5); }
+      if (T.bridge[i]) { g.fillStyle = '#c8965a'; g.fillRect(x, y + s * 0.15, s + 0.5, s * 0.7); }
       if (kd === K.STAIR) { g.strokeStyle = 'rgba(220,235,255,.45)'; g.lineWidth = 1; for (let q = 1; q < 4; q++) { g.beginPath(); if (st.axis === 'z') { g.moveTo(x, y + q * s / 4); g.lineTo(x + s, y + q * s / 4); } else { g.moveTo(x + q * s / 4, y); g.lineTo(x + q * s / 4, y + s); } g.stroke(); } }
       if (kd === K.LIFT) { g.fillStyle = '#2f9fd8'; g.fillRect(x + 1, y + 1, s - 2, s - 2); }
       if (kd === K.DOOR) { g.fillStyle = '#8ae0ff'; g.fillRect(x + s * 0.3, y + s * 0.3, s * 0.4, s * 0.4); }
@@ -1303,7 +1357,7 @@ class FieldView extends BaseView {
       DIR4.forEach(([dc, dr]) => {
         const j = T.idx(c + dc, r + dr), nk = j < 0 ? K.SOLID : T.kind[j];
         const x0 = (c + (dc > 0 ? 1 : 0)) * s, y0 = (r + (dr > 0 ? 1 : 0)) * s, x1 = dc ? x0 : x0 + s, y1 = dr ? y0 : y0 + s;
-        if (nk < K.FLOOR) { g.strokeStyle = nk === K.WINDOW ? '#8ae0ff' : nk === K.VOID ? 'rgba(255,120,150,.7)' : 'rgba(215,228,255,.85)'; g.lineWidth = nk === K.WINDOW ? 3 : 2; }
+        if (nk < K.FLOOR) { if (j >= 0 && T.water[j]) return; g.strokeStyle = nk === K.WINDOW ? '#8ae0ff' : nk === K.VOID ? 'rgba(255,120,150,.7)' : out ? 'rgba(20,40,20,.9)' : 'rgba(215,228,255,.85)'; g.lineWidth = nk === K.WINDOW ? 3 : 2; }
         else if (T.kind[i] !== K.STAIR && nk !== K.STAIR && T.kind[i] !== K.LIFT && nk !== K.LIFT && Math.abs(T.h[i] - T.h[j]) > STEP) { g.strokeStyle = 'rgba(138,224,255,.55)'; g.lineWidth = 1.2; }
         else return;
         g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
@@ -1413,8 +1467,12 @@ class FieldView extends BaseView {
     g.restore();
     g.strokeStyle = 'rgba(232,199,122,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(c, c, 96, 0, Math.PI * 2); g.stroke();
     // 今いる階
-    g.fillStyle = 'rgba(6,9,22,.9)'; g.fillRect(c - 18, 172, 36, 20); g.strokeStyle = 'rgba(232,199,122,.8)'; g.lineWidth = 1; g.strokeRect(c - 18, 172, 36, 20);
-    g.fillStyle = '#ffe6a8'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(T.floorLabel(pp.y), c, 182);
+    const fl = T.floorLabel(pp.y);
+    if (fl) {
+      const w = Math.max(36, fl.length * 11 + 12);
+      g.fillStyle = 'rgba(6,9,22,.9)'; g.fillRect(c - w / 2, 172, w, 20); g.strokeStyle = 'rgba(232,199,122,.8)'; g.lineWidth = 1; g.strokeRect(c - w / 2, 172, w, 20);
+      g.fillStyle = '#ffe6a8'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(fl, c, 182);
+    }
   }
 
   // 3D 位置 → 画面座標（画面外なら null）
@@ -1446,7 +1504,7 @@ class FieldView extends BaseView {
     this.anchor.rings.forEach((r, i) => { r.rotation.x = t * (0.8 + i * 0.5); r.rotation.y = t * (0.5 + i * 0.3); });
     this.anchor.core.rotation.y = t;
     const cam = this.camera.position;
-    if (!this.T) this.gates.forEach(g => {
+    (this.T ? this.exitsPhys.filter(g => g.arrows) : this.gates).forEach(g => {
       g.arrows.forEach((a, i) => { a.scale.setScalar(0.8 + ((t * 1.5 + i * 0.33) % 1) * 0.4); });
       // カメラがゲートの光の面に近づいたら消す（画面全体が染まるのを防ぐ）
       g.face.material.opacity = 0.55 * clamp((Math.hypot(cam.x - g.x, cam.z - g.z) - 2.5) / 4, 0, 1);
@@ -1591,11 +1649,15 @@ function FieldScreen(zoneId) {
 // ワールドマップ（ミャオニアの地図）の HTML。here = 現在地
 function worldMapHTML(here) {
   const visited = Save.data.fieldVisited || {}, cur = typeof Story !== 'undefined' ? Story.current() : null;
-  const qz = cur && cur.step.t === 'field' ? cur.step.zone : null;
-  const ids = Object.keys(FIELD_ZONES).filter(id => !CHAPTERS[FIELD_ZONES[id].ci].hidden || zoneOpen(id));
+  let qz = cur && cur.step.t === 'field' ? cur.step.zone : null;
+  // 塔・城などの上の階（parent のある区画）は、入口の階にまとめて表示する
+  const ids = Object.keys(FIELD_ZONES).filter(id => !FIELD_ZONES[id].parent && (!CHAPTERS[FIELD_ZONES[id].ci].hidden || zoneOpen(id)));
+  if (here && FIELD_ZONES[here] && FIELD_ZONES[here].parent) here = FIELD_ZONES[here].parent;
+  if (qz && FIELD_ZONES[qz].parent) qz = FIELD_ZONES[qz].parent;
   const lines = [];
   ids.forEach(id => FIELD_ZONES[id].exits.forEach(e => { if (id < e.to && ids.includes(e.to)) { const a = FIELD_ZONES[id].map2d, b = FIELD_ZONES[e.to].map2d; lines.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="${zoneOpen(e.to) && zoneOpen(id) ? '' : 'locked'}"/>`); } }));
-  const chestsLeft = id => FIELD_ZONES[id].chests - ((Save.data.fieldChests || {})[id] || []).length;
+  const floorsOf = id => Object.keys(FIELD_ZONES).filter(k => k === id || FIELD_ZONES[k].parent === id);
+  const chestsLeft = id => floorsOf(id).reduce((n, k) => n + FIELD_ZONES[k].chests - ((Save.data.fieldChests || {})[k] || []).length, 0);
   return `<div class="ov-box wm-box"><h2>ミャオニアの地図</h2>
     <div class="wm-graph"><svg width="1000" height="580" viewBox="0 0 1000 580"><defs><radialGradient id="wmtree"><stop offset="0" stop-color="#8ad86a"/><stop offset="1" stop-color="#8ad86a" stop-opacity="0"/></radialGradient></defs>
       <circle cx="470" cy="522" r="70" fill="url(#wmtree)" opacity=".35"/>${lines.join('')}</svg>
