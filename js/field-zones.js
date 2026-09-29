@@ -258,13 +258,21 @@ const FIELD_ZONES = {
       '#######bbb###############',
     ],
     anchor: [8, 38], spawn: [-8, 44], exits: [{ key: 'b', to: 'pokapoka' }, { key: 'a', to: 'road_rest' }],
+    npcs: [
+      { key: 'hachi', after: 'c2_01b', at: [-13, 23], face: -1.2, lines: ['池のほとりで、もう一度ふたりで鳴らしてみたんだ。……ちゃんと、合ったよ。', 'けんかの理由？　……さあな。思い出せないってことは、たいしたことじゃなかったんだろ。'],
+        v: [['done', 'あんたたちのおかげで、今も二匹で旅をしてるよ。……もう十一年目だ。']] },
+      { key: 'buchi', after: 'c2_01b', at: [-11, 21], face: -1.05, lines: ['ハチの笛はね、ほんとは街道いちなんだよ。……本人には言わないでよ。'],
+        v: [['done', '世界じゅうに笑い声が戻ったね。今日も一曲、ふたりで鳴らしていくよ！']] },
+    ],
     notes: [{ at: [-2, 21], title: '道しるべ', text: '「北　ニャハハ王国／南　ぽかぽか村／西　ひょうたん池」' }],
     map2d: [470, 308] },
 
   road_rest: { ci: 1, name: '街道の宿場', w: 60, d: 56, stage: '2-1', arenas: [[0, 10, 0]], build: 'rest', town: true, groups: 0, chests: 2, crystals: 0,
     anchor: [6, 8], exits: [{ side: 's', at: 4, to: 'road1' }, { side: 'n', at: -4, to: 'road2' }, { side: 'e', at: 6, to: 'woods' }],
     npcs: [
-      { key: 'chaya', at: [-10, -3.5], face: 0, shop: 'inn', lines: ['茶屋「ねこじゃらし」へようこそ。お茶でも飲んで、ひと休みしていきな。'] },
+      { key: 'chaya', at: [-10, -3.5], face: 0, shop: 'inn', lines: ['茶屋「ねこじゃらし」へようこそ。お茶でも飲んで、ひと休みしていきな。'],
+        v: [['scene:c2_01b', '茶屋「ねこじゃらし」へようこそ。……ハチとブチが仲直りしたって？　そりゃよかった。あの二匹の笛と太鼓がないと、この宿場はさみしくてねえ。'],
+          ['scene:c2_03c', '茶屋「ねこじゃらし」へようこそ。あんたたちがいると、ひさしぶりに店がにぎやかでいいねえ。']] },
       { key: 'tabibito_a', at: [8, -8], walk: 6, lines: ['北のニャハハ王国は、笑いの国って呼ばれてたんだ。', 'でも最近、あそこから来た旅人は、みんな暗い顔をしてるんだよ……。'] },
       { key: 'tabibito_b', at: [-16, 10], face: Math.PI / 2, lines: ['さっき白い猫が魔法を見せてくれたんだけど……空から魚が降ってきたんだ。'],
         v: [['scene:c2_02', 'あの白い猫、あんたたちの仲間になったのかい。……魚、ありがとうって伝えておいて。']] },
@@ -314,7 +322,7 @@ const FIELD_ZONES = {
     notes: [{ at: [4, -20], title: '大きな木のうろ', text: 'ふかふかの落ち葉がしきつめられている。誰かがここで眠っていたようだ。' }],
     map2d: [610, 236] },
 
-  road2: { ci: 1, name: '街道の関所あと', w: 54, d: 72, stage: '2-3', arenas: [[0, 4, 0]], build: 'checkpoint', groups: 5, chests: 3, crystals: 3,
+  road2: { ci: 1, name: '街道の関所あと', w: 54, d: 72, stage: '2-4', arenas: [[0, 4, 0]], build: 'checkpoint', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'crag', chestAt: [[-20, -27], [22, 17], [24, 3]],
     // 岩山の切り通し。こわれた関所の門をくぐって北へ。西の岩棚と東の岩棚（石段で上る）、東の野営あとは寄り道
     map: [

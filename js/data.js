@@ -423,7 +423,8 @@ const CHAPTERS = [
     stages: [
       { id: '2-1', name: '街道の丘',         lv: 8,  waves: [['karasu', 'noraInu'], ['iwa', 'karasu', 'noraInu']] },
       { id: '2-2', name: 'まどろみの林',     lv: 11, waves: [['noraInu', 'karasu', 'noraInu'], ['iwa', 'iwa']] },
-      { id: '2-3', name: '街道の関所あと',   lv: 14, boss: true, waves: [['noraInu', 'iwa', 'noraInu'], ['inoshishi']] },
+      { id: '2-3', name: '風車の畑',         lv: 13, waves: [['karasu', 'noraInu', 'karasu'], ['noraInu', 'iwa', 'noraInu']] },
+      { id: '2-4', name: '街道の関所あと',   lv: 15, boss: true, waves: [['noraInu', 'iwa', 'noraInu'], ['inoshishi']] },
     ] },
   { id: 'c3', name: 'ニャハハ王国', bg: 'kingdom', desc: '名前とは正反対に、誰も笑わない街。笑顔の塔に何かがいる。',
     stages: [
