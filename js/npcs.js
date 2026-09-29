@@ -39,6 +39,10 @@ const NPCS = {
     look: { fur: '#ffffff', pattern: 'spots', patches: ['#2a2a30'], eye: '#4a8ad8', muzzle: '#ffffff', scarf: '#e0453a', accent: '#e0453a' } },
   bukiya2:   { name: '旅の鍛冶屋', title: '街道の鍛冶屋', elem: 'fire', face: 'smile',
     look: { fur: '#8a8a96', pattern: 'tabby', patches: ['#5a5a66'], eye: '#e8a040', muzzle: '#c8c8d0', apron: '#5a4a3a', band: '#e0453a', accent: '#ffb04a' } },
+  hachi:     { name: 'ハチ', title: '旅芸人（笛）', elem: 'wind', face: 'serious', faceAfter: ['scene:c2_01b', 'smile'],
+    look: { fur: '#34323c', pattern: 'tuxedo', eye: '#e8c040', muzzle: '#ffffff', paws: '#ffffff', scarf: '#e0a040', cap: '#6a4a8a', accent: '#e0a040' } },
+  buchi:     { name: 'ブチ', title: '旅芸人（太鼓）', elem: 'fire', face: 'pout', faceAfter: ['scene:c2_01b', 'smile'],
+    look: { fur: '#ffffff', pattern: 'spots', patches: ['#b8783a', '#3a2a24'], eye: '#6ab8a8', muzzle: '#ffffff', kerchief: '#5ab8a8', accent: '#5ab8a8' } },
   // ---------------- ニャハハ王国 ----------------
   shimin_a:  { name: '王国の猫', title: '笑わない市民', elem: 'wind', face: 'sad', faceAfter: ['clear:3-3', 'joy'],
     look: { fur: '#b8a898', pattern: 'tabby', patches: ['#8a7a6a'], eye: '#8a8a6a', muzzle: '#d8d0c8', kerchief: '#8a8a96', accent: '#ff8ab8' } },

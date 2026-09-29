@@ -18,14 +18,25 @@ const Save = {
       bondSeen: {},       // 見た特別イベント
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       gear: {},           // 武器の強化段階
-      auto: false, speed: 1, ver: 1,
+      auto: false, speed: 1, ver: 2,
     };
+  },
+  // 古いセーブを今の台本に合わせる
+  migrate(d, ver) {
+    // ver 2：第二章に「風車の畑」（2-3）が入り、関所あとが 2-4 に。段階も増えた
+    if (ver < 2) {
+      if (d.cleared['2-3']) d.cleared['2-4'] = true;
+      if (d.story && d.story.ch === 1) d.story.step = [0, 1, 3, 4, 7][d.story.step] ?? d.story.step;
+      d.ver = 2;
+    }
   },
   load() {
     try { this.data = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { this.data = null; }
     const def = this.defaults();
     if (!this.data) this.data = def;
+    const ver = this.data.ver || 1;
     for (const k in def) if (this.data[k] === undefined) this.data[k] = def[k];
+    this.migrate(this.data, ver);
     this.data.team = this.data.team.filter(k => this.data.owned[k]);
     if (!this.data.team.length) this.data.team = ['mike'];
     Game.auto = !!this.data.auto; Game.speed = this.data.speed || 1;
