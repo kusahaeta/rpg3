@@ -226,10 +226,15 @@ class FieldView extends BaseView {
       if (!n.walk) col(n.at[0], n.at[1], 0.5);
       return { ...n, m, pos: V3(n.at[0], y, n.at[1]), home: V3(n.at[0], y, n.at[1]), yaw: m.group.rotation.y, line: 0, wait: this.rand() * 3, wp: null, speed: 0, phase: 0 };
     });
-    // 記録（端末・石碑）
+    // 調べられるもの：道しるべ（post）・看板（board）を立てるか、区画の小物（mark）の上に目印の光を出す。どれでもなければ石碑
     this.notes = noteDefs.map(n => {
-      const o = this.makeNote(), y = put(o.g, n.at[0], n.at[1]); o.g.rotation.y = n.face != null ? n.face : Math.atan2(-n.at[0], -n.at[1]);
-      this.scene.add(o.g); col(n.at[0], n.at[1], 0.5);
+      const stele = !n.post && !n.board && n.mark == null;
+      const mark = n.mark != null ? (Array.isArray(n.mark) ? n.mark : [0, n.mark, 0]) : [0, n.post ? 2.6 : n.board ? 2.3 : 1.8, 0];
+      const o = this.makeNote(stele, mark), y = put(o.g, n.at[0], n.at[1]);
+      if (stele) { o.g.rotation.y = n.face != null ? n.face : Math.atan2(-n.at[0], -n.at[1]); col(n.at[0], n.at[1], 0.5); }
+      this.scene.add(o.g);
+      if (n.post) this.kit.signpost(n.at[0], n.at[1], n.face || 0, ...n.post);
+      if (n.board) this.kit.board(n.at[0], n.at[1], n.face || 0, ...n.board);
       return { ...n, pos: V3(n.at[0], y, n.at[1]), ...o };
     });
     // 宝箱
@@ -374,14 +379,16 @@ class FieldView extends BaseView {
     }
     return { g, face, arrows };
   }
-  // 記録：石碑
-  makeNote() {
+  // 記録：石碑と、その上の光る目印（stele でなければ目印だけ。mark = 目印の位置）
+  makeNote(stele = true, at = [0, 1.8, 0]) {
     const g = new THREE.Group();
-    const stele = outlined(new THREEX.RoundedBoxGeometry(0.9, 1.4, 0.28, 2, 0.08), toon('#b8b0a0'), { thick: 0.002 });
-    stele.position.y = 0.7; g.add(stele);
-    const rune = new THREE.Mesh(new THREE.CircleGeometry(0.2, 6), glowMat('#ffd27a', 1.8)); rune.position.set(0, 1.0, 0.15); g.add(rune);
+    if (stele) {
+      const s = outlined(new THREEX.RoundedBoxGeometry(0.9, 1.4, 0.28, 2, 0.08), toon('#b8b0a0'), { thick: 0.002 });
+      s.position.y = 0.7; g.add(s);
+      const rune = new THREE.Mesh(new THREE.CircleGeometry(0.2, 6), glowMat('#ffd27a', 1.8)); rune.position.set(0, 1.0, 0.15); g.add(rune);
+    }
     const mark = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffffff', 0.6), blending: THREE.AdditiveBlending, depthWrite: false }));
-    mark.scale.setScalar(0.8); mark.position.y = 1.8; g.add(mark);
+    mark.scale.setScalar(0.8); mark.position.set(...at); g.add(mark);
     return { g, mark };
   }
   // 宝箱
@@ -911,7 +918,7 @@ class FieldView extends BaseView {
   nearestInteract() {
     const p = this.player.pos, Z = this.zone;
     for (const n of this.npcs) if (n.pos.distanceTo(p) < 2.2) return { type: 'npc', n, text: `${speakerName(n.key)}と話す${n.shop ? '（' + SHOP_NAMES[n.shop] + '）' : ''}` };
-    for (const n of this.notes) if (n.pos.distanceTo(p) < 2.0) return { type: 'note', n, text: `調べる：${n.title}` };
+    for (const n of this.notes) if (n.pos.distanceTo(p) < (n.reach || 2.0)) return { type: 'note', n, text: `調べる：${n.title}` };
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
     const same = (x, z) => Math.abs(this.gy(x, z) - p.y) < 1.5;
     if (Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && same(Z.anchor[0], Z.anchor[1])) return { type: 'anchor', text: 'ねこ地蔵：ひと休み（HP回復）／ワールドマップ' };

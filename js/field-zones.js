@@ -9,6 +9,10 @@
 // npcs[].v: [[条件, 台詞...]]（条件 'scene:ID' 'clear:ステージ' 'done' 'flag:名前'。後ろのものほど優先）
 // npcs[].shop: weapon / item / inn / fish（話しかけると店）
 // notes[].when / until: その条件を満たしてから出る／満たすと消える
+// notes：F で調べられるもの。道をふさがないよう、実物の上に光る目印を出す
+//   post / board: [札の文, 小さな文]（道しるべ／二本脚の看板を立てる。札の向きは face）
+//   mark: 目印の高さ、または [dx, 高さ, dz]（区画の小物が実物。at はその小物の位置）
+//   reach: 調べられる距離（大きな小物のとき。既定 2m）。どれも書かないと石碑を立てる
 // bg: 空と光（js/gfx/env.js の THEMES。省略時は章の bg）
 const FIELD_ZONES = {
   // ---------------- 第一章 ぽかぽか村・ほしふる森 ----------------
@@ -37,8 +41,8 @@ const FIELD_ZONES = {
         v: [['scene:c1_09', '森のネズミたちが、持っていった食べ物を返しにきたよ。律儀だねえ。'], ['scene:c7_04', '最近、みんなで集まって話すことが減ったなあ……。']] },
       { key: 'murabito_b', at: [-22, -18], face: Math.PI / 2, lines: ['ミケの家はそこだよ。……屋根に魚の骨が干してあるのは、見なかったことにしよう。'] },
     ],
-    notes: [{ at: [6, -15], title: '村の掲示板', text: '「にゃんだーの樹の実りが悪く、今年の収穫祭は延期します——村長」' },
-      { at: [-21.5, -11], title: 'ミケの家', text: '表札に「ミケ」。……窓辺に、食べかけの魚が干してある。' }],
+    notes: [{ at: [6, -15], face: -0.4, board: ['村の掲示板', '収穫祭は延期します　——村長'], title: '村の掲示板', text: '「にゃんだーの樹の実りが悪く、今年の収穫祭は延期します——村長」' },
+      { at: [-21.8, -8], mark: [-0.9, 2.3, 0], title: 'ミケの家', text: '表札に「ミケ」。……窓辺に、食べかけの魚が干してある。' }],
     map2d: [470, 380] },
 
   hill: { ci: 0, name: '村はずれの丘', w: 52, d: 48, stage: '1-1', arenas: [[0, 10, 0]], build: 'hill', groups: 2, chests: 2, crystals: 2,
@@ -71,7 +75,7 @@ const FIELD_ZONES = {
       '############bb############',
     ],
     anchor: [8, 12], exits: [{ key: 'a', to: 'pokapoka' }, { key: 'b', to: 'tree_root' }],
-    notes: [{ at: [-6, -6], title: '友情の実のかけら', text: 'えぐれた地面に、流れ星に見えた実のかけらが残っている。ほんのりあたたかく、かすかに光っている。' }],
+    notes: [{ at: [-3, -5], mark: 1.3, when: 'scene:c1_03', title: '友情の実のかけら', text: 'えぐれた地面に、流れ星に見えた実のかけらが残っている。ほんのりあたたかく、かすかに光っている。' }],
     map2d: [470, 450] },
 
   forest_in: { ci: 0, name: 'ほしふる森・入口', w: 60, d: 72, stage: '1-1', arenas: [[-2, -18, 0]], build: 'forest', bg: 'forest', groups: 5, chests: 3, crystals: 3,
@@ -116,7 +120,7 @@ const FIELD_ZONES = {
       '##############################',
     ],
     anchor: [-8, 26], spawn: [-24, 24], exits: [{ key: 'a', to: 'pokapoka' }, { key: 'b', to: 'forest_deep' }],
-    notes: [{ at: [10, 10], title: '古い立て札', text: '「ほしふる森——夜になると、空から小さな星が降る。星をひろった者は、友を得るという」' }],
+    notes: [{ at: [14, 7], face: 0, post: ['ほしふる森', '星をひろった者は、友を得る'], title: '古い立て札', text: '「ほしふる森——夜になると、空から小さな星が降る。星をひろった者は、友を得るという」' }],
     map2d: [610, 380] },
 
   forest_deep: { ci: 0, name: 'ほしふる森・奥', w: 64, d: 72, stage: '1-2', arenas: [[-4, 0, 0]], build: 'forestDeep', bg: 'forest', groups: 6, chests: 3, crystals: 3,
@@ -161,7 +165,7 @@ const FIELD_ZONES = {
       '#################bb#############',
     ],
     anchor: [4, 26], exits: [{ key: 'b', to: 'forest_in' }, { key: 'a', to: 'rat_nest' }],
-    notes: [{ at: [13, -9], title: '泉のほとり', text: 'すみきった泉。水面に、星のような光がゆらめいている。' }],
+    notes: [{ at: [19, -5], mark: [0, 1.0, 1.2], title: '泉のほとり', text: 'すみきった泉。水面に、星のような光がゆらめいている。' }],
     map2d: [750, 380] },
 
   rat_nest: { ci: 0, name: 'ネズミの王国', w: 54, d: 54, stage: '1-3', arenas: [[0, -2, 0]], build: 'ratNest', bg: 'forest', groups: 3, chests: 3, crystals: 2, calmAfter: '1-3',
@@ -200,7 +204,7 @@ const FIELD_ZONES = {
     npcs: [{ key: 'king_npc', after: 'c1_07', at: [0, -15], face: 0, lines: ['……魚、うまかったぞ。', '森のどんぐりが実らなくてな。みんな腹をすかせておったのだ。'],
       v: [['scene:c8_02', '魚……分けてやるよ。俺にとっては大事なんだ！'], ['done', 'おう、勇者か。……今年はどんぐりが豊作だ。分けてやろう。']] },
       { key: 'kodomo_nezumi', after: 'c1_07', at: [8, -6], walk: 5, species: 'mouse', lines: ['王さまがね、ぼくたちの分まで食べ物を探してくれてたの。'] }],
-    notes: [{ at: [-12, -8], title: 'チーズの山', text: '村から持ってきたらしい食べ物が積んである。……でも、誰も手をつけていない。', until: 'scene:c1_09' }],
+    notes: [{ at: [-20, -8], mark: 1.5, reach: 2.4, title: 'チーズの山', text: '村から持ってきたらしい食べ物が積んである。……でも、誰も手をつけていない。', until: 'scene:c1_09' }],
     map2d: [890, 380] },
 
   // ---------------- 第二章 ミャオ街道 ----------------
@@ -264,7 +268,7 @@ const FIELD_ZONES = {
       { key: 'buchi', after: 'c2_01b', at: [-11, 21], face: -1.05, lines: ['ハチの笛はね、ほんとは街道いちなんだよ。……本人には言わないでよ。'],
         v: [['done', '世界じゅうに笑い声が戻ったね。今日も一曲、ふたりで鳴らしていくよ！']] },
     ],
-    notes: [{ at: [-2, 21], title: '道しるべ', text: '「北　ニャハハ王国／南　ぽかぽか村／西　ひょうたん池」' }],
+    notes: [{ at: [-5, 17], face: 0, post: ['↑ ニャハハ王国', '← ひょうたん池　↓ ぽかぽか村'], title: '道しるべ', text: '「北　ニャハハ王国／南　ぽかぽか村／西　ひょうたん池」' }],
     map2d: [470, 308] },
 
   road_rest: { ci: 1, name: '街道の宿場', w: 60, d: 56, stage: '2-1', arenas: [[0, 10, 0]], build: 'rest', town: true, groups: 0, chests: 2, crystals: 0,
@@ -319,7 +323,7 @@ const FIELD_ZONES = {
       '#############################',
     ],
     anchor: [-18, 8], exits: [{ key: 'a', to: 'road_rest' }],
-    notes: [{ at: [4, -20], title: '大きな木のうろ', text: 'ふかふかの落ち葉がしきつめられている。誰かがここで眠っていたようだ。' }],
+    notes: [{ at: [4, -22.8], mark: [0, 1.3, -1.2], title: '大きな木のうろ', text: 'ふかふかの落ち葉がしきつめられている。誰かがここで眠っていたようだ。' }],
     map2d: [610, 236] },
 
   road2: { ci: 1, name: '街道の関所あと', w: 54, d: 72, stage: '2-4', arenas: [[0, 4, 0]], build: 'checkpoint', groups: 5, chests: 3, crystals: 3,
@@ -364,7 +368,7 @@ const FIELD_ZONES = {
       '##########bbb##############',
     ],
     anchor: [10, 25], exits: [{ key: 'b', to: 'road_rest' }, { key: 'a', to: 'nyahaha' }],
-    notes: [{ at: [-12, -6], title: '倒れた関所の札', text: '「ニャハハ王国まで あと少し。笑顔でお越しください」' }],
+    notes: [{ at: [-10, -12], mark: 1.0, title: '倒れた関所の札', text: '「ニャハハ王国まで あと少し。笑顔でお越しください」' }],
     map2d: [470, 164] },
 
   // ---------------- 第三章 ニャハハ王国 ----------------
@@ -379,7 +383,7 @@ const FIELD_ZONES = {
       { key: 'douguya2', at: [22, 14], face: -Math.PI / 2, shop: 'item', lines: ['……いらっしゃい。道具なら、あるよ……。'], v: [['clear:3-3', 'いらっしゃいませー！　なんだか、声が出るようになったよ！']] },
       { key: 'yadoya2', at: [-22, 14], face: Math.PI / 2, shop: 'inn', lines: ['宿「わらいねこ亭」……名前だけは、ね。'] },
     ],
-    notes: [{ at: [0, -4], title: '広場の噴水', text: '水の止まった噴水。台座に「笑う門には福きたる」と刻まれている。' }],
+    notes: [{ at: [0, -8], mark: 2.5, reach: 3.4, title: '広場の噴水', text: '水の止まった噴水。台座に「笑う門には福きたる」と刻まれている。' }],
     map2d: [470, 95] },
 
   castle: { ci: 2, name: 'ニャハハ城・中庭', w: 44, d: 46, stage: '3-1', arenas: [[0, 6, 0]], build: 'castle', town: true, groups: 0, chests: 1, crystals: 0, skyTree: true,
@@ -390,8 +394,8 @@ const FIELD_ZONES = {
       { key: 'daijin', at: [-5, -10], face: Math.PI / 4, lines: ['宝物庫の台座は、空っぽのままでございます……。'], v: [['scene:c6_04', '笑いの実が、宝物庫の台座に戻りました。……ほれ、よく光っておりますでしょう。']] },
       { key: 'eihei', at: [7, 10], face: -Math.PI / 2, lines: ['ここはニャハハ城の中庭。……ここ数日、誰も通りません。'] },
     ],
-    notes: [{ at: [8, -16], title: '宝物庫の台座', text: '「笑いの実」とあった台座。……今は、何もない。', until: 'scene:c6_04' },
-      { at: [8, -16], title: '宝物庫の台座', text: '「笑いの実」の台座。戻ってきた実が、ほんのりと光っている。', when: 'scene:c6_04' }],
+    notes: [{ at: [8, -19], mark: 2.0, title: '宝物庫の台座', text: '「笑いの実」とあった台座。……今は、何もない。', until: 'scene:c6_04' },
+      { at: [8, -19], mark: 2.0, title: '宝物庫の台座', text: '「笑いの実」の台座。戻ってきた実が、ほんのりと光っている。', when: 'scene:c6_04' }],
     map2d: [330, 95] },
 
   // 笑顔の塔：階ごとに区画が分かれ、階段で上り下りする（parent：ワールドマップでは塔の入口にまとめる）
@@ -425,7 +429,7 @@ const FIELD_ZONES = {
       '##########ss##########',
     ],
     anchor: [10.5, 19], spawn: [10.5, 21.5], exits: [{ key: 's', to: 'nyahaha' }, { key: 'u', to: 'tower_2f', stair: 'up' }],
-    notes: [{ at: [2, 12], title: '古いポスター', text: '「笑顔の塔　大サーカス！　主演：ピエロ」……色あせて、涙のしみがある。' }],
+    notes: [{ at: [1, 12], mark: [-0.7, 2.9, 0], title: '古いポスター', text: '「笑顔の塔　大サーカス！　主演：ピエロ」……色あせて、涙のしみがある。' }],
     map2d: [470, 30] },
   tower_2f: { ci: 2, name: '笑顔の塔・楽屋', floor: '2F', parent: 'tower', stage: '3-2', arenas: [[11.5, 9, 90]], build: 'tower2f', arch: 'tower', bg: 'tower', groups: 4, chests: 3, crystals: 2, calmAfter: '3-3',
     th: { pattern: 'checker', floor: '#6a3458', floor2: '#7a4068', line: '#ffd27a', floorGlow: 0.25, fog: '#3a1a3a', light: 1.15 }, chestAt: [[18, 2], [2, 17], [19, 17]],
@@ -457,7 +461,7 @@ const FIELD_ZONES = {
       '##########dd##########',
     ],
     anchor: [10.5, 20], exits: [{ key: 'd', to: 'tower', stair: 'down' }, { key: 'u', to: 'tower_3f', stair: 'up' }],
-    notes: [{ at: [11.5, 8], title: '楽屋の鏡', text: '鏡のまわりに、ピエロの笑顔の写真がたくさん貼ってある。……どれも、昔の写真だ。' }],
+    notes: [{ at: [11.5, 7], mark: [0, 2.7, -0.3], title: '楽屋の鏡', text: '鏡のまわりに、ピエロの笑顔の写真がたくさん貼ってある。……どれも、昔の写真だ。' }],
     map2d: [470, 30] },
   tower_3f: { ci: 2, name: '笑顔の塔・空中ブランコの間', floor: '3F', parent: 'tower', stage: '3-2', arenas: [[10.5, 12, 0]], build: 'tower3f', arch: 'tower', bg: 'tower', groups: 3, chests: 3, crystals: 2, calmAfter: '3-3',
     th: { pattern: 'checker', floor: '#6a3458', floor2: '#7a4068', line: '#ffd27a', floorGlow: 0.25, fog: '#3a1a3a', light: 1.15 }, chestAt: [[7.5, 7], [13, 16], [4, 2]],
@@ -571,8 +575,8 @@ const FIELD_ZONES = {
       { key: 'tanimura', at: [18, 22], walk: 4, lines: ['クロさんは、昔「影の四剣」って呼ばれたパーティーにいたんだ。', '……あの日から、誰とも組まなくなったって聞いたよ。'] },
       { key: 'yadoya3', at: [24, 20], face: -Math.PI / 2, shop: 'inn', lines: ['谷の宿だよ。……静かだけど、よく眠れる。'] },
     ],
-    notes: [{ at: [-16, -11], title: '三つの墓標', text: '「ハヤテ」「リン」「ゴロウ」——そして、名前の刻まれていない四つ目の石。' },
-      { at: [14, -5], title: '古いテント', text: '雨ざらしのテント。中に、誰かの荷物が残されている。' }],
+    notes: [{ at: [-15.25, -16], mark: 1.9, title: '三つの墓標', text: '「ハヤテ」「リン」「ゴロウ」——そして、名前の刻まれていない四つ目の石。' },
+      { at: [18, -9], mark: 2.8, reach: 2.9, title: '古いテント', text: '雨ざらしのテント。中に、誰かの荷物が残されている。' }],
     map2d: [620, 95] },
 
   cave: { ci: 3, name: '黒影洞窟', floor: 'B1', stage: '4-2', arenas: [[14.5, 15.5, 0]], build: 'cave', arch: 'cave', bg: 'cave', groups: 5, chests: 3, crystals: 3, calmAfter: '4-3',
@@ -605,7 +609,7 @@ const FIELD_ZONES = {
       '#############ssss#############',
     ],
     anchor: [14.5, 20.3], spawn: [14.5, 22], chestAt: [[2.5, 8], [23, 2], [26, 11]], exits: [{ key: 's', to: 'valley' }, { key: 'd', to: 'cave_deep', stair: 'down' }],
-    notes: [{ at: [2, 7], title: '壁のひっかき傷', text: '四本の爪あとが並んでいる。……「影の四剣、ここに参上」' }],
+    notes: [{ at: [1, 7], mark: [-0.6, 2.4, 0], title: '壁のひっかき傷', text: '四本の爪あとが並んでいる。……「影の四剣、ここに参上」' }],
     map2d: [620, 30] },
   cave_deep: { ci: 3, name: '黒影洞窟・最深部', floor: 'B2', parent: 'cave', stage: '4-3', arenas: [[14.5, 4, 0]], build: 'caveDeep', arch: 'cave', bg: 'cave', groups: 4, chests: 3, crystals: 2, calmAfter: '4-3',
     th: { pattern: 'rock', floor: '#34303e', floor2: '#3e3848', line: '#8a6aff', floorGlow: 0.35, fog: '#100c22', fogD: 0.024, light: 1.05, water: '#3a4aa0', waterGlow: '#4a2ac0' },
@@ -682,7 +686,7 @@ const FIELD_ZONES = {
       '########bbb########################',
     ],
     anchor: [-10, 24], exits: [{ key: 'b', to: 'valley' }, { key: 'r', to: 'ruins_in' }, { key: 'e', to: 'demon_land' }],
-    notes: [{ at: [10, 16], title: '倒れた石像', text: '四匹の猫が肩を寄せ合う石像。顔はすり減って、もう分からない。' }],
+    notes: [{ at: [8.95, 12], mark: 2.6, title: '倒れた石像', text: '四匹の猫が肩を寄せ合う石像。顔はすり減って、もう分からない。' }],
     map2d: [770, 95] },
 
   ruins_in: { ci: 4, name: '壁画の回廊', w: 36, d: 80, stage: '5-2', arenas: [[0, 14, 0], [0, -26, 0]], build: 'ruinsIn', bg: 'ruins', groups: 5, chests: 3, crystals: 2, calmAfter: '5-3', skyTree: false,
@@ -732,9 +736,9 @@ const FIELD_ZONES = {
       '########ss########',
     ],
     anchor: [8, 34], exits: [{ key: 's', to: 'ruins_out' }, { key: 'n', to: 'ruins_seal' }],
-    notes: [{ at: [-12, 10], title: '壁画・一', text: '巨大な猫が、大きな樹を抱いて眠っている。' },
-      { at: [14, -4], title: '壁画・二', text: '四匹の猫が、樹のまわりで手をつないでいる。……一匹は、とても小さい。' },
-      { at: [-14, -18], title: '古代文字', text: '「樹は、猫たちのつながりから生まれた。つながりが絶えるとき、樹は最後のにゃんこを生む」' }],
+    notes: [{ at: [-12.8, 10], mark: [-1.0, 4.4, 0], title: '壁画・一', text: '巨大な猫が、大きな樹を抱いて眠っている。' },
+      { at: [14.6, -4], mark: [1.0, 4.4, 0], title: '壁画・二', text: '四匹の猫が、樹のまわりで手をつないでいる。……一匹は、とても小さい。' },
+      { at: [-14.6, -18], mark: [-1.0, 4.4, 0], title: '古代文字', text: '「樹は、猫たちのつながりから生まれた。つながりが絶えるとき、樹は最後のにゃんこを生む」' }],
     map2d: [770, 30] },
 
   // 封印の間：封印の扉の奥。樹の根をかたどった祭壇（第五章で守護神が語る場所）
@@ -758,7 +762,7 @@ const FIELD_ZONES = {
       '######ss######',
     ],
     anchor: [0, 8], exits: [{ key: 's', to: 'ruins_in' }],
-    notes: [{ at: [0, -7], title: '樹の根の祭壇', text: '樹の根をかたどった祭壇。根は床いっぱいに広がり、その先は闇に消えている。……根のいちばん先に、小さく「世界の果て」と刻まれている。' }],
+    notes: [{ at: [0, -9], mark: 3.0, reach: 2.4, title: '樹の根の祭壇', text: '樹の根をかたどった祭壇。根は床いっぱいに広がり、その先は闇に消えている。……根のいちばん先に、小さく「世界の果て」と刻まれている。' }],
     map2d: [770, 30] },
 
   // ---------------- 第六章 魔王領 ----------------
@@ -815,7 +819,7 @@ const FIELD_ZONES = {
       { key: 'mazoku_nurse', at: [-16, 14], face: Math.PI / 2, lines: ['はーい、健康診断はこちらでーす。', 'あら、あなた猫ね？　ついでに体重も測っていく？'] },
       { key: 'mazoku_c', at: [8, -8], walk: 6, lines: ['魔王城、怖いところだと思った？　……うん、まあ、見た目はね。'] },
     ],
-    notes: [{ at: [4, 16], title: '立て看板', text: '「魔王領へようこそ！　※城内での猫じゃらしの使用は禁止します　——魔王」' }],
+    notes: [{ at: [6, 16], face: -0.9, board: ['魔王領へようこそ！', '※城内での猫じゃらしの使用は禁止します　——魔王'], title: '立て看板', text: '「魔王領へようこそ！　※城内での猫じゃらしの使用は禁止します　——魔王」' }],
     map2d: [910, 95] },
 
   demon_castle: { ci: 5, name: '魔王城', floor: '1F', stage: '6-2', arenas: [[11.5, 15, 0]], build: 'demonCastle', arch: 'castle', bg: 'demon', groups: 4, chests: 3, crystals: 2, calmAfter: '6-3',
@@ -850,7 +854,7 @@ const FIELD_ZONES = {
     anchor: [11.5, 21], spawn: [11.5, 22.3], exits: [{ key: 's', to: 'demon_land' }, { key: 'u', to: 'demon_castle_2f', stair: 'up' }],
     npcs: [{ key: 'mazoku_nurse2', at: [3, 14], face: Math.PI / 2, lines: ['健康診断の順番待ちの方は、こちらの部屋でお待ちくださーい。'] },
       { key: 'mazoku_d', at: [20.5, 15], face: -Math.PI / 2, lines: ['……ここ、魔王軍の休憩室。お茶、飲む？'] }],
-    notes: [{ at: [10, 21.5], title: '魔王城の掲示', text: '「本日の予定：健康診断（全員）。魔王さまの遊び相手（募集中）」' }],
+    notes: [{ at: [10, 22], mark: [-0.7, 2.9, 0], title: '魔王城の掲示', text: '「本日の予定：健康診断（全員）。魔王さまの遊び相手（募集中）」' }],
     map2d: [910, 30] },
   demon_castle_2f: { ci: 5, name: '魔王城・回廊', floor: '2F', parent: 'demon_castle', stage: '6-3', pool: '6-2', build: 'demonCastle2f', arch: 'castle', bg: 'demon', groups: 4, chests: 3, crystals: 2, calmAfter: '6-3',
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.016, light: 1.1 }, chestAt: [[6, 6], [17, 6], [16, 16]],
@@ -884,7 +888,7 @@ const FIELD_ZONES = {
       '###########dd###########',
     ],
     anchor: [11.5, 21.5], exits: [{ key: 'd', to: 'demon_castle', stair: 'down' }, { key: 'u', to: 'demon_throne', stair: 'up' }],
-    notes: [{ at: [7, 16], title: '没収品の山', text: '猫じゃらし、毛糸玉、鈴つきのボール……。「城内持ちこみ禁止」の札。……よく見ると、魔王さまの名前が書いてある。' }],
+    notes: [{ at: [8, 16.3], mark: 2.0, title: '没収品の山', text: '猫じゃらし、毛糸玉、鈴つきのボール……。「城内持ちこみ禁止」の札。……よく見ると、魔王さまの名前が書いてある。' }],
     map2d: [910, 30] },
   demon_throne: { ci: 5, name: '魔王城・玉座の間', floor: '3F', parent: 'demon_castle', stage: '6-3', arenas: [[11.5, 4.5, 0]], build: 'demonThrone', arch: 'castle', bg: 'demon', groups: 0, chests: 2, crystals: 1, calmAfter: '6-3',
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.016, light: 1.1 }, chestAt: [[3, 13], [20, 13]],
@@ -967,7 +971,7 @@ const FIELD_ZONES = {
       '###################bb###################',
     ],
     anchor: [16, -32], spawn: [0, -36], exits: [{ key: 'a', to: 'hill' }, { key: 'b', to: 'tree_under' }, { key: 'e', to: 'world_end' }],
-    notes: [{ at: [-10, 10], title: '落ちた葉', text: '灰色に色あせた葉。持ち上げると、さらさらと崩れた。' }],
+    notes: [{ at: [-10, 10], mark: 1.0, title: '落ちた葉', text: '灰色に色あせた葉。持ち上げると、さらさらと崩れた。' }],
     map2d: [470, 522] },
 
   tree_under: { ci: 6, name: '樹の地下', w: 48, d: 84, stage: '7-2', arenas: [[0, -10, 180], [0, 20, 180]], build: 'treeUnder', bg: 'root', groups: 6, chests: 3, crystals: 2, skyTree: false,
@@ -1019,7 +1023,7 @@ const FIELD_ZONES = {
       '########################',
     ],
     anchor: [8, -34], spawn: [0, -38], exits: [{ key: 'a', to: 'tree_root' }],
-    notes: [{ at: [-19, 0], title: '光る樹液', text: 'かすかに光る樹液が、根を伝って流れている。……まるで、泣いているみたいに。' }],
+    notes: [{ at: [-21, 0], mark: [-0.6, 3.6, 0], title: '光る樹液', text: 'かすかに光る樹液が、根を伝って流れている。……まるで、泣いているみたいに。' }],
     map2d: [330, 540] },
 
   // ---------------- 第八章 世界の果て ----------------
@@ -1076,7 +1080,7 @@ const FIELD_ZONES = {
       '                sss                ',
     ],
     anchor: [10, 38], spawn: [0, 42], exits: [{ key: 's', to: 'tree_root' }],
-    notes: [{ at: [-12, 20], title: '最後の道しるべ', text: '「この先、世界の果て。——ひとりで行ってはならない」' }],
+    notes: [{ at: [-12, 20], face: 0, post: ['↑ 世界の果て', 'ひとりで行ってはならない'], title: '最後の道しるべ', text: '「この先、世界の果て。——ひとりで行ってはならない」' }],
     map2d: [610, 540] },
 
   // ---------------- クリア後 ねこ神の夢 ----------------
@@ -1121,7 +1125,7 @@ const FIELD_ZONES = {
       '###############sss###############',
     ],
     anchor: [0, 26], exits: [{ key: 's', to: 'pokapoka' }],
-    notes: [{ at: [-14, 10], title: 'ふしぎな看板', text: '「ここは夢の中。起きたら全部わすれます。——ねこ神」' }],
+    notes: [{ at: [-13.4, 10], face: 0.6, board: ['ここは夢の中', '起きたら全部わすれます　——ねこ神'], title: 'ふしぎな看板', text: '「ここは夢の中。起きたら全部わすれます。——ねこ神」' }],
     map2d: [330, 410] },
 };
 prepareMapZones(FIELD_ZONES);
@@ -1536,6 +1540,32 @@ class ZoneKit {
     this.box(x, z, 0.18, 2.2, 0.18, 'wood2');
     this.sign(x + Math.sin(ry) * 0.12, z + Math.cos(ry) * 0.12, ry, text, sub, '#ffd27a', 1.8, 2.0);
   }
+  // 看板：二本の脚に横長の札（ry = 札の正面）
+  board(x, z, ry, text, sub) {
+    const c = Math.cos(ry), sn = Math.sin(ry);
+    for (const u of [-0.9, 0.9]) this.cyl(x + u * c, z - u * sn, 0.07, 1.9, 'wood2', { seg: 6 });
+    this.box(x, z, 2.2, 0.62, 0.1, 'wood2', { y: 1.15, ry, col: false });
+    this.sign(x + sn * 0.06, z + c * 0.06, ry, text, sub, '#ffd27a', 1.46, 2.1);
+  }
+  // 壁の貼り紙（ry = 紙の正面。壁の面のすぐ手前に置く）。o.bg／o.ink：紙と字の色、o.stain：涙のしみ
+  paper(x, z, ry, title, lines = [], o = {}) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 340;
+    const g = c.getContext('2d'), ink = o.ink || '#4a3a2a';
+    g.fillStyle = o.bg || '#f4ecd8'; g.fillRect(0, 0, 256, 340);
+    g.strokeStyle = ink; g.globalAlpha = 0.5; g.lineWidth = 6; g.strokeRect(10, 10, 236, 320); g.globalAlpha = 1;
+    g.fillStyle = ink; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '900 34px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.fillText(title, 128, 60, 220);
+    g.font = '800 24px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif';
+    lines.forEach((l, i) => g.fillText(l, 128, 130 + i * 42, 220));
+    if (o.stain) for (let i = 0; i < 5; i++) { g.fillStyle = 'rgba(90,110,150,.22)'; g.beginPath(); g.ellipse(70 + i * 30, 200 + (i % 2) * 40, 10, 22, 0, 0, Math.PI * 2); g.fill(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    const w = o.w || 1.1;
+    return this.mesh(new THREE.PlaneGeometry(w, w * 340 / 256), new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }), x, o.y || 1.7, z, { ry, noShadow: true });
+  }
+  // 壁のひっかき傷：四本の爪あと（ry = 壁の正面。岩肌の凹凸に埋もれないよう、壁の前後に厚みをもたせる）
+  scratches(x, z, ry, y = 1.5, col = '#d8c8f0') {
+    for (let i = 0; i < 4; i++) { const u = (i - 1.5) * 0.24; this.mesh(new THREE.BoxGeometry(0.07, 0.9, 1.0), this.glow(col, 0.9), x + Math.cos(ry) * u, y, z - Math.sin(ry) * u, { ry, rz: 0.25, noShadow: true }); }
+  }
   stall(x, z, ry = 0, cloth = 'clothRed', goods = ['#ffd27a', '#ff8a5a', '#6dff9e']) {
     this.box(x, z, 2.8, 1, 1.4, 'wood', { ry });
     const c = Math.cos(ry), sn = Math.sin(ry), P = (u, v) => [x + u * c + v * sn, z - u * sn + v * c];
@@ -1854,7 +1884,7 @@ const ZONE_BUILD = {
   hill(K) {
     K.flora({ trees: [['round', 4], ['pine', 1]], leaf: ['#6abf52', '#5ab04a', '#7ac85a'], fruit: '#ff9a9a', bush: 0.7, flower: ['#ffffff', '#ffe07a', '#ffb8d8'] });
     K.crater(0, -4, 5);
-    if (storyCond('scene:c1_02') && !storyCond('scene:c1_03')) K.starRock(0, -4, 1.1); else if (storyCond('scene:c1_03')) K.starRock(-4, -9, 0.4);
+    if (storyCond('scene:c1_02') && !storyCond('scene:c1_03')) K.starRock(0, -4, 1.1); else if (storyCond('scene:c1_03')) K.starRock(-3, -5, 0.4);
     K.roundTree(-14, 8, 1.7, 'leaf', { lush: true, fruit: '#ff9a9a' }); K.bench(-11, 10, 0.5);
     K.flowers(-8, 14, 16, 2.5); K.flowers(12, 6, 12, 2, ['#ffe07a', '#ffffff']); K.flowers(-16, -16, 16, 3); K.flowers(14, -16, 12, 2.5, ['#ffe07a', '#ffffff']);
     for (const [x, z, sz] of [[16, -18, 1.2], [-20, -14, 0.9], [22, 3, 0.8]]) K.rock(x, z, sz);
@@ -1908,7 +1938,6 @@ const ZONE_BUILD = {
     K.windmill(18, -13.5, 1);
     for (let i = 0; i < 3; i++) K.mesh(new THREE.BoxGeometry(8, 0.35, 0.8), 'leaf2', 17, 0.18, -8 + i * 2, { noShadow: true });
     for (let i = 0; i < 3; i++) K.mesh(new THREE.BoxGeometry(8, 0.5, 0.8), '#e8c060', 17, 0.25, -1 + i * 2, { noShadow: true });
-    K.signpost(-5, 17, 0, '↑ ニャハハ王国', '← ひょうたん池　↓ ぽかぽか村');
     // 休み場の広場：荷車と樽
     K.barrel(-17, 0); K.barrel(-16, 1.4); K.crate(-18, 4); K.lantern(-15, 8, '#ffc86a');
     // ひょうたん池と、見晴らし台・東の休み場のベンチ
@@ -1948,7 +1977,10 @@ const ZONE_BUILD = {
     K.cragTop({ trees: [['dead', 1], ['round', 1]], leaf: ['#8aa860', '#7a9a58'], density: 0.25 });
     for (const x of [-3.5, 3.5]) K.box(x, -18, 0.6, 4.4, 0.6, 'wood2');
     K.mesh(new THREE.BoxGeometry(8.5, 0.5, 0.6), 'wood2', 1.5, 0.4, -16.6, { rz: 0.25, ry: 0.2 });
-    K.box(-14, -12, 4, 1, 0.3, 'wood', { ry: 0.1 }); K.box(12, -14, 4, 1, 0.3, 'wood', { ry: -0.3 });
+    K.box(12, -14, 4, 1, 0.3, 'wood', { ry: -0.3 });
+    // 倒れた関所の札（地面に倒れている。調べられる）
+    K.box(-10, -12, 3.4, 0.14, 0.9, 'wood', { ry: 0.3, col: false });
+    K.mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: signTex('ニャハハ王国まで あと少し', '笑顔でお越しください'), transparent: true, toneMapped: false }), -10, 0.15, -12, { rx: -Math.PI / 2, rz: 0.3, noShadow: true });
     K.sign(0, -18.4, 0, '関所', 'ニャハハ王国', '#ffd27a', 4.8, 2.8);
     // 野営あと
     K.mesh(new THREE.CircleGeometry(4, 24), new THREE.MeshStandardMaterial({ color: '#9a7a52', roughness: 1 }), 20, 0.02, 5, { rx: -Math.PI / 2, noShadow: true });
@@ -2002,6 +2034,7 @@ const ZONE_BUILD = {
     { const [x, z] = P(17, 3); K.crate(x, z); K.crate(x + 1.2, z - 0.2, 0.8); K.barrel(x - 1.4, z + 1); }
     for (const [c, r] of [[5, 7], [16, 7], [5, 16], [16, 16]]) { const [x, z] = P(c, r); K.brazier(x, z, '#ffd27a', 1.1); }
     { const [x, z] = P(10.5, 6.6); K.sign(x, z + 0.3, 0, '大ロビー', '↑ 楽屋・大舞台', '#ffd27a', 4.6, 3); }
+    { const [x, z] = P(1, 12); K.paper(x - 0.95, z, Math.PI / 2, '大サーカス！', ['笑顔の塔', '主演：ピエロ'], { bg: '#e8d0d6', ink: '#a0607a', stain: true, w: 1.3 }); }
   },
   // 2F：楽屋の鏡台・衣装かけ・小道具
   tower2f(K) {
@@ -2061,6 +2094,7 @@ const ZONE_BUILD = {
     for (const [c, r, n] of [[1, 3, 4], [6, 2, 3], [21, 1, 5], [25, 3, 4], [27, 17, 4], [9, 13, 3], [20, 12, 3], [24, 11, 3]]) { const [x, z] = P(c, r); K.ore(x, z, n, '#a07bff', 1); }
     for (const [c, r] of [[11, 12], [18, 12], [10, 17], [19, 17], [16, 6], [12, 6]]) { const [x, z] = P(c, r); K.stalag(x, z, 1.8 + K.r() * 1.6); }
     { const [x, z] = P(3, 5); K.light(x, 3, z, '#6a8aff', 6, 12); }
+    { const [x, z] = P(1, 7); K.scratches(x - 0.97, z, Math.PI / 2); }
     { const [x, z] = P(14.5, 12.5); K.light(x, 4, z, '#a07bff', 7, 16); }
   },
   // 黒影洞窟 B2：地底湖の光、最奥の間の三本の剣（ハヤテ・リン・ゴロウの分）
@@ -2141,6 +2175,7 @@ const ZONE_BUILD = {
     for (const [c, r] of [[4.5, 1.5], [4.5, 3]]) { const [x, z] = P(c, r); K.crate(x, z); }
     for (let i = 0; i < 3; i++) { const [x, z] = P(19 + i * 1.5, 1.2); K.box(x, z, 1.2, 2.6, 0.5, 'wood2'); }
     for (const [c, r] of [[7, 12], [16, 12], [7, 19], [16, 19]]) { const [x, z] = P(c, r); K.brazier(x, z, '#ff8ad8', 1.2); }
+    { const [x, z] = P(10, 22); K.paper(x - 0.95, z, Math.PI / 2, '本日の予定', ['健康診断（全員）', '魔王さまの遊び相手', '（募集中）'], { bg: '#f0e6f4', ink: '#5a3a7a', w: 1.3 }); }
   },
   // 魔王城 2F：吹き抜けの底の光、おもちゃ部屋、没収品の倉庫、壁の旗
   demonCastle2f(K) {
@@ -2180,6 +2215,8 @@ const ZONE_BUILD = {
     for (let i = 0; i < 40; i++) K.mesh(new THREE.CircleGeometry(0.4, 6), revived ? 'leaf' : 'leafGray', (K.r() - 0.5) * 50, 0.04, -16 + (K.r() - 0.5) * 30, { rx: -Math.PI / 2, noShadow: true });
     if (revived) for (let i = 0; i < 24; i++) { const a = K.r() * 6; K.mesh(new THREE.SphereGeometry(1, 10, 8), K.glow(pick(['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a']), 2), Math.cos(a) * 26, 64 + K.r() * 20, 50 + Math.sin(a) * 20, { noShadow: true }); }
     K.signpost(-3, -24, 0.2, '↓ にゃんだーの樹', '→ 世界の果て');
+    // 灰色に色あせた葉の吹きだまり（調べられる）
+    for (let i = 0; i < 16; i++) { const a = K.r() * Math.PI * 2, d = Math.sqrt(K.r()) * 1.3; K.mesh(new THREE.CircleGeometry(0.35, 6), 'leafGray', -10 + Math.cos(a) * d, 0.05 + i * 0.004, 10 + Math.sin(a) * d, { rx: -Math.PI / 2, rz: K.r() * 3, noShadow: true }); }
     // 世界の果てへのびる、いちばん太い根（東の小道の南の縁を這う）
     K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(8, -0.6, 19), V3(16, 0.3, 16.4), V3(28, 0.2, 16.5), V3(42, -0.2, 16.4)]), 32, 0.7, 8, false), rootMat(), 0, 0, 0, { abs: true });
   },
@@ -2194,6 +2231,9 @@ const ZONE_BUILD = {
     for (const [x, z] of [[-10, -24], [10, -8], [-8, 8], [9, 22], [-20, -14], [-19, 18]]) K.mushroom(x, z, 1.2, null, '#b8ff8a');
     K.v.emitters.push(dt => { if (Math.random() < dt * 6) K.v.p.emit(V3(19 + (Math.random() - 0.5) * 3, K.gy(19, -20) - 0.3, -20 + (Math.random() - 0.5) * 3), V3(0, 0.6, 0), hdr('#8aff8a', 2), { life: 2.4, size: 0.07, drag: 0 }); });
     K.light(0, 4, 32, '#8aff8a', 10, 20); K.light(0, 8, -24, '#b8ff8a', 6, 18);
+    // 西の高台の壁を伝う、光る樹液（調べられる）
+    for (const [dz, h] of [[-0.25, 3.0], [0.2, 2.2]]) K.mesh(new THREE.BoxGeometry(0.6, h, 0.16), K.glow('#b8ff8a', 1.6), -21.97, 3.4 - h / 2, dz, { noShadow: true });
+    K.mesh(new THREE.CircleGeometry(0.6, 16), K.glow('#b8ff8a', 1.2), -21.3, 0.03, 0, { rx: -Math.PI / 2, noShadow: true });
   },
 
   // ---------------- 第八章 ----------------
