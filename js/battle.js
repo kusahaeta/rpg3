@@ -114,7 +114,7 @@ class Battle {
       <div class="ally-row"></div>
       <div class="panel idle">
         <div class="ab-info"><div class="ab-kind"></div><div class="ab-name"></div><div class="ab-desc"></div></div>
-        <div class="sp"><div class="sp-gems"></div><div class="sp-num"></div></div>
+        <div class="sp"><div class="sp-delta"></div><div class="sp-gems"></div><div class="sp-num"></div></div>
         <div class="ab-btns">
           <button class="ab-btn" data-ab="basic"><span class="ab-ic">⚔</span><span class="k">Q</span><span class="l">通常攻撃</span></button>
           <button class="ab-btn" data-ab="skill"><span class="ab-ic">✦</span><span class="k">E</span><span class="l">戦闘スキル</span></button>
@@ -243,11 +243,20 @@ class Battle {
     this.renderSp(); this.renderOrder(); this.renderBond();
   }
 
+  // 選んでいる技で増減するSPを点滅で予告する（スキル：消費する分／通常攻撃：増える分）
   renderSp() {
+    const inp = this.input, sel = inp && inp.mode === 'turn' ? inp.sel : null;
+    const d = sel === 'skill' ? -1 : sel === 'basic' && this.sp < this.spMax ? 1 : 0;
     let h = '';
-    for (let i = 0; i < this.spMax; i++) h += `<i class="${i < this.sp ? 'on' : ''}"></i>`;
+    for (let i = 0; i < this.spMax; i++) {
+      const cls = i < this.sp ? (d < 0 && i >= this.sp + d ? 'on cost' : 'on') : (d > 0 && i < this.sp + d ? 'gain' : '');
+      h += `<i class="${cls}"></i>`;
+    }
     this.$('.sp-gems').innerHTML = h;
     this.$('.sp-num').textContent = `${this.sp}/${this.spMax}`;
+    const dl = this.$('.sp-delta');
+    dl.textContent = d ? `SP${d > 0 ? '+' : '−'}${Math.abs(d)}` : '';
+    dl.className = 'sp-delta' + (d < 0 ? ' cost' : d > 0 ? ' gain' : '');
   }
 
   // 行動順のシミュレーション表示
@@ -587,8 +596,8 @@ class Battle {
     const menu = this.$('.combo-menu');
     if (!id && list.length > 1) {
       menu.innerHTML = list.map(c => `<button data-cid="${c.id}"><b>${c.name}</b><small>${c.desc}</small></button>`).join('') + '<button class="x" data-cid="">やめる</button>';
-      menu.classList.remove('hidden');
-      menu.querySelectorAll('[data-cid]').forEach(b => b.onclick = e => { e.stopPropagation(); menu.classList.add('hidden'); if (b.dataset.cid) this.requestCombo(b.dataset.cid); });
+      menu.classList.remove('hidden'); this.$('.bond').classList.add('spend');
+      menu.querySelectorAll('[data-cid]').forEach(b => b.onclick = e => { e.stopPropagation(); menu.classList.add('hidden'); this.$('.bond').classList.remove('spend'); if (b.dataset.cid) this.requestCombo(b.dataset.cid); });
       Sfx.click(); return;
     }
     const c = id ? list.find(x => x.id === id) : list[0]; if (!c) return;
@@ -874,6 +883,7 @@ class Battle {
     const panel = this.$('.panel'), inp = this.input;
     panel.classList.toggle('idle', !inp);
     panel.classList.toggle('ultmode', !!inp && inp.mode === 'ult');
+    this.renderSp();
     if (!inp) return;
     const ab = this.abilityOf(inp), u = inp.unit;
     panel.style.setProperty('--c', ELEMENTS[u.elem].color);
