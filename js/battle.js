@@ -661,8 +661,14 @@ class Battle {
   // 吹き出し
   say(u, text) {
     const host = u.anchor || u.el; if (!host) return;
-    const b = document.createElement('div'); b.className = 'say ' + u.side; b.textContent = text;
+    const b = document.createElement('div'); b.className = 'say say-' + u.side; b.textContent = text;
     host.querySelector('.fx').appendChild(b);
+    // 画面端（左は行動順バー）からはみ出さないよう横にずらす
+    const r = b.getBoundingClientRect(), box = this.root.getBoundingClientRect(), s = box.width / this.root.offsetWidth || 1;
+    const cx = (r.left + r.right) / 2 / s, hw = b.offsetWidth / 2;
+    const minX = (Math.max(box.left, this.$('.order').getBoundingClientRect().right) / s) + 8, maxX = box.right / s - 8;
+    const dx = cx - hw < minX ? minX - (cx - hw) : cx + hw > maxX ? maxX - (cx + hw) : 0;
+    if (dx) { b.style.marginLeft = dx + 'px'; b.style.setProperty('--tail', Math.max(16 - hw, Math.min(hw - 16, -dx)) + 'px'); }
     setTimeout(() => b.remove(), 2600);
   }
   // ひとりぼっちの仲間を呼び戻す（「一人じゃない！」）

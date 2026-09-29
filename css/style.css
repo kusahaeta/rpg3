@@ -880,9 +880,9 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .combo-menu button small { display: block; color: var(--dim); font-size: 11px; }
 .combo-menu button.x { text-align: center; }
 .say { position: absolute; left: 50%; top: -18px; transform: translate(-50%, -100%); background: #fff6ea; color: #4a2c20; border-radius: 14px; padding: 5px 12px; font-size: 14px; font-weight: 700;
-  white-space: nowrap; box-shadow: 0 3px 10px rgba(0, 0, 0, .35); animation: sayIn 2.6s ease forwards; z-index: 9; pointer-events: none; }
-.say::after { content: ''; position: absolute; left: 50%; bottom: -8px; margin-left: -6px; border: 6px solid transparent; border-top-color: #fff6ea; }
-.say.enemy { background: #3a2a3a; color: #ffe0ec; } .say.enemy::after { border-top-color: #3a2a3a; }
+  width: max-content; max-width: 320px; line-height: 1.5; text-align: center; overflow-wrap: anywhere; box-shadow: 0 3px 10px rgba(0, 0, 0, .35); animation: sayIn 2.6s ease forwards; z-index: 9; pointer-events: none; }
+.say::after { content: ''; position: absolute; left: calc(50% + var(--tail, 0px)); bottom: -8px; margin-left: -6px; border: 6px solid transparent; border-top-color: #fff6ea; }
+.say.say-enemy { background: #3a2a3a; color: #ffe0ec; } .say.say-enemy::after { border-top-color: #3a2a3a; }
 @keyframes sayIn { 0% { opacity: 0; transform: translate(-50%, -80%) scale(.8); } 10%, 85% { opacity: 1; transform: translate(-50%, -100%) scale(1); } 100% { opacity: 0; } }
 .ci-combo { position: absolute; left: 0; right: 0; top: 34%; height: 190px; display: flex; align-items: center; justify-content: center; gap: 40px;
   background: linear-gradient(90deg, transparent, rgba(255, 154, 184, .85) 20%, rgba(255, 207, 106, .85) 80%, transparent); }
