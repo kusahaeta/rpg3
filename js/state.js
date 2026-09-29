@@ -55,8 +55,15 @@ function grantExp(key, amount) {
   return o.lv - before;
 }
 
+// 物語の都合で、いまは一行を離れている子（STORY の段階の away）
+function awayNow() {
+  const cur = typeof Story !== 'undefined' ? Story.current() : null;
+  return (cur && cur.step.away) || [];
+}
+
 function teamMembers() {
-  return Save.data.team.map(k => ({ key: k, lv: Save.data.owned[k].lv, eid: Save.data.owned[k].eid }));
+  const away = awayNow();
+  return Save.data.team.filter(k => !away.includes(k)).map(k => ({ key: k, lv: Save.data.owned[k].lv, eid: Save.data.owned[k].eid }));
 }
 
 // 仲間になる（編成に空きがあれば編成にも加わる）

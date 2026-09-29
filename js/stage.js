@@ -350,10 +350,13 @@ class StageView extends BaseView {
   // 壁・天井に入らないよう、見る点の側へ寄せる
   unblock(look, pos) {
     if (!this.T) return pos;
-    const n = 24; let last = look.clone();
+    // 区画の外や遠く（遠景の城・樹・空）を見るときは、一行のいる所からカメラへ向かって調べる
+    // （見る点の側から調べると、区画の外はすべて壁あつかいなので、カメラが見る点のそばまで飛んでしまう）
+    const from = this.T.at(look.x, look.z) < 0 || look.distanceTo(pos) > 40 ? V3(this.O.x, pos.y, this.O.z) : look;
+    const n = 24; let last = from.clone();
     for (let i = 1; i <= n; i++) {
-      const p = V3().lerpVectors(look, pos, i / n);
-      if (this.T.blocksView(p.x, p.y, p.z)) return i > 3 ? last : V3().lerpVectors(look, pos, 0.15);
+      const p = V3().lerpVectors(from, pos, i / n);
+      if (this.T.blocksView(p.x, p.y, p.z)) return i > 3 ? last : V3().lerpVectors(from, pos, 0.15);
       last = p;
     }
     return pos;
