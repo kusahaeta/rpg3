@@ -377,6 +377,9 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .ult.ready .ult-face { filter: none; }
 @keyframes ultReady { 50% { box-shadow: 0 0 18px 4px var(--c); } }
 .ult.queued { box-shadow: 0 0 0 3px #fff, 0 0 20px 6px var(--c); animation: none; }
+/* 必殺技の対象選択中：使い切るEPを点滅 */
+.ult.spend .ult-ring { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#fff calc(var(--e, 0) * 360deg), transparent 0); animation: gaugeCost .8s ease-in-out infinite; }
+@keyframes gaugeCost { 0%, 100% { opacity: 0; } 50% { opacity: .85; } }
 .ally.lunge { animation: aLunge .45s; }
 @keyframes aLunge { 40% { transform: translateY(-34px) scale(1.04); } }
 .ally.hurt { animation: aHurt .4s; }
@@ -399,6 +402,14 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .sp-num { font-size: 13px; font-weight: 700; width: 30px; }
 .sp.flash { animation: spFlash .5s 2; }
 @keyframes spFlash { 50% { filter: drop-shadow(0 0 8px #ff4d6d) brightness(1.6); } }
+/* 選んだ技で消費する／増えるSPの予告 */
+.sp-gems i.cost { border-color: #ff8a9a; animation: spCost .8s ease-in-out infinite; }
+@keyframes spCost { 50% { opacity: .15; } }
+.sp-gems i.gain { animation: spGain .8s ease-in-out infinite; }
+@keyframes spGain { 50% { background: rgba(158, 201, 255, .6); box-shadow: 0 0 10px #9ec9ff; } }
+.sp-delta { font-size: 12px; font-weight: 800; min-width: 38px; text-align: right; }
+.sp-delta.cost { color: #ff8a9a; }
+.sp-delta.gain { color: #9ec9ff; }
 .ab-btns { display: flex; gap: 14px; justify-content: flex-end; }
 .ab-btn { position: relative; width: 116px; height: 116px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .3); background: radial-gradient(circle, rgba(40, 46, 90, .95), rgba(10, 12, 30, .95));
   display: flex; flex-direction: column; align-items: center; justify-content: center; transition: .15s; }
@@ -866,6 +877,9 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .bond-bar { height: 10px; border-radius: 99px; background: rgba(0, 0, 0, .45); overflow: hidden; margin: 5px 0; }
 .bond-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff9ab8, #ffd98a); transition: width .4s; }
 .bond.full .bond-bar i { animation: bondGlow 1s ease-in-out infinite; }
+/* コンボを選ぶとき：使い切る友情ゲージを点滅 */
+.bond.spend .bond-bar i, .bond:has(.bond-btn.ready:hover) .bond-bar i { animation: bondCost .8s ease-in-out infinite; }
+@keyframes bondCost { 50% { opacity: .25; } }
 @keyframes bondGlow { 50% { filter: brightness(1.4); } }
 .bond-btn { width: 100%; border-radius: 99px; border: 2px solid rgba(255, 236, 214, .35); background: rgba(255, 255, 255, .08); padding: 5px; font-weight: 800; color: var(--ink); display: flex; align-items: center; justify-content: center; gap: 6px; }
 .bond-btn .k { font-size: 11px; background: rgba(0, 0, 0, .4); border-radius: 6px; padding: 0 5px; }
