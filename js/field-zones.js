@@ -399,7 +399,7 @@ const FIELD_ZONES = {
     map2d: [330, 95] },
 
   // 笑顔の塔：階ごとに区画が分かれ、階段で上り下りする（parent：ワールドマップでは塔の入口にまとめる）
-  tower: { ci: 2, name: '笑顔の塔', floor: '1F', stage: '3-1', arenas: [[10.5, 11, 0]], build: 'tower', arch: 'tower', bg: 'tower', groups: 3, chests: 2, crystals: 2, calmAfter: '3-3',
+  tower: { ci: 2, name: '笑顔の塔', floor: '1F', stage: '3-1', after: 'c3_02', arenas: [[10.5, 11, 0]], build: 'tower', arch: 'tower', bg: 'tower', groups: 3, chests: 2, crystals: 2, calmAfter: '3-3',
     th: { pattern: 'checker', floor: '#6a3458', floor2: '#7a4068', line: '#ffd27a', floorGlow: 0.25, fog: '#3a1a3a', light: 1.15 }, chestAt: [[2, 9], [16, 2]],
     // 1F：入口の広間から大ロビーへ。左右の控え室と、北の階段の間（となりに切符売り場と倉庫）
     map: [
