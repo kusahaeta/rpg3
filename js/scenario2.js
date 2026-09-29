@@ -580,7 +580,7 @@ const STORY = [
   ] },
   { title: '第二章　にゃんこ大集合', steps: [
     { t: 'scene', id: 'c2_01', g: 'ミャオ街道へ' },
-    { t: 'field', zone: 'road1', at: [1, 28], start: ['road1', -8, 42], near: ['road1', 'road_rest'], scene: 'c2_01b', g: '街道を北へ進む' },
+    { t: 'field', zone: 'road1', at: [1, 28], start: ['road1', -8, 42], near: ['road1', 'road_rest'], yaw: Math.PI, scene: 'c2_01b', g: '街道を北へ進む' },
     { t: 'field', zone: 'road_rest', at: [0, 5], scene: 'c2_02', battle: '2-1', after: 'c2_02b', g: '街道の宿場へ' },
     { t: 'field', zone: 'woods', at: [4, -13], scene: 'c2_03', battle: '2-2', after: 'c2_03b', g: '宿場の東、まどろみの林で眠っている子をさがす' },
     { t: 'scene', id: 'c2_03c', g: '宿場の夜' },
