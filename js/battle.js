@@ -883,8 +883,6 @@ class Battle {
     const panel = this.$('.panel'), inp = this.input;
     panel.classList.toggle('idle', !inp);
     panel.classList.toggle('ultmode', !!inp && inp.mode === 'ult');
-    // 必殺技の対象選択中は、使い切るEPのリングを点滅させる
-    this.allies.forEach(a => a.el.querySelector('.ult').classList.toggle('spend', !!inp && inp.mode === 'ult' && inp.unit === a));
     this.renderSp();
     if (!inp) return;
     const ab = this.abilityOf(inp), u = inp.unit;

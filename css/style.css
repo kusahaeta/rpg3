@@ -373,15 +373,13 @@ svg.avatar { display: block; width: 100%; height: 100%; }
   display: flex; align-items: center; justify-content: center; }
 .ult-face .ult-icon { width: 76%; height: 76%; filter: drop-shadow(0 0 3px currentColor); }
 .ult-key { position: absolute; left: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 50%; background: #000; border: 1px solid var(--line); font-size: 11px; text-align: center; line-height: 16px; }
-.ult.ready { animation: ultReady 1.2s ease-in-out infinite; }
 .ult.ready .ult-face { filter: none; }
-@keyframes ultReady { 50% { box-shadow: 0 0 18px 4px var(--c); } }
-.ult.queued { box-shadow: 0 0 0 3px #fff, 0 0 20px 6px var(--c); animation: none; }
-/* 必殺技の対象選択中：使い切るEPのリングと中身を点滅 */
-.ult.spend .ult-ring { position: absolute; inset: -5px; border-radius: 50%; background: conic-gradient(#fff calc(var(--e, 0) * 360deg), transparent 0);
+.ult.queued { box-shadow: 0 0 0 3px #fff, 0 0 20px 6px var(--c); }
+/* 必殺技がたまったら（対象選択中も）、使い切るEPのリングと中身を点滅 */
+.ult.ready .ult-ring { position: absolute; inset: -5px; border-radius: 50%; background: conic-gradient(#fff calc(var(--e, 0) * 360deg), transparent 0);
   box-shadow: 0 0 16px 5px #fff, 0 0 26px 8px var(--c); animation: gaugeCost .8s ease-in-out infinite; }
 @keyframes gaugeCost { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
-.ult.spend .ult-face { animation: gaugeFace .8s ease-in-out infinite; }
+.ult.ready .ult-face { animation: gaugeFace .8s ease-in-out infinite; }
 @keyframes gaugeFace { 50% { background: #fff; } }
 .ally.lunge { animation: aLunge .45s; }
 @keyframes aLunge { 40% { transform: translateY(-34px) scale(1.04); } }
