@@ -897,6 +897,11 @@ class FieldView extends BaseView {
         return;
       }
     }
+    for (const o of this.rubbleObjs || []) {
+      if (o.broken) continue;
+      const to = V3(o.pos.x - p.pos.x, 0, o.pos.z - p.pos.z), dist = to.length();
+      if (dist < (o.R.r || 1.6) + 1.6 && to.normalize().dot(fwd) > 0.2) this.breakRubble(o);
+    }
     for (const c of this.crystals) {
       if (c.broken || c.pos.distanceTo(p.pos) > 1.9) continue;
       c.broken = true; c.g.visible = false; this.s.set(this.s.broken, this.zoneId).add(c.id);
@@ -931,6 +936,8 @@ class FieldView extends BaseView {
     const p = this.player.pos, Z = this.zone;
     for (const n of this.npcs) if (n.pos.distanceTo(p) < 2.2) return { type: 'npc', n, text: `${speakerName(n.key)}と話す${n.shop ? '（' + SHOP_NAMES[n.shop] + '）' : ''}` };
     for (const n of this.notes) if (n.pos.distanceTo(p) < (n.reach || 2.0)) return { type: 'note', n, text: `調べる：${n.title}` };
+    for (const o of this.sealObjs || []) { if (o.open) continue; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < 2.0) return { type: 'lamp', o, L, text: o.ready() ? `${o.S.name || '光の水晶'}に触れる` : `調べる：${o.S.name || '光の水晶'}` }; }
+    for (const o of this.rubbleObjs || []) if (!o.broken && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < (o.R.r || 1.6) + 1.2) return { type: 'rubble', text: '調べる：落石の岩山' };
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
     const same = (x, z) => Math.abs(this.gy(x, z) - p.y) < 1.5;
     if (Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && same(Z.anchor[0], Z.anchor[1])) return { type: 'anchor', text: 'ねこ地蔵：ひと休み（HP回復）／ワールドマップ' };
@@ -963,6 +970,10 @@ class FieldView extends BaseView {
       const n = it.n; this.startTalk(speakerName(n.key), npcLines(n), n);
     } else if (it.type === 'note') {
       this.startTalk(it.n.title, [it.n.text], null, true);
+    } else if (it.type === 'lamp') {
+      this.lightLamp(it.o, it.L);
+    } else if (it.type === 'rubble') {
+      this.startTalk('落石の岩山', ['崩れた岩が、石段の上り口をふさいでいる。……攻撃すれば、砕けそうだ。'], null, true);
     } else if (it.type === 'chest') {
       const c = it.c; c.opened = true;
       const all = Save.data.fieldChests || (Save.data.fieldChests = {});
@@ -989,6 +1000,36 @@ class FieldView extends BaseView {
     } else if (it.type === 'lift') this.rideLift(it.L);
     else if (it.type === 'call') { this.moveLift(it.L, it.lv); this.toast('エレベーターを呼んだ'); }
     else if (it.type === 'cabin') this.cabinMenu(it.g);
+  }
+  // 光の水晶を灯す。影の壁の水晶をすべて灯すと、壁が消える
+  lightLamp(o, L) {
+    const S = o.S, name = S.name || '光の水晶';
+    if (!o.ready()) { this.startTalk(name, [S.idle || 'かすかに光る水晶。……今は、ふれても何も起きない。'], null, true); return; }
+    const flags = Save.data.flags || (Save.data.flags = {});
+    L.setLit(); flags[o.S.id + '_' + L.i] = true;
+    const at = L.pos.clone().add(V3(0, 1.3, 0));
+    const col = S.look === 'memory' ? '#ffe2a8' : '#cfefff';
+    this.fx.pillar(L.pos, col, { h: 5, r: 0.6, life: 0.8 }); this.p.burst(at, col, 50, { speed: 3, up: 1, life: 0.9 });
+    Sfx.heal();
+    const n = o.lamps.filter(x => x.lit).length, all = n === o.lamps.length;
+    if (all) {
+      flags[o.S.id] = true; o.dissolve();
+      setTimeout(() => { Sfx.win(); GFX.shake(0.2); this.toast(S.openToast || '影の壁が、光にとけて消えた！'); }, 500);
+    } else this.toast(S.look === 'memory' ? `${name}（${n}/${o.lamps.length}）` : `光の水晶が灯った（${n}/${o.lamps.length}）`);
+    Save.save();
+    // 記憶のかけら：その仲間の思い出を、クロが語る
+    if (S.memories && S.memories[L.i]) this.startTalk(speakerName('kuro'), S.memories[L.i]);
+  }
+  // 落石の岩山を砕く
+  breakRubble(o) {
+    o.broken = true; (Save.data.flags || (Save.data.flags = {}))[o.R.id] = true; Save.save();
+    const i = this.colliders.indexOf(o.col); if (i >= 0) this.colliders.splice(i, 1);
+    const at = o.pos.clone().add(V3(0, 0.8, 0));
+    this.p.burst(at, '#8a8478', 70, { speed: 5, up: 1.4, life: 0.9, size: 0.14 }); this.fx.ring(o.pos.clone().add(V3(0, 0.05, 0)), '#c8b8a0', { r: 2.5, life: 0.5 });
+    Sfx.hit(); GFX.shake(0.35);
+    GFX.tween(0.35, t => { o.g.scale.setScalar(1 - t); o.g.position.y = o.pos.y - t * 0.5; }, Ease.inOut);
+    setTimeout(() => o.g.removeFromParent(), 400);
+    this.toast('岩山を砕いた！　石段を上れるようになった');
   }
   startTalk(name, lines, npc, isNote) {
     this.busy = true; this.keys.clear();
@@ -1462,6 +1503,7 @@ class FieldView extends BaseView {
     this.chests.forEach(ch => { if (!ch.opened) dot(ch.pos.x, ch.pos.y, ch.pos.z, '#ffd66b', 3, true); });
     this.crystals.forEach(cr => { if (!cr.broken) dot(cr.pos.x, cr.pos.y, cr.pos.z, '#9d8cff', 2.5); });
     this.groups.forEach(gr => { if (gr.alive) dot(gr.pos.x, gr.pos.y, gr.pos.z, gr.state === 'chase' ? '#ff3040' : gr.elite ? '#ff9a4d' : '#ff6b81', gr.elite ? 4 : 3); });
+    (this.sealObjs || []).forEach(o => { if (!o.open && o.ready()) o.lamps.forEach(L => { if (!L.lit) dot(L.pos.x, L.pos.y, L.pos.z, o.S.look === 'memory' ? '#ffe2a8' : '#cfefff', 3.5); }); });
     // 昇降機の床板の位置（今いる階に止まっていれば明るく）
     T.lifts.forEach(L => { const [x, y] = P(L.x, L.z); g.strokeStyle = Math.abs(L.y - pp.y) < 0.3 ? '#bff0ff' : 'rgba(191,240,255,.35)'; g.lineWidth = 1.5; g.strokeRect(x - L.w / 2 * sc + 1, y - L.d / 2 * sc + 1, L.w * sc - 2, L.d * sc - 2); });
     // 目的地（範囲外なら縁に矢印）

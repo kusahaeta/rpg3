@@ -583,6 +583,16 @@ function signTex(text, sub, color = '#ffd27a') {
   return (TexCache[k] = t);
 }
 
+// 影の壁：うずまく闇のもや（白黒のノイズ。材質の色とかさねて使う）
+function shadowWallTex() {
+  if (TexCache.shadowWall) return TexCache.shadowWall;
+  const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 90; i++) { const x = Math.random() * S, y = Math.random() * S, r = 10 + Math.random() * 40, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(255,255,255,${0.25 + Math.random() * 0.35})`); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; for (const [dx, dy] of [[0, 0], [S, 0], [-S, 0], [0, S], [0, -S]]) { g.beginPath(); g.arc(x + dx, y + dy, r, 0, Math.PI * 2); g.fill(); } }
+  g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2; for (let k = 0; k < 14; k++) { let x = Math.random() * S, y = Math.random() * S; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 8; j++) { x += (Math.random() - 0.5) * 50; y -= 10 + Math.random() * 20; g.lineTo(x, y); } g.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (TexCache.shadowWall = t);
+}
 // ---------- 雪の町・坑道・宮殿のテクスチャ ----------
 const noiseCanvas = (g, S, n, a, dark = '0,0,0') => { for (let i = 0; i < n; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : dark},${Math.random() * a})`; g.fillRect(Math.random() * S, Math.random() * S, 2 + Math.random() * 12, 1 + Math.random() * 3); } };
 const texOf = (c, rep) => { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if (rep) t.repeat.set(...rep); return t; };

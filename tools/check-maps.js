@@ -24,6 +24,8 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   (Z.npcs || []).forEach(n => add(id, { k: 'npc ' + n.key, p: n.at, r: 0.5 }));
   (Z.notes || []).forEach(n => add(id, { k: 'note ' + n.title, p: n.at, r: 0.5 }));
   (Z.chestAt || []).forEach((p, i) => add(id, { k: 'chest' + i, p, r: 0.6 }));
+  (Z.seals || []).forEach(S => { S.lamps.forEach((p, i) => add(id, { k: `lamp ${S.id}_${i}`, p, r: 0.6 })); add(id, { k: `wall ${S.id}`, p: [(S.wall[0] + S.wall[2]) / 2, (S.wall[1] + S.wall[3]) / 2], r: 0.3 }); });
+  (Z.rubble || []).forEach(R => add(id, { k: 'rubble ' + R.id, p: R.at, r: 0.5 }));
   (Z.arenas || []).forEach((a, i) => { const [x, z] = zonePoint(Z, [a[0], a[1]]); add(id, { k: 'arena' + i, p: [x, z], area: a[2] || 0 }); });
 }
 STORY.forEach(ch => ch.steps.forEach(st => {
