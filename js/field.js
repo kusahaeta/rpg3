@@ -936,8 +936,8 @@ class FieldView extends BaseView {
     const p = this.player.pos, Z = this.zone;
     for (const n of this.npcs) if (n.pos.distanceTo(p) < 2.2) return { type: 'npc', n, text: `${speakerName(n.key)}と話す${n.shop ? '（' + SHOP_NAMES[n.shop] + '）' : ''}` };
     for (const n of this.notes) if (n.pos.distanceTo(p) < (n.reach || 2.0)) return { type: 'note', n, text: `調べる：${n.title}` };
-    for (const o of this.sealObjs || []) { if (o.open) continue; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < 2.0) return { type: 'lamp', o, L, text: o.ready() ? `${o.S.name || '光の水晶'}に触れる` : `調べる：${o.S.name || '光の水晶'}` }; }
-    for (const o of this.rubbleObjs || []) if (!o.broken && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < (o.R.r || 1.6) + 1.2) return { type: 'rubble', text: '調べる：落石の岩山' };
+    for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || '光の水晶'; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < 2.0) return { type: 'lamp', o, L, text: !o.ready() ? `調べる：${name}` : o.S.look === 'laugh' ? `${name}を押す` : `${name}に触れる` }; }
+    for (const o of this.rubbleObjs || []) if (!o.broken && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < (o.R.r || 1.6) + 1.2) return { type: 'rubble', o, text: o.R.look === 'jackbox' ? '調べる：巨大びっくり箱' : '調べる：落石の岩山' };
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
     for (const c of this.crystals) if (!c.broken && c.pos.distanceTo(p) < 1.8) return { type: 'bush', text: '調べる：またたびの茂み' };
     const same = (x, z) => Math.abs(this.gy(x, z) - p.y) < 1.5;
@@ -974,7 +974,8 @@ class FieldView extends BaseView {
     } else if (it.type === 'lamp') {
       this.lightLamp(it.o, it.L);
     } else if (it.type === 'rubble') {
-      this.startTalk('落石の岩山', ['崩れた岩が、石段の上り口をふさいでいる。……攻撃すれば、砕けそうだ。'], null, true);
+      if (it.o.R.look === 'jackbox') this.startTalk('巨大びっくり箱', ['ねじを巻いたままの、大きなびっくり箱。通路をまるごとふさいでいる。', '……カタ、カタカタ。中で何かが、飛び出したそうにしている。攻撃すれば、開きそうだ。'], null, true);
+      else this.startTalk('落石の岩山', ['崩れた岩が、石段の上り口をふさいでいる。……攻撃すれば、砕けそうだ。'], null, true);
     } else if (it.type === 'bush') {
       this.startTalk('またたびの茂み', ['ほんのり甘い香りの茂み。……攻撃で叩くと、秘技ポイントが1回復する（最大5）。', '秘技ポイントを使うと、E で先頭の子の秘技を準備できる。次の戦闘のはじめに発動する。'], null, true);
     } else if (it.type === 'chest') {
@@ -1010,29 +1011,90 @@ class FieldView extends BaseView {
     if (!o.ready()) { this.startTalk(name, [S.idle || 'かすかに光る水晶。……今は、ふれても何も起きない。'], null, true); return; }
     const flags = Save.data.flags || (Save.data.flags = {});
     L.setLit(); flags[o.S.id + '_' + L.i] = true;
-    const at = L.pos.clone().add(V3(0, 1.3, 0));
-    const col = S.look === 'memory' ? '#ffe2a8' : '#cfefff';
+    const at = L.pos.clone().add(V3(0, 1.3, 0)), laugh = S.look === 'laugh';
+    const col = S.look === 'memory' ? '#ffe2a8' : laugh ? '#ffe07a' : '#cfefff';
     this.fx.pillar(L.pos, col, { h: 5, r: 0.6, life: 0.8 }); this.p.burst(at, col, 50, { speed: 3, up: 1, life: 0.9 });
-    Sfx.heal();
+    if (laugh) { Sfx.laugh(); this.p.burst(at, '#ff9ad8', 30, { speed: 4, up: 2, life: 1.2, size: 0.1 }); } else Sfx.heal();
     const n = o.lamps.filter(x => x.lit).length, all = n === o.lamps.length;
     if (all) {
       flags[o.S.id] = true; o.dissolve();
       setTimeout(() => { Sfx.win(); GFX.shake(0.2); this.toast(S.openToast || '影の壁が、光にとけて消えた！'); }, 500);
-    } else this.toast(S.look === 'memory' ? `${name}（${n}/${o.lamps.length}）` : `光の水晶が灯った（${n}/${o.lamps.length}）`);
+    } else this.toast(S.look === 'memory' || laugh ? `${name}（${n}/${o.lamps.length}）` : `光の水晶が灯った（${n}/${o.lamps.length}）`);
     Save.save();
-    // 記憶のかけら：その仲間の思い出を、クロが語る
+    // 記憶のかけら：その仲間の思い出を、クロが語る。笑い袋：袋が笑い出して、みんなの掛け合い
     if (S.memories && S.memories[L.i]) this.startTalk(speakerName('kuro'), S.memories[L.i]);
+    if (laugh) this.startTalk('', [['n', `笑い袋が「${(S.laughs || [])[L.i] || 'ワッハッハ！'}」と笑い出した！`], ...((S.gags || [])[L.i] || []).filter(([k]) => k === 'n' || this.team.some(m => m.key === k))]);
   }
   // 落石の岩山を砕く
   breakRubble(o) {
     o.broken = true; (Save.data.flags || (Save.data.flags = {}))[o.R.id] = true; Save.save();
     const i = this.colliders.indexOf(o.col); if (i >= 0) this.colliders.splice(i, 1);
+    if (o.R.look === 'jackbox') { this.popJackbox(o); return; }
     const at = o.pos.clone().add(V3(0, 0.8, 0));
     this.p.burst(at, '#8a8478', 70, { speed: 5, up: 1.4, life: 0.9, size: 0.14 }); this.fx.ring(o.pos.clone().add(V3(0, 0.05, 0)), '#c8b8a0', { r: 2.5, life: 0.5 });
     Sfx.hit(); GFX.shake(0.35);
     GFX.tween(0.35, t => { o.g.scale.setScalar(1 - t); o.g.position.y = o.pos.y - t * 0.5; }, Ease.inOut);
     setTimeout(() => o.g.removeFromParent(), 400);
     this.toast('岩山を砕いた！　石段を上れるようになった');
+  }
+  // 巨大びっくり箱：ふたが跳ね上がり、ばねの先のピエロの顔が「ばあっ！」と飛び出して、箱ごとしぼんで消える
+  popJackbox(o) {
+    const at = o.pos.clone().add(V3(0, 2.5, 0));
+    Sfx.pop(); GFX.shake(0.3);
+    this.p.burst(at, '#ffd27a', 40, { speed: 6, up: 3, life: 1.2, size: 0.12 }); this.p.burst(at, '#ff6a8a', 40, { speed: 6, up: 3, life: 1.2, size: 0.12 }); this.p.burst(at, '#6ad8ff', 30, { speed: 5, up: 3, life: 1.2, size: 0.1 });
+    o.jack.visible = true; o.jack.scale.set(1, 0.05, 1);
+    GFX.tween(0.25, t => { o.lid.rotation.x = -t * 2.2; }, Ease.out);
+    GFX.tween(0.7, t => { const k = 1 + Math.sin(t * Math.PI * 3) * (1 - t) * 0.5; o.jack.scale.set(1, t * k + 0.05, 1); o.jack.rotation.z = Math.sin(t * 18) * (1 - t) * 0.3; });
+    this.toast('びっくり箱が開いた！　「ばあっ！」');
+    setTimeout(() => { GFX.tween(0.5, t => { o.g.scale.setScalar(1 - t); }, Ease.inOut); }, 1300);
+    setTimeout(() => { o.g.removeFromParent(); this.toast('……びっくり箱がしぼんで、通れるようになった'); }, 1850);
+  }
+  // 笑顔の塔の仕掛け：ブーブークッション（踏むと鳴る）とトランポリン（乗ると跳ぶ）
+  updateGags(d) {
+    const p = this.player.pos;
+    for (const c of this.cushionObjs || []) {
+      const dist = Math.hypot(c.pos.x - p.x, c.pos.z - p.z);
+      if (c.armed && dist < 0.7 && Math.abs(c.pos.y - p.y) < 0.5 && this.player.y === 0) {
+        c.armed = false; c.squish = 1; Sfx.boo();
+        this.p.burst(c.pos.clone().add(V3(0, 0.3, 0)), '#f4e8f0', 20, { speed: 1.5, up: 0.6, life: 0.8, size: 0.14 });
+        const who = this.team.map(m => m.key).filter(k => CUSHION_LINES[k]), k = pick(who.length ? who : ['mike']);
+        this.toast(`ぶぅ〜〜っ！　……${speakerName(k)}「${pick(CUSHION_LINES[k])}」`);
+      } else if (!c.armed && dist > 2) c.armed = true;
+      c.squish = Math.max(0, c.squish - d * 2.5);
+      c.pad.scale.set(1 + c.squish * 0.3, 0.22 * (1 - c.squish * 0.6), 1 + c.squish * 0.3);
+    }
+    for (const b of this.bounceObjs || []) {
+      const dist = Math.hypot(b.pos.x - p.x, b.pos.z - p.z);
+      if (b.armed && dist < 0.8 && Math.abs(b.pos.y - p.y) < 0.5) { this.launch(b); return; }
+      if (!b.armed && dist > 1.6) b.armed = true;
+    }
+  }
+  // トランポリンで跳ぶ：弧をえがいて b.to へ（そのあいだは操作できない。仲間は着地してから追いつく）
+  launch(b) {
+    const p = this.player, from = p.pos.clone(), to = b.to.clone(), dist = Math.hypot(to.x - from.x, to.z - from.z);
+    this.busy = true; this.keys.clear(); b.armed = false;
+    this.flight = { from, to, t: 0, dur: 0.8 + dist * 0.035, h: 3 + dist * 0.12, yaw: Math.atan2(to.x - from.x, to.z - from.z) };
+    (this.followers || []).forEach(f => { f.m.group.visible = false; });
+    Sfx.boing();
+    GFX.tween(0.3, t => { b.mat.position.y = 0.4 - Math.sin(t * Math.PI) * 0.25; });
+    this.p.burst(from.clone().add(V3(0, 0.5, 0)), '#ffd27a', 24, { speed: 3, up: 2, life: 0.6, size: 0.1 });
+    this.toast('ぼよよーん！');
+  }
+  updateFlight(d) {
+    const p = this.player, F = this.flight;
+    F.t = Math.min(1, F.t + d / F.dur);
+    const t = F.t, base = lerp(F.from.y, F.to.y, t);
+    p.pos.set(lerp(F.from.x, F.to.x, t), base, lerp(F.from.z, F.to.z, t));
+    p.vis = base; p.y = 4 * F.h * t * (1 - t); p.yaw = lerpAngle(p.yaw, F.yaw, 1 - Math.exp(-10 * d));
+    p.m.group.position.set(p.pos.x, base + p.y, p.pos.z); p.m.group.rotation.y = p.yaw;
+    if (t < 1) return;
+    this.flight = null; p.y = 0; p.vy = 0; p.speed = 0;
+    this.placePlayer(1);
+    this.fx.ring(p.pos.clone().add(V3(0, 0.05, 0)), '#ffd27a', { r: 1.6, life: 0.5 }); this.p.burst(p.pos.clone().add(V3(0, 0.2, 0)), '#e8dcc8', 20, { speed: 2, up: 0.5, life: 0.5, size: 0.1 });
+    Sfx.hit(); GFX.shake(0.12);
+    for (const b of this.bounceObjs || []) if (Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z) < 1.6) b.armed = false;
+    this.spawnFollowers();
+    this.busy = false;
   }
   startTalk(name, lines, npc, isNote) {
     this.busy = true; this.keys.clear();
@@ -1044,10 +1106,12 @@ class FieldView extends BaseView {
     this.showTalkLine();
     Sfx.select();
   }
+  // 台詞は文字列か、[話し手, 台詞]（掛け合い。話し手ごとに名前を出す）
   showTalkLine() {
-    const el = this.root.querySelector('.fd-talk'), t = this.talk;
-    el.querySelector('.fd-talk-text').textContent = t.lines[t.i];
-    if (t.npc && t.npc.m.face) { t.npc.m.face.talking = true; clearTimeout(this.talkT); this.talkT = setTimeout(() => { if (t.npc.m.face) t.npc.m.face.talking = false; }, 300 + t.lines[t.i].length * 45); }
+    const el = this.root.querySelector('.fd-talk'), t = this.talk, L = t.lines[t.i], text = Array.isArray(L) ? L[1] : L;
+    if (Array.isArray(L)) { el.querySelector('.fd-talk-name').textContent = speakerName(L[0]); el.classList.toggle('note', L[0] === 'n'); if (L[0] !== 'n') Sfx.meow(L[0]); }
+    el.querySelector('.fd-talk-text').textContent = text;
+    if (t.npc && t.npc.m.face) { t.npc.m.face.talking = true; clearTimeout(this.talkT); this.talkT = setTimeout(() => { if (t.npc.m.face) t.npc.m.face.talking = false; }, 300 + text.length * 45); }
     el.querySelector('.fd-talk-next').textContent = t.i < t.lines.length - 1 ? '▼ F' : '× F';
   }
   advanceTalk() {
@@ -1506,7 +1570,8 @@ class FieldView extends BaseView {
     this.chests.forEach(ch => { if (!ch.opened) dot(ch.pos.x, ch.pos.y, ch.pos.z, '#ffd66b', 3, true); });
     this.crystals.forEach(cr => { if (!cr.broken) dot(cr.pos.x, cr.pos.y, cr.pos.z, '#9d8cff', 2.5); });
     this.groups.forEach(gr => { if (gr.alive) dot(gr.pos.x, gr.pos.y, gr.pos.z, gr.state === 'chase' ? '#ff3040' : gr.elite ? '#ff9a4d' : '#ff6b81', gr.elite ? 4 : 3); });
-    (this.sealObjs || []).forEach(o => { if (!o.open && o.ready()) o.lamps.forEach(L => { if (!L.lit) dot(L.pos.x, L.pos.y, L.pos.z, o.S.look === 'memory' ? '#ffe2a8' : '#cfefff', 3.5); }); });
+    (this.sealObjs || []).forEach(o => { if (!o.open && o.ready()) o.lamps.forEach(L => { if (!L.lit) dot(L.pos.x, L.pos.y, L.pos.z, o.S.look === 'memory' ? '#ffe2a8' : o.S.look === 'laugh' ? '#ffe07a' : '#cfefff', 3.5); }); });
+    (this.bounceObjs || []).forEach(b => dot(b.pos.x, b.pos.y, b.pos.z, '#ff9ad8', 2.5));
     // 昇降機の床板の位置（今いる階に止まっていれば明るく）
     T.lifts.forEach(L => { const [x, y] = P(L.x, L.z); g.strokeStyle = Math.abs(L.y - pp.y) < 0.3 ? '#bff0ff' : 'rgba(191,240,255,.35)'; g.lineWidth = 1.5; g.strokeRect(x - L.w / 2 * sc + 1, y - L.d / 2 * sc + 1, L.w * sc - 2, L.d * sc - 2); });
     // 目的地（範囲外なら縁に矢印）
@@ -1555,9 +1620,10 @@ class FieldView extends BaseView {
     for (const f of this.zoneTicks) f(d, t);
     for (const f of this.emitters) f(d);
     if (this.T) this.updateMapParts(d, t);
-    if (!this.busy) this.updatePlayer(d);
+    if (this.flight) { this.updateFlight(d); this.animatePlayer(d, false); }
+    else if (!this.busy) { this.updatePlayer(d); if (!this.busy) this.updateGags(d); }
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
-    if (this.followers) this.updateFollowers(d, t);
+    if (this.followers && !this.flight) this.updateFollowers(d, t);
     this.updateEnemies(d, t);
     const p = this.player;
     p.m.update(d, t);
