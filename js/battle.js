@@ -115,6 +115,7 @@ class Battle {
       <div class="panel idle">
         <div class="ab-info"><div class="ab-kind"></div><div class="ab-name"></div><div class="ab-desc"></div></div>
         <div class="sp"><div class="sp-delta"></div><div class="sp-gems"></div><div class="sp-num"></div></div>
+        <div class="ep"><div class="ep-delta"></div><div class="ep-bar"><i></i></div><div class="ep-num"></div></div>
         <div class="ab-btns">
           <button class="ab-btn" data-ab="basic"><span class="ab-ic">⚔</span><span class="k">Q</span><span class="l">通常攻撃</span></button>
           <button class="ab-btn" data-ab="skill"><span class="ab-ic">✦</span><span class="k">E</span><span class="l">戦闘スキル</span></button>
@@ -888,6 +889,10 @@ class Battle {
     this.renderSp();
     if (!inp) return;
     const ab = this.abilityOf(inp), u = inp.unit;
+    if (inp.mode === 'ult') {
+      this.$('.ep-delta').textContent = `EP−${fmt(u.energy)}`;
+      this.$('.ep-num').textContent = `${fmt(u.energy)}/${fmt(u.energyMax)}`;
+    }
     panel.style.setProperty('--c', ELEMENTS[u.elem].color);
     this.$('.ab-kind').textContent = inp.mode === 'ult' ? `${u.name}・必殺技` : `${u.name}・${inp.sel === 'basic' ? '通常攻撃' : inp.sel === 'talk' ? 'はなす' : '戦闘スキル'}`;
     this.$('.ab-name').textContent = ab.name;
