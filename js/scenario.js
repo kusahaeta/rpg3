@@ -14,9 +14,9 @@ const SCENES = {
   c1_01: { title: '魚どろぼう', bgm: 'village',
     stage: { zone: 'pokapoka', at: [12, 1.5], face: 90, host: 'sakanaya',
       cast: { mike: { at: [0, 0], item: 'fish' }, sakanaya: { at: [0.2, 2.6], face: 'mike' }, sonchou: { at: [-2.5, -5], hidden: true, face: 'mike' } },
-      wide: { pos: [-3.4, 2.1, -4.4], look: [0.7, 0.6, 1.8] } },
+      points: { tree: [120, 30, 20] }, wide: { pos: [-3.4, 2.1, -4.4], look: [0.7, 0.6, 1.8] } },
     lines: [
-      ['n', 'ミャオニアの世界。遠くに大きな「にゃんだーの樹」が見える、ぽかぽか村。……今日も、平和な朝。', { cam: 'wide', dur: 7, r: { mike: 'joy' } }],
+      ['n', 'ミャオニアの世界。南の丘の向こうに、大きな「にゃんだーの樹」が見える、ぽかぽか村。……今日も、平和な朝。', { cam: 'wide', dur: 7, r: { mike: 'joy' } }],
       ['n', '……のはずだった。', { cam: 'mike', close: true, r: { mike: ['smile', 'hop'] } }],
       ['sakanaya', 'あっ！　ミケ！　また魚盗ったね！', { f: 'angry', g: 'point', to: 'mike', r: { mike: ['surprise', 'recoil'] } }],
       ['mike', 'と、盗ってないよ！　ちょっと持ってるだけ！', { f: 'surprise', g: 'shrug' }],
@@ -50,7 +50,7 @@ const SCENES = {
   c1_03: { title: '空から来た黒猫', bgm: 'village',
     stage: { zone: 'hill', at: [0, 6], face: 0,
       cast: { mike: { at: [0, 0] }, kuro: { at: [0.4, 9.4], stance: 'down', f: 'pained', face: 'mike' } },
-      points: { rock: [0, 1, 10], tree: [-30, 20, 100] },
+      points: { rock: [0, 1, 10], tree: [10, 30, -120] },
       wide: { pos: [-3.2, 2.2, 0.6], look: [0.2, 0.4, 8.5] } },
     lines: [
       ['n', '翌朝。流れ星の落ちたところへ行ってみると……', { cam: 'wide', dur: 7 }],

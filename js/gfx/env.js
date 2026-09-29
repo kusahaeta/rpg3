@@ -210,7 +210,7 @@ function buildEnvironment(scene, theme, renderer, opts = {}) {
 
   const particles = new Particles(scene, 4000);
   const updaters = [];
-  const T = { root, th, updaters, particles, colliders: [], field: !!opts.field, bare: !!opts.bare, focus: V3(), zone: opts.zone, theme,
+  const T = { root, th, updaters, particles, colliders: [], field: !!opts.field, bare: !!opts.bare, focus: V3(), zone: opts.zone, turn: opts.turn || 0, theme,
     indoor: !!(opts.zone && opts.zone.map && (ARCH_STYLES[opts.zone.arch || 'station'] || {}).roof !== false) };
   (ENV_PROPS[theme] || ENV_PROPS.meadow)(T);
   if (!T.indoor && !T.noTree && opts.skyTree !== false && !(opts.zone && opts.zone.skyTree === false)) farTree(T);
@@ -252,10 +252,17 @@ function worldTree(health = 0.8, s = 1) {
   g.scale.setScalar(s);
   return { g, fruits };
 }
+// にゃんだーの樹の方角：区画の地図上の位置（map2d）から見た、樹の根もとの向き（北が 0、東が π/2）
+function treeAngle(Z) {
+  const R = typeof FIELD_ZONES !== 'undefined' && FIELD_ZONES.tree_root;
+  if (!Z || !Z.map2d || !R || Z === R) return -0.6;
+  return Math.atan2(R.map2d[0] - Z.map2d[0], -(R.map2d[1] - Z.map2d[1]));
+}
 function farTree(T) {
   const h = treeHealth(), zt = T.zone && T.zone.treeAt;
   const { g, fruits } = worldTree(h, 1.6);
-  const a = zt ? zt[0] : -0.6, d = zt ? zt[1] : 230;
+  // turn：戦場のように区画を回して置くときは、その分だけ樹も回す
+  const a = (zt ? zt[0] : treeAngle(T.zone)) - T.turn, d = zt ? zt[1] : 230;
   g.position.set(Math.sin(a) * d, -6, -Math.cos(a) * d);
   T.root.add(g);
   T.updaters.push((dt, t) => fruits.forEach((f, i) => { f.scale.setScalar(1 + Math.sin(t * 2 + i) * 0.15); }));

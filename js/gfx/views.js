@@ -155,7 +155,7 @@ class BattleView extends BaseView {
   constructor(battle, theme) {
     // 物語の場所で戦う（第一章）：探索フィールドの区画を背景に組み立てる
     const loc = battle.opts.loc && typeof resolveBattleSet === 'function' ? resolveBattleSet(battle.opts.loc) : null;
-    super(loc ? battleTheme(loc, theme) : theme, 38, loc ? { field: true, bare: true, zone: FIELD_ZONES[loc.zone] } : {});
+    super(loc ? battleTheme(loc, theme) : theme, 38, loc ? { field: true, bare: true, zone: FIELD_ZONES[loc.zone], turn: loc.face * Math.PI / 180 } : {});
     this.b = battle;
     if (loc) { buildBattleSet(this, loc); this.initCutaway(); }
     this.bloomStrength = 0.55;
