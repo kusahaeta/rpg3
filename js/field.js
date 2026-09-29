@@ -347,9 +347,21 @@ class FieldView extends BaseView {
       v.showZoneTitle();
     }, 750);
   }
+  // 今いる場所の名前：区画に部屋の範囲（areas）があれば、その部屋の名前
+  placeName() {
+    const p = this.player && this.player.pos, a = p && (this.zone.areas || []).find(o => p.x >= o.at[0] && p.x <= o.at[2] && p.z >= o.at[1] && p.z <= o.at[3]);
+    return a ? a.name : this.zone.name;
+  }
+  updateArea() {
+    if (!this.zone.areas) return;
+    const name = this.placeName();
+    if (name === this.areaName) return;
+    this.areaName = name;
+    this.root.querySelector('.fd-zone b').textContent = name;
+  }
   showZoneTitle() {
     const t = this.root.querySelector('.fd-title');
-    t.innerHTML = `<small>${this.ch.name}</small><b>${this.zone.name}</b>`;
+    t.innerHTML = `<small>${this.ch.name}</small><b>${this.placeName()}</b>`;
     if (this.zone.town) Sfx.meow(this.team[this.leader].key);
     t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
   }
@@ -1344,11 +1356,11 @@ class FieldView extends BaseView {
     const g = cv.getContext('2d'), K = TK;
     const mix = (a, b, t) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString();
     // 野外は草地の緑・土の道・水の青・木立の濃い緑、屋内は高さで青の濃さを変える
-    const out = !!T.outdoor, lo = out ? '#3a6a34' : '#243054', hi = out ? '#a8d878' : '#6a8fd6';
+    const out = !!T.outdoor, town = T.outdoor === 'lots', lo = town ? '#6a6258' : out ? '#3a6a34' : '#243054', hi = town ? '#e0d6c4' : out ? '#a8d878' : '#6a8fd6';
     for (let r = 0; r < T.rows; r++) for (let c = 0; c < T.cols; c++) {
       const i = T.idx(c, r), kd = T.kind[i], x = c * s, y = r * s;
       if (T.water[i]) { g.fillStyle = '#3a8ad0'; g.fillRect(x, y, s + 0.5, s + 0.5); continue; }
-      if (kd < K.FLOOR) { if (out && kd === K.SOLID) { g.fillStyle = T.outdoor === 'flora' ? '#16301c' : '#3a3530'; g.fillRect(x, y, s + 0.5, s + 0.5); } continue; }
+      if (kd < K.FLOOR) { if (out && kd === K.SOLID) { g.fillStyle = T.outdoor === 'flora' ? '#16301c' : town ? '#8a4a3e' : '#3a3530'; g.fillRect(x, y, s + 0.5, s + 0.5); } continue; }
       const st = T.stairs.get(i), h = st ? (st.h0 + st.h1) / 2 : T.h[i];
       g.fillStyle = mix(lo, hi, clamp(h / 7, 0, 1)); g.fillRect(x, y, s + 0.5, s + 0.5);
       if (T.paint[i]) { g.fillStyle = mix('#a8845a', '#e8c890', clamp(h / 7, 0, 1)); g.fillRect(x, y, s + 0.5, s + 0.5); }
@@ -1506,7 +1518,7 @@ class FieldView extends BaseView {
     p.m.update(d, t);
     // 住人は近づくとこちらを向く
     this.updateNpcs(d, t);
-    this.updateSafe();
+    this.updateSafe(); this.updateArea();
     this.notes.forEach((n, i) => { n.mark.material.opacity = 0.5 + Math.sin(t * 3 + i) * 0.4; });
     this.anchor.rings.forEach((r, i) => { r.rotation.x = t * (0.8 + i * 0.5); r.rotation.y = t * (0.5 + i * 0.3); });
     this.anchor.core.rotation.y = t;

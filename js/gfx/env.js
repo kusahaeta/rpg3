@@ -19,6 +19,9 @@ const THEMES = {
   // ニャハハ王国：笑いを失った灰色の街
   kingdom: { top: '#7a8aa8', horizon: '#c8ccd8', bottom: '#8a8a90', nebA: '#e8e8f0', nebB: '#d8d0e0', fog: '#b8bcc8', fogD: 0.008, clouds: 1, sun: '#e8e8f0', stars: 0,
     floor: '#a8a4a8', floor2: '#9a969c', line: '#ffb8d8', key: '#f0f0f8', sky: '#d8dce8', ground: '#7a7a80', rim: '#e0d8f0', metal: 0.05, pattern: 'cobble', floorGlow: 0, rough: 0.9, light: 1.0 },
+  // ニャハハ王国（笑顔が戻ったあと）：青空と、あたたかい色の石畳
+  kingdomJoy: { top: '#4a9ae8', horizon: '#ffe4ec', bottom: '#c8b8a0', nebA: '#ffffff', nebB: '#ffd8e8', fog: '#f4e2e6', fogD: 0.006, clouds: 1, sun: '#fff0d0', stars: 0,
+    floor: '#dcc8aa', floor2: '#cbb392', line: '#ffb8d8', key: '#fff4e0', sky: '#ffeef4', ground: '#a8987e', rim: '#ffd8e8', metal: 0.05, pattern: 'cobble', floorGlow: 0, rough: 0.9, light: 1.1 },
   // 笑顔の塔（屋内）：サーカスのような塔
   tower: { top: '#3a1a4a', horizon: '#8a3a7a', bottom: '#2a1a2a', nebA: '#ff8ad8', nebB: '#ffd27a', fog: '#3a1a3a', fogD: 0.014, clouds: 0, sun: '#ffd8f0', stars: 0.5,
     floor: '#5a2a4a', floor2: '#6a3458', line: '#ffd27a', key: '#ffe8f4', sky: '#ffb8e0', ground: '#3a1a2a', rim: '#ff9ad8', metal: 0.1, pattern: 'checker', floorGlow: 0.15, rough: 0.6, light: 1.05 },
@@ -332,6 +335,12 @@ const ENV_PROPS = {
     // 遠くのお城のシルエット
     const m = new THREE.MeshStandardMaterial({ color: '#8a8aa0', roughness: 1 });
     for (let i = 0; i < 7; i++) { const x = -60 + i * 20, h = 20 + (i % 3) * 12; const tw = new THREE.Mesh(new THREE.CylinderGeometry(4, 4.5, h, 10), m); tw.position.set(x, h / 2 - 4, -150); T.root.add(tw); const rf = new THREE.Mesh(new THREE.ConeGeometry(5.5, 9, 10), m); rf.position.set(x, h - 4 + 4.5, -150); T.root.add(rf); }
+  },
+  kingdomJoy(T) {
+    hills(T, '#8ab870', 160, 14, 14); puffClouds(T, 14, '#ffffff', 26);
+    motes(T, '#ffb8d8', 12, { fall: true, drift: 1.2, size: 0.07, life: 7 });   // 紙ふぶき・花びら
+    const cols = ['#e87aa8', '#5a8ad8', '#ffd27a'], wm = new THREE.MeshStandardMaterial({ color: '#f4ece0', roughness: 1 });
+    for (let i = 0; i < 7; i++) { const x = -60 + i * 20, h = 20 + (i % 3) * 12; const tw = new THREE.Mesh(new THREE.CylinderGeometry(4, 4.5, h, 10), wm); tw.position.set(x, h / 2 - 4, -150); T.root.add(tw); const rf = new THREE.Mesh(new THREE.ConeGeometry(5.5, 9, 10), new THREE.MeshStandardMaterial({ color: cols[i % 3], roughness: 0.8 })); rf.position.set(x, h - 4 + 4.5, -150); T.root.add(rf); }
   },
   tower(T) { motes(T, '#ffd27a', 14, { size: 0.06, life: 4, k: 2 }); T.noTree = true; },
   valley(T) {

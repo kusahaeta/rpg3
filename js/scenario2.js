@@ -591,7 +591,7 @@ const STORY = [
   ] },
   { title: '第三章　笑わない街', steps: [
     { t: 'field', zone: 'nyahaha', at: [0, 22], scene: 'c3_01', g: 'ニャハハ王国に入る' },
-    { t: 'field', zone: 'castle', at: [0, -5], scene: 'c3_02', g: '町の北、ニャハハ城で王さまに会う' },
+    { t: 'field', zone: 'castle_in', at: [0, -6], scene: 'c3_02', g: '町の北、ニャハハ城の玉座の間で王さまに会う' },
     { t: 'field', zone: 'tower', at: [10.5, 12.5], scene: 'c3_03', battle: '3-1', g: '町の北東、笑顔の塔へ' },
     { t: 'field', zone: 'tower_3f', at: [10.5, 12.5], scene: 'c3_03b', battle: '3-2', g: '楽屋を抜けて、三階の空中ブランコの間へ' },
     { t: 'field', zone: 'tower_top', at: [10.5, 6], scene: 'c3_04', battle: '3-3', after: 'c3_05', g: '塔の最上階、大舞台へ' },
