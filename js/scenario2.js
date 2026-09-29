@@ -599,8 +599,9 @@ const STORY = [
     { t: 'reward', niboshi: 500, g: '第三章 おしまい' },
   ] },
   { title: '第四章　黒猫の過去', steps: [
-    { t: 'field', zone: 'valley', at: [-25, 6], scene: 'c4_01', g: '城下町の東、くろねこ谷へ' },
-    { t: 'field', zone: 'valley', at: [-16, -8], scene: 'c4_02', battle: '4-1', g: '谷の丘の上の墓標へ' },
+    { t: 'field', zone: 'valley_village', at: [-12, 1], scene: 'c4_01', g: '城下町の東、くろねこ谷を抜けて谷の集落へ' },
+    { t: 'field', zone: 'valley', at: [-16, -8], scene: 'c4_02', battle: '4-1', after: 'c4_02b', g: '谷の丘の上の墓標へ' },
+    { t: 'field', zone: 'valley', at: [18, -5], scene: 'c4_02c', g: '谷の北東、川のほとりの野営あとで、影の四剣の記録をさがす' },
     { t: 'field', zone: 'cave', at: [14.5, 17.5], scene: 'c4_03', battle: '4-2', g: '谷の北、黒影洞窟へ' },
     { t: 'field', zone: 'cave_deep', at: [14.5, 5.5], scene: 'c4_04', battle: '4-3', after: 'c4_05', g: '地底湖を越えて、洞窟の最奥へ' },
     { t: 'reward', niboshi: 600, g: '第四章 おしまい' },

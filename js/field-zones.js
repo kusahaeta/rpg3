@@ -644,7 +644,7 @@ const FIELD_ZONES = {
   valley: { ci: 3, name: 'くろねこ谷', w: 70, d: 68, stage: '4-1', arenas: [[-6, 18, 0]], build: 'valley', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'crag', chestAt: [[-24, -27], [26, -25], [-28, 21]],
     th: { path: '#8a7a6a' },
-    // 西から谷へ。南は谷の集落と広場、川を渡ると北に墓標の丘（石段）、北東の野営あとから切り通しを抜けて黒影洞窟へ。北西は古代遺跡へ
+    // 西から谷へ。南の広場の東に谷の集落への道、川を渡ると北に墓標の丘（石段）、北東の野営あとから切り通しを抜けて黒影洞窟へ。北西は古代遺跡へ
     map: [
       '#######rrr############ccc##########',
       '#######222############000##########',
@@ -671,9 +671,9 @@ const FIELD_ZONES = {
       '##00000####0000000000####000000000#',
       '###000#####0000000000####000000000#',
       '#####,#####0000000000####000000000#',
-      '#####,#####0000000000####000000000#',
-      '####,,#####0000000000###0000000000#',
-      '##00000####0000000000###0000000000#',
+      '#####,#####0000000000####000000000s',
+      '####,,#####0000000000###0000000000s',
+      '##00000####0000000000###0000000000s',
       '##00000#####00000000####000000000##',
       '###000#######000000000000000000####',
       '#############0000000000000000######',
@@ -681,17 +681,46 @@ const FIELD_ZONES = {
       '###################################',
       '###################################',
     ],
-    anchor: [4, 26], exits: [{ key: 'w', to: 'nyahaha' }, { key: 'c', to: 'cave' }, { key: 'r', to: 'ruins_out' }],
-    safe: [{ at: [26, 20], r: 9, name: '谷の集落' }],
-    npcs: [
-      { key: 'kurone', at: [18, 14], face: -Math.PI / 2, lines: ['……おかえり、クロ。', 'あの子たちの墓には、毎日花を供えておるよ。'],
-        v: [['clear:4-3', 'いい顔になったね、クロ。……今度の仲間は、大事にしなさい。']] },
-      { key: 'tanimura', at: [18, 22], walk: 4, lines: ['クロさんは、昔「影の四剣」って呼ばれたパーティーにいたんだ。', '……あの日から、誰とも組まなくなったって聞いたよ。'] },
-      { key: 'yadoya3', at: [24, 20], face: -Math.PI / 2, shop: 'inn', lines: ['谷の宿だよ。……静かだけど、よく眠れる。'] },
-    ],
+    anchor: [4, 26], exits: [{ key: 'w', to: 'nyahaha' }, { key: 'c', to: 'cave' }, { key: 'r', to: 'ruins_out' }, { key: 's', to: 'valley_village' }],
     notes: [{ at: [-15.25, -16], mark: 1.9, title: '三つの墓標', text: '「ハヤテ」「リン」「ゴロウ」——そして、名前の刻まれていない四つ目の石。' },
-      { at: [18, -9], mark: 2.8, reach: 2.9, title: '古いテント', text: '雨ざらしのテント。中に、誰かの荷物が残されている。' }],
+      { at: [18, -9], mark: 2.8, reach: 2.9, title: '古いテント', text: '雨ざらしのテント。中に、誰かの荷物が残されている。', until: 'scene:c4_02c' },
+      { at: [18, -9], mark: 2.8, reach: 2.9, title: '古いテント', text: '影の四剣が、最後に野営したテント。色あせた毛布と、四つの荷物が残っている。', when: 'scene:c4_02c' }],
     map2d: [620, 95] },
+
+  // 谷の集落：岩の崖に囲まれた、くろねこ谷の小さな集落（町の区画。敵は出ない）。西の出入口から小川の橋を渡ると広場と井戸、北東の見晴らし台に長老の家
+  valley_village: { ci: 3, name: '谷の集落', stage: '4-1', arenas: [[12, 4, 0]], build: 'valleyVillage', town: true, groups: 0, chests: 1, crystals: 0,
+    world: true, arch: 'crag', chestAt: [[16.8, -15.2]], th: { path: '#8a7a6a' },
+    map: [
+      '#########~~###########',
+      '#########~~##2222222##',
+      '#########~~##2222222##',
+      '###000000~~##2222222##',
+      '##0000000~~002222222##',
+      '#00000000~~0000^^000##',
+      '#00000000~~0000^^000##',
+      '#00000000~~000000000##',
+      '#00000000~~0000000000#',
+      'w,,,,,,,,==0000000000#',
+      'w,,,,,,,,==,,,,000000#',
+      'w,,,,,,,,==0000000000#',
+      '#00000000~~0000000000#',
+      '#00000000~~0000000000#',
+      '#00000000~~0000000000#',
+      '#00000000==0000000000#',
+      '##0000000==000000000##',
+      '####00000~~##000000###',
+      '#########~~###########',
+      '#########~~###########',
+    ],
+    anchor: [-14, 7], exits: [{ key: 'w', to: 'valley' }],
+    npcs: [
+      { key: 'kurone', after: 'c4_01', at: [15.5, -11.2], face: -Math.PI / 2, lines: ['……おかえり、クロ。', 'あの子たちの墓には、毎日花を供えておるよ。'],
+        v: [['clear:4-3', 'いい顔になったね、クロ。……今度の仲間は、大事にしなさい。']] },
+      { key: 'tanimura', at: [8, 4], walk: 4, lines: ['クロさんは、昔「影の四剣」って呼ばれたパーティーにいたんだ。', '……あの日から、誰とも組まなくなったって聞いたよ。'] },
+      { key: 'yadoya3', at: [-12, -6.6], face: 0, shop: 'inn', lines: ['谷の宿だよ。……静かだけど、よく眠れる。'] },
+    ],
+    notes: [{ at: [-17, -3.6], face: 0.3, board: ['谷の集落', '黒影洞窟には近づかぬこと　——長老クロネ'], title: '集落の立て看板', text: '「黒影洞窟には、近づかぬこと。——長老クロネ」……その下に、小さく「クロのばか」と落書きがある。' }],
+    map2d: [620, 164] },
 
   cave: { ci: 3, name: '黒影洞窟', floor: 'B1', stage: '4-2', arenas: [[14.5, 15.5, 0]], build: 'cave', arch: 'cave', bg: 'cave', groups: 5, chests: 3, crystals: 3, calmAfter: '4-3',
     th: { pattern: 'rock', floor: '#3a3444', floor2: '#443c50', line: '#8a6aff', floorGlow: 0.3, fog: '#141028', fogD: 0.02, light: 1.1, water: '#4a5aa8', waterGlow: '#3a2a9a' },
@@ -1249,7 +1278,7 @@ const CHAPTER_ZONES = [
   ['pokapoka', 'hill', 'forest_in', 'forest_deep', 'rat_nest'],
   ['road1', 'road_rest', 'woods', 'road2'],
   ['nyahaha', 'castle', 'castle_in', 'tower', 'tower_2f', 'tower_3f', 'tower_top'],
-  ['valley', 'cave', 'cave_deep'],
+  ['valley', 'valley_village', 'cave', 'cave_deep'],
   ['ruins_out', 'ruins_in'],
   ['demon_land', 'demon_castle', 'demon_castle_2f', 'demon_throne'],
   ['tree_root', 'tree_under'],
@@ -2616,12 +2645,28 @@ const ZONE_BUILD = {
     K.deadTree(-22, -19, 1.2); K.flowers(-15, -13, 12, 2, ['#c8a8ff', '#ffffff']);
     // 影の四剣の古いテント（川の北の野営あと）
     K.tent(18, -9, 0.3, 'clothPurple'); K.campfire(15, -7);
-    // 谷の集落
-    K.catHouse(24, 8, 6, 5, 3.4, 's', { roof: 'roofPurple', lit: true, smoke: true });
-    K.catHouse(28, 18, 5, 6, 3.4, 'w', { roof: 'roofGray', sign: '谷の宿', lit: true });
-    for (const [x, z] of [[20, 16], [22, 24], [8, 28]]) K.lantern(x, z, '#c8a8ff');
+    // 谷の集落への道（東の出入口）
+    K.signpost(28, 15.5, -0.6, '→ 谷の集落', '宿と長老の家', '#c8a8ff');
+    for (const [x, z] of [[22, 24], [8, 28]]) K.lantern(x, z, '#c8a8ff');
     K.signpost(-24, 2, 0.3, '→ 谷の集落', '↑ 墓標の丘・黒影洞窟');
     for (const [x, z] of [[-30, -4], [0, 30], [30, -12]]) K.rock(x, z, 0.8 + K.r() * 0.5, 'rockDark');
+  },
+  // 谷の集落：宿、長老クロネ婆の家（見晴らし台）、民家、井戸、洗濯物、紫の灯り、たき火
+  valleyVillage(K) {
+    K.cragTop({ trees: [['dead', 1.5], ['round', 1]], leaf: ['#6a6a7a', '#7a6a8a'], density: 0.35, rock: '#6a6070' });
+    K.catHouse(-12, -11, 7, 5, 3.6, 's', { roof: 'roofGray', sign: '谷の宿', sub: 'ゆっくり おやすみ', signCol: '#c8a8ff', lit: true, smoke: true });
+    K.catHouse(12, -15, 6, 5, 3.4, 's', { roof: 'roofPurple', sign: '長老の家', signCol: '#c8a8ff', lit: true, smoke: true });
+    K.catHouse(14, 10, 6, 5, 3.4, 'n', { roof: 'roofPurple', lit: true });
+    K.catHouse(5, 11.5, 5, 4.6, 3.2, 'n', { roof: 'roofGray' });
+    K.catHouse(-14.5, 11.6, 5, 4.4, 3.2, 'n', { roof: 'roofPurple', lit: true });
+    K.well(7, -3);
+    for (const [x, z] of [[-6, -4], [-6, 5], [2.5, -3], [2.5, 6], [12, 4], [17.2, -11], [-17, 8]]) K.lantern(x, z, '#c8a8ff');
+    // 洗濯物のひも
+    for (const [x0, z0, x1, z1] of [[12.5, -4, 18, -5.5], [-18, 5.2, -12, 5.2]]) K.bunting(x0, z0, x1, z1, ['#f4f0fa', '#c8b8e8', '#fff8f0', '#b8c8e0'], 2.4);
+    K.campfire(-6, 13); K.bench(-8.6, 13, Math.PI / 2); K.bench(-3.4, 13, -Math.PI / 2);
+    K.barrel(-17, -8); K.barrel(-16.2, -6.8); K.crate(-7.5, -8.5);
+    K.flowers(-12, -4, 10, 1.6, ['#c8a8ff', '#ffffff']); K.flowers(16, -2, 12, 2, ['#c8a8ff', '#ffffff']); K.flowers(10, -14, 8, 1.4, ['#c8a8ff', '#ffffff']);
+    for (const [x, z] of [[18, 14], [-18, -12], [8, -8]]) K.rock(x, z, 0.7 + K.r() * 0.4, 'rockDark');
   },
   // 黒影洞窟 B1：紫の水晶、石筍、地底の泉
   cave(K) {

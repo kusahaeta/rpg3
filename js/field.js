@@ -1608,8 +1608,9 @@ class FieldView extends BaseView {
     if (name === this.safeName) return;
     const first = this.safeName === undefined;
     this.safeName = name;
+    // 町や村の区画は、どこでも敵が出ないので表示しない（敵の出る区画の中の集落などでだけ出す）
     const el = this.root.querySelector('.fd-safe');
-    el.classList.toggle('hidden', !name);
+    el.classList.toggle('hidden', !name || this.town);
     if (first) return;
     if (name) this.toast(this.town ? `${name}：にゃんこたちが暮らす、安全なところ` : `安全なところ：${name}`);
     else if (!this.town) this.toast('安全なところを離れた');

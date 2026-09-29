@@ -273,6 +273,7 @@ class StageView extends BaseView {
   WP(p) { return p.length === 3 ? this.W(p[0], p[2], p[1]) : this.W(p[0], p[1]); }
   point(name) {
     if (name instanceof THREE.Vector3) return name;
+    if (Array.isArray(name)) return this.WP(name);   // 舞台から見た座標 [右, 前] または [右, 高さ, 前]
     if (this.actors[name]) return this.actors[name].headPos();
     const p = (this.st.points || {})[name]; return p ? this.WP(p) : null;
   }
