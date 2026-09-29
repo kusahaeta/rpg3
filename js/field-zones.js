@@ -71,7 +71,7 @@ const FIELD_ZONES = {
       '############bb############',
     ],
     anchor: [8, 12], exits: [{ key: 'a', to: 'pokapoka' }, { key: 'b', to: 'tree_root' }],
-    notes: [{ at: [-6, -6], title: '友情の実のかけら', text: '焦げた地面に、流れ星に見えた実のかけらが残っている。ほんのりあたたかく、かすかに光っている。' }],
+    notes: [{ at: [-6, -6], title: '友情の実のかけら', text: 'えぐれた地面に、流れ星に見えた実のかけらが残っている。ほんのりあたたかく、かすかに光っている。' }],
     map2d: [470, 450] },
 
   forest_in: { ci: 0, name: 'ほしふる森・入口', w: 60, d: 72, stage: '1-1', arenas: [[-2, -18, 0]], build: 'forest', bg: 'forest', groups: 5, chests: 3, crystals: 3,
