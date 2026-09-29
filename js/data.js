@@ -449,7 +449,7 @@ const CHAPTERS = [
       { id: '6-2', name: '魔王城の廊下',     lv: 47, waves: [['kangoshi', 'mazoku', 'kangoshi'], ['kanbu', 'mazoku']] },
       { id: '6-3', name: '魔王の間',         lv: 50, boss: true, waves: [['mazoku', 'kanbu', 'mazoku'], ['boss_maou']] },
     ] },
-  { id: 'c7', name: 'にゃんだーの樹', bg: 'tree', desc: '世界の中心の生命樹。その根元に、黒い何かがいる。',
+  { id: 'c7', name: 'にゃんだーの樹', bg: 'tree', desc: 'ぽかぽか村の南にそびえる生命樹。その根元に、黒い何かがいる。',
     stages: [
       { id: '7-1', name: '樹の根の道',       lv: 53, waves: [['kakera', 'kakera'], ['kakera', 'utsuro', 'kakera']] },
       { id: '7-2', name: '樹の地下',         lv: 56, waves: [['utsuro', 'kakera'], ['kakera', 'kakera', 'kakera']] },
