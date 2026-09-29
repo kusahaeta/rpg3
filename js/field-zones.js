@@ -1154,6 +1154,9 @@ function storyCond(cond) {
   return false;
 }
 
+// 世界の果てへのびる樹の根（暗い奈落でも木の根と分かるよう、少しだけ自らほの明るい）
+function rootMat(glow = 0) { return new THREE.MeshStandardMaterial({ color: '#8a6a48', emissive: '#6a4a2a', emissiveIntensity: glow, roughness: 0.9 }); }
+
 // ============================================================
 //  区画の地形・小物を組み立てるキット
 // ============================================================
@@ -2132,6 +2135,8 @@ const ZONE_BUILD = {
     for (let i = 0; i < 40; i++) K.mesh(new THREE.CircleGeometry(0.4, 6), revived ? 'leaf' : 'leafGray', (K.r() - 0.5) * 50, 0.04, -16 + (K.r() - 0.5) * 30, { rx: -Math.PI / 2, noShadow: true });
     if (revived) for (let i = 0; i < 24; i++) { const a = K.r() * 6; K.mesh(new THREE.SphereGeometry(1, 10, 8), K.glow(pick(['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a']), 2), Math.cos(a) * 26, 64 + K.r() * 20, 50 + Math.sin(a) * 20, { noShadow: true }); }
     K.signpost(-3, -24, 0.2, '↓ にゃんだーの樹', '→ 世界の果て');
+    // 世界の果てへのびる、いちばん太い根（東の小道の南の縁を這う）
+    K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(8, -0.6, 19), V3(16, 0.3, 16.4), V3(28, 0.2, 16.5), V3(42, -0.2, 16.4)]), 32, 0.7, 8, false), rootMat(), 0, 0, 0, { abs: true });
   },
   // 樹の地下：根の洞窟。天井をはう根、光るきのこ、東の地底の泉、奥に樹の心臓
   treeUnder(K) {
@@ -2153,6 +2158,8 @@ const ZONE_BUILD = {
     K.mesh(new THREE.RingGeometry(5, 5.15, 64), K.glow('#ff8ab8', 2), 0, 0.05, -30, { rx: -Math.PI / 2, noShadow: true });
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + Math.PI / 8; if (Math.sin(a) > 0.8) continue; K.pillarBroken(Math.cos(a) * 12, -30 + Math.sin(a) * 9, 2 + K.r() * 4, false, 'darkStone'); }
     for (let i = 0; i < 18; i++) K.floatRock((K.r() - 0.5) * 70, (K.r() - 0.5) * 90, -2 + K.r() * 16, 0.8 + K.r() * 2);
+    // 樹の根：南の入口から果ての闘技場まで、石の道の下を這って支えている（細い道ではすぐ脇に見える）
+    K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0, -2, 50), V3(-4, -3.5, 40), V3(-4.8, -0.9, 30), V3(-7, -4.5, 20), V3(-6.6, -0.9, 2), V3(-7, -4.5, -8), V3(-4.8, -0.9, -18), V3(-5, -5, -30), V3(0, -9, -46)]), 96, 1.1, 10, false), rootMat(0.6), 0, 0, 0, { abs: true, noShadow: true });
     // 道しるべの石と、奈落から立ちのぼる光
     for (const [x, z] of [[-4, 36], [4, 36], [-6, 10], [6, 10]]) K.pillarBroken(x, z, 1.4 + K.r(), false, 'darkStone');
     K.v.emitters.push(dt => { if (Math.random() < dt * 14) K.v.p.emit(V3((Math.random() - 0.5) * 70, -12, (Math.random() - 0.5) * 90), V3(0, 4, 0), hdr(pick(['#b8a8ff', '#ff8ab8']), 1.6), { life: 4, size: 0.12, drag: 0 }); });
