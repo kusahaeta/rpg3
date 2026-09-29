@@ -178,11 +178,20 @@ function StageScreen(ci, sid) {
   return s;
 }
 
+// 戦いに出る子：編成＋guests（物語で、まだ仲間になる前や、一行を離れている間にいっしょに戦う子。編成に空きがあれば加わる）
+function battleTeam(st) {
+  const team = teamMembers(), lv = Math.max(...team.map(m => m.lv)), away = awayNow();
+  for (const k of st.guests || []) {
+    const o = Save.data.owned[k];
+    if ((!o || away.includes(k)) && team.length < 4 && !team.some(m => m.key === k)) team.push({ key: k, lv: o ? o.lv : lv, eid: o ? o.eid : 0 });
+  }
+  return team;
+}
 function startStage(ci, st, techs, after) {
   Save.data.tp -= techs.length; Save.save();
   const first = !Save.data.cleared[st.id];
   const b = new Battle({
-    team: teamMembers(), techs, bg: CHAPTERS[ci].bg, canRetry: true, loc: st.id, final: st.final || null,
+    team: battleTeam(st), techs, bg: CHAPTERS[ci].bg, canRetry: true, loc: st.id, final: st.final || null,
     title: `${st.name}`,
     waves: st.waves.map(w => w.map(k => ({ key: k, lv: st.lv }))),
     onResult: res => {
@@ -216,24 +225,33 @@ function TeamScreen(backFn) {
     <div class="tm-hint">枠を選んでから、下のにゃんこをクリック。先頭の子が、冒険でみんなを連れて歩きます。</div>
     <div class="tm-roster"></div></div>`);
   wireBack(s, backFn || (() => App.go(HubScreen)));
+  // 物語の都合で一行を離れている子（awayNow）は、枠をとったまま動かせない
+  const away = awayNow(), isAway = k => away.includes(k);
+  const free = i => !isAway(Save.data.team[i]);
+  if (!free(slot)) slot = [0, 1, 2, 3].find(free);
   const render = () => {
-    const t = Save.data.team;
-    s.querySelector('.tm-slots').innerHTML = [0, 1, 2, 3].map(i => `
+    const t = Save.data.team, lead = t.findIndex(k => !isAway(k));
+    s.querySelector('.tm-slots').innerHTML = [0, 1, 2, 3].map(i => isAway(t[i]) ? `
+      <div class="tm-slot away">
+        ${charChip(t[i], 'big')}
+        <div class="tm-path">いまは一行を離れている</div>
+      </div>` : `
       <div class="tm-slot ${i === slot ? 'on' : ''}" data-slot="${i}">
-        <div class="tm-no">${i === 0 ? '先頭' : i + 1}</div>
+        <div class="tm-no">${i === lead ? '先頭' : i + 1}</div>
         ${t[i] ? charChip(t[i], 'big') + `<button class="tm-x" data-x="${i}">×</button>
           <div class="tm-path">${PATHS[CHARS[t[i]].path].name}・${ELEMENTS[CHARS[t[i]].elem].name}</div>` : '<div class="tm-empty">あき</div>'}
       </div>`).join('');
-    s.querySelector('.tm-roster').innerHTML = Object.keys(CHARS).filter(k => Save.data.owned[k]).map(k => charChip(k, t.includes(k) ? 'inteam' : '')).join('');
+    s.querySelector('.tm-roster').innerHTML = Object.keys(CHARS).filter(k => Save.data.owned[k]).map(k => charChip(k, isAway(k) ? 'away' : t.includes(k) ? 'inteam' : '')).join('');
     on(s, '[data-slot]', 'click', (el, e) => {
-      if (e.target.closest('[data-x]')) { const i = +e.target.closest('[data-x]').dataset.x; if (Save.data.team.filter(Boolean).length > 1) { Save.data.team.splice(i, 1); Save.save(); } slot = Math.min(slot, Save.data.team.length); render(); return; }
+      if (e.target.closest('[data-x]')) { const i = +e.target.closest('[data-x]').dataset.x; if (Save.data.team.filter(k => k && !isAway(k)).length > 1) { Save.data.team.splice(i, 1); Save.save(); } slot = Math.min(slot, Save.data.team.length); if (!free(slot)) slot = [0, 1, 2, 3].find(free); render(); return; }
       slot = +el.dataset.slot; render();
     });
     on(s, '.tm-roster .chip', 'click', el => {
-      const k = el.dataset.key, team = Save.data.team, at = team.indexOf(k), target = Math.min(slot, team.length);
+      const k = el.dataset.key; if (isAway(k)) return;
+      const team = Save.data.team, at = team.indexOf(k), target = Math.min(slot, team.length);
       if (at >= 0) { if (team[target]) { team[at] = team[target]; team[target] = k; } } else team[target] = k;
       Save.data.team = team.filter(Boolean); Save.save(); Sfx.meow(k);
-      slot = Math.min(3, Math.min(target + 1, Save.data.team.length)); render();
+      slot = Math.min(3, Math.min(target + 1, Save.data.team.length)); if (!free(slot)) slot = [0, 1, 2, 3].find(free); render();
     });
   };
   render();

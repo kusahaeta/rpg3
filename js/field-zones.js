@@ -688,9 +688,9 @@ const FIELD_ZONES = {
   ruins_in: { ci: 4, name: '壁画の回廊', w: 36, d: 80, stage: '5-2', arenas: [[0, 14, 0], [0, -26, 0]], build: 'ruinsIn', bg: 'ruins', groups: 5, chests: 3, crystals: 2, calmAfter: '5-3', skyTree: false,
     world: true, arch: 'ruin', chestAt: [[-7, -17], [7, -3], [-7, 29]],
     th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.3, fog: '#2a3a34', fogD: 0.02, light: 0.95 },
-    // 入口の間から大広間へ。その先は西と東の二本の回廊（古代文字・壁画）に分かれ、あいだに地下墓所と宝物庫。回廊の奥で合流すると封印の間
+    // 入口の間から大広間へ。その先は西と東の二本の回廊（古代文字・壁画）に分かれ、あいだに地下墓所と宝物庫。回廊の奥で合流すると封印の扉（開くと封印の間へ）
     map: [
-      '##################',
+      '########nn########',
       '####0000000000####',
       '###000000000000###',
       '###000000000000###',
@@ -731,10 +731,34 @@ const FIELD_ZONES = {
       '#######0000#######',
       '########ss########',
     ],
-    anchor: [8, 34], exits: [{ key: 's', to: 'ruins_out' }],
+    anchor: [8, 34], exits: [{ key: 's', to: 'ruins_out' }, { key: 'n', to: 'ruins_seal' }],
     notes: [{ at: [-12, 10], title: '壁画・一', text: '巨大な猫が、大きな樹を抱いて眠っている。' },
       { at: [14, -4], title: '壁画・二', text: '四匹の猫が、樹のまわりで手をつないでいる。……一匹は、とても小さい。' },
       { at: [-14, -18], title: '古代文字', text: '「樹は、猫たちのつながりから生まれた。つながりが絶えるとき、樹は最後のにゃんこを生む」' }],
+    map2d: [770, 30] },
+
+  // 封印の間：封印の扉の奥。樹の根をかたどった祭壇（第五章で守護神が語る場所）
+  ruins_seal: { ci: 4, name: '封印の間', floor: '奥', parent: 'ruins_in', stage: '5-3', after: 'c5_03', build: 'ruinsSeal', bg: 'ruins', groups: 0, chests: 1, crystals: 0, calmAfter: '5-3', skyTree: false,
+    world: true, arch: 'ruin', chestAt: [[8, -4]],
+    th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.4, fog: '#2a3a34', fogD: 0.02, light: 0.9 },
+    map: [
+      '##############',
+      '#####0000#####',
+      '###00000000###',
+      '##0000000000##',
+      '##0000000000##',
+      '##0000000000##',
+      '##0000000000##',
+      '##0000000000##',
+      '##0000000000##',
+      '###00000000###',
+      '####000000####',
+      '#####0000#####',
+      '######00######',
+      '######ss######',
+    ],
+    anchor: [0, 8], exits: [{ key: 's', to: 'ruins_in' }],
+    notes: [{ at: [0, -7], title: '樹の根の祭壇', text: '樹の根をかたどった祭壇。根は床いっぱいに広がり、その先は闇に消えている。……根のいちばん先に、小さく「世界の果て」と刻まれている。' }],
     map2d: [770, 30] },
 
   // ---------------- 第六章 魔王領 ----------------
@@ -1700,7 +1724,9 @@ class ZoneKit {
   }
   // 封印の扉
   sealDoor(x, z, ry = 0, open = false) {
-    this.box(x, z, 8, 7, 1.2, 'stone2', { ry });
+    // 開いた扉は、柱とまぐさ石の枠だけ残して、くぐれるようにする
+    if (open) { for (const sd of [-1, 1]) this.box(x + Math.cos(ry) * sd * 3.3, z - Math.sin(ry) * sd * 3.3, 1.4, 7, 1.2, 'stone2', { ry }); this.box(x, z, 8, 1.4, 1.2, 'stone2', { ry, y: 5.6 }); }
+    else this.box(x, z, 8, 7, 1.2, 'stone2', { ry });
     const d = this.mesh(new THREE.CircleGeometry(2.6, 40), new THREE.MeshStandardMaterial({ color: '#8a846a', roughness: 0.8 }), x + Math.sin(ry) * 0.62, 3.2, z + Math.cos(ry) * 0.62, { ry, noShadow: true });
     const ring = this.mesh(new THREE.RingGeometry(2.3, 2.5, 48), this.glow('#8affe0', open ? 3 : 1.4), x + Math.sin(ry) * 0.65, 3.2, z + Math.cos(ry) * 0.65, { ry, noShadow: true });
     ring.material = ring.material.clone(); ring.material.side = THREE.DoubleSide;
@@ -2076,6 +2102,17 @@ const ZONE_BUILD = {
     for (const x of [-9, -3]) K.box(x, -18, 1.4, 0.8, 2.6, 'stone2');
     K.box(3, -4, 1.2, 1, 1.2, 'stone2'); K.mesh(new THREE.OctahedronGeometry(0.3), K.glow('#8affe0', 2.4), 3, 1.4, -4);
     for (const [x, z] of [[-6, 30], [6, 30], [-6, -30], [6, -30]]) K.brazier(x, z, '#8affe0', 1.2);
+  },
+
+  // 封印の間：樹の根をかたどった祭壇と、床に広がる光る根
+  ruinsSeal(K) {
+    K.box(0, -9, 3.4, 1.2, 2.2, 'stone2', { round: true });
+    const gem = K.mesh(new THREE.OctahedronGeometry(0.5), K.glow('#8affe0', 2.4), 0, 2.1, -9);
+    K.tick((dt, t) => { gem.rotation.y += dt * 0.5; gem.position.y = 2.1 + Math.sin(t * 1.5) * 0.08; });
+    for (let i = 0; i < 7; i++) { const a = Math.PI * (0.15 + i * 0.7 / 6), len = 5 + (i % 3) * 1.5; K.mesh(new THREE.BoxGeometry(0.16, 0.04, len), K.glow('#8affe0', 1.2), Math.cos(a) * (len / 2 + 1.2), 0.03, -9 + Math.sin(a) * (len / 2 + 1.2), { ry: Math.PI / 2 - a, noShadow: true }); }
+    for (const z of [-6, 2]) for (const x of [-7, 7]) K.column(x, z, 7, 0.6, 'stone');
+    for (const x of [-4, 4]) K.brazier(x, 6, '#8affe0', 1.2);
+    K.light(0, 5, -8, '#8affe0', 6, 14);
   },
 
   // ---------------- 第六章 ----------------
