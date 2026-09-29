@@ -250,7 +250,7 @@ class FieldView extends BaseView {
       this.chests.push({ id: i, pos: V3(p.x, y, p.z), opened: done, ...c });
       this.reserved.push({ x: p.x, z: p.z, r: 2 });
     }
-    // 秘技の結晶
+    // またたびの茂み（叩くと秘技ポイントが回復）
     const broken = this.s.set(this.s.broken, this.zoneId);
     this.crystals = [];
     for (let i = 0; i < Z.crystals; i++) {
@@ -417,7 +417,7 @@ class FieldView extends BaseView {
     glow.scale.setScalar(2.0); glow.position.y = 0.6; g.add(glow);
     return { g, lid, glow };
   }
-  // またたびの茂み（叩くと、またたびポイントが回復）
+  // またたびの茂み（叩くと、秘技ポイントが回復）
   makeCrystal() {
     const g = new THREE.Group();
     const lm = toon('#6ac05a'), fm = toon('#ffc8e8', { emissive: new THREE.Color('#ff9ad8'), emissiveIntensity: 0.6 });
@@ -908,7 +908,7 @@ class FieldView extends BaseView {
       this.p.burst(c.pos.clone().add(V3(0, 0.8, 0)), '#ff9ad8', 40, { speed: 3, up: 1, life: 0.9 });
       this.fx.sprite(c.pos.clone().add(V3(0, 0.8, 0)), '#ff9ad8', 2.2, 0.4);
       Sfx.meow(this.team[this.leader].key);
-      if (Save.data.tp < 5) { Save.data.tp++; Save.save(); this.toast('またたびの香り……！　またたびポイント +1'); } else this.toast('またたびポイントは満タンです');
+      if (Save.data.tp < 5) { Save.data.tp++; Save.save(); this.toast('またたびの香り……！　秘技ポイント +1'); } else this.toast('秘技ポイントは満タンです');
       this.renderHud();
     }
   }
@@ -916,7 +916,7 @@ class FieldView extends BaseView {
     if (this.busy) return;
     const key = this.team[this.leader].key, c = CHARS[key];
     if (this.techs.has(key)) { this.toast(`${c.name}の秘技はすでに準備済みです`); return; }
-    if (Save.data.tp < 1) { this.toast('またたびポイントが足りません（またたびの茂みを叩くと回復）'); return; }
+    if (Save.data.tp < 1) { this.toast('秘技ポイントが足りません（またたびの茂みを叩くと回復）'); return; }
     Save.data.tp--; Save.save();
     this.techs.add(key);
     const col = ELEMENTS[c.elem].color, pos = this.player.pos;
@@ -939,6 +939,7 @@ class FieldView extends BaseView {
     for (const o of this.sealObjs || []) { if (o.open) continue; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < 2.0) return { type: 'lamp', o, L, text: o.ready() ? `${o.S.name || '光の水晶'}に触れる` : `調べる：${o.S.name || '光の水晶'}` }; }
     for (const o of this.rubbleObjs || []) if (!o.broken && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < (o.R.r || 1.6) + 1.2) return { type: 'rubble', text: '調べる：落石の岩山' };
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
+    for (const c of this.crystals) if (!c.broken && c.pos.distanceTo(p) < 1.8) return { type: 'bush', text: '調べる：またたびの茂み' };
     const same = (x, z) => Math.abs(this.gy(x, z) - p.y) < 1.5;
     if (Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && same(Z.anchor[0], Z.anchor[1])) return { type: 'anchor', text: 'ねこ地蔵：ひと休み（HP回復）／ワールドマップ' };
     if (this.T) {
@@ -974,6 +975,8 @@ class FieldView extends BaseView {
       this.lightLamp(it.o, it.L);
     } else if (it.type === 'rubble') {
       this.startTalk('落石の岩山', ['崩れた岩が、石段の上り口をふさいでいる。……攻撃すれば、砕けそうだ。'], null, true);
+    } else if (it.type === 'bush') {
+      this.startTalk('またたびの茂み', ['ほんのり甘い香りの茂み。……攻撃で叩くと、秘技ポイントが1回復する（最大5）。', '秘技ポイントを使うと、E で先頭の子の秘技を準備できる。次の戦闘のはじめに発動する。'], null, true);
     } else if (it.type === 'chest') {
       const c = it.c; c.opened = true;
       const all = Save.data.fieldChests || (Save.data.fieldChests = {});
@@ -1320,7 +1323,7 @@ class FieldView extends BaseView {
   renderHud() {
     const d = Save.data;
     this.root.querySelector('.currency').innerHTML =
-      `<span class="c-item" title="にぼし"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><span class="c-item" title="またたびポイント"><i class="ic-tp"></i>${d.tp}/5</span>`;
+      `<span class="c-item" title="にぼし"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><span class="c-item" title="秘技ポイント"><i class="ic-tp"></i>${d.tp}/5</span>`;
     this.root.querySelector('.fd-act.tech .tp').textContent = `${d.tp}/5`;
   }
   renderTeam() {
