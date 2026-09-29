@@ -367,8 +367,10 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .ally .bar.hp { margin: 0 8px; height: 7px; }
 .a-hp { font-size: 11px; text-align: right; padding: 1px 8px; color: #cfd5f0; }
 .ally .status { justify-content: flex-start; padding: 0 6px; margin-top: 1px; }
-.ult { position: absolute; right: 4px; top: 4px; width: 54px; height: 54px; border-radius: 50%; cursor: pointer; z-index: 3;
-  background: conic-gradient(var(--c) calc(var(--e, 0) * 360deg), rgba(255, 255, 255, .15) 0); }
+.ult { position: absolute; right: 4px; top: 4px; width: 54px; height: 54px; border-radius: 50%; cursor: pointer; z-index: 3; background: rgba(255, 255, 255, .15); }
+/* 溜まった分のEP：3Dの対象サークルのように、白っぽい芯＋青いにじみで光らせる */
+.ally .ult::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#d4eaff calc(var(--e, 0) * 360deg), transparent 0);
+  filter: drop-shadow(0 0 2px #a8d4ff) drop-shadow(0 0 5px #4d9dff); }
 .ult-face { position: absolute; inset: 4px; border-radius: 50%; overflow: hidden; background: #0b1022; filter: grayscale(.8) brightness(.6); transition: .2s;
   display: flex; align-items: center; justify-content: center; }
 .ult-face .ult-icon { width: 76%; height: 76%; filter: drop-shadow(0 0 3px currentColor); }
@@ -376,7 +378,6 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .ult.ready .ult-face { filter: none; }
 .ult.queued { box-shadow: 0 0 0 3px #fff, 0 0 20px 6px var(--c); }
 /* 必殺技がたまったら（対象選択中も）、使い切るEPのリングと中身を点滅 */
-/* 3Dの対象サークルのように、白っぽい芯＋青いにじみで光らせる */
 .ult.ready .ult-ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid #e4f2ff; mix-blend-mode: screen;
   box-shadow: 0 0 3px 1px #a8d4ff, 0 0 10px 3px #4d9dff, 0 0 20px 6px rgba(40, 120, 255, .5), inset 0 0 4px 1px #a8d4ff;
   animation: gaugeCost 1.2s ease-in-out infinite; }
