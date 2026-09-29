@@ -88,6 +88,8 @@ class Terrain {
       if (this.water[i]) { top[i] = this.cap[i]; continue; }
       // 木立：地面はとなりの床と同じ高さ。カメラは木の高さより下に入れない
       if (S.outdoor === 'flora') { this.cap[i] = this.base[i]; top[i] = this.base[i] + (S.canopy || 3.2); continue; }
+      // 町の敷地：地面はとなりの床と同じ高さ。建物（ZoneKit の townBlocks）が建つので、カメラは建物の高さより下に入れない
+      if (S.outdoor === 'lots') { this.cap[i] = this.base[i]; top[i] = this.base[i] + (S.canopy || 7); continue; }
       const c = this.colOf(i), r = this.rowOf(i);
       let base = -1e9;
       for (let rad = 1; rad <= 3 && base < -1e8; rad++) for (let dr = -rad; dr <= rad; dr++) for (let dc = -rad; dc <= rad; dc++) {
@@ -368,7 +370,7 @@ class Terrain {
     return { x, z };
   }
   // その高さの呼び名（ミニマップ用。区画が階を持つときはその名前、屋外は出さない）
-  floorLabel(h) { return this.zone.floor || (this.outdoor ? null : h < 2.5 ? '1F' : h < 7.5 ? '2F' : '3F'); }
+  floorLabel(h) { return this.zone.floor || (this.outdoor || this.open ? null : h < 2.5 ? '1F' : h < 7.5 ? '2F' : '3F'); }
 }
 
 // ============================================================
@@ -462,6 +464,12 @@ const ARCH_STYLES = {
   abyss: { look: 'cliff', outdoor: 'cliff', roof: false, skyline: 'rock', wallH: 3, rock: '#3a3048', cap: '#4a3a5a', path: '#8a7ab0', trim: '#2a1a3a', step: '#5a4a6a', glass: '#bfe8ff', glow: '#b8a8ff', rail: 'none', door: 'swing', lift: 'cage', exit: 'arch' },
   // ねこ神の夢：お菓子の木立
   sweets: { look: 'cliff', outdoor: 'flora', roof: false, canopy: 3, rock: '#e8b8d8', cap: '#ffd8e8', path: '#fff0c8', trim: '#c88ab8', step: '#ffe8f0', glass: '#bfe8ff', glow: '#ff9ad8', rail: 'wood', door: 'swing', lift: 'cage', exit: 'arch' },
+  // ニャハハ王国の城下町：# は建物の敷地（outdoor: lots。ZoneKit の townBlocks で家を建てる）。石畳と石の擁壁、鉄の手すり
+  kingdom: { look: 'town', outdoor: 'lots', roof: false, canopy: 7, rock: '#9a948a', cap: '#d8cfc0', cliff: '#b8b0a4', trim: '#5a4a42', step: '#c8c0b2', glass: '#bfe8ff', glow: '#ffd27a', rail: 'iron', door: 'swing', lift: 'cage', exit: 'gate' },
+  // ニャハハ城：空の見える中庭を、白い大理石の城壁（金の縁取り、窓に灯り）が囲む
+  nyacastle: { look: 'palace', roof: false, skyline: 'town', wallH: 11, wall: '#f4ece0', wall2: '#e2d4c0', trim: '#8a6a3a', cliff: '#e8dccb', cap: '#e8c878', step: '#efe6d8', glass: '#ffe8c0', glow: '#ffd27a', light: '#fff4dc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
+  // ニャハハ城の中：クリーム色の大理石、金の縁取りと灯り、格天井
+  nyapalace: { look: 'palace', roof: true, wallH: 8, wall: '#f6eee2', wall2: '#e6d6c0', trim: '#8a6a3a', cliff: '#eadfce', ceil: '#f2e6d4', step: '#efe6d8', glass: '#ffe8c0', glow: '#ffd27a', light: '#fff4dc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // 壁画の回廊：苔むした古い石の回廊（天井あり、青緑に光る縁取り）
   ruin: { look: 'palace', roof: true, wallH: 8, wall: '#c8c0a4', wall2: '#a8a088', trim: '#5a5a48', cliff: '#b0aa90', ceil: '#6a6a58', step: '#b8b098', glass: '#bfffe8', glow: '#8affe0', light: '#e8fff4', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // 樹の地下・黒影洞窟の奥：根と土の洞窟
@@ -707,7 +715,7 @@ function buildArchitecture(view, T) {
   const hAt = (i, x, z) => kind[i] === K.LIFT ? T.lifts[T.liftOf[i]].levels[0] : kind[i] === K.VOID ? ABYSS : T.groundOf(i, x, z);
   const cabinRoom = i => T.roomOf[i] >= 0 && T.rooms[T.roomOf[i]].cabin;
   const hasRoof = i => !open || cabinRoom(i);
-  const flora = T.outdoor === 'flora', EDGE = -1.3;   // 屋外の区画の外側の地面（環境の床）の高さ
+  const flora = T.outdoor === 'flora', lots = T.outdoor === 'lots', EDGE = -1.3;   // 屋外の区画の外側の地面（環境の床）の高さ
   const flat = (key, y, x0, z0, x1, z1, s = 4) => acc(key, s).quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]);
 
   // 岩肌：面を細かく割り、ワールド座標のノイズで内側の頂点を凹凸させる（隣の面とつながる）
@@ -732,7 +740,7 @@ function buildArchitecture(view, T) {
       const y = T.h[i];
       acc('wood', 4).box(x0, y - 0.22, z0, x1, y, z1, 'b');
       flat('water', y - 0.45, x0, z0, x1, z1, 8); flat('bed', y - 1.25, x0, z0, x1, z1, 8);
-    } else if (k === K.FLOOR || k === K.DOOR || k === K.EXIT) acc('floor', 16).quad([x0, T.h[i], z1], [x1, T.h[i], z1], [x1, T.h[i], z0], [x0, T.h[i], z0]);
+    } else if (k === K.FLOOR || k === K.DOOR || k === K.EXIT) acc('floor', lots ? 5 : 16).quad([x0, T.h[i], z1], [x1, T.h[i], z1], [x1, T.h[i], z0], [x0, T.h[i], z0]);
     if (k === K.LIFT) { const y = T.lifts[T.liftOf[i]].levels[0] - 0.45; acc('pit').quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]); }
     // 水面：底と、壁・地図の端に面した側面（屋内は天井も）
     if (T.water[i]) {
@@ -757,6 +765,19 @@ function buildArchitecture(view, T) {
         const la = low(A), lb = low(B);
         if (Math.max(la, lb) > y - 0.05) return;
         rockFace('rock', ex, ez, dc, dr, CELL, [la, y], [lb, y], j < 0 ? 0 : 0.3);
+        if (j >= 0 && walk(j)) snowLip(ex, ez, dc, dr, CELL, y);
+      });
+      continue;
+    }
+    // 町の敷地：石敷きの地面と、低いとなりに向いた石の擁壁（上端に笠石）。建物は区画の組み立てで建てる
+    if (lots && k <= K.WINDOW) {
+      const y = T.cap[i];
+      acc('stone', 4).quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]);
+      DIR4.forEach(([dc, dr]) => {
+        const j = T.idx(c + dc, r + dr), ex = cx + dc * CELL / 2, ez = cz + dr * CELL / 2;
+        const lo = j < 0 ? EDGE : walk(j) ? Math.min(hAt(j, ex - dr * 0.9 + dc * 0.02, ez + dc * 0.9 + dr * 0.02), hAt(j, ex + dr * 0.9 + dc * 0.02, ez - dc * 0.9 + dr * 0.02)) : kind[j] === K.VOID ? ABYSS : T.water[j] ? T.cap[j] - 0.8 : T.cap[j];
+        if (lo > y - 0.05) return;
+        acc('stone', 4).wall(ex, ez, dc, dr, CELL, lo, y);
         if (j >= 0 && walk(j)) snowLip(ex, ez, dc, dr, CELL, y);
       });
       continue;
@@ -809,11 +830,12 @@ function buildArchitecture(view, T) {
         if (k === K.EXIT && !T.exits[T.ch[i]].cabin && T.exits[T.ch[i]].nx === dc * -1 && T.exits[T.ch[i]].nz === dr * -1) return;
         // 水辺：橋は欄干、岸は水面の下まで続く土の斜面
         if (j >= 0 && T.water[j]) {
-          if (T.bridge[i]) railing(pa, pb, yA, yB, nx, nz, 'wood');
+          if (T.bridge[i]) railing(pa, pb, yA, yB, nx, nz, lots ? 'iron' : 'wood');
+          else if (lots) { acc('stone', 4).wall(ex, ez, dc, dr, CELL, T.cap[j] - 0.8, Math.min(yA, yB)); snowLip(ex, ez, -nx, -nz, CELL, Math.min(yA, yB)); railing(pa, pb, yA, yB, nx, nz); }   // 町の運河：石の護岸と手すり
           else rockFace('rock', ex, ez, dc, dr, CELL, [T.cap[j] - 0.8, yB], [T.cap[j] - 0.8, yA], 0.15);
           return;
         }
-        if (flora) return;   // 木立の側（崖）は木立のマスで作る
+        if (flora || lots) return;   // 木立の側（崖）は木立のマスで、町の敷地の側は建物で作る
         if (nk === K.WINDOW) wallWindow(ex, ez, nx, nz, base, top, c, r, dc, dr);
         else wallFace(ex, ez, nx, nz, base, top, c, r, dc, dr, k, yA, yB);
         return;

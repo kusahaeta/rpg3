@@ -472,7 +472,7 @@ const SCENES = {
       ['n', '【目的】町の北、ニャハハ城の中庭へ。', { cam: 'wide', dur: 5 }],
     ] },
   c3_02: { title: 'ニャハハ王', bgm: 'sad', extra: ['daijin'],
-    stage: { zone: 'castle', at: [0, -5], face: 0, host: 'nyahaha_ou', cast: { nyahaha_ou: { at: [0, 3.4], face: 'mike' }, daijin: { at: [-2, 3], face: 'mike' } } },
+    stage: { zone: 'castle_in', at: [0, -6], face: 0, host: 'nyahaha_ou', cast: { nyahaha_ou: { at: [0, 3.4], face: 'mike' }, daijin: { at: [-2, 3], face: 'mike' } } },
     lines: [
       ['nyahaha_ou', '……よく来たな、旅の者たち。わしが、ニャハハ王じゃ。', { f: 'sad', g: 'nod' }],
       ['nyahaha_ou', 'この国では昔から、にゃんだーの樹に実る「笑いの実」を大切にしてきた。祭りのたびに実を分け合って、国じゅうで笑うのじゃ。', { f: 'sad', g: 'explain' }],
