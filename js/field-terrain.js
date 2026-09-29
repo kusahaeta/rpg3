@@ -328,6 +328,9 @@ class Terrain {
     this.reach = reach;
     if (start < 0 || !this.isWalkKind(this.kind[start])) return;
     const q = [start]; reach[start] = 1;
+    // トランポリン（zone.bounce）：乗ったマスから、跳んだ先のマスへつながる
+    const jumps = new Map();
+    for (const B of this.zone.bounce || []) { const i = this.at(B.at[0], B.at[1]), j = this.at(B.to[0], B.to[1]); if (i >= 0 && j >= 0) jumps.set(i, [...(jumps.get(i) || []), j]); }
     const edgeH = (i, j) => {
       const ci = this.colOf(i), ri = this.rowOf(i), cj = this.colOf(j), rj = this.rowOf(j);
       const mx = (this.cx(ci) + this.cx(cj)) / 2, mz = (this.cz(ri) + this.cz(rj)) / 2;
@@ -336,6 +339,7 @@ class Terrain {
     };
     for (let qi = 0; qi < q.length; qi++) {
       const i = q[qi], c = this.colOf(i), r = this.rowOf(i);
+      for (const j of jumps.get(i) || []) if (!reach[j]) { reach[j] = 1; q.push(j); }
       for (const [dc, dr] of DIR4) {
         const j = this.idx(c + dc, r + dr);
         if (j < 0 || reach[j] || !this.isWalkKind(this.kind[j])) continue;
@@ -592,6 +596,29 @@ function shadowWallTex() {
   g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2; for (let k = 0; k < 14; k++) { let x = Math.random() * S, y = Math.random() * S; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 8; j++) { x += (Math.random() - 0.5) * 50; y -= 10 + Math.random() * 20; g.lineTo(x, y); } g.stroke(); }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   return (TexCache.shadowWall = t);
+}
+// むすっと幕：赤いビロードのひだに、大きな顔（smile = 笑った顔）
+function curtainTex(smile) {
+  const k = 'curtain' + (smile ? 1 : 0);
+  if (TexCache[k]) return TexCache[k];
+  const W = 512, H = 320, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  for (let x = 0; x < W; x += 32) { const gr = g.createLinearGradient(x, 0, x + 32, 0); gr.addColorStop(0, '#6a1020'); gr.addColorStop(0.5, '#c8304a'); gr.addColorStop(1, '#6a1020'); g.fillStyle = gr; g.fillRect(x, 0, 32, H); }
+  g.fillStyle = '#ffd27a'; g.fillRect(0, H - 22, W, 22); for (let x = 8; x < W; x += 24) { g.beginPath(); g.arc(x, H - 22, 7, 0, Math.PI); g.fill(); }
+  const cx = W / 2, cy = H * 0.46;
+  g.fillStyle = '#fff4e8'; g.beginPath(); g.ellipse(cx, cy, 120, 104, 0, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#3a1a2a'; g.lineWidth = 12; g.lineCap = 'round'; g.fillStyle = '#3a1a2a';
+  if (smile) {
+    for (const s of [-1, 1]) { g.beginPath(); g.arc(cx + s * 44, cy - 16, 20, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); }
+    g.beginPath(); g.moveTo(cx - 70, cy + 20); g.quadraticCurveTo(cx, cy + 110, cx + 70, cy + 20); g.closePath(); g.fill();
+    g.fillStyle = '#ff7a8a'; g.beginPath(); g.ellipse(cx, cy + 58, 30, 16, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(255,120,150,.5)'; for (const s of [-1, 1]) { g.beginPath(); g.ellipse(cx + s * 78, cy + 16, 18, 11, 0, 0, Math.PI * 2); g.fill(); }
+  } else {
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * 70, cy - 44); g.lineTo(cx + s * 22, cy - 30); g.stroke(); g.beginPath(); g.arc(cx + s * 44, cy - 10, 9, 0, Math.PI * 2); g.fill(); }
+    g.beginPath(); g.moveTo(cx - 56, cy + 58); g.quadraticCurveTo(cx, cy + 20, cx + 56, cy + 58); g.stroke();
+    g.fillStyle = '#e05a6a'; g.beginPath(); g.arc(cx, cy + 16, 14, 0, Math.PI * 2); g.fill();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (TexCache[k] = t);
 }
 // ---------- 雪の町・坑道・宮殿のテクスチャ ----------
 const noiseCanvas = (g, S, n, a, dark = '0,0,0') => { for (let i = 0; i < n; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : dark},${Math.random() * a})`; g.fillRect(Math.random() * S, Math.random() * S, 2 + Math.random() * 12, 1 + Math.random() * 3); } };
