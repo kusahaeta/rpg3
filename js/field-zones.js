@@ -2225,6 +2225,10 @@ class ZoneKit {
     let st = tower ? 3 : 2 + (r() < 0.45 ? 1 : 0) + (vis.length === 0 ? 1 : 0);
     while (y0 + PL + st * SH < hiNb + 3.2) st++;
     const top = y0 + PL + st * SH;
+    // カメラが家や屋根の中に入らないよう、敷地の高さを屋根のてっぺんまでにする（地図は一律 7m として作られている）
+    const roofTop = top + (tower ? 4.4 : Math.min(3.2, Math.min(W, D) * 0.42) + 0.9);
+    T.viewTop = T.viewTop || Float32Array.from(T.top);
+    for (let y = 0; y < R.d; y++) for (let x = 0; x < R.w; x++) { const i = T.idx(R.c + x, R.r + y); T.viewTop[i] = Math.max(T.viewTop[i], roofTop); }
     const pick2 = a => a[Math.floor(r() * a.length)];
     const wallC = happy ? pick2(['#fff4e2', '#ffe8d4', '#fde2e8', '#e8f0ff', '#fff2c8', '#e8f4e0', '#f4e8ff']) : pick2(['#d8d4d0', '#cfcac6', '#c6c2be', '#e0dcd8']);
     const roofC = happy ? pick2(['#e05a4a', '#5a8ad8', '#5aa860', '#f09a4a', '#8a6ad8', '#e87aa8', '#3aa8a8']) : pick2(['#8a8a96', '#7a7a86', '#9a9aa4', '#6e6e7a']);

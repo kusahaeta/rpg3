@@ -314,7 +314,7 @@ class Terrain {
     if (i < 0) return true;
     const k = this.kind[i];
     if (this.water[i]) return y < this.cap[i] + 0.15 || y > this.ceilOf(i) - 0.35;
-    if (k <= TK.WINDOW) return !this.open || y < this.top[i] + 0.3;
+    if (k <= TK.WINDOW) return !this.open || y < (this.viewTop || this.top)[i] + 0.3;
     if (y > this.ceilOf(i) - 0.35) return true;
     if (k === TK.DOOR) return y > this.h[i] + 3.7;
     if (k === TK.VOID) return false;
