@@ -31,6 +31,7 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   (Z.fluff || []).forEach((B, i) => { add(id, { k: 'fluff' + i, p: B.at, r: 0.9 }); add(id, { k: 'glide' + i, p: B.to, r: 0.6 }); });
   (Z.nemuri || []).forEach((N, i) => { add(id, { k: 'nemuri' + i, p: N.at, r: 0.2 }); add(id, { k: 'wake' + i, p: N.back, r: 0.6 }); });
   if (Z.sleepwalk) Z.sleepwalk.route.forEach((p, i) => add(id, { k: 'walk' + i, p, r: 0.5 }));
+  (Z.seals || []).forEach(S => { if (S.beam) { add(id, { k: `beam ${S.id} from`, p: S.beam.from, r: 0.6 }); add(id, { k: `beam ${S.id} to`, p: S.beam.to, r: 0.4 }); S.beam.mirrors.forEach((m, i) => add(id, { k: `mirror ${S.id}_${i}`, p: m, r: 0.6 })); } });
   (Z.plates || []).forEach(P => { P.at.forEach((p, i) => add(id, { k: `pad ${P.id}_${i}`, p, r: 0.9 })); add(id, { k: `gate ${P.id}`, p: [(P.wall[0] + P.wall[2]) / 2, (P.wall[1] + P.wall[3]) / 2], r: 0.3 }); });
   (Z.guards || []).forEach(G => { G.route.forEach((p, i) => add(id, { k: `guard ${G.id}_${i}`, p, r: 0.6 })); add(id, { k: `back ${G.id}`, p: G.back, r: 0.6 }); });
   (Z.rollers || []).forEach((R, i) => { add(id, { k: 'rollA' + i, p: R.a, r: 0.9 }); add(id, { k: 'rollB' + i, p: R.b, r: 0.9 }); add(id, { k: 'bump' + i, p: R.back, r: 0.6 }); });
@@ -76,6 +77,16 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   }
   for (const e of Z.exits) { const E = T.exits[e.key]; if (!E) bad.push(`exit key ${e.key} missing in map`); else if (!E.cells.some(i => T.reach[i])) bad.push(`exit ${e.key} (${e.to}) unreachable`); }
   for (const key of Object.keys(T.exits)) if (!Z.exits.some(e => e.key === key)) bad.push(`map exit ${key} not in exits`);
+  // 光の鏡：どこかの向きの組み合わせで光が届くか（解けるか）。最初の向きのままでは届かないか
+  for (const S of Z.seals || []) {
+    if (!S.beam) continue;
+    // 同じ色の鏡はいっしょに回るので、色ごとの向きの組み合わせを数える
+    const B = S.beam, trace = G('traceBeam'), st = G('beamStates'), n = (B.init || [0]).length; let sols = 0;
+    for (let m = 0; m < 1 << n; m++) if (trace(T, B, st(B, [...Array(n)].map((_, g) => (m >> g) & 1))).hit) sols++;
+    if (!sols) bad.push(`beam ${S.id} has no solution`);
+    if (trace(T, B, st(B, B.init || [0])).hit) bad.push(`beam ${S.id} is already solved at start`);
+    if (verbose) console.log(`   beam ${S.id}: ${sols} solution state(s) of ${1 << n}`);
+  }
   // 階段が急すぎないか（歩くときは、体のまわりの段差が STEP 以内でないと進めない。半径 0.4m で 0.6m まで）
   const steep = new Set();
   for (const [i, s] of T.stairs) if (Math.abs(s.h1 - s.h0) / s.len > 1.25) steep.add(`${T.colOf(i)},${T.rowOf(i)} (${s.h0}→${s.h1}m / ${s.len}m)`);

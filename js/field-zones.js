@@ -1138,7 +1138,12 @@ const FIELD_ZONES = {
       '#############################ss#############################',
     ],
     anchor: [7, 41], spawn: [0, 43], chestAt: [[-51, 29], [29, -41], [53, 43], [-25, 7]], exits: [{ key: 's', to: 'valley' }, { key: 'd', to: 'cave_lake', stair: 'down' }],
-    seals: [{ id: 'caveSeal1', wall: [-2, -25.3, 6, -24.7], lamps: [[-31, -43], [51, 13], [51, -41]], after: 'c4_03b', openAfter: 'c4_03c' }],
+    // 光の水晶を三つ灯すと、大空洞の南の大水晶が光を放つ。十五枚の光の鏡（五色。同じ色はいっしょに回る）で光の筋を曲げ、
+    // 坑道の受けの水晶まで導くと、影の壁が消える。正解は一通り（十枚の鏡を通る）。光の当たった鏡から順に直すだけでは解けない
+    seals: [{ id: 'caveSeal1', wall: [-2, -25.3, 6, -24.7], lamps: [[-31, -43], [51, 13], [51, -41]], after: 'c4_03b', openAfter: 'c4_03c',
+      openToast: '光の筋が受けの水晶に届くと、影の壁が、光にとけて消えた！',
+      beam: { from: [-7, 15], dir: 'n', to: [1, -19], init: [1, 0, 0, 1, 1],
+        mirrors: [[-7, -3, 3], [1, -3, 2], [1, 11, 2], [7, 11, 0], [7, -7, 1], [-11, -7, 4], [-11, -3, 0], [-17, -3, 2], [-17, -9, 3], [1, -9, 0], [9, -9, 1], [21, 11, 0], [-3, -5, 0], [15, 1, 1], [9, 11, 0]] } }],
     notes: [{ at: [-53, -11], mark: [-0.6, 2.4, 0], title: '壁のひっかき傷', text: '四本の爪あとが並んでいる。……「影の四剣、ここに参上」' },
       { at: [-50, -14], mark: 1.0, title: '焚き火のあと', text: '石を並べた、小さな焚き火のあと。四匹ぶんの足あとが、奥へと続いている。' }],
     map2d: [620, 30] },
@@ -1146,7 +1151,7 @@ const FIELD_ZONES = {
     world: true,
     th: { pattern: 'rock', floor: '#34303e', floor2: '#3e3848', line: '#8a6aff', floorGlow: 0.35, fog: '#100c22', fogD: 0.02, light: 1.05, water: '#3a4aa0', waterGlow: '#4a2ac0' },
     // B2：湖を見下ろす高台から石段で広い南の岸へ。湖をまたぐ長い橋のたもとを影の壁がふさぐ。光の水晶は、西の細長い入り江の奥と、東の岩棚の上
-    //     （石段の上り口は落石でふさがれている）。南西と南東に脇穴
+    //     （石段で上る）。南西と南東に脇穴
     map: [
       '###########################dd###########################',
       '###########################00###########################',
@@ -1200,8 +1205,10 @@ const FIELD_ZONES = {
       '###########################uu###########################',
     ],
     anchor: [9, 39], chestAt: [[-49, 43], [49, 41], [43, -23], [33, -41]], exits: [{ key: 'u', to: 'cave', stair: 'up' }, { key: 'd', to: 'cave_deep', stair: 'down' }],
-    seals: [{ id: 'caveSeal2', wall: [-2, 7.7, 2, 8.3], lamps: [[-47, -37], [51, -23]], after: 'c4_03c', openAfter: 'c4_04' }],
-    rubble: [{ id: 'caveRubble1', at: [46, 10.2], r: 1.8 }],
+    // 地底湖の光の水晶は、影がすぐに光を食べてしまう。一つ灯すと 32 秒で消えるので、そのあいだに三つとも灯す
+    //   （西の入り江 → 南西の脇穴 → 東の岩棚の順が、いちばん近い。走っておよそ 29 秒）
+    seals: [{ id: 'caveSeal2', wall: [-2, 7.7, 2, 8.3], lamps: [[-47, -37], [-41, 37], [51, -23]], hold: 32, after: 'c4_03c', openAfter: 'c4_04',
+      openToast: '三つの光がそろうと、橋のたもとの影の壁が消えた！' }],
     notes: [{ at: [-13.4, 13], mark: 1.2, when: 'scene:c4_03c', title: 'ゴロウの盾', text: 'まっぷたつに割れた、大きな盾。……リンをかばって、影の一撃を受け止めたのだろう。' },
       { at: [-12.2, 11.8], mark: 0.9, when: 'scene:c4_03c', title: 'リンのリボン', text: '色あせた、青いリボン。……光の水晶のかけらが、ひとつ結びつけてある。' }],
     map2d: [620, 30] },
@@ -1257,19 +1264,27 @@ const FIELD_ZONES = {
       '#######################uu#######################',
     ],
     anchor: [7, 35], chestAt: [[-37, 36], [43, 37], [39, -15], [-23, -29]], exits: [{ key: 'u', to: 'cave_lake', stair: 'up' }],
+    // 記憶のかけらは三つ（ハヤテ・リン・ゴロウ）。影の四剣が集まった順にふれる。手がかりは二つ：
+    //   到着の岩棚の「誓いの石」（最初の一匹だけ）と、北の縁の「ハヤテの手帳の切れはし」（あとの二匹の順）
     seals: [{ id: 'caveSeal3', look: 'memory', name: '記憶のかけら', wall: [-2, -21.3, 6, -20.7], lamps: [[-44, 3], [44.6, 11], [1, 6]], after: 'c4_03d', openAfter: 'c4_04',
+      labels: ['青いマフラー', '光る杖', '大きなかぶと'],
       openToast: '三つの記憶の光が、闇の扉をとかした！', idle: 'あたたかい光が、かすかにゆれている。……今は、ふれても何も起きない。',
+      // 影の四剣が集まった順（ハヤテ → ゴロウ → リン）にふれないと、光は消えて、到着した岩棚へ押しもどされる
+      order: [0, 2, 1], back: [7, 35], backToast: '……気がつくと、淵の上の岩棚に立っていた。……集まった順を、思い出そう',
+      wrong: [['e:kako_kuro', '……ちがう。お前は、あいつらのことを、何も覚えていない。'], ['n', '記憶のかけらの光が、すうっと消えていく。……闇が、あたりをのみこんだ。'], ['kuro', '……っ。……順番が、ちがうのか。']],
       items: [
-        (K, x, y, z) => { K.mesh(new THREE.BoxGeometry(0.9, 0.05, 0.22), 'clothRed', x, y + 0.03, z, { abs: true, ry: 0.4 }); K.mesh(new THREE.BoxGeometry(0.22, 0.05, 0.5), 'clothRed', x + 0.3, y + 0.03, z + 0.2, { abs: true, ry: 0.4 }); },
+        (K, x, y, z) => { K.mesh(new THREE.BoxGeometry(0.9, 0.05, 0.22), '#3a6ad8', x, y + 0.03, z, { abs: true, ry: 0.4 }); K.mesh(new THREE.BoxGeometry(0.22, 0.05, 0.5), '#3a6ad8', x + 0.3, y + 0.03, z + 0.2, { abs: true, ry: 0.4 }); },
         (K, x, y, z) => { K.mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), 'wood2', x, y + 0.05, z, { abs: true, rz: Math.PI / 2, ry: 0.3 }); K.mesh(new THREE.OctahedronGeometry(0.09), K.glow('#cfefff', 2.2), x + 0.45, y + 0.08, z - 0.14, { abs: true, noShadow: true }); },
         (K, x, y, z) => { K.mesh(new THREE.SphereGeometry(0.3, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), 'iron', x, y, z, { abs: true }); K.mesh(new THREE.BoxGeometry(0.64, 0.06, 0.12), 'iron', x, y + 0.02, z + 0.24, { abs: true }); },
       ],
       memories: [
-        ['……ハヤテの、赤いマフラーだ。', '「クロ、お前は無口だけど、いちばん仲間思いだ」……あいつは、いつもそう言って笑っていた。'],
+        ['……ハヤテの、青いマフラーだ。', '「クロ、お前は無口だけど、いちばん仲間思いだ」……あいつは、いつもそう言って笑っていた。'],
         ['……リンの、光の杖。', '「こわいときは、明かりを灯せばいいの」……リンは、どんな闇の中でも、光を灯して歩いた。'],
         ['……ゴロウの、かぶと。', '「腹がへっては、戦はできねえ！」……食い意地ばかり張って……でも、いつもいちばん前に立っていた。'],
       ] }],
-    notes: [{ at: [0, -37.4], mark: 1.8, reach: 2.4, when: 'scene:c4_05', title: '三本の剣', text: 'ハヤテ、リン、ゴロウの剣。……もう、さびしそうには見えない。' }],
+    notes: [{ at: [-3, 37], mark: 1.4, title: '誓いの石', text: '「われら影の四剣、集まった順に剣を並べて、ここに誓う。一の剣は、青き風。四の剣は、いちばんあとから来た黒き子。……二の剣と三の剣の順は、ともに歩んだ日々が知っている」' },
+      { at: [15, -15], mark: 1.0, title: 'ハヤテの手帳の切れはし', text: '「かぶとのゴロウのやつ、光る杖の新入りができたって、大よろこびしてやがる。……自分だって、ついこないだ仲間になったばかりのくせに。——ハヤテ」' },
+      { at: [0, -37.4], mark: 1.8, reach: 2.4, when: 'scene:c4_05', title: '三本の剣', text: 'ハヤテ、リン、ゴロウの剣。……もう、さびしそうには見えない。' }],
     map2d: [620, 30] },
 
   // ---------------- 第五章 古代遺跡 ----------------
@@ -1863,6 +1878,26 @@ function floatZ(fx, pos, s = 0.32) {
   fx.add(m, 1.8, (k, o) => { o.position.set(x0 + Math.sin(k * 5 + sw) * 0.18 + k * 0.3, y0 + k * 0.9, z0); o.scale.setScalar(s * (0.5 + k * 0.7)); o.material.opacity = k < 0.2 ? k / 0.2 : 1 - (k - 0.2) / 0.8; if (k >= 1) o.material.map = null; });
 }
 
+// 光の筋（seals の beam）：from から dir へまっすぐ進み、光の鏡で直角に曲がる（states[i] が 0 ＝ 「/」、1 ＝ 「＼」。鏡ごと）。
+//   壁・段差・岩（rocks: [x, z, 半径]）でとまる。to に届けば hit。鏡と from・to は、マスの中心に置く
+// 光の鏡の色：同じ色の鏡は、いっしょに回る（beam.mirrors の [x, z, 色の番号]、色ごとの最初の向きは beam.init）
+const MIRROR_COLS = [['赤', '#ff6a6a'], ['青', '#6aa8ff'], ['黄', '#ffd24a'], ['緑', '#6ad88a'], ['紫', '#c88aff']];
+const beamStates = (B, gst) => B.mirrors.map(m => gst[m[2] || 0]);
+const BEAM_DIR = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
+function traceBeam(T, B, states) {
+  let [x, z] = B.from, [dx, dz] = BEAM_DIR[B.dir], last = -1;
+  const h0 = T.groundAt(x, z), pts = [[x, z]], M = B.mirrors, used = [];
+  for (let step = 0; step < 1600; step++) {
+    x += dx * 0.25; z += dz * 0.25;
+    if (Math.hypot(x - B.to[0], z - B.to[1]) < 0.3) return { pts: [...pts, [B.to[0], B.to[1]]], hit: true, used };
+    const i = T.at(x, z);
+    if (i < 0 || !T.isWalkKind(T.kind[i]) || Math.abs(T.groundAt(x, z) - h0) > 0.6 || (B.rocks || []).some(([rx, rz, r]) => Math.hypot(x - rx, z - rz) < r)) break;
+    const k = M.findIndex(([mx, mz], j) => j !== last && Math.abs(x - mx) < 0.13 && Math.abs(z - mz) < 0.13);
+    if (k >= 0) { x = M[k][0]; z = M[k][1]; pts.push([x, z]); [dx, dz] = states[k] ? [dz, dx] : [-dz, -dx]; last = k; used.push(k); }
+  }
+  return { pts: [...pts, [x, z]], hit: false, used };
+}
+
 // いま物語で向かっている、フィールドの段階（なければ null）
 function storyStep() {
   const cur = typeof Story !== 'undefined' ? Story.current() : null;
@@ -2405,14 +2440,19 @@ class ZoneKit {
         const cy = c.position.y - y;
         const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(lit ? litCol : dimCol, lit ? 0.9 : 0.35), blending: THREE.AdditiveBlending, depthWrite: false }));
         sp.scale.setScalar(lit ? 3.4 : 1.6); sp.position.set(x, y + cy, z); this.scene.add(sp);
-        const L = { i, pos: V3(x, y, z), lit, c, sp, setLit() { L.lit = true; c.material = bright; sp.material.color.copy(hdr(litCol, 0.9)); sp.scale.setScalar(3.4); } };
+        const L = { i, pos: V3(x, y, z), lit, c, sp, setLit() { L.lit = true; c.material = bright; sp.material.color.copy(hdr(litCol, 0.9)); sp.scale.setScalar(3.4); },
+          setUnlit() { L.lit = false; L.left = 0; c.material = dim; sp.material.color.copy(hdr(dimCol, 0.35)); sp.scale.setScalar(1.6); } };
+        // 灯りの時間（S.hold）：灯してから消えるまでの残り秒（Save.data.flags に残す）。残りが少ないと、ちらちらする
+        if (S.hold && lit && !open) { L.left = flags[S.id + '_t' + i] || 0; if (L.left <= 0) { L.setUnlit(); delete flags[S.id + '_' + i]; } }
         const ph = this.r() * 6; this.tick((dt, t) => {
           c.rotation.y += dt * (L.lit ? 1.2 : 0.3); c.position.y = y + cy + Math.sin(t * 1.6 + ph) * 0.05; sp.position.y = c.position.y; if (!L.lit) sp.material.opacity = 0.6 + Math.sin(t * 2 + ph) * 0.3;
+          else if (L.left > 0 && !o.open) sp.material.opacity = L.left < 10 ? (Math.sin(t * (30 - L.left * 2)) > 0 ? 1 : 0.25) : 1;
           // 笑っている袋は、おなかをかかえるようにぷるぷるゆれて、音符のような光をこぼす
           if (laugh && L.lit) { const k = Math.sin(t * 14 + ph); c.scale.set(1 + k * 0.08, 1 - k * 0.1, 1 + k * 0.08); c.rotation.z = Math.sin(t * 7 + ph) * 0.2; if (kit.v.p && Math.random() < dt * 3) kit.v.p.emit(V3(x, y + 1.6, z), V3((Math.random() - 0.5) * 0.8, 1.2, (Math.random() - 0.5) * 0.8), hdr(pick(['#ffe07a', '#ff9ad8', '#8ad8ff']), 1.8), { life: 1.2, size: 0.1, drag: 0.4 }); }
         });
         o.lamps.push(L);
       });
+      if (S.beam) this.beamParts(S, o, flags);
       if (open) return o;
       const [x0, z0, x1, z1] = S.wall, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = Math.abs(x1 - x0), d = Math.abs(z1 - z0), y = this.gy(cx, cz), h = 5, len = Math.max(w, d);
       const g = new THREE.Group(); g.position.set(cx, y, cz); g.rotation.y = w >= d ? 0 : Math.PI / 2; this.scene.add(g);
@@ -2449,6 +2489,62 @@ class ZoneKit {
       });
       return o;
     }));
+  }
+  // 光の筋（seals の beam）：大水晶（from）・光の鏡（mirrors: [x, z, 最初の向き]）・受けの水晶（to）。鏡の向きは Save.data.flags（id_m番号）に残す
+  //   光の水晶をすべて灯すと、大水晶が光を放つ。光の鏡で曲げた光の筋が受けの水晶に届くと、影の壁が消える（FieldView.turnMirror）
+  beamParts(S, o, flags) {
+    const B = S.beam, kit = this, T = this.T, HY = 1.15;
+    const gst = (B.init || [0]).map((v, g) => flags[`${S.id}_g${g}`] ?? v);
+    const dimM = this.glow('#6a4aa0', 0.7), litM = this.glow('#cfefff', 3.2);
+    // 大水晶：大きな岩の台に、紫の大きな水晶。光を放つと白く輝いて、ゆっくりまわる
+    const [fx, fz] = B.from;
+    this.cyl(fx, fz, 1.0, 0.8, 'rockDark', { seg: 8, r2: 0.75 });
+    const core = this.mesh(new THREE.OctahedronGeometry(0.6), dimM, fx, 1.7, fz, { noShadow: true }); core.scale.y = 1.9;
+    // 受けの水晶：影の壁の手前。光が届くと白く輝く
+    const [tx, tz] = B.to;
+    this.cyl(tx, tz, 0.45, 0.7, 'rockDark', { seg: 7, r2: 0.34 });
+    const rc = this.mesh(new THREE.OctahedronGeometry(0.34), dimM, tx, HY, tz, { noShadow: true }); rc.scale.y = 1.7;
+    // 光の鏡：石の台に、ななめに立てた水晶の板（上から見て「/」か「＼」。F で向きが変わる）。枠と台の宝石の色が同じ鏡は、いっしょに回る
+    const glass = new THREE.MeshStandardMaterial({ color: '#d8ecff', emissive: '#6a8aff', emissiveIntensity: 0.4, metalness: 0.7, roughness: 0.12 });
+    const mirrors = B.mirrors.map(([x, z, g = 0], i) => {
+      const col = MIRROR_COLS[g][1];
+      this.cyl(x, z, 0.55, 0.45, 'rockDark', { seg: 8 });
+      for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + Math.PI / 4; this.mesh(new THREE.OctahedronGeometry(0.1), this.glow(col, 1.6), x + Math.cos(a) * 0.5, 0.42, z + Math.sin(a) * 0.5, { noShadow: true }); }
+      const pivot = new THREE.Group(); pivot.position.set(x, this.gy(x, z) + 0.45, z); this.scene.add(pivot);
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 0.1), glass); slab.position.y = 0.7; slab.castShadow = true; pivot.add(slab);
+      for (const fy of [0.08, 1.32]) { const f = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 0.16), this.glow(col, 0.9)); f.position.y = fy; pivot.add(f); }
+      for (const fx of [-0.72, 0.72]) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.3, 0.16), this.glow(col, 0.9)); f.position.set(fx, 0.7, 0); pivot.add(f); }
+      const ry = st => st ? -Math.PI / 4 : Math.PI / 4;
+      pivot.rotation.y = ry(gst[g]);
+      return { i, g, pos: V3(x, this.gy(x, z), z), pivot, ry, target: pivot.rotation.y };
+    });
+    const line = new THREE.Group(); this.scene.add(line);
+    const beamM = new THREE.MeshBasicMaterial({ color: hdr('#cfefff', 2.2), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+    const tip = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#cfefff', 1.6), blending: THREE.AdditiveBlending, depthWrite: false })); tip.scale.setScalar(1.6); line.add(tip);
+    const draw = pts => {
+      for (const m of [...line.children]) if (m !== tip) { line.remove(m); m.geometry.dispose(); }
+      for (let k = 1; k < pts.length; k++) {
+        const [ax, az] = pts[k - 1], [bx, bz] = pts[k], len = Math.hypot(bx - ax, bz - az); if (len < 0.01) continue;
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, len, 6, 1, true), beamM);
+        seg.position.set((ax + bx) / 2, T.groundAt(fx, fz) + HY, (az + bz) / 2); seg.rotation.set(Math.PI / 2, 0, 0); seg.rotation.y = Math.atan2(bx - ax, bz - az); seg.rotation.order = 'YXZ';
+        line.add(seg);
+      }
+      const [ex, ez] = pts[pts.length - 1]; tip.position.set(ex, T.groundAt(fx, fz) + HY, ez);
+    };
+    const b = o.beam = { B, gst, mirrors, hit: false, active: o.open || S.lamps.every((_, i) => flags[S.id + '_' + i]),
+      update() {
+        line.visible = b.active;
+        core.material = b.active ? litM : dimM;
+        if (!b.active) { b.hit = false; rc.material = dimM; return; }
+        const r = traceBeam(T, B, beamStates(B, b.gst)); draw(r.pts); b.hit = r.hit; rc.material = r.hit ? litM : dimM;
+      } };
+    b.update();
+    this.tick((dt, t) => {
+      mirrors.forEach(m => { m.pivot.rotation.y += (m.target - m.pivot.rotation.y) * (1 - Math.exp(-10 * dt)); });
+      if (!b.active) return;
+      core.rotation.y += dt * 0.8; beamM.opacity = 0.7 + Math.sin(t * 9) * 0.15; tip.material.opacity = 0.6 + Math.sin(t * 13) * 0.3;
+      if (kit.v.p && Math.random() < dt * 6) kit.v.p.emit(tip.position.clone(), V3((Math.random() - 0.5) * 1.5, Math.random() * 1.5, (Math.random() - 0.5) * 1.5), hdr('#cfefff', 2.4), { life: 0.6, size: 0.07, drag: 1 });
+    });
   }
   // わざの仕掛け（seals の who）：その子が先頭のときだけ動かせる（FieldView.lightLamp）
   //   look: 'beacon' ＝ のろし台（石の台に鉄の火皿。火がつくと炎と、高くのぼる煙のすじ）と、鉄格子の大門（のろしがすべて上がると巻き上がる）
@@ -3068,10 +3164,12 @@ class ZoneKit {
     return m;
   }
   // 光る水晶の塊
+  // 光る鉱石：小さな水晶の群れ（高さ 0.3〜0.7m ほど。根もとの岩から、少しずつかたむいて生える）
   ore(x, z, n = 4, col = '#a07bff', s = 1) {
     const g = this.glow(col, 1.7);
-    for (let i = 0; i < n; i++) { const h = (0.5 + this.r() * 0.9) * s, m = this.mesh(new THREE.OctahedronGeometry(0.28 * s, 0), g, x + (this.r() - 0.5) * s, h * 0.35, z + (this.r() - 0.5) * s, { rz: (this.r() - 0.5) * 0.8, ry: this.r() * 3, noShadow: true }); m.scale.y = h * 2.4; }
-    this.col(x, z, 0.6 * s, 1.5 * s);
+    this.mesh(new THREE.DodecahedronGeometry(0.35 * s, 0), 'rockDark', x, 0.1 * s, z, { ry: this.r() * 3 }).scale.y = 0.5;
+    for (let i = 0; i < n + 2; i++) { const h = (0.35 + this.r() * 0.45) * s, m = this.mesh(new THREE.OctahedronGeometry(0.11 * s, 0), g, x + (this.r() - 0.5) * 0.6 * s, h * 0.45, z + (this.r() - 0.5) * 0.6 * s, { rz: (this.r() - 0.5) * 0.9, rx: (this.r() - 0.5) * 0.6, ry: this.r() * 3, noShadow: true }); m.scale.y = h * 4; }
+    this.col(x, z, 0.4 * s, 0.8 * s);
   }
   // 石筍
   stalag(x, z, h = 3) { const m = this.mesh(new THREE.ConeGeometry(0.5 + h * 0.12, h, 6), 'rockDark', x, h / 2, z, { ry: this.r() * 3 }); this.col(x, z, 0.4 + h * 0.1, h); return m; }
@@ -3866,7 +3964,7 @@ const ZONE_BUILD = {
     K.seals(); K.rubbles();
     K.light(-46, 3, -41, '#6a8aff', 7, 16); K.light(2, 4, -20, '#a07bff', 7, 18); K.light(0, 4, 39, '#a07bff', 7, 20); K.light(45, 4, -36, '#b89aff', 6, 18);
   },
-  // 黒影洞窟 B2：地底湖。湖面の光、岸のゴロウの盾とリンのリボン、橋のたもとの影の壁、東の岩棚の落石
+  // 黒影洞窟 B2：地底湖。湖面の光、岸のゴロウの盾とリンのリボン、橋のたもとの影の壁
   caveLake(K) {
     for (const [x, z, n] of [[-45, -39, 4], [33, -39, 3], [-29, -39, 3], [53, -15, 4], [-49, 45, 3], [49, 43, 3], [-15, 45, 3], [15, 45, 3]]) K.ore(x, z, n, '#a07bff', 1);
     for (const [x, z] of [[-35, 12], [35, 12], [-20, 21], [20, 21], [38, 19], [-25, -40], [25, -40], [45, 39], [-40, 40]]) K.stalag(x, z, 1.8 + K.r() * 1.8);
