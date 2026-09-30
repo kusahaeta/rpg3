@@ -162,7 +162,7 @@ function floorTextures(th, theme) {
       for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { g.fillStyle = (x + y) % 2 ? th.floor : th.floor2; g.fillRect(x * step + 3, y * step + 3, step - 6, step - 6); }
     }
   }
-  const t1 = new THREE.CanvasTexture(base), t2 = new THREE.CanvasTexture(em);
+  const t1 = new THREE.CanvasTexture(ecoShrink(base)), t2 = new THREE.CanvasTexture(ecoShrink(em));
   t1.colorSpace = t2.colorSpace = THREE.SRGBColorSpace;
   for (const t of [t1, t2]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(th.repeat || 6, th.repeat || 6); t.anisotropy = 8; }
   return [t1, t2];

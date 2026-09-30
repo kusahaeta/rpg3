@@ -22,7 +22,7 @@ Object.assign(FACE_EXPR, {
 
 // ---------- 毛並み（頭：正距円筒 512×256。u=0.25 が正面、v=0 が頭頂） ----------
 function catHeadTex(L) {
-  const S = 2, c = document.createElement('canvas'); c.width = 512 * S; c.height = 256 * S;
+  const S = GFX.eco ? 1 : 2, c = document.createElement('canvas'); c.width = 512 * S; c.height = 256 * S;   // 省エネは 512×256
   const g = c.getContext('2d'); g.scale(S, S);
   g.fillStyle = L.fur; g.fillRect(0, 0, 512, 256);
   const blob = (x, y, rx, ry, col, rot = 0) => { g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); g.fill(); };
