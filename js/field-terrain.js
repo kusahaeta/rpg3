@@ -328,9 +328,19 @@ class Terrain {
     this.reach = reach;
     if (start < 0 || !this.isWalkKind(this.kind[start])) return;
     const q = [start]; reach[start] = 1;
-    // トランポリン（zone.bounce）・綿毛（zone.fluff）：乗った（つかまった）マスから、跳んだ先のマスへつながる
-    const jumps = new Map();
-    for (const B of [...(this.zone.bounce || []), ...(this.zone.fluff || [])]) { const i = this.at(B.at[0], B.at[1]), j = this.at(B.to[0], B.to[1]); if (i >= 0 && j >= 0) jumps.set(i, [...(jumps.get(i) || []), j]); }
+    // 綿毛（zone.fluff）：つかまったマスから、降りる先のマスへつながる
+    // トランポリン（zone.bounce）：となりのマスから踏みこむと、その向きに跳んだ先のマス（とちゅうで踏んだトランポリン）へつながる
+    const jumps = new Map(), link = (i, j) => { if (i >= 0 && j >= 0) jumps.set(i, [...(jumps.get(i) || []), j]); };
+    for (const B of this.zone.fluff || []) link(this.at(B.at[0], B.at[1]), this.at(B.to[0], B.to[1]));
+    for (const [x, z] of this.zone.bounce || []) {
+      const t = this.at(x, z); if (t < 0) continue;
+      for (const [dc, dr] of DIR4) {
+        const f = this.idx(this.colOf(t) - dc, this.rowOf(t) - dr);
+        if (f < 0 || !this.isWalkKind(this.kind[f]) || this.isBounce(f)) continue;
+        const { land, hops } = this.bounceTo(t, dc, dr);
+        hops.forEach(h => link(f, h)); link(f, land);
+      }
+    }
     const edgeH = (i, j) => {
       const ci = this.colOf(i), ri = this.rowOf(i), cj = this.colOf(j), rj = this.rowOf(j);
       const mx = (this.cx(ci) + this.cx(cj)) / 2, mz = (this.cz(ri) + this.cz(rj)) / 2;
@@ -352,7 +362,7 @@ class Terrain {
         if (ok) { reach[j] = 1; q.push(j); }
       }
     }
-    // 敵・宝箱を置けるマス（床のみ。扉・昇降機・出入口のとなりは避ける）
+    // 敵・宝箱を置けるマス（床のみ。扉・昇降機・出入口のとなりは避ける。トランポリンのまわり 2 マスも、小さな島をふさがないよう避ける）
     this.spawnCells = [];
     for (let i = 0; i < n; i++) {
       if (!reach[i] || this.kind[i] !== TK.FLOOR) continue;
@@ -362,8 +372,28 @@ class Terrain {
         const k = this.idx(c + dc, r + dr);
         if (k >= 0 && (this.kind[k] === TK.LIFT || this.kind[k] === TK.EXIT || this.kind[k] === TK.DOOR || this.kind[k] === TK.STAIR)) { ok = false; break; }
       }
+      for (let dr = -2; dr <= 2 && ok; dr++) for (let dc = -2; dc <= 2; dc++) if (this.isBounce(this.idx(c + dc, r + dr))) { ok = false; break; }
       if (ok) this.spawnCells.push(i);
     }
+  }
+  // トランポリン（zone.bounce：[[x, z], ...]）のマスか
+  isBounce(i) {
+    if (!this.bounceSet) this.bounceSet = new Set((this.zone.bounce || []).map(([x, z]) => this.at(x, z)));
+    return i >= 0 && this.bounceSet.has(i);
+  }
+  // マス i のトランポリンに (dc, dr) の向きへ踏みこんだとき、跳んでいく先。zone.bounceLen マス先（3）に着地する。
+  //   着地するマスもトランポリンなら、同じ向きにもう一度跳ぶ。{ land: 着地するマス（床がなければ -1。奈落へ落ちる）, hops: とちゅうで踏むトランポリン }
+  bounceTo(i, dc, dr) {
+    const L = this.zone.bounceLen || 3, hops = [];
+    let c = this.colOf(i), r = this.rowOf(i);
+    for (let k = 0; k < 16; k++) {
+      c += dc * L; r += dr * L;
+      const j = this.idx(c, r);
+      if (j < 0 || (this.kind[j] !== TK.FLOOR && this.kind[j] !== TK.STAIR)) return { land: -1, hops };
+      if (!this.isBounce(j)) return { land: j, hops };
+      hops.push(j);
+    }
+    return { land: -1, hops };
   }
   // (x, z) の近くで立てる場所
   nearestStandable(x, z, r = 0.5, o) {

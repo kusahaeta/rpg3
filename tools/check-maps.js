@@ -9,7 +9,7 @@ ctx.window = ctx; vm.createContext(ctx);
 for (const f of ['data.js', 'screens.js', 'field-terrain.js', 'field-zones.js', 'npcs.js', 'scenario.js', 'scenario2.js'])
   vm.runInContext(fs.readFileSync(path.join(root, 'js', f), 'utf8'), ctx, { filename: f });
 const G = k => vm.runInContext(k, ctx);
-const FIELD_ZONES = G('FIELD_ZONES'), STORY = G('STORY'), SCENE_STAGES = G('SCENE_STAGES'), BATTLE_SETS = G('BATTLE_SETS'), Terrain = G('Terrain'), zonePoint = G('zonePoint'), TK = G('TK');
+const FIELD_ZONES = G('FIELD_ZONES'), CELL = G('CELL'), STORY = G('STORY'), SCENE_STAGES = G('SCENE_STAGES'), BATTLE_SETS = G('BATTLE_SETS'), Terrain = G('Terrain'), zonePoint = G('zonePoint'), TK = G('TK');
 
 const args = process.argv.slice(2), only = args.find(a => !a.startsWith('-')), verbose = args.includes('-v');
 let problems = 0;
@@ -27,7 +27,9 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   (Z.seals || []).forEach(S => { S.lamps.forEach((p, i) => add(id, { k: `lamp ${S.id}_${i}`, p, r: 0.6 })); add(id, { k: `wall ${S.id}`, p: [(S.wall[0] + S.wall[2]) / 2, (S.wall[1] + S.wall[3]) / 2], r: 0.3 }); });
   (Z.rubble || []).forEach(R => add(id, { k: 'rubble ' + R.id, p: R.at, r: 0.5 }));
   (Z.cushions || []).forEach((p, i) => add(id, { k: 'cushion' + i, p, r: 0.5 }));
-  (Z.bounce || []).forEach((B, i) => { add(id, { k: 'bounce' + i, p: B.at, r: 0.9 }); add(id, { k: 'land' + i, p: B.to, r: 0.6 }); });
+  (Z.bounce || []).forEach((p, i) => add(id, { k: 'bounce' + i, p, r: 0.9 }));
+  if (Z.bounceBack) add(id, { k: 'bounceBack', p: Z.bounceBack, r: 0.6 });
+  if (Z.balls) { const P = Z.balls; [...P.balls, ...P.targets, ...P.blocks].forEach((p, i) => add(id, { k: 'ball ' + P.id + '_' + i, p, r: 0.9 })); add(id, { k: 'reset ' + P.id, p: P.reset, r: 0.5 }); }
   (Z.fluff || []).forEach((B, i) => { add(id, { k: 'fluff' + i, p: B.at, r: 0.9 }); add(id, { k: 'glide' + i, p: B.to, r: 0.6 }); });
   (Z.nemuri || []).forEach((N, i) => { add(id, { k: 'nemuri' + i, p: N.at, r: 0.2 }); add(id, { k: 'wake' + i, p: N.back, r: 0.6 }); });
   if (Z.sleepwalk) Z.sleepwalk.route.forEach((p, i) => add(id, { k: 'walk' + i, p, r: 0.5 }));
@@ -87,6 +89,13 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
     if (trace(T, B, st(B, B.init || [0])).hit) bad.push(`beam ${S.id} is already solved at start`);
     if (verbose) console.log(`   beam ${S.id}: ${sols} solution state(s) of ${1 << n}`);
   }
+  // 大玉ころがし：解けるか（最短の押す回数）。最初の置き方のままでは、そろっていないか
+  if (Z.balls) {
+    const P = Z.balls, roll = G('rollBall'), n = solveBalls(T, P, roll);
+    if (n < 0) bad.push(`balls ${P.id} has no solution`);
+    if (n === 0) bad.push(`balls ${P.id} is already solved at start`);
+    if (verbose) console.log(`   balls ${P.id}: solved in ${n} push(es)`);
+  }
   // 階段が急すぎないか（歩くときは、体のまわりの段差が STEP 以内でないと進めない。半径 0.4m で 0.6m まで）
   const steep = new Set();
   for (const [i, s] of T.stairs) if (Math.abs(s.h1 - s.h0) / s.len > 1.25) steep.add(`${T.colOf(i)},${T.rowOf(i)} (${s.h0}→${s.h1}m / ${s.len}m)`);
@@ -102,6 +111,26 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
     }
     for (const s of spots[id] || []) console.log(`   ${s.k[0].toUpperCase()} ${s.k} [${s.p.map(v => v.toFixed(1))}] cell ${Math.floor((s.p[0] + T.hw) / 2)},${Math.floor((s.p[1] + T.hd) / 2)}`);
   }
+}
+// 大玉ころがしを、押す回数の少ない順に調べる（プレイヤーは、大玉と台のないマスを歩いて、押す側に回りこめるか）
+function solveBalls(T, P, roll) {
+  const on = (list, x, z) => list.some(q => Math.abs(q[0] - x) < 0.5 && Math.abs(q[1] - z) < 0.5);
+  const key = pos => pos.map(p => p.join(',')).sort().join('|'), done = pos => P.targets.every(t => on(pos, t[0], t[1]));
+  const start = P.balls.map(p => p.slice()), seen = new Set([key(start)]), q = [[start, 0]];
+  for (let qi = 0; qi < q.length && qi < 200000; qi++) {
+    const [pos, n] = q[qi];
+    if (done(pos)) return n;
+    // リングのベルから歩いて行けるマス
+    const reach = new Uint8Array(T.kind.length), st = [T.at(P.reset[0], P.reset[1])]; reach[st[0]] = 1;
+    const free = i => T.isWalkKind(T.kind[i]) && !on(pos, T.cx(T.colOf(i)), T.cz(T.rowOf(i))) && !on(P.blocks, T.cx(T.colOf(i)), T.cz(T.rowOf(i)));
+    while (st.length) { const i = st.pop(); for (const [dc, dr] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const j = T.idx(T.colOf(i) + dc, T.rowOf(i) + dr); if (j >= 0 && !reach[j] && free(j) && Math.abs(T.h[j] - T.h[i]) < 0.6) { reach[j] = 1; st.push(j); } } }
+    pos.forEach(([x, z], k) => { for (const [dx, dz] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+      if (!reach[T.at(x - dx * CELL, z - dz * CELL)]) continue;
+      const to = roll(P, pos, k, dx, dz); if (to[0] === x && to[1] === z) continue;
+      const np = pos.map(p => p.slice()); np[k] = to; const kk = key(np); if (seen.has(kk)) continue; seen.add(kk); q.push([np, n + 1]);
+    } });
+  }
+  return -1;
 }
 console.log(problems ? `${problems} problem(s)` : 'all maps ok');
 process.exitCode = problems ? 1 : 0;
