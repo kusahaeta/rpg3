@@ -14,6 +14,22 @@ const Ease = {
 // sRGB の16進色を HDR 強度付きのリニアカラーへ
 const hdr = (hex, k = 1) => new THREE.Color(hex).multiplyScalar(k);
 
+// 光のにじみの前に、壊れた値（NaN・無限大）を 0 にし、明るすぎる値を 64 までに収める。
+// 1 画素でも NaN があると、光のにじみのぼかしで画面全体に広がり、真っ黒（透明）になる（iPhone で起きた）。
+// iPhone の GPU では min / max で NaN を消せないので、数値のビットを見て判定する（指数部がすべて 1 なら NaN か無限大）
+const SanitizeShader = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: `
+    uniform sampler2D tDiffuse; varying vec2 vUv;
+    void main(){
+      highp vec4 c = texture2D(tDiffuse, vUv);
+      bvec4 bad = equal(floatBitsToUint(c) & uvec4(0x7f800000u), uvec4(0x7f800000u));
+      if (bad.x) c.x = 0.0; if (bad.y) c.y = 0.0; if (bad.z) c.z = 0.0; if (bad.w) c.w = 1.0;
+      gl_FragColor = clamp(c, 0.0, 64.0);
+    }`,
+};
+
 const GradeShader = {
   uniforms: {
     tDiffuse: { value: null }, vignette: { value: 1.15 }, flash: { value: 0 }, flashColor: { value: new THREE.Color(1, 1, 1) },
@@ -81,11 +97,12 @@ const GFX = {
     const X = THREEX;
     this.composer = new X.EffectComposer(r);
     this.renderPass = new X.RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
+    this.sanitize = new X.ShaderPass(SanitizeShader);
     this.bloom = new X.UnrealBloomPass(new THREE.Vector2(1280, 720), 0.85, 0.6, 0.82);
     this.grade = new X.ShaderPass(GradeShader);
     this.output = new X.OutputPass();
     this.smaa = new X.SMAAPass();
-    [this.renderPass, this.bloom, this.grade, this.output, this.smaa].forEach(p => this.composer.addPass(p));
+    [this.renderPass, this.sanitize, this.bloom, this.grade, this.output, this.smaa].forEach(p => this.composer.addPass(p));
     // スマホなどでメモリが足りなくなると、ブラウザが 3D 描画を止める（画面が消える）。
     // ブラウザが戻すのを少し待ち、戻らなければ作り直す
     canvas.addEventListener('webglcontextlost', () => { this.diag.lost++; clearTimeout(this.lostTimer); this.lostTimer = setTimeout(() => this.rebuild(), 2500); });

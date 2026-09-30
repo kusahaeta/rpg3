@@ -385,9 +385,13 @@ class GeoAcc {
   // 表から見て反時計回りの4点
   quad(a, b, c, d, uv) {
     const i0 = this.p.length / 3;
-    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    // 法線は対角線どうしから求める（片側の高さが 0 の壁など、三角形の片方がつぶれていても向きが出る）
+    const ux = c[0] - a[0], uy = c[1] - a[1], uz = c[2] - a[2], vx = d[0] - b[0], vy = d[1] - b[1], vz = d[2] - b[2];
     let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    const l = Math.hypot(nx, ny, nz) || 1; nx /= l; ny /= l; nz /= l;
+    const l = Math.hypot(nx, ny, nz);
+    // 面積のない面は作らない（長さ 0 の法線は、iPhone の GPU で光の計算が NaN になり、光のにじみで画面全体に広がる）
+    if (l < 1e-9) return;
+    nx /= l; ny /= l; nz /= l;
     for (const q of [a, b, c, d]) {
       this.p.push(q[0], q[1], q[2]); this.n.push(nx, ny, nz);
       if (!uv) {
