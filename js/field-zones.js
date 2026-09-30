@@ -461,7 +461,8 @@ const FIELD_ZONES = {
       { at: [-19, -12], mark: 1.6, title: 'リスの村のどんぐり', text: '「ふゆのたくわえ　たりない」……小さな字の立て札と、からっぽのどんぐりのかご。' }],
     map2d: [610, 236] },
 
-  road2: { ci: 1, name: '街道の関所あと', floor: '切り通し', w: 54, d: 72, stage: '2-4', arenas: [[0, 4, 0]], build: 'checkpoint', groups: 4, chests: 3, crystals: 3,
+  // なかよし関所：手前の切り通し（road2。parent: sekisho）と、奥の砦（sekisho）。ワールドマップでは「なかよし関所」にまとめる
+  road2: { ci: 1, name: 'なかよし関所・切り通し', floor: '切り通し', parent: 'sekisho', w: 54, d: 72, stage: '2-4', arenas: [[0, 4, 0]], build: 'checkpoint', groups: 4, chests: 3, crystals: 3,
     world: true, arch: 'crag', chestAt: [[-20, -27], [22, 17], [24, 3]],
     // 岩山の切り通し。こわれた外門をくぐって北の「なかよし関所」へ。谷を横切るころころ岩をよけて進む。西の岩棚と東の岩棚（石段で上る）、東の野営あとは寄り道
     map: [
@@ -510,10 +511,10 @@ const FIELD_ZONES = {
       { at: [-3, 14], face: 0, post: ['ころころ岩に注意', '↑ なかよし関所'], title: '立て札', text: '「この先、ころころ岩が谷を横切ります。岩が向こうへ転がっていったすきに、渡りましょう」' }],
     map2d: [470, 164] },
 
-  // なかよし関所（parent: road2）：切り通しの先の、石の砦。「一匹では通れぬ」関所で、からくりの門を仲間のわざで開けていく
+  // なかよし関所：切り通しの先の、石の砦。「一匹では通れぬ」関所で、からくりの門を仲間のわざで開けていく
   //   二匹の門（plates。踏み板を二匹で同時に踏む）→ 中庭から、力の門（クロ。かんぬき）・番犬の庭（guards。見つからずに抜けるか、タマのこもりうたで眠らせる）
   //   → 三つののろし台（シロ。西の櫓・門楼・東の櫓）に火がつくと、大門の鉄格子が上がる → 北の広場（はらぺこイノシシ）
-  sekisho: { ci: 1, name: 'なかよし関所', floor: '砦', parent: 'road2', w: 68, d: 84, stage: '2-4', arenas: [[0, -30, 0], [0, -4, 0]], build: 'sekisho', arch: 'fort', groups: 3, chests: 4, crystals: 3, calmAfter: '2-4',
+  sekisho: { ci: 1, name: 'なかよし関所', floor: '砦', w: 68, d: 84, stage: '2-4', arenas: [[0, -30, 0], [0, -4, 0]], build: 'sekisho', arch: 'fort', groups: 3, chests: 4, crystals: 3, calmAfter: '2-4',
     world: true, chestAt: [[-25, 29], [-27, 5], [29, 11], [-15, -35]], foes: ['noraInu', 'karasu', 'iwa'],
     th: { pattern: 'cobble', floor: '#a8a092', floor2: '#98907e', line: '#ffd27a', fog: '#c8d0d8', fogD: 0.012 },
     // 南の外庭（番小屋と二匹の門）→ 中庭。中庭の西は力の門（奥に西の櫓）、東は番犬の庭（奥に東の櫓）、北は門楼と大門 → 北の広場
@@ -3437,7 +3438,7 @@ const ZONE_BUILD = {
     K.log(-8, 28, 2.4, 0.4); K.stoneLantern(5, 28);
     K.cyl(24, -5, 0.8, 0.5, 'bark', { seg: 10 }); K.flowers(22, -9, 10, 1.8, ['#ffd84a', '#ffffff']);
   },
-  // 街道の関所あと：岩山の切り通し、こわれた門、東の野営あと
+  // なかよし関所・切り通し：岩山の切り通し、こわれた外門、ころころ岩の通り道、東の野営あと
   checkpoint(K) {
     K.cragTop({ trees: [['dead', 1], ['round', 1]], leaf: ['#8aa860', '#7a9a58'], density: 0.25 });
     for (const x of [-3.5, 3.5]) K.box(x, -18, 0.6, 4.4, 0.6, 'wood2');
