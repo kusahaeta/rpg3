@@ -461,9 +461,9 @@ const FIELD_ZONES = {
       { at: [-19, -12], mark: 1.6, title: 'リスの村のどんぐり', text: '「ふゆのたくわえ　たりない」……小さな字の立て札と、からっぽのどんぐりのかご。' }],
     map2d: [610, 236] },
 
-  road2: { ci: 1, name: '街道の関所あと', w: 54, d: 72, stage: '2-4', arenas: [[0, 4, 0]], build: 'checkpoint', groups: 5, chests: 3, crystals: 3,
+  road2: { ci: 1, name: '街道の関所あと', floor: '切り通し', w: 54, d: 72, stage: '2-4', arenas: [[0, 4, 0]], build: 'checkpoint', groups: 4, chests: 3, crystals: 3,
     world: true, arch: 'crag', chestAt: [[-20, -27], [22, 17], [24, 3]],
-    // 岩山の切り通し。こわれた関所の門をくぐって北へ。西の岩棚と東の岩棚（石段で上る）、東の野営あとは寄り道
+    // 岩山の切り通し。こわれた外門をくぐって北の「なかよし関所」へ。谷を横切るころころ岩をよけて進む。西の岩棚と東の岩棚（石段で上る）、東の野営あとは寄り道
     map: [
       '############aaa############',
       '###########,,,,,###########',
@@ -502,8 +502,104 @@ const FIELD_ZONES = {
       '##########,,,##############',
       '##########bbb##############',
     ],
-    anchor: [10, 25], exits: [{ key: 'b', to: 'road_rest' }, { key: 'a', to: 'nyahaha' }],
-    notes: [{ at: [-10, -12], mark: 1.0, title: '倒れた関所の札', text: '「ニャハハ王国まで あと少し。笑顔でお越しください」' }],
+    anchor: [10, 25], exits: [{ key: 'b', to: 'road_rest' }, { key: 'a', to: 'sekisho' }],
+    // ころころ岩（rollers）：谷を横切って、行ったり来たりころがる。ぶつかると、南（back）へはねとばされる
+    rollers: [{ a: [-11, 3], b: [21, 3], speed: 5.5, ph: 0, back: [0, 9] }, { a: [-21, -5], b: [9, -5], speed: 5, ph: 0.5, back: [0, 1] },
+      { a: [-19, -15], b: [11, -15], speed: 6, ph: 0.15, back: [0, -9] }, { a: [-19, -15], b: [11, -15], speed: 6, ph: 0.65, back: [0, -9] }, { a: [-5, -23], b: [5, -23], speed: 3.5, ph: 0.3, back: [0, -19] }],
+    notes: [{ at: [-10, -12], mark: 1.0, title: '倒れた関所の札', text: '「ニャハハ王国まで あと少し。笑顔でお越しください」' },
+      { at: [-3, 14], face: 0, post: ['ころころ岩に注意', '↑ なかよし関所'], title: '立て札', text: '「この先、ころころ岩が谷を横切ります。岩が向こうへ転がっていったすきに、渡りましょう」' }],
+    map2d: [470, 164] },
+
+  // なかよし関所（parent: road2）：切り通しの先の、石の砦。「一匹では通れぬ」関所で、からくりの門を仲間のわざで開けていく
+  //   二匹の門（plates。踏み板を二匹で同時に踏む）→ 中庭から、力の門（クロ。かんぬき）・番犬の庭（guards。見つからずに抜けるか、タマのこもりうたで眠らせる）
+  //   → 三つののろし台（シロ。西の櫓・門楼・東の櫓）に火がつくと、大門の鉄格子が上がる → 北の広場（はらぺこイノシシ）
+  sekisho: { ci: 1, name: 'なかよし関所', floor: '砦', parent: 'road2', w: 68, d: 84, stage: '2-4', arenas: [[0, -30, 0], [0, -4, 0]], build: 'sekisho', arch: 'fort', groups: 3, chests: 4, crystals: 3, calmAfter: '2-4',
+    world: true, chestAt: [[-25, 29], [-27, 5], [29, 11], [-15, -35]], foes: ['noraInu', 'karasu', 'iwa'],
+    th: { pattern: 'cobble', floor: '#a8a092', floor2: '#98907e', line: '#ffd27a', fog: '#c8d0d8', fogD: 0.012 },
+    // 南の外庭（番小屋と二匹の門）→ 中庭。中庭の西は力の門（奥に西の櫓）、東は番犬の庭（奥に東の櫓）、北は門楼と大門 → 北の広場
+    map: [
+      '###############aaaa###############',
+      '###############,,,,###############',
+      '#########0000000000000000#########',
+      '########000000000000000000########',
+      '########000000000000000000########',
+      '########000000000000000000########',
+      '########000000000000000000########',
+      '#########0000000000000000#########',
+      '###############0000###############',
+      '###############0000#3333##333333##',
+      '##333333#######0000#3333##333333##',
+      '##333333#######0000#3333##333333##',
+      '##333333##00000000000^^0##333333##',
+      '##333333##00000000000^^0####^^####',
+      '####^^####00000000000000#000^^000#',
+      '##00^^000#00000000000000#0##00##0#',
+      '##0000000#00000000000000#0##00##0#',
+      '##0000000#00000000000000#00000000#',
+      '##0000000#00000000000000#00000000#',
+      '##0000000000000000000000#00#00#00#',
+      '##0000000000000000000000#00#00#00#',
+      '##0000000#00000000000000#00000000#',
+      '##0000000#00000000000000000000000#',
+      '##0000000#00000000000000000000000#',
+      '##0000000#00000000000000#0##00##0#',
+      '###############0000######00000000#',
+      '###############0000######00000000#',
+      '###############0000###############',
+      '####00000000000000000000000000####',
+      '###0000000000000000000000000000###',
+      '###0000000000000000000000000000###',
+      '###0000000000000000000000000000###',
+      '###0000000000000000000000000000###',
+      '###0000000000000000000000000000###',
+      '###0000000000000000000000000000###',
+      '###0000000000000000000000000000###',
+      '####00000000000000000000000000####',
+      '######0000000000000000000000######',
+      '###########000000000000###########',
+      '##############,,,,,,##############',
+      '###############,,,,###############',
+      '###############ssss###############',
+    ],
+    anchor: [-13, 29], spawn: [-1, 37], exits: [{ key: 's', to: 'road2' }, { key: 'a', to: 'nyahaha' }],
+    plates: [{ id: 'sekiPlates', name: '二匹の門', at: [[-15, 17], [15, 17]], wall: [-4, 14, 4, 14], after: 'c2_04a', openAfter: 'c2_05',
+      idle: '肉球の形の踏み板。……今は、踏んでも何も起きない。', openToast: '二匹の門が開いた！　中庭へ進もう',
+      // lead ＝ 先頭の子、helper ＝ 待っていた子（台詞は、その子ごと）
+      done: [['lead', { mike: 'やったー！　ふたりで踏んだら、開いた！', kuro: '……開いたな。', shiro: 'ほらね！　わたしの作戦どおりよ！', tama: '……ひらいた。……えへへ。', maou: '……ふん。当然の結果だ。' }],
+        ['helper', { mike: 'ぼく、ちゃんと動かないで待ってたよ！', kuro: '……ふん。俺が踏んでいたからだ。', shiro: 'わ、わたしが踏んであげたおかげなんだからね！', tama: '……ふんでた。……えらい？', maou: '……余の足に感謝するがよい。' }],
+        ['n', '関所番のゴン爺が、遠くで「ほう」と小さくうなずいた。']] }],
+    seals: [
+      { id: 'sekiBar', look: 'bar', who: 'kuro', name: '力の門のかんぬき', verb: 'かんぬきを外す', wall: [-15, -4, -15, 0], lamps: [[-12.6, -2]], reach: 2.4, after: 'c2_04a', openAfter: 'c2_05',
+        idle: '丸太のように太いかんぬき。……まずは、関所番の話を聞いてみよう。', hint: 'クロなら、このかんぬきを外せそうだ。',
+        openToast: 'ゴトン！　かんぬきが外れて、力の門が開いた！',
+        tries: { mike: 'うーん……うーーん……！　だめだ、びくともしない！', shiro: 'こ、こんなの……わ、わたしは頭脳派なの！　力仕事は専門外よ！', tama: '……おもい……。……ねむい……。', maou: '……余にこのような雑用をさせる気か。' },
+        done: [['kuro', '……ふん。これくらい、わけない。'], ['mike', 'すごーい！　クロ、力持ち！'], ['kuro', '……剣を振るのと同じだ。腰で持ち上げる。']] },
+      { id: 'sekiBeacon', look: 'beacon', who: 'shiro', name: 'のろし台', verb: 'のろし台に火をつける', wall: [-4, -22, 4, -22], lamps: [[-25, -19], [10, -21], [25, -21]], after: 'c2_04a', openAfter: 'c2_05',
+        idle: '火の消えたのろし台。……まずは、関所番の話を聞いてみよう。', hint: 'シロの魔法なら、のろし台に火をつけられそうだ。',
+        openToast: '三つののろしが上がると、大門の鉄格子が、ガラガラと巻き上がった！',
+        tries: { mike: '火打ち石……持ってない！　魚なら持ってるけど！', kuro: '……火をおこす道具がない。', tama: '……のろしだい……。……ひんやり……（もたれて寝ようとしている）', maou: '……余の闇の炎は、こういう使い方をするものではない。' },
+        fails: [
+          [['shiro', 'ファイア！'], ['n', '……ぽとっ。のろし台の上に、魚が一匹のった。'], ['shiro', 'い、今のは練習よ！　本番はこれから！']],
+          [['shiro', 'ファイア！'], ['n', 'ぼふん！　……シロの毛が、まるく爆発した。'], ['shiro', '……もう一回。もう一回だけよ！']],
+          [['shiro', 'ファイア！'], ['n', 'ぴちぴちぴち……。空から、魚が降ってきた。'], ['shiro', 'ち、ちがうの！　のろし台の……おそなえものよ！']],
+        ],
+        lit: [['shiro', 'ファイア！　……ほら見なさい！　天才にかかれば、こんなものよ！']],
+        done: [['shiro', '……三つとも、ついたわ。……ねえ、見てた？　ちゃんと、見てた？'], ['mike', 'うん！　シロ、かっこよかった！'], ['shiro', 'と、当然でしょ！']] },
+    ],
+    guards: [{ id: 'sekiDog1', route: [[18, -6], [30, -6]], r: 6.5, fov: 0.6, wait: 1.8, back: [11, 4], after: 'c2_04a' },
+      { id: 'sekiDog2', route: [[24, 9], [24, 0]], r: 6, fov: 0.55, wait: 2.2, speed: 1.8, back: [11, 4], after: 'c2_04a' }],
+    npcs: [{ key: 'gonji', after: 'c2_04a', at: [17, 25], face: -Math.PI / 2, lines: ['なかよし関所のからくりは、二匹の門、力の門、番犬の庭、それに大門ののろしじゃ。', '先頭の子を入れかえれば（1〜4）、その子の得意なわざが使えるぞい。'],
+      v: [['flag:sekiPlates', 'ほう、二匹の門を開けたか。……ひとりでは踏めぬ板も、ふたりなら踏める。', '中庭の西が力の門、東が番犬の庭。のろし台は、西の櫓と門楼と東の櫓じゃ。'],
+        ['clear:2-4', 'イノシシのやつ、森で木の実をさがしておるそうじゃ。……わしも、たまに分けてやるかのう。', '関所は、いつでも通ってよいぞ。……たまには、顔を見せに来い。'],
+        ['done', 'ニャハハ王国から、また笑い声が聞こえるようになった。……関所も、にぎやかになったわい。']] }],
+    areas: [{ name: 'なかよし関所・外庭', at: [-32, 14, 32, 42] }, { name: 'なかよし関所・二匹の門', at: [-6, 8, 6, 14] }, { name: 'なかよし関所・中庭', at: [-14, -18, 16, 8] },
+      { name: 'なかよし関所・力の門の蔵', at: [-32, -12, -16, 8] }, { name: 'なかよし関所・西の櫓', at: [-32, -24, -18, -12] }, { name: 'なかよし関所・番犬の庭', at: [16, -14, 34, 14] },
+      { name: 'なかよし関所・東の櫓', at: [18, -26, 32, -14] }, { name: 'なかよし関所・門楼', at: [6, -26, 14, -18] }, { name: 'なかよし関所・北の広場', at: [-18, -40, 18, -24] }],
+    notes: [{ at: [7, 20], face: 0, board: ['二匹の門', '友と踏むべし'], title: '二匹の門', text: '「ひとつの足では開かぬ門。友と、ふたつの板を同時に踏むべし」' },
+      { at: [-11, 4], face: -1.2, board: ['力の門', '力じまんの旅猫よ'], title: '力の門', text: '「力じまんの旅猫よ、かんぬきを外すべし」' },
+      { at: [12, 6.5], face: 0.6, board: ['番犬の庭', 'ほえられたら、やりなおし'], title: '番犬の庭', text: '「番犬の見る先を、通るべからず。……眠らせるのも、また知恵なり」' },
+      { at: [-7, -16], face: 0, board: ['大門', '三つののろしを上げよ'], title: '大門', text: '「西の櫓、門楼、東の櫓。三つののろしが上がれば、大門はひらく」' },
+      { at: [21, 29], mark: [0, 2.6, -1], title: '番小屋', text: '関所番の小屋。……壁に、たくさんの旅猫の名前が彫ってある。いちばん新しい名前でも、ずいぶん昔のものだ。' }],
     map2d: [470, 164] },
 
   // ---------------- 第三章 ニャハハ王国 ----------------
@@ -549,7 +645,7 @@ const FIELD_ZONES = {
       '#######22222220000000000##00000000~~##',
       '#################aaaa#################',
     ],
-    anchor: [8, 12], spawn: [0, 28], exits: [{ key: 'a', to: 'road2' }, { key: 'b', to: 'castle' }, { key: 'c', to: 'tower' }, { key: 'd', to: 'valley' }],
+    anchor: [8, 12], spawn: [0, 28], exits: [{ key: 'a', to: 'sekisho' }, { key: 'b', to: 'castle' }, { key: 'c', to: 'tower' }, { key: 'd', to: 'valley' }],
     npcs: [
       { key: 'shimin_a', at: [-10, 6], walk: 6, lines: ['……笑う？　どうやって笑うんだったかな……。'], v: [['clear:3-3', 'ふふっ……あれ、今わたし、笑った？'], ['done', 'あはははは！　毎日が楽しくってしかたないよ！']] },
       { key: 'shimin_b', at: [14, -4], face: Math.PI, lines: ['この国の宝の「笑いの実」が、魔王軍に盗まれたんだ。', 'それからは、誰も笑わなくなった……。'], v: [['clear:3-3', 'ピエロが笑った日から、少しずつみんなの顔がゆるんできたよ。']] },
@@ -1665,7 +1761,7 @@ prepareMapZones(FIELD_ZONES);
 // 章ごとの区画（先頭が到着地点）
 const CHAPTER_ZONES = [
   ['pokapoka', 'hill', 'forest_in', 'forest_deep', 'rat_nest'],
-  ['road1', 'road_rest', 'woods', 'woods_valley', 'woods_deep', 'road2'],
+  ['road1', 'road_rest', 'woods', 'woods_valley', 'woods_deep', 'road2', 'sekisho'],
   ['nyahaha', 'castle', 'castle_in', 'tower', 'tower_2f', 'tower_3f', 'tower_top'],
   ['valley', 'valley_village', 'cave', 'cave_lake', 'cave_deep'],
   ['ruins_out', 'ruins_in'],
@@ -2284,6 +2380,7 @@ class ZoneKit {
   // zone.seals：[{ id, wall: [x0, z0, x1, z1], lamps: [[x, z], ...], after, openAfter }]
   //   look: 'memory' ＝ 記憶のかけら（items[i](K, x, y, z) で思い出の品、memories[i] でふれたときにクロが語る台詞）。name・openToast で表示の文言
   //   look: 'laugh' ＝ 笑い袋とむすっと幕（laughs[i] で袋の笑い声、gags[i] で笑わせたあとの掛け合い [[話し手, 台詞], ...]）。幕は笑った顔になって上がる
+  //   look: 'beacon' / 'bar' ＝ わざの仕掛け（who の子が先頭のときだけ動かせる。featSeal）
   //   光の水晶をすべて灯すと、影の壁が消える。after のシーンを見るまでは灯せない。openAfter のシーンを見たあとは、はじめから消えている
   //   灯した水晶と消えた壁は Save.data.flags に残す（id、id_番号）
   seals() {
@@ -2291,6 +2388,7 @@ class ZoneKit {
     return (this.v.sealObjs = (this.zone.seals || []).map(S => {
       const open = !!flags[S.id] || !!(S.openAfter && storyCond('scene:' + S.openAfter));
       const o = { S, open, lamps: [], ready: () => !S.after || storyCond('scene:' + S.after) };
+      if (S.look === 'beacon' || S.look === 'bar') return this.featSeal(S, open, o, flags);
       // 光の水晶：岩の台座に紫の水晶。灯すと青白く光る。記憶のかけら（look: 'memory'）：石の祭壇に思い出の品と、金色に光る玉
       // 笑い袋（look: 'laugh'）：赤い丸台に、口をひもで結んだ布の袋。笑わせると金色に光って、ぷるぷるゆれる
       const mem = S.look === 'memory', laugh = S.look === 'laugh';
@@ -2348,6 +2446,114 @@ class ZoneKit {
         mats.forEach((m, k) => { m.opacity = (k === 1 ? 0.88 : 0.4 + Math.sin(t * 2 + k) * 0.1) * fade; });
         if (kit.v.p && Math.random() < dt * 10 * fade) kit.v.p.emit(V3(cx + (Math.random() - 0.5) * w, y + Math.random() * h, cz + (Math.random() - 0.5) * d), V3(0, 0.6, 0), hdr(Math.random() < 0.5 ? '#8a5aff' : '#2a1040', 1.4), { life: 1.6, size: 0.12, drag: 0.5 });
       });
+      return o;
+    }));
+  }
+  // わざの仕掛け（seals の who）：その子が先頭のときだけ動かせる（FieldView.lightLamp）
+  //   look: 'beacon' ＝ のろし台（石の台に鉄の火皿。火がつくと炎と、高くのぼる煙のすじ）と、鉄格子の大門（のろしがすべて上がると巻き上がる）
+  //   look: 'bar'    ＝ 力の門：太いかんぬきをかけた木の両開きの扉（lamps[0] がかんぬきの前。外すと、扉が向こう側へ開く）
+  featSeal(S, open, o, flags) {
+    const kit = this, beacon = S.look === 'beacon';
+    S.lamps.forEach(([x, z], i) => {
+      const y = this.gy(x, z), lit = open || !!flags[S.id + '_' + i];
+      const L = { i, pos: V3(x, y, z), lit, setLit() { L.lit = true; } };
+      if (beacon) {
+        this.cyl(x, z, 0.75, 0.9, 'stone2', { seg: 8, r2: 0.62 });
+        this.mesh(new THREE.CylinderGeometry(0.85, 0.45, 0.4, 14, 1, true), 'metal', x, 1.05, z);
+        for (let k = 0; k < 4; k++) this.mesh(new THREE.BoxGeometry(0.12, 0.12, 1.0), 'wood2', x, 1.0 + k * 0.08, z, { ry: k * 0.8 });
+        const fire = new THREE.Group(); fire.position.set(x, y + 1.15, z); fire.visible = lit; this.scene.add(fire);
+        const cones = ['#ff8a2a', '#ffc04a', '#fff0a0'].map((c, k) => { const m = new THREE.Mesh(new THREE.ConeGeometry(0.34 - k * 0.08, 0.9 - k * 0.18, 7), this.glow(c, 2.2)); m.position.set((k - 1) * 0.12, 0.38 - k * 0.06, (k % 2) * 0.1); fire.add(m); return m; });
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ff9a3a', 1.2), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); halo.scale.setScalar(3.4); halo.position.y = 0.6; fire.add(halo);
+        L.setLit = () => { L.lit = true; fire.visible = true; };
+        const ph = this.r() * 6;
+        this.tick((dt, t) => {
+          if (!L.lit) return;
+          cones.forEach((c, k) => { c.scale.set(1 + Math.sin(t * 13 + k + ph) * 0.1, 1 + Math.sin(t * 9 + k * 2 + ph) * 0.18, 1); c.rotation.y += dt * (k + 1); });
+          halo.material.opacity = 0.75 + Math.sin(t * 17 + ph) * 0.2;
+          if (!kit.v.p) return;
+          // ほのお：火皿からゆらめく火の粉。のろし：白い煙が、すじになって高くのぼっていく（遠くからでも見える）
+          for (let q = 0; q < 40 * dt; q++) kit.v.p.emit(V3(x + (Math.random() - 0.5) * 0.7, y + 1.2, z + (Math.random() - 0.5) * 0.7), V3((Math.random() - 0.5) * 0.4, 1.6 + Math.random(), (Math.random() - 0.5) * 0.4), hdr(pick(['#ff8a2a', '#ffb04a', '#ffe07a']), 2.2), { life: 0.6, size: 0.3, drag: 1 });
+          for (let q = 0; q < 10 * dt; q++) kit.v.p.emit(V3(x + (Math.random() - 0.5) * 0.5, y + 2.4, z + (Math.random() - 0.5) * 0.5), V3(0.25 + Math.random() * 0.2, 2.4 + Math.random() * 0.6, 0.1), hdr(pick(['#d8d4cc', '#b8b4ac', '#eeeae2']), 0.55), { life: 5, size: 0.9, drag: 0.05 });
+        });
+      }
+      o.lamps.push(L);
+    });
+    const [x0, z0, x1, z1] = S.wall, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = Math.abs(x1 - x0), d = Math.abs(z1 - z0), y = this.gy(cx, cz), len = Math.max(w, d);
+    const g = new THREE.Group(); g.position.set(cx, y, cz); g.rotation.y = w >= d ? 0 : Math.PI / 2; this.scene.add(g);
+    o.dissolve = () => { o.open = true; const i = kit.v.colliders.indexOf(o.col); if (i >= 0) kit.v.colliders.splice(i, 1); };
+    if (!open) { o.col = { box: true, x: cx, z: cz, hw: Math.max(w / 2, 0.35), hd: Math.max(d / 2, 0.35), top: 6, y }; this.v.colliders.push(o.col); }
+    const add = (geo, mat, px, py, pz, parent = g) => { const m = new THREE.Mesh(geo, typeof mat === 'string' ? this.mat(mat) : mat); m.position.set(px, py, pz); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+    if (beacon) {
+      // 大門：石の柱と梁に、鉄格子（下の端はとがっている）
+      const H = 5.2, grille = new THREE.Group(); g.add(grille);
+      const stone = this.stdM('#a8acb6', 0.9);
+      for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.9, H + 1.2, 1.3), stone, s * (len / 2 + 0.3), (H + 1.2) / 2, 0);
+      add(new THREE.BoxGeometry(len + 1.8, 0.9, 1.4), stone, 0, H + 0.75, 0);
+      const n = Math.round(len / 0.55);
+      for (let k = 0; k <= n; k++) { const bx = -len / 2 + k * len / n; add(new THREE.BoxGeometry(0.1, H, 0.1), 'metal', bx, H / 2 + 0.25, 0, grille); add(new THREE.ConeGeometry(0.08, 0.25, 6), 'metal', bx, 0.12, 0, grille).rotation.x = Math.PI; }
+      for (let k = 1; k < 5; k++) add(new THREE.BoxGeometry(len, 0.1, 0.12), 'metal', 0, 0.25 + k * H / 5, 0, grille);
+      let lift = open ? 1 : 0;
+      grille.position.y = lift * (H - 0.8);
+      this.tick(dt => { if (o.open && lift < 1) { lift = Math.min(1, lift + dt * 0.3); grille.position.y = Ease.inOut(lift) * (H - 0.8); } });
+      return o;
+    }
+    // 力の門：柱と梁、両開きの扉（鋲打ち）、手前（+Z 側）のかんぬきと金具
+    const H = 4, hw = len / 2;
+    for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.6, H + 0.6, 0.8), 'wood', s * (hw + 0.3), (H + 0.6) / 2, 0);
+    add(new THREE.BoxGeometry(len + 1.2, 0.5, 0.9), 'wood', 0, H + 0.4, 0);
+    const leaves = [-1, 1].map(s => {
+      const hinge = new THREE.Group(); hinge.position.set(s * hw, 0, 0); g.add(hinge);
+      add(new THREE.BoxGeometry(hw - 0.04, H, 0.28), 'wood2', -s * hw / 2, H / 2, 0, hinge);
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) add(new THREE.SphereGeometry(0.07, 6, 4), 'metal', -s * (hw * 0.25 + c * hw * 0.5), 0.8 + r * 1.2, 0.15, hinge);
+      return hinge;
+    });
+    for (const s of [-0.6, 0.6]) add(new THREE.BoxGeometry(0.25, 0.55, 0.3), 'metal', s * hw, 1.6, 0.32);
+    const bar = add(new THREE.BoxGeometry(len + 0.9, 0.36, 0.36), 'wood', 0, 1.6, 0.42);
+    let k = open ? 1 : 0;
+    const pose = () => {
+      const kb = clamp(k / 0.4, 0, 1), kd = clamp((k - 0.4) / 0.6, 0, 1);
+      bar.position.set(kb * 0.5, 1.6 + Math.sin(kb * Math.PI) * 0.7 - kb * 1.42, 0.42 + kb * 0.9); bar.rotation.z = kb * 0.25;
+      leaves.forEach((h, i) => { h.rotation.y = (i ? -1 : 1) * Ease.out(kd) * 1.5; });
+    };
+    pose();
+    this.tick(dt => { if (o.open && k < 1) { k = Math.min(1, k + dt * 0.6); pose(); } });
+    return o;
+  }
+  // zone.plates：[{ id, name, at: [[x, z], [x, z]], wall: [x0, z0, x1, z1], after, openAfter }]：二匹の門
+  //   肉球の踏み板と、石の両開きの門。踏み板をすべて同時に踏むと門が開く（一枚は先頭の子、ほかは「ここで待ってて」とたのんだ仲間。FieldView.updatePlates）
+  plates() {
+    const flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {}, kit = this;
+    return (this.v.plateObjs = (this.zone.plates || []).map(P => {
+      const open = !!flags[P.id] || !!(P.openAfter && storyCond('scene:' + P.openAfter));
+      const o = { P, open, pads: [], ready: () => !P.after || storyCond('scene:' + P.after) };
+      P.at.forEach(([x, z], i) => {
+        const y = this.gy(x, z);
+        this.cyl(x, z, 1.0, 0.14, 'stone2', { seg: 20, col: false });
+        const mat = this.glow('#8ad8ff', 1).clone(); mat.transparent = true; mat.opacity = 0.35;
+        const paw = new THREE.Group(); paw.position.set(x, y + 0.15, z); this.scene.add(paw);
+        const disc = (r, px, pz) => { const m = new THREE.Mesh(new THREE.CircleGeometry(r, 16), mat); m.rotation.x = -Math.PI / 2; m.position.set(px, 0, pz); paw.add(m); };
+        disc(0.34, 0, 0.12); [[-0.36, -0.22], [-0.13, -0.4], [0.13, -0.4], [0.36, -0.22]].forEach(([px, pz]) => disc(0.13, px, pz));
+        const pad = { i, pos: V3(x, y, z), on: false, glow: 0, mat };
+        this.tick((dt, t) => { pad.glow += ((pad.on || o.open ? 1 : 0) - pad.glow) * (1 - Math.exp(-8 * dt)); mat.opacity = 0.3 + pad.glow * 0.6 + (o.open ? 0 : Math.sin(t * 3 + i * 2) * 0.08); });
+        o.pads.push(pad);
+      });
+      const [x0, z0, x1, z1] = P.wall, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = Math.abs(x1 - x0), d = Math.abs(z1 - z0), y = this.gy(cx, cz), len = Math.max(w, d), H = 5;
+      const g = new THREE.Group(); g.position.set(cx, y, cz); g.rotation.y = w >= d ? 0 : Math.PI / 2; this.scene.add(g);
+      // 石の門：左右の扉に、肉球の紋章が半分ずつ（開くと左右へすべる）
+      const leaves = [-1, 1].map(s => {
+        const leaf = new THREE.Group(); g.add(leaf);
+        const m = new THREE.Mesh(new THREE.BoxGeometry(len / 2, H, 0.6), this.stdM('#9a9ea8', 0.9)); m.position.set(s * len / 4, H / 2, 0); m.castShadow = true; leaf.add(m);
+        for (const yy of [0.6, H - 0.6]) { const band = new THREE.Mesh(new THREE.BoxGeometry(len / 2, 0.18, 0.66), this.mat('metal')); band.position.set(s * len / 4, yy, 0); leaf.add(band); }
+        const em = new THREE.Mesh(new THREE.CircleGeometry(0.7, 20, s < 0 ? Math.PI / 2 : -Math.PI / 2, Math.PI), this.glow('#8ad8ff', 1.2)); em.position.set(0, 2.6, 0.31); leaf.add(em);
+        return leaf;
+      });
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(len + 1, 0.8, 0.9), this.stdM('#a8acb6', 0.9)); lintel.position.y = H + 0.4; g.add(lintel);
+      if (!open) { o.col = { box: true, x: cx, z: cz, hw: Math.max(w / 2, 0.35), hd: Math.max(d / 2, 0.35), top: H, y }; this.v.colliders.push(o.col); }
+      let k = open ? 1 : 0;
+      const pose = () => leaves.forEach((l, i) => { l.position.x = (i ? 1 : -1) * Ease.inOut(k) * (len / 2 - 0.2); });
+      pose();
+      o.dissolve = () => { o.open = true; const i = kit.v.colliders.indexOf(o.col); if (i >= 0) kit.v.colliders.splice(i, 1); };
+      this.tick(dt => { if (o.open && k < 1) { k = Math.min(1, k + dt * 0.45); pose(); } });
       return o;
     }));
   }
@@ -2934,6 +3140,14 @@ const CUSHION_LINES = {
   tama: ['……ぷぅ。', '……もういっかい、ふむ。'],
   maou: ['……我ではない。断じて。'],
 };
+// なかよし関所の二匹の門：踏み板で「ここで待ってて」とたのまれた仲間のひとこと（FieldView.holdPad）
+const HOLD_LINES = {
+  mike: ['まかせて！　ここ、ぜったい動かないから！', 'はやくはやくー！'],
+  kuro: ['……ここで待てばいいのか。', '……行け。ここは俺が踏んでおく。'],
+  shiro: ['しかたないわね。早くしなさいよ！', 'て、天才は待つのも得意なのよ！'],
+  tama: ['……まってる。……すぴー。', '……ここ、ひんやりして……きもちいい……。'],
+  maou: ['……余を待たせるとは、いい度胸だ。'],
+};
 // 風船：ひもの先に色つきの玉。y = 床からの高さ（0.2 ほどなら、床にしぼんで落ちている）。s = ふくらみ
 function balloon(K, x, z, y, s = 1) {
   const col = pick(['#ff6a8a', '#ffd27a', '#6ad8ff', '#8aff9a', '#c88aff', '#ff9a5a']), limp = y < 1;
@@ -3232,13 +3446,47 @@ const ZONE_BUILD = {
     // 倒れた関所の札（地面に倒れている。調べられる）
     K.box(-10, -12, 3.4, 0.14, 0.9, 'wood', { ry: 0.3, col: false });
     K.mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: signTex('ニャハハ王国まで あと少し', '笑顔でお越しください'), transparent: true, toneMapped: false }), -10, 0.15, -12, { rx: -Math.PI / 2, rz: 0.3, noShadow: true });
-    K.sign(0, -18.4, 0, '関所', 'ニャハハ王国', '#ffd27a', 4.8, 2.8);
+    K.sign(0, -18.4, 0, 'なかよし関所', 'この先', '#ffd27a', 4.8, 2.8);
+    // ころころ岩の通り道：土がすれて、すじになっている。両はしには、ぶつかって欠けた岩のかけら
+    for (const R of K.zone.rollers || []) {
+      const [ax, az] = R.a, [bx, bz] = R.b, len = Math.hypot(bx - ax, bz - az);
+      K.mesh(new THREE.PlaneGeometry(len + 2, 2.2), new THREE.MeshStandardMaterial({ color: '#8a7458', roughness: 1, transparent: true, opacity: 0.55, depthWrite: false }), (ax + bx) / 2, 0.04, (az + bz) / 2, { rx: -Math.PI / 2, rz: -Math.atan2(bz - az, bx - ax), noShadow: true });
+      for (const [x, z] of [[ax, az], [bx, bz]]) for (let i = 0; i < 3; i++) K.mesh(new THREE.DodecahedronGeometry(0.25 + K.r() * 0.2, 0), 'rock', x + (K.r() - 0.5) * 2, 0.15, z + (K.r() - 0.5) * 2, { ry: K.r() * 3 });
+    }
     // 野営あと
     K.mesh(new THREE.CircleGeometry(4, 24), new THREE.MeshStandardMaterial({ color: '#9a7a52', roughness: 1 }), 20, 0.02, 5, { rx: -Math.PI / 2, noShadow: true });
     K.tent(20, 6.5, -0.4, 'clothYellow'); K.campfire(17, 2.5);
     for (const [x, z] of [[15.5, 3], [24, 7]]) K.barrel(x, z);
     K.crate(-10, 6); K.crate(-9, 7.3, 0.8);
     for (const [x, z] of [[-6, 28], [6, 30], [-8, -2], [8, -4]]) K.rock(x, z, 0.6 + K.r() * 0.4);
+  },
+
+  // なかよし関所：石の砦。外庭の番小屋、からくりの門（K.plates・K.seals）、櫓ののろし台、番犬の庭の犬小屋と木箱、色あせた王国の旗
+  sekisho(K) {
+    const happy = kingdomJoy(), flagCols = happy ? ['#ff6a8a', '#ffd27a', '#6ad8ff'] : ['#8a8a90', '#a0a0a8', '#b4b4ba'];
+    K.plates(); K.seals();
+    // 外庭：番小屋（戸口の前に長いすと槍立て）、旅猫の名を彫った石、たいまつ、荷の樽と木箱
+    K.catHouse(22.5, 25, 6, 5, 3.4, 'w', { wall: 'wood' });
+    K.bench(18.6, 28.4, Math.PI / 2); K.box(18.8, 22, 0.3, 1.8, 1.4, 'wood2', { col: false });
+    K.box(-22, 20, 2.2, 1.6, 0.6, 'stone2', { round: true }); K.paper(-22, 20.31, 0, '旅猫の名', ['ハチ　ブチ', 'ハヤテ　リン　ゴロウ', '……ほか、たくさん'], { y: 1.0 });
+    for (const [x, z] of [[-6, 31], [6, 31], [-6, 16], [6, 16]]) K.brazier(x, z, '#ff9a3a', 1.2);
+    for (const [x, z] of [[-26, 24], [-24.5, 25.2], [26, 34]]) K.barrel(x, z);
+    K.crate(-26, 33); K.crate(-24.6, 34.2, 0.9); K.crate(27, 20);
+    // 門の両脇の旗（ニャハハ王国の笑う猫の旗。第三章を終えるまでは色あせている）
+    for (const [x, z] of [[-6.5, 13.4], [6.5, 13.4], [-6.5, -23], [6.5, -23]]) { K.cyl(x, z, 0.1, 6.2, 'metal', { col: false }); K.banner(x + 0.7, z, 0, 5.8, 2.6, pick(flagCols)); }
+    // 中庭：古い井戸、からくりの札の立つ石畳、積み荷
+    K.well(-3, -6); K.crate(18.5, -14); K.crate(18.5, -12.6, 0.9); K.barrel(-11, -14); K.barrel(-12, 5.5);
+    K.catStatue(4, -6, Math.PI, 1.1, happy ? 'marble' : 'stone');
+    // 力の門の蔵：武具の箱と槍立て
+    K.crate(-28, -8); K.crate(-26.6, -8, 0.9); K.crate(-28, -6.6, 0.8); K.barrel(-20, 3); K.box(-29, 0, 0.6, 1.6, 3, 'wood2');
+    // 番犬の庭：犬小屋とわらの寝床、骨
+    K.catHouse(31, 21, 2.4, 2.4, 1.6, 'w', { wall: 'wood' });
+    for (let i = 0; i < 5; i++) K.mesh(new THREE.BoxGeometry(0.1, 0.1, 0.5), 'cream', 21 + K.r() * 6, 0.06, 7 + K.r() * 4, { ry: K.r() * 3, noShadow: true });
+    K.mesh(new THREE.CircleGeometry(1.4, 16), '#d8c070', 27, 0.04, 9, { rx: -Math.PI / 2, noShadow: true });
+    // 北の広場：こわれた荷車と、イノシシの足あと（大門の外で暴れていた）
+    K.box(-11, -33, 2.6, 0.9, 1.6, 'wood2', { ry: 0.4 }); K.mesh(new THREE.TorusGeometry(0.55, 0.1, 6, 14), 'wood', -9.6, 0.4, -32, { ry: 0.4 + Math.PI / 2, rz: 0.3 });
+    for (let i = 0; i < 10; i++) K.mesh(new THREE.CircleGeometry(0.28, 8), '#6a5a48', (K.r() - 0.5) * 14, 0.03, -36 + K.r() * 8, { rx: -Math.PI / 2, noShadow: true });
+    K.flowers(-13, -28, 8, 2, ['#ffffff', '#ffe07a']); K.flowers(13, -28, 8, 2, ['#ffffff', '#ffb8d8']);
   },
 
   // ---------------- 第三章 ----------------

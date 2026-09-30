@@ -52,6 +52,10 @@ const Sfx = {
   fluff() { this.noise(1.2, 0.06, 2600); this.tone(660, 0.7, 'sine', 0.035, 330); this.tone(990, 0.6, 'sine', 0.025, 260, 0.12); },
   puff() { this.noise(0.9, 0.07, 650); this.tone(520, 0.8, 'sine', 0.025, -260); this.tone(780, 0.6, 'triangle', 0.015, -300, 0.1); },
   snore() { [0, 0.9].forEach(t => { this.noise(0.5, 0.05, 420, t); this.tone(150, 0.45, 'sawtooth', 0.025, -50, t); this.tone(420, 0.35, 'sine', 0.02, 180, t + 0.5); }); },
+  // なかよし関所：番犬の声、タマのこもりうた、のろし台の火
+  bark() { [0, 0.22].forEach(t => { this.noise(0.09, 0.22, 900, t); this.tone(420, 0.1, 'square', 0.06, -160, t); }); },
+  lullaby() { [523, 440, 392, 440, 523, 392].forEach((f, i) => this.tone(f, 0.45, 'sine', 0.05, 0, i * 0.32)); },
+  fire() { this.noise(0.8, 0.14, 700); this.tone(180, 0.5, 'sawtooth', 0.04, 220); },
   pop() { this.noise(0.1, 0.3, 4200); this.tone(260, 0.25, 'square', 0.06, 900); this.boing(); },
   // にゃー（キャラごとに声の高さが違う）
   meow(key) {

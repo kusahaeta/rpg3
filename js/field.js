@@ -241,6 +241,27 @@ class FieldView extends BaseView {
       if (m.face) m.face.set('sleepy'); this.scene.add(m.group);
       this.sleeper = { SW, m, pos: V3(x, this.gy(x, z), z), i: 0, target: null, yaw: Math.atan2(x1 - x, z1 - z), speed: 0, phase: 0, zt: 0, nap: 0 };
     }
+    // 見張りの番犬（zone.guards）：見回りの道の最初の点から。眠らせた番犬は眠ったまま
+    const gflags = Save.data.flags || {};
+    this.guards = (Z.guards || []).filter(G => !G.after || storyCond('scene:' + G.after)).map(G => {
+      const m = buildEnemy(G.key || 'noraInu'), [x, z] = G.route[0], [x1, z1] = G.route[1] || [x, z + 1];
+      this.scene.add(m.group);
+      const N = 18, geo = new THREE.BufferGeometry(), idx = [];
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array((N + 2) * 3), 3));
+      for (let k = 0; k < N; k++) idx.push(0, k + 1, k + 2);
+      geo.setIndex(idx);
+      const cone = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: hdr('#ffd27a', 1.1), transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+      cone.frustumCulled = false; cone.renderOrder = 2; this.scene.add(cone);
+      const yaw = Math.atan2(x1 - x, z1 - z);
+      return { G, m, cone, pos: V3(x, this.gy(x, z), z), i: 1, dir: 1, wait: 0, yaw, baseYaw: yaw, alert: 0, zt: 0, asleep: !!gflags[G.id] };
+    });
+    // ころころ岩（zone.rollers）：a と b のあいだを、行ったり来たりころがる
+    this.rollers = (Z.rollers || []).map(R => {
+      // 当たりの大きさ（R.r）に見た目をそろえる
+      const m = buildEnemy('iwa'); m.group.scale.multiplyScalar((R.r || 1.1) / m.radius); this.scene.add(m.group);
+      const a = V3(R.a[0], 0, R.a[1]), b = V3(R.b[0], 0, R.b[1]);
+      return { R, m, a, b, pos: a.clone(), roll: 0, yaw: Math.atan2(b.x - a.x, b.z - a.z) };
+    });
     // 調べられるもの：道しるべ（post）・看板（board）を立てるか、区画の小物（mark）の上に目印の光を出す。どれでもなければ石碑
     this.notes = noteDefs.map(n => {
       const stele = !n.post && !n.board && n.mark == null;
@@ -758,12 +779,17 @@ class FieldView extends BaseView {
     const p = this.player, back = V3(-Math.sin(p.yaw), 0, -Math.cos(p.yaw));
     this.trail = [];
     for (let i = 0; i < 40; i++) this.trail.push(p.pos.clone().addScaledVector(back, i * 0.2));
-    this.followers = this.team.map((mem, i) => ({ mem, i })).filter(x => x.i !== this.leader && x.mem.hpRatio > 0).map((x, k) => {
+    // 踏み板で待っている仲間（先頭になった子は、もう待っていない）
+    this.holds = (this.holds || []).filter(h => h.key !== this.team[this.leader].key);
+    let k = 0;
+    this.followers = this.team.map((mem, i) => ({ mem, i })).filter(x => x.i !== this.leader && x.mem.hpRatio > 0).map(x => {
       const m = buildCharacter(x.mem.key); m.setPose(POSES.idle); this.scene.add(m.group);
+      const h = this.holds.find(q => q.key === x.mem.key);
+      if (h) return { mem: x.mem, m, pos: h.pad.pos.clone(), yaw: p.yaw, phase: 5, speed: 0, gap: 0, side: 0, hold: h.pad };
       // 二匹ずつ横にならんで、先頭の子の後ろをついてくる（カメラと先頭の子のあいだをふさがない）
       const gap = [1.0, 1.0, 2.0][k] ?? 1.0 * (k + 1), side = [-0.62, 0.62, 0][k] ?? 0;
       const pos = p.pos.clone().addScaledVector(back, gap).add(V3(back.z, 0, -back.x).multiplyScalar(side));
-      return { m, pos, yaw: p.yaw, phase: k, speed: 0, gap, side };
+      return { mem: x.mem, m, pos, yaw: p.yaw, phase: k++, speed: 0, gap, side };
     });
   }
   updateFollowers(d, t) {
@@ -774,11 +800,14 @@ class FieldView extends BaseView {
       let need = f.gap, target = tr[tr.length - 1].clone(), dir = null;
       for (let i = 1; i < tr.length; i++) { const seg = tr[i - 1].distanceTo(tr[i]); if (need <= seg) { target = tr[i - 1].clone().lerp(tr[i], need / seg); dir = V3().subVectors(tr[i - 1], tr[i]).setY(0).normalize(); break; } need -= seg; }
       if (f.side) { const fw = dir && dir.lengthSq() > 0.5 ? dir : V3(Math.sin(p.yaw), 0, Math.cos(p.yaw)); target.x += fw.z * f.side; target.z -= fw.x * f.side; }
+      // 踏み板で待っている子は、踏み板の上へ（着いたら、先頭の子のほうを見る）
+      if (f.hold) target = f.hold.pos.clone();
       const dx = target.x - f.pos.x, dz = target.z - f.pos.z, dist = Math.hypot(dx, dz);
       const want = dist > 0.05 ? Math.min(9, dist * 6) : 0;
       f.speed += (want - f.speed) * (1 - Math.exp(-10 * d));
       if (dist > 0.02) { const st = Math.min(dist, f.speed * d); f.pos.x += dx / dist * st; f.pos.z += dz / dist * st; f.yaw = lerpAngle(f.yaw, Math.atan2(dx, dz), 1 - Math.exp(-10 * d)); }
-      if (dist > 6) f.pos.copy(target);
+      if (dist > 6 && !f.hold) f.pos.copy(target);
+      if (f.hold && dist < 0.1) f.yaw = lerpAngle(f.yaw, Math.atan2(p.pos.x - f.pos.x, p.pos.z - f.pos.z), 1 - Math.exp(-5 * d));
       f.pos.y = this.gy(f.pos.x, f.pos.z);
       this.walkPose(f, d, f.speed > 6);
       f.m.group.position.set(f.pos.x, f.pos.y, f.pos.z); f.m.group.rotation.y = f.yaw;
@@ -954,7 +983,18 @@ class FieldView extends BaseView {
     const p = this.player.pos, Z = this.zone;
     for (const n of this.npcs) if (n.pos.distanceTo(p) < 2.2) return { type: 'npc', n, text: `${speakerName(n.key)}と話す${n.shop ? '（' + SHOP_NAMES[n.shop] + '）' : ''}` };
     for (const n of this.notes) if (n.pos.distanceTo(p) < (n.reach || 2.0)) return { type: 'note', n, text: `調べる：${n.title}` };
-    for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || '光の水晶'; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < 2.0) return { type: 'lamp', o, L, text: !o.ready() ? `調べる：${name}` : o.S.look === 'laugh' ? `${name}を押す` : `${name}に触れる` }; }
+    for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || '光の水晶'; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < (o.S.reach || 2.0)) return { type: 'lamp', o, L, text: !o.ready() ? `調べる：${name}` : o.S.verb ? `${o.S.verb}（${speakerName(o.S.who)}）` : o.S.look === 'laugh' ? `${name}を押す` : `${name}に触れる` }; }
+    // 二匹の門の踏み板：乗っていれば「ここで待ってて」、仲間が待っていれば「よびもどす」
+    for (const o of this.plateObjs || []) {
+      if (o.open) continue;
+      for (const pad of o.pads) {
+        const h = this.holds.find(x => x.pad === pad), f = h && this.followers.find(x => x.mem.key === h.key);
+        if (f && f.pos.distanceTo(p) < 1.8) return { type: 'unhold', o, pad, text: `${CHARS[h.key].name}をよびもどす` };
+        if (!h && Math.hypot(pad.pos.x - p.x, pad.pos.z - p.z) < 1.0) { const free = this.followers.find(x => !x.hold); return { type: 'hold', o, pad, f: free, text: free ? `${CHARS[free.mem.key].name}に、ここで待っていてもらう` : `調べる：${o.P.name || '踏み板'}` }; }
+      }
+    }
+    // 見張りの番犬：タマが先頭なら、こもりうたで眠らせられる
+    for (const g of this.guards || []) if (!g.asleep && g.pos.distanceTo(p) < 2.6) return { type: 'guard', g, text: this.team[this.leader].key === 'tama' ? 'こもりうたを歌う（タマ）' : '調べる：見張りの番犬' };
     for (const o of this.rubbleObjs || []) if (!o.broken && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < (o.R.r || 1.6) + 1.2) return { type: 'rubble', o, text: o.R.look === 'jackbox' ? '調べる：巨大びっくり箱' : '調べる：落石の岩山' };
     if (this.sleeper && this.sleeper.pos.distanceTo(p) < 2.0) return { type: 'sleeper', text: `${this.sleeper.SW.name || speakerName(this.sleeper.SW.key)}に話しかける` };
     for (const n of this.naps) if (Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 2.4) return { type: 'nap', n, text: `${n.name || speakerName(n.key)}に話しかける` };
@@ -997,6 +1037,13 @@ class FieldView extends BaseView {
     } else if (it.type === 'rubble') {
       if (it.o.R.look === 'jackbox') this.startTalk('巨大びっくり箱', ['ねじを巻いたままの、大きなびっくり箱。通路をまるごとふさいでいる。', '……カタ、カタカタ。中で何かが、飛び出したそうにしている。攻撃すれば、開きそうだ。'], null, true);
       else this.startTalk('落石の岩山', ['崩れた岩が、石段の上り口をふさいでいる。……攻撃すれば、砕けそうだ。'], null, true);
+    } else if (it.type === 'hold') {
+      this.holdPad(it.o, it.pad, it.f);
+    } else if (it.type === 'unhold') {
+      this.holds = this.holds.filter(h => h.pad !== it.pad); this.followers.forEach(f => { if (f.hold === it.pad) f.hold = null; });
+      Sfx.select(); this.toast('……よびもどした。いっしょに行こう');
+    } else if (it.type === 'guard') {
+      this.lullaby(it.g);
     } else if (it.type === 'fluff') {
       this.glide(it.o);
     } else if (it.type === 'sleeper') {
@@ -1037,6 +1084,15 @@ class FieldView extends BaseView {
     const S = o.S, name = S.name || '光の水晶';
     if (!o.ready()) { this.startTalk(name, [S.idle || 'かすかに光る水晶。……今は、ふれても何も起きない。'], null, true); return; }
     const flags = Save.data.flags || (Save.data.flags = {});
+    if (S.who && !this.featReady(S)) return;
+    // のろし台：シロの魔法は、ときどき失敗する（最初の一回は、かならず魚）
+    if (S.fails && !L.tried && (!flags[S.id + '_miss'] || Math.random() < 0.3)) {
+      L.tried = true; flags[S.id + '_miss'] = true; Save.save();
+      this.fishRain(L.pos.clone().add(V3(0, 1.2, 0)));
+      this.startTalk('', pick(S.fails));
+      return;
+    }
+    if (S.look === 'beacon' || S.look === 'bar') { this.doFeat(o, L); return; }
     L.setLit(); flags[o.S.id + '_' + L.i] = true;
     const at = L.pos.clone().add(V3(0, 1.3, 0)), laugh = S.look === 'laugh';
     const col = S.look === 'memory' ? '#ffe2a8' : laugh ? '#ffe07a' : '#cfefff';
@@ -1051,6 +1107,172 @@ class FieldView extends BaseView {
     // 記憶のかけら：その仲間の思い出を、クロが語る。笑い袋：袋が笑い出して、みんなの掛け合い
     if (S.memories && S.memories[L.i]) this.startTalk(speakerName('kuro'), S.memories[L.i]);
     if (laugh) this.startTalk('', [['n', `笑い袋が「${(S.laughs || [])[L.i] || 'ワッハッハ！'}」と笑い出した！`], ...((S.gags || [])[L.i] || []).filter(([k]) => k === 'n' || this.team.some(m => m.key === k))]);
+  }
+  // わざの仕掛け：S.who の子が先頭でなければ、先頭の子のひとことと手がかり（1〜4で交代）
+  featReady(S) {
+    const lead = this.team[this.leader].key, name = speakerName(S.who);
+    if (lead === S.who) return true;
+    const say = (S.tries || {})[lead], inTeam = this.team.some(m => m.key === S.who);
+    this.startTalk('', [...(say ? [[lead, say]] : []), ['n', (S.hint || `${name}なら、なんとかできそうだ。`) + (inTeam ? '（1〜4で先頭の子を交代）' : `（${name}は、いま一行にいない。編成に入れよう）`)]]);
+    return false;
+  }
+  // のろし台に火をつける／かんぬきを外す
+  doFeat(o, L) {
+    const S = o.S, flags = Save.data.flags;
+    L.setLit(); flags[S.id + '_' + L.i] = true;
+    const n = o.lamps.filter(x => x.lit).length, all = n === o.lamps.length, beacon = S.look === 'beacon';
+    if (beacon) { this.fx.pillar(L.pos, '#ff9a3a', { h: 6, r: 0.7, life: 0.9 }); this.p.burst(L.pos.clone().add(V3(0, 1.4, 0)), '#ffb04a', 60, { speed: 4, up: 2, life: 1 }); Sfx.fire(); }
+    else { Sfx.slam(); GFX.shake(0.25); this.p.burst(L.pos.clone().add(V3(0, 1.4, 0)), '#c8a070', 40, { speed: 3, up: 1, life: 0.8, size: 0.12 }); }
+    if (all) { flags[S.id] = true; o.dissolve(); setTimeout(() => { Sfx.door(); Sfx.win(); GFX.shake(0.2); this.toast(S.openToast || '門が開いた！'); }, beacon ? 700 : 500); }
+    else this.toast(`${S.name}（${n}/${o.lamps.length}）`);
+    Save.save();
+    const say = (all && S.done) || S.lit;
+    if (say) this.startTalk('', say.filter(([k]) => k === 'n' || this.team.some(m => m.key === k)));
+  }
+  // 空から魚が降ってくる（シロの魔法の失敗）
+  fishRain(at) {
+    for (let i = 0; i < 10; i++) {
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), toon(pick(['#8ab8d8', '#b8c8d8', '#ff9a7a']))); f.scale.set(0.5, 0.6, 2);
+      const x = at.x + (Math.random() - 0.5) * 3, z = at.z + (Math.random() - 0.5) * 3, y0 = at.y + 5 + Math.random() * 2, g = this.gy(x, z) + 0.06, spin = Math.random() * 10;
+      f.position.set(x, y0, z);
+      this.fx.add(f, 2.2, (k, o, dt) => { o.position.y = Math.max(g, y0 - k * k * 16); if (o.position.y > g) o.rotation.x += spin * dt; });
+    }
+    this.p.burst(at, '#ffd23c', 30, { speed: 3, life: 0.6 }); Sfx.tone(600, 0.3, 'triangle', 0.05, -300);
+  }
+  // 二匹の門：先頭の子が乗っている踏み板で、仲間に待っていてもらう
+  holdPad(o, pad, f) {
+    if (!o.ready()) { this.startTalk(o.P.name || '踏み板', [o.P.idle || '肉球の形の踏み板。……今は、踏んでも何も起きない。'], null, true); return; }
+    if (!f) { this.startTalk(o.P.name || '踏み板', ['踏み板は、ふたつそろって踏まないと動かないようだ。……いっしょに踏んでくれる仲間がいない。'], null, true); return; }
+    const key = f.mem.key;
+    this.holds.push({ pad, key }); f.hold = pad;
+    Sfx.meow(key); this.toast(`${CHARS[key].name}「${pick(HOLD_LINES[key] || ['ここで待ってる！'])}」`);
+  }
+  // 踏み板をすべて踏んでいれば、門が開く（待っていた仲間は、またついてくる）
+  updatePlates() {
+    const p = this.player;
+    for (const o of this.plateObjs || []) {
+      if (o.open) continue;
+      let all = o.ready();
+      for (const pad of o.pads) {
+        const f = this.followers.find(x => x.hold === pad);
+        pad.on = f ? Math.hypot(f.pos.x - pad.pos.x, f.pos.z - pad.pos.z) < 0.6 : Math.hypot(p.pos.x - pad.pos.x, p.pos.z - pad.pos.z) < 1.0 && Math.abs(p.pos.y - pad.pos.y) < 0.6 && p.y < 0.2;
+        if (!pad.on) all = false;
+      }
+      if (!all) continue;
+      const helpers = this.holds.filter(h => o.pads.includes(h.pad)).map(h => h.key);
+      (Save.data.flags || (Save.data.flags = {}))[o.P.id] = true; Save.save();
+      o.dissolve(); this.holds = this.holds.filter(h => !o.pads.includes(h.pad)); this.followers.forEach(f => { if (o.pads.includes(f.hold)) f.hold = null; });
+      Sfx.slam(); GFX.shake(0.3); setTimeout(() => { Sfx.win(); this.toast(o.P.openToast || 'ゴゴゴ……門が開いた！'); }, 600);
+      const lead = this.team[this.leader].key;
+      const say = (o.P.done || []).map(([k, t]) => { const who = k === 'lead' ? lead : k === 'helper' ? helpers[0] : k; return [who, typeof t === 'string' ? t : t && t[who]]; });
+      this.startTalk('', [['n', '踏み板の肉球が光り、石の門が、ゴゴゴ……と左右に開いた。'], ...say.filter(([k, t]) => k && t && (k === 'n' || this.team.some(m => m.key === k)))]);
+    }
+  }
+  // 見張りの番犬：道を見回り、前の扇（見える範囲。壁の向こうは見えない）に入ると見つかって、back へ追い返される
+  updateGuards(d, t) {
+    const p = this.player, T = this.T;
+    for (const g of this.guards || []) {
+      const G = g.G, m = g.m;
+      if (g.asleep) {
+        g.sleepK = Math.min(1, (g.sleepK || 0) + d * 1.5);
+        m.group.position.set(g.pos.x, g.pos.y - g.sleepK * 0.15, g.pos.z); m.group.rotation.set(0, g.yaw, g.sleepK * 1.2);
+        g.cone.material.opacity = Math.max(0, g.cone.material.opacity - d);
+        if ((g.zt -= d) <= 0) { g.zt = 1.3; floatZ(this.fx, g.pos.clone().add(V3(0.3, m.height * 0.7, 0))); }
+        m.update(d * 0.2, t);
+        continue;
+      }
+      // 見回り：道の点を行ったり来たり。点に着くと、しばらく左右を見まわす
+      const R = G.route, tgt = R[g.i];
+      if (g.wait > 0) { g.wait -= d; g.yaw = g.baseYaw + Math.sin(((G.wait || 1.8) - g.wait) * 2.4) * 0.9; }
+      else {
+        const dx = tgt[0] - g.pos.x, dz = tgt[1] - g.pos.z, l = Math.hypot(dx, dz), st = Math.min(l, (G.speed || 2.2) * d);
+        if (l < 0.1) { g.wait = G.wait || 1.8; g.baseYaw = g.yaw; if (g.i + g.dir < 0 || g.i + g.dir >= R.length) g.dir = -g.dir; g.i += g.dir; }
+        else { g.pos.x += dx / l * st; g.pos.z += dz / l * st; g.yaw = lerpAngle(g.yaw, Math.atan2(dx, dz), 1 - Math.exp(-8 * d)); }
+      }
+      g.pos.y = this.gy(g.pos.x, g.pos.z);
+      m.group.position.copy(g.pos); m.group.rotation.set(0, g.yaw, 0); m.update(d, t);
+      // 見える範囲の扇：光線ごとに、壁や段差でさえぎられるところまで
+      const r = G.r || 6.5, fov = G.fov || 0.6, N = 18, pos = g.cone.geometry.attributes.position;
+      pos.setXYZ(0, g.pos.x, g.pos.y + 0.07, g.pos.z);
+      for (let k = 0; k <= N; k++) {
+        const a = g.yaw - fov + 2 * fov * k / N, sx = Math.sin(a), sz = Math.cos(a);
+        let dist = 0.4;
+        for (; dist < r; dist += 0.35) { const i = T.at(g.pos.x + sx * dist, g.pos.z + sz * dist); if (i < 0 || !T.isWalkKind(T.kind[i]) || Math.abs(T.h[i] - g.pos.y) > 0.6) break; }
+        pos.setXYZ(k + 1, g.pos.x + sx * dist, g.pos.y + 0.07, g.pos.z + sz * dist);
+      }
+      pos.needsUpdate = true; g.cone.geometry.computeBoundingSphere();
+      g.alert = Math.max(0, g.alert - d);
+      g.cone.material.color.copy(hdr(g.alert ? '#ff4a3a' : '#ffc84a', 1.2)); g.cone.material.opacity = 0.3 + Math.sin(t * 4) * 0.05;
+      // 見つかる：扇の中で、あいだに壁がないとき
+      if (this.busy || this.flight || this.grace > 0) continue;
+      const vx = p.pos.x - g.pos.x, vz = p.pos.z - g.pos.z, dist = Math.hypot(vx, vz);
+      const dAng = Math.abs(((Math.atan2(vx, vz) - g.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+      if (dist < r && dAng < fov && Math.abs(p.pos.y - g.pos.y) < 1.2 && T.clearLine(g.pos.x, g.pos.z, p.pos.x, p.pos.z, g.pos.y)) this.spotted(g);
+    }
+  }
+  spotted(g) {
+    g.alert = 2.5; Sfx.bark(); GFX.shake(0.15);
+    this.p.burst(g.pos.clone().add(V3(0, g.m.height + 0.3, 0)), '#ff3040', 30, { speed: 3, up: 2, life: 0.6 });
+    this.toast('ワンワンッ！　見張りの番犬に見つかった！');
+    this.sendBack(g.G.back, g.pos, '……番犬に、庭の入口まで追い返されてしまった。扇の光に入らないように進もう', 900);
+  }
+  // こもりうた：タマが先頭なら、番犬は眠ってしまう
+  lullaby(g) {
+    const lead = this.team[this.leader].key;
+    if (lead !== 'tama') {
+      const say = { mike: 'そーっと……そーっと……。……これ以上近づいたら、ほえられちゃう！', kuro: '……眠らせるか、見つからずに抜けるか、だな。', shiro: 'しーっ……。こういうときは、魔法より、子守歌よね。', maou: '……犬は苦手だ。' }[lead];
+      const inTeam = this.team.some(m => m.key === 'tama');
+      this.startTalk('', [...(say ? [[lead, say]] : []), ['n', '見張りの番犬は、まだこちらに気づいていない。……タマのこもりうたなら、眠らせられるかもしれない。' + (inTeam ? '（1〜4で先頭の子を交代）' : '（タマを編成に入れよう）')]]);
+      return;
+    }
+    g.asleep = true; (Save.data.flags || (Save.data.flags = {}))[g.G.id] = true; Save.save();
+    Sfx.lullaby();
+    for (let i = 0; i < 6; i++) setTimeout(() => this.p.emit(this.player.pos.clone().add(V3((Math.random() - 0.5) * 0.6, 1.2, (Math.random() - 0.5) * 0.6)), V3((g.pos.x - this.player.pos.x) * 0.5, 0.6, (g.pos.z - this.player.pos.z) * 0.5), hdr(pick(['#fff0a8', '#ffc8ec', '#c8e8ff']), 2), { life: 1.8, size: 0.12, drag: 0.2 }), i * 180);
+    this.startTalk('', [['tama', '……ねんねん、ころりよ……おころりよ……。'], ['n', '番犬は、大きなあくびをひとつすると、その場で丸くなって眠ってしまった。'], ['tama', '……おやすみ。……ぼくも、ねむく……なってきた……。']]);
+  }
+  // ころころ岩：谷を行ったり来たりころがる。ぶつかると、はねとばされる
+  updateRollers(d, t) {
+    const p = this.player;
+    for (const o of this.rollers || []) {
+      const R = o.R, len = o.a.distanceTo(o.b), per = len / (R.speed || 5);
+      const c = ((t / per + (R.ph || 0) * 2) % 2 + 2) % 2, u = c < 1 ? c : 2 - c, e = u * u * (3 - 2 * u) * 0.3 + u * 0.7;
+      const x = lerp(o.a.x, o.b.x, e), z = lerp(o.a.z, o.b.z, e), y = this.gy(x, z), dirSign = c < 1 ? 1 : -1;
+      o.roll += (Math.hypot(x - o.pos.x, z - o.pos.z) / (R.r || 1.1)) * dirSign;
+      o.pos.set(x, y, z);
+      // 足もとではなく、岩のまん中を軸にころがす
+      const rr = R.r || 1.1, fx = Math.sin(o.yaw), fz = Math.cos(o.yaw), cr = Math.cos(o.roll), sr = Math.sin(o.roll);
+      o.m.group.rotation.set(o.roll, o.yaw, 0, 'YXZ');
+      o.m.group.position.set(x - fx * rr * sr, y + rr - rr * cr, z - fz * rr * sr);
+      o.m.update(d, t);
+      if (Math.random() < d * 10) this.p.emit(V3(x + (Math.random() - 0.5), y + 0.1, z + (Math.random() - 0.5)), V3(0, 0.6, 0), hdr('#c8b89a', 0.8), { life: 0.6, size: 0.12, drag: 1 });
+      if (this.busy || this.flight || this.grace > 0) continue;
+      if (Math.hypot(p.pos.x - x, p.pos.z - z) < (R.r || 1.1) + 0.45 && Math.abs(p.pos.y - y) < 1.2) this.knock(o);
+    }
+  }
+  // はねとばされる：弧をえがいて back へ（トランポリンと同じ飛び方）
+  knock(o) {
+    const p = this.player, from = p.pos.clone(), to = V3(o.R.back[0], this.gy(o.R.back[0], o.R.back[1]), o.R.back[1]);
+    this.busy = true; this.keys.clear();
+    this.flight = { from, to, t: 0, dur: 0.9, h: 2.4, yaw: p.yaw, bump: true };
+    (this.followers || []).forEach(f => { f.m.group.visible = false; });
+    Sfx.hit(); Sfx.boing(); GFX.shake(0.3);
+    this.p.burst(from.clone().add(V3(0, 0.6, 0)), '#c8b89a', 30, { speed: 4, up: 1.5, life: 0.7, size: 0.12 });
+    this.toast(pick(['ごろごろ……どーん！　ころころ岩に、はねとばされた！', 'ころころ岩「ごめーん！　とまれないのー！」', 'ぽーん！　……ころころ岩は、楽しそうに転がっていった']));
+  }
+  // 見つかった・眠った：画面を暗くして、pos で目をさます（faceTo のほうを向く）
+  sendBack(pos, faceTo, msg, delay = 1500) {
+    this.busy = true; this.keys.clear();
+    setTimeout(() => this.root.querySelector('.fd-wipe').classList.add('on'), delay - 800);
+    setTimeout(() => {
+      const p = this.player, b = V3(pos[0], 0, pos[1]);
+      p.pos.set(b.x, this.gy(b.x, b.z), b.z); p.vis = null; p.y = 0; p.vy = 0; p.speed = 0; p.doze = 0;
+      p.yaw = Math.atan2(faceTo.x - b.x, faceTo.z - b.z); this.camYaw = p.yaw + Math.PI;
+      this.placePlayer(0); this.spawnFollowers();
+      this.camera.position.set(p.pos.x + Math.sin(this.camYaw) * 4, p.pos.y + 2.4, p.pos.z + Math.cos(this.camYaw) * 4); this.curLook.set(p.pos.x, p.pos.y + 0.8, p.pos.z);
+      this.root.querySelector('.fd-wipe').classList.remove('on');
+      this.busy = false; this.grace = 1.5;
+      if (msg) this.toast(msg);
+    }, delay);
   }
   // 落石の岩山を砕く
   breakRubble(o) {
@@ -1151,8 +1373,9 @@ class FieldView extends BaseView {
       this.busy = false; this.grace = 1.2;
       return;
     }
-    this.fx.ring(p.pos.clone().add(V3(0, 0.05, 0)), '#ffd27a', { r: 1.6, life: 0.5 }); this.p.burst(p.pos.clone().add(V3(0, 0.2, 0)), '#e8dcc8', 20, { speed: 2, up: 0.5, life: 0.5, size: 0.1 });
-    Sfx.hit(); GFX.shake(0.12);
+    if (!F.bump) this.fx.ring(p.pos.clone().add(V3(0, 0.05, 0)), '#ffd27a', { r: 1.6, life: 0.5 });
+    this.p.burst(p.pos.clone().add(V3(0, 0.2, 0)), '#e8dcc8', 20, { speed: 2, up: 0.5, life: 0.5, size: 0.1 });
+    Sfx.hit(); GFX.shake(0.12); this.grace = 1;
     for (const b of this.bounceObjs || []) if (Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z) < 1.6) b.armed = false;
     this.spawnFollowers();
     this.busy = false;
@@ -1177,19 +1400,9 @@ class FieldView extends BaseView {
     this.toast(tama ? 'ふわぁ……ねむり花の粉を吸って、みんな眠ってしまった……。タマ「……いいにおい……すぴー」' : 'ふわぁ……ねむり花の粉を吸って、みんな眠ってしまった……');
     GFX.tween(0.8, k => { p.doze = k; });
     let n = 0; const zz = setInterval(() => { if (n++ < 5) floatZ(this.fx, p.pos.clone().add(V3(0.3, 1.2 - (p.doze || 0) * 0.5, 0))); }, 380);
-    setTimeout(() => this.root.querySelector('.fd-wipe').classList.add('on'), 1500);
-    setTimeout(() => {
-      clearInterval(zz);
-      const b = o.back || V3(this.zone.anchor[0], 0, this.zone.anchor[1] + 2);
-      p.pos.set(b.x, this.gy(b.x, b.z), b.z); p.vis = null; p.y = 0; p.vy = 0; p.speed = 0; p.doze = 0;
-      p.yaw = Math.atan2(o.pos.x - b.x, o.pos.z - b.z); this.camYaw = p.yaw + Math.PI;
-      this.placePlayer(0); this.spawnFollowers();
-      this.camera.position.set(p.pos.x + Math.sin(this.camYaw) * 4, p.pos.y + 2.4, p.pos.z + Math.cos(this.camYaw) * 4); this.curLook.set(p.pos.x, p.pos.y + 0.8, p.pos.z);
-      this.root.querySelector('.fd-wipe').classList.remove('on');
-      GFX.flash('#ffe8f4', 0.35, 0.6);
-      this.busy = false; this.grace = 1.5;
-      this.toast('……はっ！　ねむり花がしぼんでいるうちに、通り抜けよう');
-    }, 2500);
+    const b = o.back || V3(this.zone.anchor[0], 0, this.zone.anchor[1] + 2);
+    this.sendBack([b.x, b.z], o.pos, '……はっ！　ねむり花がしぼんでいるうちに、通り抜けよう', 2500);
+    setTimeout(() => { clearInterval(zz); GFX.flash('#ffe8f4', 0.35, 0.6); }, 2500);
   }
   // 眠っている子と、ねぼけ歩きの子
   updateSleepers(d, t) {
@@ -1701,9 +1914,12 @@ class FieldView extends BaseView {
     this.chests.forEach(ch => { if (!ch.opened) dot(ch.pos.x, ch.pos.y, ch.pos.z, '#ffd66b', 3, true); });
     this.crystals.forEach(cr => { if (!cr.broken) dot(cr.pos.x, cr.pos.y, cr.pos.z, '#9d8cff', 2.5); });
     this.groups.forEach(gr => { if (gr.alive) dot(gr.pos.x, gr.pos.y, gr.pos.z, gr.state === 'chase' ? '#ff3040' : gr.elite ? '#ff9a4d' : '#ff6b81', gr.elite ? 4 : 3); });
-    (this.sealObjs || []).forEach(o => { if (!o.open && o.ready()) o.lamps.forEach(L => { if (!L.lit) dot(L.pos.x, L.pos.y, L.pos.z, o.S.look === 'memory' ? '#ffe2a8' : o.S.look === 'laugh' ? '#ffe07a' : '#cfefff', 3.5); }); });
+    (this.sealObjs || []).forEach(o => { if (!o.open && o.ready()) o.lamps.forEach(L => { if (!L.lit) dot(L.pos.x, L.pos.y, L.pos.z, { memory: '#ffe2a8', laugh: '#ffe07a', beacon: '#ff9a3a', bar: '#e8c080' }[o.S.look] || '#cfefff', 3.5); }); });
     (this.bounceObjs || []).forEach(b => dot(b.pos.x, b.pos.y, b.pos.z, '#ff9ad8', 2.5));
     (this.fluffObjs || []).forEach(o => dot(o.pos.x, o.pos.y, o.pos.z, '#ffffff', 2.5));
+    (this.plateObjs || []).forEach(o => { if (!o.open && o.ready()) o.pads.forEach(pad => dot(pad.pos.x, pad.pos.y, pad.pos.z, '#8ad8ff', 3.5, true)); });
+    (this.guards || []).forEach(g => dot(g.pos.x, g.pos.y, g.pos.z, g.asleep ? '#8a8a96' : '#ffb04a', 3.5));
+    (this.rollers || []).forEach(o => dot(o.pos.x, o.pos.y, o.pos.z, '#c8b89a', 3.5));
     (this.nemuriObjs || []).forEach(o => { if (o.awake) dot(o.pos.x, o.pos.y, o.pos.z, '#ff9ad8', 2); });
     this.naps.forEach(n => dot(n.pos.x, n.pos.y, n.pos.z, '#fff0a8', 3.5));
     if (this.sleeper) dot(this.sleeper.pos.x, this.sleeper.pos.y, this.sleeper.pos.z, '#fff0a8', 3.5);
@@ -1759,6 +1975,8 @@ class FieldView extends BaseView {
     else if (!this.busy) { this.updatePlayer(d); if (!this.busy) this.updateGags(d); }
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
     this.updateNemuri(t);
+    if (!this.busy && !this.flight) this.updatePlates();
+    this.updateGuards(d, t); this.updateRollers(d, t);
     if (this.followers && !this.flight) this.updateFollowers(d, t);
     this.updateEnemies(d, t);
     const p = this.player;
@@ -1923,7 +2141,15 @@ function worldMapHTML(here) {
   if (here && FIELD_ZONES[here] && FIELD_ZONES[here].parent) here = FIELD_ZONES[here].parent;
   if (qz && FIELD_ZONES[qz].parent) qz = FIELD_ZONES[qz].parent;
   const lines = [];
-  ids.forEach(id => FIELD_ZONES[id].exits.forEach(e => { if (id < e.to && ids.includes(e.to)) { const a = FIELD_ZONES[id].map2d, b = FIELD_ZONES[e.to].map2d; lines.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="${zoneOpen(e.to) && zoneOpen(id) ? '' : 'locked'}"/>`); } }));
+  // 上の階・奥の区画（parent）の出入口も、入口の区画どうしの線にまとめる
+  const top = k => FIELD_ZONES[k].parent || k, drawn = new Set();
+  Object.keys(FIELD_ZONES).forEach(id => FIELD_ZONES[id].exits.forEach(e => {
+    const a0 = top(id), b0 = top(e.to), key = [a0, b0].sort().join('|');
+    if (a0 === b0 || !ids.includes(a0) || !ids.includes(b0) || drawn.has(key)) return;
+    drawn.add(key);
+    const a = FIELD_ZONES[a0].map2d, b = FIELD_ZONES[b0].map2d;
+    lines.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="${zoneOpen(e.to) && zoneOpen(id) ? '' : 'locked'}"/>`);
+  }));
   const floorsOf = id => Object.keys(FIELD_ZONES).filter(k => k === id || FIELD_ZONES[k].parent === id);
   const chestsLeft = id => floorsOf(id).reduce((n, k) => n + FIELD_ZONES[k].chests - ((Save.data.fieldChests || {})[k] || []).length, 0);
   return `<div class="ov-box wm-box"><h2>ミャオニアの地図</h2>

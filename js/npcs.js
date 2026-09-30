@@ -43,6 +43,8 @@ const NPCS = {
     look: { fur: '#34323c', pattern: 'tuxedo', eye: '#e8c040', muzzle: '#ffffff', paws: '#ffffff', scarf: '#e0a040', cap: '#6a4a8a', accent: '#e0a040' } },
   buchi:     { name: 'ブチ', title: '旅芸人（太鼓）', elem: 'fire', face: 'pout', faceAfter: ['scene:c2_01b', 'smile'],
     look: { fur: '#ffffff', pattern: 'spots', patches: ['#b8783a', '#3a2a24'], eye: '#6ab8a8', muzzle: '#ffffff', kerchief: '#5ab8a8', accent: '#5ab8a8' } },
+  gonji:     { name: 'ゴン爺', title: 'なかよし関所の関所番', elem: 'physical', face: 'serious', faceAfter: ['clear:2-4', 'smile'], scale: 1.05,
+    look: { fur: '#a89070', pattern: 'tabby', patches: ['#6a5238'], eye: '#c8a040', muzzle: '#e8dcc8', paws: '#e8dcc8', beard: '#f4ece0', cap: '#8a8a96', capType: 'helmet', vest: '#6a5a8a', scar: true, accent: '#ffd27a' }, gear: { weapon: 'fork' } },
   // ---------------- ニャハハ王国 ----------------
   shimin_a:  { name: '王国の猫', title: '笑わない市民', elem: 'wind', face: 'sad', faceAfter: ['clear:3-3', 'joy'],
     look: { fur: '#b8a898', pattern: 'tabby', patches: ['#8a7a6a'], eye: '#8a8a6a', muzzle: '#d8d0c8', kerchief: '#8a8a96', accent: '#ff8ab8' } },

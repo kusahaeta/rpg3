@@ -590,7 +590,8 @@ const STORY = [
     { t: 'scene', id: 'c2_03c', g: '宿場の夜' },
     { t: 'scene', id: 'c2_03d', g: 'いなくなったシロ' },
     { t: 'field', zone: 'road1', at: [8, -2], start: ['road_rest', 4, 6], near: ['road_rest', 'road1'], away: ['shiro'], scene: 'c2_03e', battle: '2-3', after: 'c2_03f', g: '宿場の南、街道の風車の畑でシロをさがす' },
-    { t: 'field', zone: 'road2', at: [0, -4], scene: 'c2_04', battle: '2-4', after: 'c2_05', g: '宿場の北、関所あとを越える' },
+    { t: 'field', zone: 'sekisho', at: [0, 28], scene: 'c2_04a', g: '宿場の北、ころころ岩の切り通しを抜けて、関所へ' },
+    { t: 'field', zone: 'sekisho', at: [0, -28], scene: 'c2_04', battle: '2-4', after: 'c2_05', g: '仲間のわざでなかよし関所のからくりを解き、北の大門へ' },
     { t: 'reward', niboshi: 400, g: '第二章 おしまい' },
   ] },
   { title: '第三章　笑わない街', steps: [
@@ -684,7 +685,7 @@ const BATTLE_SETS = {
   '2-1': { zone: 'road_rest', at: [0, 10], face: 0 },
   '2-2': { zone: 'woods_valley', at: [8, 18], face: 180 },
   '2-3': { zone: 'road1', at: [12, -2], face: 90 },
-  '2-4': { zone: 'road2', at: [0, 4], face: 0 },
+  '2-4': { zone: 'sekisho', at: [0, -30], face: 0 },
   '3-1': { zone: 'tower', at: [0, 7], face: 0 },
   '3-2': { zone: 'tower_3f', at: [0, 4], face: 0 },
   '3-3': { zone: 'tower_top', at: [0, -26], face: 0 },
