@@ -971,3 +971,7 @@ body.touch .fd-prompt { cursor: pointer; padding: 12px 26px; font-size: 20px; }
 /* 戦闘：キーの説明を消して、必殺技のキャンセルをボタンで */
 body.touch .battle .help, body.touch .ab-btn .k, body.touch .bond-btn .k, body.touch .ult-key { display: none; }
 .ult-cancel { margin-left: 14px; }
+
+/* 診断表示（?debug のときだけ） */
+#diag { position: fixed; left: 4px; top: 4px; z-index: 200; pointer-events: none; white-space: pre; font: 11px/1.35 ui-monospace, Menlo, monospace;
+  color: #b8ffb8; background: rgba(0, 0, 0, .6); padding: 4px 6px; border-radius: 4px; max-width: calc(100vw - 8px); overflow: hidden; }

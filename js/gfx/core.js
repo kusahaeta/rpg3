@@ -41,6 +41,8 @@ const GFX = {
   ok: false, renderer: null, composer: null, view: null, tweens: [], time: 0, timeScale: 1, pixelRatio: 1,
   // 省エネ：30fps・画面の細かさ 1 まで・SMAA なし・影を小さく（スマホは最初から省エネ）
   eco: false, appScale: 1, lastFrame: 0,
+  // 診断（?debug のとき画面に出す）：3D 描画が止められた・戻った・作り直した回数、描いたコマ数
+  diag: { lost: 0, restored: 0, rebuilt: 0, rebuildFail: '', frames: 0 },
   shakeAmt: 0,
 
   init(app) {
@@ -55,7 +57,7 @@ const GFX = {
         requestAnimationFrame(tick);
         // 省エネは 30fps（60Hz でも 120Hz の画面でも、約 33ms ごとに描く）
         if (this.eco && now - this.lastFrame < 1000 / 30 - 8) return;
-        this.lastFrame = now; this.frame();
+        this.lastFrame = now; this.diag.frames++; this.frame();
       };
       requestAnimationFrame(tick);
     } catch (e) {
@@ -86,15 +88,16 @@ const GFX = {
     [this.renderPass, this.bloom, this.grade, this.output, this.smaa].forEach(p => this.composer.addPass(p));
     // スマホなどでメモリが足りなくなると、ブラウザが 3D 描画を止める（画面が消える）。
     // ブラウザが戻すのを少し待ち、戻らなければ作り直す
-    canvas.addEventListener('webglcontextlost', () => { clearTimeout(this.lostTimer); this.lostTimer = setTimeout(() => this.rebuild(), 2500); });
-    canvas.addEventListener('webglcontextrestored', () => clearTimeout(this.lostTimer));
+    canvas.addEventListener('webglcontextlost', () => { this.diag.lost++; clearTimeout(this.lostTimer); this.lostTimer = setTimeout(() => this.rebuild(), 2500); });
+    canvas.addEventListener('webglcontextrestored', () => { this.diag.restored++; clearTimeout(this.lostTimer); });
   },
   rebuild() {
     console.warn('3D 描画が止まったので作り直します');
     const old = this.canvas, clip = this.renderer.localClippingEnabled;
     try { this.composer.dispose(); this.renderer.dispose(); } catch (e) { /* 止まった描画の後片付けは失敗してもよい */ }
     old.remove();
-    try { this.createRenderer(); } catch (e) { console.warn('3D 描画を作り直せませんでした', e); return; }
+    try { this.createRenderer(); } catch (e) { this.diag.rebuildFail = String(e && e.message || e); console.warn('3D 描画を作り直せませんでした', e); return; }
+    this.diag.rebuilt++;
     this.renderer.localClippingEnabled = clip;
     this.setEco(this.eco);
     if (this.view) {
@@ -232,6 +235,16 @@ const GFX = {
     r.dispose(); r.forceContextLoss();
   },
 };
+
+// 省エネのときは画像を縦横半分にする（GPU のメモリが 4 分の 1）。
+// 元の canvas はすぐ大きさを 0 にして手放す（iPhone は canvas のメモリの合計に上限がある）
+function ecoShrink(c) {
+  if (!GFX.eco) return c;
+  const s = document.createElement('canvas'); s.width = c.width >> 1; s.height = c.height >> 1;
+  s.getContext('2d').drawImage(c, 0, 0, s.width, s.height);
+  c.width = c.height = 0;
+  return s;
+}
 
 // GPU に載せたものを手放す。画像は模様（map）だけでなく、光る模様・凹凸なども全部。
 // 使い回している画像を手放しても、次に使うときにまた GPU に載る
