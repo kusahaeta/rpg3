@@ -8,6 +8,7 @@
 // town: 人が暮らす区画（敵が出ない）／ calmAfter: そのステージをクリアすると敵が出なくなる
 // npcs[].v: [[条件, 台詞...]]（条件 'scene:ID' 'clear:ステージ' 'done' 'flag:名前'。後ろのものほど優先）
 // npcs[].shop: weapon / item / inn / fish（話しかけると店）
+// naps / sleepwalk の name：まだ名前を知らない子の呼び名（なければ speakerName）
 // notes[].when / until: その条件を満たしてから出る／満たすと消える
 // notes：F で調べられるもの。道をふさがないよう、実物の上に光る目印を出す
 //   post / board: [札の文, 小さな文]（道しるべ／二本脚の看板を立てる。札の向きは face）
@@ -286,46 +287,178 @@ const FIELD_ZONES = {
     ],
     map2d: [470, 236] },
 
-  woods: { ci: 1, name: 'まどろみの林', w: 58, d: 64, stage: '2-2', arenas: [[-6, 0, 0]], build: 'woods', bg: 'forest', groups: 5, chests: 3, crystals: 3,
-    world: true, arch: 'woods', chestAt: [[-20, -25], [24, 1], [14, 23]],
-    th: { fog: '#c8dcc8', fogD: 0.03 },
-    // 宿場から入ると、ねこ地蔵と広場。北の大きな木のうろまでは、西回り・東回りの二つの道。東の花の丘と南東の池は行き止まり
+  // まどろみの林：入口（たんぽぽの原）→ ねむり花の谷 → 大樹のうろ（parent：ワールドマップでは入口にまとめる）
+  //   どの区画にも「眠り」の仕掛けがある。綿毛（fluff。F でつかまると風に乗って飛ぶ）、ねむり花（nemuri。粉をはいているあいだに入ると眠ってしまう）、
+  //   ねぼけ歩きのタマ（sleepwalk。近づくと、次の場所へふらふら歩いていく）、眠っている子（naps）
+  woods: { ci: 1, name: 'まどろみの林', floor: '入口', w: 60, d: 76, stage: '2-2', arenas: [[2, 8, 0]], build: 'woods', bg: 'forest', groups: 5, chests: 3, crystals: 3,
+    world: true, arch: 'woods', chestAt: [[-15, -31], [16, -18], [23, 31]],
+    th: { fog: '#c8dcc8', fogD: 0.026 },
+    // 宿場から入ると、ねこ地蔵の広場。北のたんぽぽの原のまん中に、見上げるほど大きなたんぽぽ。原の北は「ねむり川」（丸木橋はこわれている）。
+    // 西の綿毛の丘（石段で上る）から綿毛につかまって川を越えると、北岸の林の奥への道。北岸の丘の綿毛で、原へ戻れる。
+    // 北岸の東の綿毛で川の中の小島へ、小島の綿毛で原の東へ。南東はすいれんの池（行き止まり）
     map: [
-      '#############################',
-      '#############################',
-      '#############################',
-      '###0000#######00000##########',
-      '##000000####0000000000#######',
-      '##00000,,,,,0000000000#######',
-      '###000##,##000000000000######',
-      '########,#0000000000000######',
-      '########,,000000000000000####',
-      '#########,,00000000000,,,####',
-      '##########,,0000000000##,,###',
-      '#######0000,,######,,,##,,###',
-      '######00000000#####,,####,,##',
-      '######000000000####,,####vv##',
-      '######000000000###,,###2222##',
-      '#######00000000##,,####22222#',
-      '#######00000000#,,#####22222#',
-      '######000000000,,######2222##',
-      'a,,,,,,000000000#######222###',
-      'a,,,,,,0000##################',
-      '#000000000,,,,,,,,,##########',
-      '#00000000#######,,,##########',
-      '#0000000########,,,00000#####',
-      '##00000#######0000~~~00000###',
-      '###000########000~~~~~00000##',
-      '##############00~~~~~000000##',
-      '##############0000~~~0000####',
-      '###############00000000######',
-      '##################0000#######',
-      '#############################',
-      '#############################',
-      '#############################',
+      '##############bb##############',
+      '#############,,,,#############',
+      '####2222####,,,,,,###00000####',
+      '###222222##,,,,,,,,#0000000###',
+      '###222222<<,,,,,,,,,00000000##',
+      '###222222<<,,,,,,,,,000000000#',
+      '####2222##00000000000000000###',
+      '#####222##000000000000000#####',
+      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
+      '~~~~~~~~~~~~~~~~~~~~000000~~~~',
+      '~~~~~~~~~~~~~~~~~~~~000000~~~~',
+      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
+      '##2222222###0000000000000#####',
+      '##2222222##000000000000000####',
+      '##2222222#00000000000000000###',
+      '###22222##000000000000000000##',
+      '####^^####000000000000000000##',
+      '###000000000000000000000000###',
+      '##0000000000000000000000000###',
+      '##00000000000000000000000000##',
+      '##00000000000000000000000000##',
+      '###0000000000000000000000000##',
+      '####00000000000000000000000###',
+      '#####000000000000000000000####',
+      '#######00000000000000000,,####',
+      '#########,,##00000####,,,#####',
+      '#########,,###########,,######',
+      '###00000#,,##########,,000####',
+      '##0000000,,,,,,,,,,,,,,00000##',
+      '##00000000,,,,,,,,,,,00~~~00##',
+      'a,,,,,0000000######,,0~~~~~0##',
+      'a,,,,,000000#######,00~~~~~00#',
+      '##00000000#########000~~~~000#',
+      '###000000##########0000~~0000#',
+      '####0000###########000000000##',
+      '#####00############0000000####',
+      '##############################',
+      '##############################',
     ],
-    anchor: [-18, 8], exits: [{ key: 'a', to: 'road_rest' }],
-    notes: [{ at: [4, -22.8], mark: [0, 1.3, -1.2], title: '大きな木のうろ', text: 'ふかふかの落ち葉がしきつめられている。誰かがここで眠っていたようだ。' }],
+    anchor: [-17, 25], spawn: [-25, 23], exits: [{ key: 'a', to: 'road_rest' }, { key: 'b', to: 'woods_valley' }],
+    fluff: [{ at: [-19, -11], to: [-1, -25] }, { at: [-21, -27], to: [-5, -7] }, { at: [23, -27], to: [20, -18] }, { at: [12, -18], to: [13, -9] }],
+    naps: [{ key: 'tama', name: '眠る子猫', at: [5, 1], y: 5.6, face: Math.PI, scene: 'c2_03', talk: ['……すぴー……。', '（綿毛のてっぺんで、気持ちよさそうに眠っている。……とどきそうにない）'] }],
+    areas: [{ name: 'まどろみの林・ねこ地蔵の広場', at: [-30, 16, -8, 38] }, { name: 'まどろみの林・たんぽぽの原', at: [-12, -14, 30, 16] }, { name: 'まどろみの林・綿毛の丘', at: [-26, -14, -12, 6] },
+      { name: 'まどろみの林・ねむり川の北岸', at: [-30, -38, 30, -22] }, { name: 'まどろみの林・川の中の小島', at: [10, -21, 22, -15] }, { name: 'まどろみの林・すいれんの池', at: [8, 16, 30, 38] }],
+    notes: [{ at: [1, -13], mark: [0, 1.2, -0.6], title: 'こわれた丸木橋', text: '川にかかっていた丸木橋。……まん中で、ぽっきり折れている。むこう岸へは、渡れそうにない。' },
+      { at: [-13, 19], face: 0.3, post: ['↑ たんぽぽの原', '← 街道の宿場'], title: '道しるべ', text: '「北　たんぽぽの原／西　街道の宿場」……下のほうに、小さく「ねむり川を越えるときは、綿毛で」と書き足してある。' },
+      { at: [5, 3.5], when: 'scene:c2_03', mark: [0, 3.2, -2.5], title: '綿毛の抜けた大たんぽぽ', text: '見上げるほど大きなたんぽぽ。……てっぺんの綿毛は、眠る子猫ごと、川のむこうへ飛んでいってしまった。' }],
+    map2d: [610, 236] },
+  woods_valley: { ci: 1, name: 'まどろみの林・ねむり花の谷', floor: '谷', parent: 'woods', w: 60, d: 80, stage: '2-2', after: 'c2_03', arenas: [[0, -28, 0], [14, 16, 0]], build: 'woodsValley', bg: 'forest', groups: 5, chests: 3, crystals: 3,
+    world: true, arch: 'woods', chestAt: [[-19, 15], [-23, -11], [21, -11]], foes: ['kinoko', 'karasu', 'noraInu'],
+    th: { fog: '#e0c8e0', fogD: 0.03 },
+    // 南の入口から、小川が谷をくだる花畑へ（板の橋で西の花畑へ）。花畑のまん中の大きなねむり花に、タマが綿毛ごと落ちていた。
+    // 北へは、ねむり花が道ばたに並ぶ「ねむり花の小道」。分かれ道から、北の小道（ねむり花が二つ）を抜けると林の奥への出口の広場。
+    // 東の石段を上った高台には、広場へ飛べる綿毛。西の小川の向こう（綿毛で渡る）は行き止まり
+    map: [
+      '##############cc##############',
+      '#############,,,,#############',
+      '#########000000000000#########',
+      '#######0000000000000000#######',
+      '######000000000000000000######',
+      '######000000000000000000######',
+      '#######0000000000000000#######',
+      '#########000000000000#########',
+      '#############,,,##############',
+      '############,,,###############',
+      '############,,################',
+      '~~~~~~####,,,,,,,,###2222#####',
+      '~~~~~~~##,,,,,,,,,>>222222####',
+      '#00~~~~##,,,,,,,,,>>2222222###',
+      '#000~~~~####,,,,####2222222###',
+      '#0000~~~~####,,#####222222####',
+      '##0000~~~~###,,,#####2222#####',
+      '####00~~~~####,,,#############',
+      '######~~~~~####,,,############',
+      '#######~~~~~####,,,###########',
+      '########~~~~~####,,###########',
+      '#########~~~~~###,,###########',
+      '##########~~~~0000000#########',
+      '#######0000~~~000000000#######',
+      '#####00000000=00000000000#####',
+      '####000000000~000000000000####',
+      '###0000000000~0000000000000###',
+      '###000000000~~00000000000000##',
+      '###00000000~~~0000000000000###',
+      '####000000~~~0000000000000####',
+      '#####0000~~~0000000000000#####',
+      '#######~~~~####0000000########',
+      '######~~~~######,,,###########',
+      '#####~~~~######,,,,,##########',
+      '####~~~~####000000000#########',
+      '###~~~~####00000000000########',
+      '##~~~~#####00000000000########',
+      '#~~~~#######000000000#########',
+      '~~~~##########,,,#############',
+      '~~~###########bb##############',
+    ],
+    anchor: [3, 31], exits: [{ key: 'b', to: 'woods' }, { key: 'c', to: 'woods_deep' }],
+    fluff: [{ at: [-9, -13], to: [-25, -11] }, { at: [-21, -9], to: [-7, -15] }, { at: [17, -15], to: [7, -28], h: 4 }],
+    nemuriAfter: 'c2_03g',
+    nemuri: [{ at: [7.6, 1], r: 2.4, ph: 0, back: [5, 5] }, { at: [0.6, -3], r: 2.4, ph: 0.3, back: [5, 5] }, { at: [-2.5, -7], r: 2.4, ph: 0.6, back: [5, 5] },
+      { at: [-5.6, -19], r: 2.2, ph: 0.15, back: [-3, -13] }, { at: [1.6, -23], r: 2.2, ph: 0.6, back: [-3, -13] }, { at: [13.4, -13], r: 2.2, ph: 0.45, back: [3, -15] }],
+    naps: [{ key: 'tama', name: '眠る子猫', at: [9, 9], y: 1.15, face: Math.PI, scene: 'c2_03g', talk: ['……すぴー……。', '（大きな花の中で、まるくなって眠っている）'] }],
+    areas: [{ name: 'ねむり花の谷・入口', at: [-12, 22, 18, 40] }, { name: 'ねむり花の谷・花畑', at: [-24, 4, 26, 22] }, { name: 'ねむり花の谷・ねむり花の小道', at: [-6, -10, 12, 4] },
+      { name: 'ねむり花の谷・分かれ道', at: [-12, -18, 8, -10] }, { name: 'ねむり花の谷・東の高台', at: [10, -18, 26, -4] }, { name: 'ねむり花の谷・小川のむこう', at: [-30, -14, -18, -2] }, { name: 'ねむり花の谷・北の広場', at: [-14, -40, 18, -24] }],
+    notes: [{ at: [-1, -11], face: 0.2, post: ['↑ 林の奥', '→ 高台　← 小川'], title: '道しるべ', text: '「北　林の奥／東　高台／西　小川」……「ねむり花がふくらんだら、息をとめて、しぼむまで待つこと」と書いてある。' },
+      { at: [9, 12], when: 'scene:c2_03g', mark: [0, 1.6, -3], title: '大きなねむり花', text: '人の背たけほどもある、大きなねむり花。……花びらの上に、綿毛がひとつ引っかかっている。' }],
+    map2d: [610, 236] },
+  woods_deep: { ci: 1, name: 'まどろみの林・大樹のうろ', floor: '奥', parent: 'woods', w: 60, d: 72, stage: '2-2', after: 'c2_03g', arenas: [[1, -20, 0], [-3, 8, 0]], build: 'woodsDeep', bg: 'forest', groups: 5, chests: 3, crystals: 3,
+    world: true, arch: 'woods', chestAt: [[-25, -11], [25, -11], [-11, 25]], foes: ['risu', 'kinoko', 'noraInu'],
+    th: { fog: '#c8d8b8', fogD: 0.03 },
+    // 南の入口から丸木橋で小川を渡ると、光るきのこの輪の広場。北の分かれ道から、ねむり花の小道を抜けると、林のいちばん奥の大樹の広場
+    // （大樹のうろは、リスたちのどんぐり倉）。西はリスの村（行き止まり）、東の石段の高台には、大樹の広場へ飛べる綿毛
+    map: [
+      '##############################',
+      '##############################',
+      '##########0000000000##########',
+      '########00000000000000########',
+      '#######0000000000000000#######',
+      '######000000000000000000######',
+      '######000000000000000000######',
+      '######000000000000000000######',
+      '#######0000000000000000#######',
+      '##000####000000000000#########',
+      '#00000#######,,,,#############',
+      '#000000#######,,,######22222##',
+      '#0000000######,,,#####2222222#',
+      '##000000,######,,,####2222222#',
+      '###0000,,,#####,,,####2222222#',
+      '########,,,,,,,,,,,>>222222###',
+      '#########,,,,,,,,,,>>22222####',
+      '##########,,,#################',
+      '########00000000000###########',
+      '######000000000000000#########',
+      '#####00000000000000000########',
+      '#####00000000000000000########',
+      '######000000000000000#########',
+      '########0000000000000#########',
+      '~~~~~~~~~~~~~~==~~~~~~~~~~~~~~',
+      '~~~~~~~~~~~~~~==~~~~~~~~~~~~~~',
+      '##########000000000000########',
+      '#########00000000000000#######',
+      '########0000000000000000######',
+      '########0000000000000000######',
+      '#########00000000000000#######',
+      '##########000000000000########',
+      '############000000############',
+      '#############,,,,#############',
+      '#############,,,,#############',
+      '##############cc##############',
+    ],
+    anchor: [1, 23], exits: [{ key: 'c', to: 'woods_valley' }],
+    fluff: [{ at: [21, -7], to: [14, -22], h: 4 }],
+    nemuriAfter: 'c2_03g',
+    nemuri: [{ at: [-1.5, -11], r: 2.3, ph: 0, back: [0, -5] }, { at: [3.6, -15], r: 2.2, ph: 0.5, back: [0, -5] }, { at: [-13, -8], r: 2.2, ph: 0.25, back: [-6, -5] }, { at: [13.4, -4], r: 2.2, ph: 0.7, back: [6, -4] }],
+    sleepwalk: { key: 'tama', name: 'ねぼけた子猫', scene: 'c2_03h', near: 6.5, route: [[1, 18], [1, 12], [-6, 7], [-5, 0], [2, -4], [3, -9], [1, -15], [1, -24]],
+      lines: ['……むにゃ……はし……わたる……', '……きのこ……ひかってる……', '……こっち……あったかい……', '……むにゃ……', '……いいにおいの、はな……', '……ふわぁ……', '……おおきな、き……'],
+      end: 'ねぼけ歩きの子猫は、大きな木の前で、ころんと丸くなった……',
+      talk: ['……むにゃ……。', '（ねぼけて歩いている。……目は、しっかり閉じたままだ）'] },
+    areas: [{ name: '大樹のうろ・入口', at: [-12, 16, 18, 36] }, { name: '大樹のうろ・光るきのこの広場', at: [-20, 0, 16, 12] }, { name: '大樹のうろ・リスの村', at: [-30, -18, -10, -6] },
+      { name: '大樹のうろ・東の高台', at: [12, -14, 30, 0] }, { name: '大樹のうろ・大樹の広場', at: [-18, -36, 20, -16] }],
+    notes: [{ at: [1, -24.6], mark: [0, 2.2, -2.4], title: '大樹のうろ', text: 'ぽっかりと開いた、大きな木のうろ。……中には、どんぐりが山のようにつまっている。' },
+      { at: [-19, -12], mark: 1.6, title: 'リスの村のどんぐり', text: '「ふゆのたくわえ　たりない」……小さな字の立て札と、からっぽのどんぐりのかご。' }],
     map2d: [610, 236] },
 
   road2: { ci: 1, name: '街道の関所あと', w: 54, d: 72, stage: '2-4', arenas: [[0, 4, 0]], build: 'checkpoint', groups: 5, chests: 3, crystals: 3,
@@ -1532,7 +1665,7 @@ prepareMapZones(FIELD_ZONES);
 // 章ごとの区画（先頭が到着地点）
 const CHAPTER_ZONES = [
   ['pokapoka', 'hill', 'forest_in', 'forest_deep', 'rat_nest'],
-  ['road1', 'road_rest', 'woods', 'road2'],
+  ['road1', 'road_rest', 'woods', 'woods_valley', 'woods_deep', 'road2'],
   ['nyahaha', 'castle', 'castle_in', 'tower', 'tower_2f', 'tower_3f', 'tower_top'],
   ['valley', 'valley_village', 'cave', 'cave_lake', 'cave_deep'],
   ['ruins_out', 'ruins_in'],
@@ -1587,6 +1720,56 @@ function storyCond(cond) {
   if (k === 'flag') return !!(Save.data.flags || {})[v];
   if (k === 'done') return typeof Story !== 'undefined' && Story.done();
   return false;
+}
+
+// ---------------- まどろみの林の小物（探索・会話シーンで共用） ----------------
+// 綿毛の玉（たんぽぽの種の集まり）：放射状の細い毛の先に白い冠毛、うっすら光る外側。s で大きさ（半径 0.62 × s）
+let PUFF_GEO = null;
+function makePuff(s = 1) {
+  if (!PUFF_GEO) {
+    const parts = [], hair = new THREE.CylinderGeometry(0.008, 0.008, 0.55, 3), tip = new THREE.SphereGeometry(0.05, 6, 4), up = V3(0, 1, 0), q = new THREE.Quaternion(), M = new THREE.Matrix4();
+    for (let i = 0; i < 56; i++) {
+      const y = 1 - (i + 0.5) / 56 * 2, r = Math.sqrt(1 - y * y), a = i * 2.39996, dir = V3(Math.cos(a) * r, y, Math.sin(a) * r);
+      q.setFromUnitVectors(up, dir);
+      parts.push(hair.clone().applyMatrix4(M.compose(dir.clone().multiplyScalar(0.3), q, V3(1, 1, 1))));
+      parts.push(tip.clone().applyMatrix4(M.makeTranslation(dir.x * 0.58, dir.y * 0.58, dir.z * 0.58)));
+    }
+    PUFF_GEO = THREEX.BufferGeometryUtils.mergeGeometries(parts);
+  }
+  const g = new THREE.Group();
+  const hairs = new THREE.Mesh(PUFF_GEO.clone(), new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#fff8e8', emissiveIntensity: 0.45, roughness: 1 }));
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 12), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.22, depthWrite: false }));
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshStandardMaterial({ color: '#c8b070', roughness: 1 }));
+  g.add(hairs, shell, core); g.scale.setScalar(s);
+  return g;
+}
+// ねむり花の周期：閉じている → ふくらむ（あぶない合図）→ 粉をはく。ph は花ごとのずれ（0〜1）
+const NEMURI_CYCLE = 5.4;
+function nemuriState(t, ph) {
+  const c = (((t / NEMURI_CYCLE + ph) % 1) + 1) % 1 * NEMURI_CYCLE;
+  if (c < 2.6) return { st: 'closed', k: c / 2.6 };
+  if (c < 3.5) return { st: 'swell', k: (c - 2.6) / 0.9 };
+  return { st: 'puff', k: (c - 3.5) / 1.9 };
+}
+// 寝息の「Z」：ふわふわ浮かんで消える文字（fx は VFX）
+function zzzTex() {
+  if (TexCache.zzz) return TexCache.zzz;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  g.font = '900 52px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 8; g.strokeStyle = '#3a4a8a'; g.strokeText('Z', 32, 34); g.fillStyle = '#e8f0ff'; g.fillText('Z', 32, 34);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (TexCache.zzz = t);
+}
+function floatZ(fx, pos, s = 0.32) {
+  const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: zzzTex(), transparent: true, depthWrite: false })), x0 = pos.x, y0 = pos.y, z0 = pos.z, sw = Math.random() * 6;
+  m.position.copy(pos); m.renderOrder = 12; m.scale.setScalar(s * 0.5);
+  // 共有のテクスチャを消さないよう、消えるときは材質だけ捨てる
+  fx.add(m, 1.8, (k, o) => { o.position.set(x0 + Math.sin(k * 5 + sw) * 0.18 + k * 0.3, y0 + k * 0.9, z0); o.scale.setScalar(s * (0.5 + k * 0.7)); o.material.opacity = k < 0.2 ? k / 0.2 : 1 - (k - 0.2) / 0.8; if (k >= 1) o.material.map = null; });
+}
+
+// いま物語で向かっている、フィールドの段階（なければ null）
+function storyStep() {
+  const cur = typeof Story !== 'undefined' ? Story.current() : null;
+  return cur && cur.step.t === 'field' ? cur.step : null;
 }
 
 // 世界の果てへのびる樹の根（暗い奈落でも木の根と分かるよう、少しだけ自らほの明るい）
@@ -2231,6 +2414,115 @@ class ZoneKit {
       return { B, pos: V3(x, y, z), to: V3(tx, this.gy(tx, tz), tz), g, mat, armed: true };
     }));
   }
+  // ---------------- 仕掛け：まどろみの林（綿毛・ねむり花） ----------------
+  // たんぽぽ：葉のロゼットと細い茎、てっぺんに綿毛の玉（makePuff）。s で大きさ、bald で綿毛の抜けたあと
+  dandelion(x, z, s = 1, o = {}) {
+    const y = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y + (o.y || 0), z); this.scene.add(g);
+    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2 + this.r(), lf = new THREE.Mesh(new THREE.ConeGeometry(0.16 * s, 0.9 * s, 4), this.M('#5aa84a')); lf.scale.z = 0.25; lf.position.set(Math.cos(a) * 0.38 * s, 0.08 * s, Math.sin(a) * 0.38 * s); lf.rotation.set(0, -a, Math.PI / 2 - 0.25); lf.rotation.order = 'YZX'; g.add(lf); }
+    const h = 1.7 * s, stem = new THREE.Mesh(new THREE.CylinderGeometry(0.045 * s, 0.07 * s, h, 6), this.M('#6ab050')); stem.position.y = h / 2; g.add(stem);
+    const top = new THREE.Group(); top.position.y = h; g.add(top);
+    const cup = new THREE.Mesh(new THREE.SphereGeometry(0.12 * s, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), this.M('#6ab050')); top.add(cup);
+    let head = null;
+    if (!o.bald) { head = makePuff(s); head.position.y = 0.55 * s; top.add(head); }
+    if (o.col !== false) this.col(x, z, 0.25 * s, h);
+    const ph = this.r() * 6; this.tick((dt, t) => { top.rotation.z = Math.sin(t * 0.9 + ph) * 0.05; top.rotation.x = Math.sin(t * 0.7 + ph * 2) * 0.04; if (head) head.rotation.y += dt * 0.15; });
+    return { g, top, head, h };
+  }
+  // zone.fluff：[{ at: [x, z], to: [x, z], h }]：綿毛（大きなたんぽぽ。F でつかまると、風に乗って to へ飛ぶ。FieldView.glide）
+  //   綿毛は飛ぶたびに抜けて、しばらくすると、また生えてくる。跳ぶ先には白い輪
+  fluffs() {
+    return (this.v.fluffObjs = (this.zone.fluff || []).map(B => {
+      const [x, z] = B.at, D = this.dandelion(x, z, 1.35);
+      const [tx, tz] = B.to, mark = this.mesh(new THREE.RingGeometry(0.55, 0.7, 24), this.glow('#ffffff', 0.9), tx, 0.04, tz, { rx: -Math.PI / 2, noShadow: true });
+      mark.material = mark.material.clone(); mark.material.transparent = true; mark.material.opacity = 0.3;
+      this.reserve(x, z, 1.6); this.reserve(tx, tz, 1.2);
+      const o = { B, pos: V3(x, this.gy(x, z), z), to: V3(tx, this.gy(tx, tz), tz), h: B.h, ready: true, grow: 1, D };
+      // つかむと綿毛の玉が抜ける（飛ぶ間は、つかんだ子の頭の上へ）。抜けたあとは少しずつ生えなおす
+      o.pluck = () => { o.ready = false; o.grow = 0; D.head.scale.setScalar(0.001); return makePuff(1.35); };
+      this.tick((dt, t) => {
+        if (o.grow < 1) { o.grow = Math.min(1, o.grow + dt / 3.5); D.head.scale.setScalar(Math.max(0.001, Ease.out(o.grow))); if (o.grow >= 1) o.ready = true; }
+        mark.scale.setScalar(0.9 + Math.sin(t * 2.4) * 0.1);
+      });
+      return o;
+    }));
+  }
+  // zone.nemuri：[{ at: [x, z], r, ph, back: [x, z] }]：ねむり花。閉じる → ふくらむ（あぶない合図）→ まわり r m に眠りの粉をはく
+  //   粉をはいているあいだに入ると、一行は眠ってしまい back で目をさます（FieldView.updateNemuri）。粉を吸った敵も眠る
+  //   zone.nemuriAfter のシーンを見るまでは、つぼみのまま眠っている
+  nemuri() {
+    const awake = !this.zone.nemuriAfter || storyCond('scene:' + this.zone.nemuriAfter), kit = this;
+    return (this.v.nemuriObjs = (this.zone.nemuri || []).map((N, idx) => {
+      const [x, z] = N.at, y = this.gy(x, z), r = N.r || 2.6, ph = N.ph ?? (idx * 0.37) % 1;
+      const F = this.sleepFlower(x, z, 1.3);
+      // 粉の雲（桃色のもやの丸屋根と、光）と、粉のとどく範囲の輪（ふくらむと点滅する）
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffb8e8', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
+      dome.position.set(x, y, z); dome.renderOrder = 3; this.scene.add(dome);
+      const cloud = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ff9ad8', 0.8), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
+      cloud.position.set(x, y + 1.6, z); cloud.renderOrder = 3; this.scene.add(cloud);
+      const ring = this.mesh(new THREE.RingGeometry(r - 0.25, r, 48), this.glow('#ff7ac8', 1.6), x, 0.06, z, { rx: -Math.PI / 2, noShadow: true });
+      ring.material = ring.material.clone(); ring.material.transparent = true; ring.material.opacity = 0; ring.material.depthWrite = false;
+      const o = { N, pos: V3(x, y, z), r, ph, awake, back: N.back ? V3(N.back[0], this.gy(N.back[0], N.back[1]), N.back[1]) : null };
+      o.state = t => awake ? nemuriState(t, ph) : { st: 'closed', k: 0 };
+      this.tick((dt, t) => {
+        const S = o.state(t);
+        let open = 0, swell = 0, cl = 0, dm = 0, rg = awake ? 0.2 : 0;
+        if (S.st === 'swell') { swell = S.k; cl = 0.15 * S.k; rg = 0.3 + 0.5 * S.k * (0.5 + 0.5 * Math.sin(t * 22)); }
+        else if (S.st === 'puff') {
+          const fade = S.k > 0.8 ? 1 - (S.k - 0.8) / 0.2 : 1;
+          open = Math.min(1, S.k / 0.1) * fade; cl = 0.6 * fade; dm = 0.3 * fade * Math.min(1, S.k / 0.12); rg = 0.75 * fade;
+        }
+        F.set(open, swell, t);
+        cloud.material.opacity = cl; cloud.scale.setScalar(S.st === 'puff' ? r * 1.8 : 1.4 + swell * 1.4);
+        dome.material.opacity = dm; dome.scale.set(r, r * 0.6 * (0.8 + 0.2 * Math.sin(t * 3)), r);
+        ring.material.opacity = rg;
+        if (S.st === 'puff' && S.k < 0.8 && kit.v.p && Math.random() < dt * 50) {
+          const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * r;
+          kit.v.p.emit(V3(x + Math.cos(a) * d, y + 0.2 + Math.random() * 1.8, z + Math.sin(a) * d), V3((Math.random() - 0.5) * 0.4, 0.25, (Math.random() - 0.5) * 0.4), hdr(pick(['#ff9ad8', '#ffc8ec', '#e8b8ff']), 1.6), { life: 1.6, size: 0.16, drag: 0.8 });
+        }
+        if (!awake && kit.v.p && Math.random() < dt * 0.4) kit.v.p.emit(V3(x, y + 2.3, z), V3(0.1, 0.3, 0), hdr('#ffd8f0', 1.2), { life: 1.5, size: 0.08, drag: 0.5 });
+      });
+      return o;
+    }));
+  }
+  // ねむり花の見た目：葉と茎と、六枚の花びら（set(open, swell) で開き具合・ふくらみ）。s で大きさ
+  sleepFlower(x, z, s = 1, o = {}) {
+    const y = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = this.r() * 6; this.scene.add(g);
+    for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 + 0.4, lf = new THREE.Mesh(new THREE.SphereGeometry(0.5 * s, 10, 6), this.M('#4a9a4a')); lf.scale.set(0.38, 0.08, 1); lf.position.set(Math.cos(a) * 0.45 * s, 0.1 * s, Math.sin(a) * 0.45 * s); lf.rotation.set(0.25, Math.PI / 2 - a, 0); g.add(lf); }
+    const h = (o.h ?? 1.35) * s, stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * s, 0.09 * s, h, 6), this.M('#5aa04a')); stem.position.y = h / 2; g.add(stem);
+    const head = new THREE.Group(); head.position.y = h + 0.05 * s; g.add(head);
+    const cup = new THREE.Mesh(new THREE.SphereGeometry(0.22 * s, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), this.M('#5aa04a')); head.add(cup);
+    const petals = [];
+    for (let i = 0; i < 6; i++) {
+      const pv = new THREE.Group(); pv.rotation.y = i / 6 * Math.PI * 2; head.add(pv);
+      const pm = new THREE.Mesh(new THREE.SphereGeometry(0.3 * s, 10, 8), this.M(i % 2 ? '#e8a0e0' : o.col || '#f4bce8')); pm.scale.set(0.75, 1.35, 0.35); pm.position.set(0, 0.36 * s, 0.1 * s); pv.add(pm);
+      petals.push(pv);
+    }
+    const heart = new THREE.Mesh(new THREE.SphereGeometry(0.17 * s, 12, 8), this.glow('#ffd8f0', 1.1)); heart.position.y = 0.16 * s; head.add(heart);
+    if (o.col !== false) this.col(x, z, 0.3 * s, h);
+    // open：0 = つぼみ、1 = 大きく開く。swell：ふくらんでふるえる（粉をはく前ぶれ）
+    const set = (open, swell, t) => {
+      petals.forEach(pv => { pv.children[0].rotation.x = lerp(-0.12, 1.15, open); pv.children[0].position.z = lerp(0.1, 0.22, open) * s; });
+      head.scale.setScalar(1 + swell * 0.35 + open * 0.1);
+      head.rotation.z = swell ? Math.sin(t * 38) * 0.06 * swell : 0;
+      heart.scale.setScalar(1 + open * 0.6);
+    };
+    set(o.open || 0, 0, 0);
+    return { g, head, set };
+  }
+  // 足あと：点を結ぶ道すじに、右・左と小さな肉球の足あと（ほんのり光る）
+  pawPrints(pts, col = '#ffe8a0') {
+    const acc = this.batch(this.glow(col, 0.9));
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, z0] = pts[i - 1], [x1, z1] = pts[i], len = Math.hypot(x1 - x0, z1 - z0), n = Math.floor(len / 0.8);
+      const fx = (x1 - x0) / len, fz = (z1 - z0) / len, nx = -fz, nz = fx;
+      for (let k = 0; k < n; k++) {
+        const f = (k + 0.5) / n, side = (k % 2 ? 1 : -1) * 0.16, wob = Math.sin(k * 1.7 + i) * 0.22;   // ねぼけて、右へ左へよろけている
+        const x = lerp(x0, x1, f) + nx * (side + wob), z = lerp(z0, z1, f) + nz * (side + wob), y = this.gy(x, z) + 0.03;
+        acc.box(x - 0.07, y, z - 0.06, x + 0.07, y + 0.015, z + 0.06);
+        for (const [a, b] of [[-0.08, 0.1], [0, 0.13], [0.08, 0.1]]) { const tx = x + nx * a + fx * b, tz = z + nz * a + fz * b; acc.box(tx - 0.03, y, tz - 0.03, tx + 0.03, y + 0.015, tz + 0.03); }
+      }
+    }
+  }
   // ---------------- 自然 ----------------
   roundTree(x, z, s = 1, leaf = 'leaf', o = {}) {
     this.cyl(x, z, 0.22 * s, 1.8 * s, 'bark', { r2: 0.16 * s, seg: 7, col: o.col });
@@ -2866,16 +3158,70 @@ const ZONE_BUILD = {
     if (storyCond('scene:c2_02')) for (let i = 0; i < 6; i++) { const f = K.mesh(new THREE.SphereGeometry(0.14, 8, 6), '#8ab8d8', 2 + K.r() * 3, 0.1, 3 + K.r() * 3, { ry: K.r() * 3 }); f.scale.set(0.5, 0.5, 2); }
     K.fill('road');
   },
-  // まどろみの林：タマが眠っていた大きな木のうろ、舞う綿毛、花の丘、南東の池
+  // まどろみの林・入口：たんぽぽの原と、見上げるほど大きなたんぽぽ（タマが綿毛のてっぺんで眠っていた）、綿毛の丘、ねむり川とこわれた丸木橋、すいれんの池
   woods(K) {
-    K.flora({ trees: [['round', 3], ['pine', 1]], leaf: ['#7ac85a', '#8ad06a', '#6abf52'], bush: 0.8, flower: ['#ffffff', '#fff8c8'] });
-    K.bigTree(4, -26, 1.3, 'leaf', '#fff0a8');
-    const hol = K.mesh(new THREE.CircleGeometry(1.2, 20), 'wood2', 4, 1.2, -24.2, { noShadow: true }); hol.scale.y = 1.2;
-    for (let i = 0; i < 20; i++) K.mesh(new THREE.SphereGeometry(0.12, 6, 4), pick(['#e8a040', '#d8783a', '#f0c060']), 4 + (K.r() - 0.5) * 3, 0.05, -21.5 + (K.r() - 0.5) * 2, { noShadow: true }).scale.y = 0.3;
-    K.flowers(-2, -22, 12, 2, ['#ffffff', '#fff8c8']); K.flowers(22, -2, 18, 2.5, ['#ffb8d8', '#ffffff', '#fff8c8']); K.flowers(-20, 10, 10, 2, ['#ffffff']);
-    for (let i = 0; i < 6; i++) K.mesh(new THREE.CircleGeometry(0.4, 10), 'leaf2', 6 + K.r() * 6, 0.03, 16 + K.r() * 4, { rx: -Math.PI / 2, noShadow: true });
-    K.log(-10, -8, 2.6, 1.2);
-    K.v.emitters.push(dt => { if (Math.random() < dt * 8) K.v.p.emit(V3((Math.random() - 0.5) * 40, 0.5 + Math.random(), (Math.random() - 0.5) * 50), V3(0.3, 0.2, 0), hdr('#ffffff', 1.2), { life: 5, size: 0.06, drag: 0 }); });
+    K.flora({ trees: [['round', 3], ['pine', 1]], leaf: ['#7ac85a', '#8ad06a', '#6abf52'], bush: 0.8, flower: ['#ffffff', '#fff8c8', '#ffe07a'] });
+    K.fluffs();
+    // 大たんぽぽ：物語で綿毛ごと飛んでいったあとは、茎だけ。会話シーンでは fx: 'fluff' で綿毛が抜ける（hooks.pluckBig）
+    const big = K.dandelion(5, 1, 2, { bald: storyCond('scene:c2_03') });
+    if (big.head && K.v.hooks) K.v.hooks.pluckBig = function () { big.head.visible = false; this.p.burst(big.head.getWorldPosition(V3()), '#ffffff', 90, { speed: 3, up: 1, life: 2.2, size: 0.08, drag: 0.8 }); };
+    // たんぽぽの原：黄色い花と小さな綿毛
+    for (let i = 0, n = 0; i < 80 && n < 12; i++) {
+      const x = -10 + K.r() * 30, z = -8 + K.r() * 20;
+      if (!K.T.fits(x, z, 0.5) || K.near(x, z, 1.2) || Math.hypot(x - 5, z - 1) < 3.5) continue;
+      K.dandelion(x, z, 0.35 + K.r() * 0.2, { col: false }); n++;
+    }
+    for (const [x, z] of [[-6, -4], [12, -6], [16, 6], [-2, 10], [20, -2], [0, 4], [10, 10]]) K.flowers(x, z, 14, 2.2, ['#ffd84a', '#ffe07a', '#ffffff']);
+    K.flowers(-18, -10, 12, 2.5, ['#ffd84a', '#ffffff']); K.flowers(-19, -28, 10, 2.2, ['#ffd84a', '#ffffff']);
+    // こわれた丸木橋：両岸の杭と、川に落ちた丸太
+    for (const z of [-13.4, -22.6]) for (const x of [0, 2]) K.cyl(x, z, 0.14, 0.9, 'bark', { seg: 6, col: false });
+    K.mesh(new THREE.CylinderGeometry(0.3, 0.32, 4.2, 10), 'bark', 1, -0.15, -15.4, { rx: Math.PI / 2 + 0.25, rz: 0.1 });
+    K.mesh(new THREE.CylinderGeometry(0.3, 0.32, 3.6, 10), 'bark', 1.4, -0.2, -20.4, { rx: Math.PI / 2 - 0.3, rz: -0.15 });
+    // ねこ地蔵の広場とすいれんの池
+    K.log(-10, 30, 2.4, 0.3); K.stoneLantern(-13, 22);
+    for (let i = 0; i < 9; i++) { const a = K.r() * 6, d = K.r() * 3.2, x = 18.5 + Math.cos(a) * d, z = 25 + Math.sin(a) * d * 1.3; const pad = K.mesh(new THREE.CircleGeometry(0.35 + K.r() * 0.25, 12, 0.3, Math.PI * 1.85), 'leaf2', x, 0.06, z, { rx: -Math.PI / 2, noShadow: true }); pad.rotation.z = K.r() * 6; if (i % 3 === 0) K.mesh(new THREE.SphereGeometry(0.12, 8, 6), '#ffb8d8', x, 0.14, z, { noShadow: true }); }
+    K.flowers(24, 32, 14, 2.5, ['#ffb8d8', '#ffffff', '#fff8c8']);
+    // 舞う綿毛
+    K.v.emitters.push(dt => { if (Math.random() < dt * 10) K.v.p.emit(V3((Math.random() - 0.5) * 50, 0.5 + Math.random() * 2, (Math.random() - 0.5) * 60), V3(0.4, 0.25, -0.15), hdr('#ffffff', 1.2), { life: 6, size: 0.06, drag: 0 }); });
+  },
+  // まどろみの林・ねむり花の谷：谷をくだる小川、花畑の大きなねむり花（タマが綿毛ごと落ちた）、ねむり花の小道、東の高台
+  woodsValley(K) {
+    K.flora({ trees: [['round', 2], ['pine', 2], ['mush', 0.4]], leaf: ['#6ab85a', '#7ac06a', '#5aa850'], caps: ['#e8a0e0', '#b88aff'], bush: 0.85, flower: ['#f4bce8', '#ffffff'] });
+    K.fluffs(); K.nemuri();
+    // 大きなねむり花：タマが綿毛ごと落ちて、眠っていた。見終えたあとは、花びらに綿毛がひとつ引っかかっている
+    const big = K.sleepFlower(9, 9, 2.2, { h: 0.3, open: 1 });
+    if (storyCond('scene:c2_03g')) { const p = makePuff(0.7); p.position.set(10.2, K.gy(9, 9) + 1.5, 9.4); K.scene.add(p); }
+    if (K.v.hooks) K.v.hooks.bigBloom = function () { big.set(1, 0, 0); };
+    // 花畑：眠っている小さなねむり花（仕掛けではない）と、桃色の花
+    for (const [x, z, s] of [[-14, 13, 0.9], [-9, 20, 0.8], [-18, 18, 1], [3, 20, 0.8], [18, 14, 0.9], [20, 21, 0.85], [-3, 13, 0.75]]) K.sleepFlower(x, z, s, { open: 0.2 });
+    for (const [x, z] of [[4, 12], [14, 10], [-12, 16], [12, 18], [-6, 22], [18, 24]]) K.flowers(x, z, 14, 2.4, ['#f4bce8', '#ffffff', '#e8a0e0']);
+    K.flowers(0, -30, 14, 3, ['#f4bce8', '#ffffff']); K.flowers(-24, -8, 10, 1.6, ['#ffffff', '#fff8c8']); K.flowers(22, -12, 10, 1.6, ['#f4bce8', '#ffffff']);
+    K.log(-6, 34, 2.2, 0.6); K.stoneLantern(-1, 29);
+    // ねぼけ歩きの足あと：大きなねむり花から北の出口まで（物語でタマを追っているあいだ）
+    const now = storyStep();
+    if (now && now.scene === 'c2_03h') K.pawPrints([[8, 7], [7, 3], [7.4, 0], [4, -3], [1.5, -5], [0, -9], [-1, -13], [-3, -16], [-3, -19], [-1, -23], [0, -27], [0, -33], [0, -38]]);
+    // 谷にただよう、眠りの粉
+    K.v.emitters.push(dt => { if (Math.random() < dt * 6) K.v.p.emit(V3((Math.random() - 0.5) * 50, 0.4 + Math.random() * 2.5, (Math.random() - 0.5) * 70), V3(0.1, 0.12, 0), hdr(pick(['#ffc8ec', '#e8b8ff', '#ffffff']), 1.3), { life: 6, size: 0.06, drag: 0 }); });
+  },
+  // まどろみの林・大樹のうろ：林のいちばん奥の大樹（うろはリスたちのどんぐり倉）、光るきのこの輪、丸木橋の小川、西のリスの村、東の高台
+  woodsDeep(K) {
+    K.flora({ trees: [['round', 3], ['pine', 2], ['mush', 0.5]], leaf: ['#4a9a3e', '#5aa84a', '#3f8a3a'], caps: ['#ffb84a', '#e05a6a'], bush: 0.85, flower: ['#fff4a8', '#ffffff'] });
+    K.fluffs(); K.nemuri();
+    // 大樹と、ぽっかり開いたうろ（中はどんぐりの山）
+    K.bigTree(1, -29.5, 1.7, 'leaf', '#fff0a8');
+    const hol = K.mesh(new THREE.CircleGeometry(1.2, 20), '#2a1a10', 1, 1.9, -27.2, { noShadow: true }); hol.scale.y = 1.35;
+    for (let i = 0; i < 10; i++) K.mesh(new THREE.SphereGeometry(0.2, 8, 6), 'wood', 1 + (K.r() - 0.5) * 1.6, 1.2 + K.r() * 0.3, -27.4 - K.r() * 0.3, { noShadow: true }).scale.y = 1.2;
+    K.acorns(1, -25.8, 10); K.acorns(-2.2, -26.2, 6); K.acorns(4.2, -26.3, 6);
+    for (let i = 0; i < 24; i++) K.mesh(new THREE.SphereGeometry(0.12, 6, 4), pick(['#e8a040', '#d8783a', '#f0c060']), 1 + (K.r() - 0.5) * 12, 0.05, -22 + (K.r() - 0.5) * 6, { noShadow: true }).scale.y = 0.3;
+    // リスの村：どんぐり型の家と、どんぐりのかご
+    for (const [x, z, s] of [[-24, -15, 0.8], [-20, -17, 0.7], [-26, -9, 0.75]]) K.ratHouse(x, z, s, Math.atan2(-15 - x, -10 - z));
+    K.acorns(-17, -10, 5); K.cyl(-19, -11.5, 0.45, 0.4, 'wood2', { seg: 10, open: true });
+    // 光るきのこの輪
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; K.mushroom(-4 + Math.cos(a) * 3, 6 + Math.sin(a) * 2.6, 0.7, null, '#8affc8'); }
+    K.v.emitters.push(dt => { if (Math.random() < dt * 6) K.v.p.emit(V3(-4 + (Math.random() - 0.5) * 5, K.gy(-4, 6) + 0.4, 6 + (Math.random() - 0.5) * 4), V3(0, 0.6, 0), hdr('#8affc8', 2), { life: 2.4, size: 0.08, drag: 0 }); });
+    K.flowers(-14, 6, 10, 2, ['#fff4a8', '#ffffff']); K.flowers(8, 4, 10, 2, ['#fff4a8', '#ffffff']);
+    K.log(-8, 28, 2.4, 0.4); K.stoneLantern(5, 28);
+    K.cyl(24, -5, 0.8, 0.5, 'bark', { seg: 10 }); K.flowers(22, -9, 10, 1.8, ['#ffd84a', '#ffffff']);
   },
   // 街道の関所あと：岩山の切り通し、こわれた門、東の野営あと
   checkpoint(K) {

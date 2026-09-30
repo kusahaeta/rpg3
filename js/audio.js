@@ -48,6 +48,10 @@ const Sfx = {
   boing() { this.tone(150, 0.12, 'sine', 0.14, 260); this.tone(420, 0.45, 'sine', 0.1, -260, 0.1); this.tone(640, 0.3, 'triangle', 0.03, -300, 0.14); },
   boo() { this.tone(118, 0.6, 'sawtooth', 0.08, -52); this.tone(92, 0.55, 'square', 0.035, -30, 0.04); this.noise(0.5, 0.07, 280); },
   laugh() { [660, 600, 560, 520, 480, 450].forEach((f, i) => { this.tone(f, 0.11, 'sawtooth', 0.045, -90, i * 0.13); this.noise(0.06, 0.05, 1800, i * 0.13); }); },
+  // まどろみの林：綿毛につかまる（ふわっと風の音）・ねむり花が粉をはく・寝息
+  fluff() { this.noise(1.2, 0.06, 2600); this.tone(660, 0.7, 'sine', 0.035, 330); this.tone(990, 0.6, 'sine', 0.025, 260, 0.12); },
+  puff() { this.noise(0.9, 0.07, 650); this.tone(520, 0.8, 'sine', 0.025, -260); this.tone(780, 0.6, 'triangle', 0.015, -300, 0.1); },
+  snore() { [0, 0.9].forEach(t => { this.noise(0.5, 0.05, 420, t); this.tone(150, 0.45, 'sawtooth', 0.025, -50, t); this.tone(420, 0.35, 'sine', 0.02, 180, t + 0.5); }); },
   pop() { this.noise(0.1, 0.3, 4200); this.tone(260, 0.25, 'square', 0.06, 900); this.boing(); },
   // にゃー（キャラごとに声の高さが違う）
   meow(key) {

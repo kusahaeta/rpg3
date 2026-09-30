@@ -328,9 +328,9 @@ class Terrain {
     this.reach = reach;
     if (start < 0 || !this.isWalkKind(this.kind[start])) return;
     const q = [start]; reach[start] = 1;
-    // トランポリン（zone.bounce）：乗ったマスから、跳んだ先のマスへつながる
+    // トランポリン（zone.bounce）・綿毛（zone.fluff）：乗った（つかまった）マスから、跳んだ先のマスへつながる
     const jumps = new Map();
-    for (const B of this.zone.bounce || []) { const i = this.at(B.at[0], B.at[1]), j = this.at(B.to[0], B.to[1]); if (i >= 0 && j >= 0) jumps.set(i, [...(jumps.get(i) || []), j]); }
+    for (const B of [...(this.zone.bounce || []), ...(this.zone.fluff || [])]) { const i = this.at(B.at[0], B.at[1]), j = this.at(B.to[0], B.to[1]); if (i >= 0 && j >= 0) jumps.set(i, [...(jumps.get(i) || []), j]); }
     const edgeH = (i, j) => {
       const ci = this.colOf(i), ri = this.rowOf(i), cj = this.colOf(j), rj = this.rowOf(j);
       const mx = (this.cx(ci) + this.cx(cj)) / 2, mz = (this.cz(ri) + this.cz(rj)) / 2;
