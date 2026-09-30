@@ -45,6 +45,9 @@ function floaties() {
   };
   resize(); window.addEventListener('resize', resize);
   const tick = () => {
+    requestAnimationFrame(tick);
+    // 省エネのときは、3D を出している間は止めておく（ほとんど隠れている）
+    if (GFX.eco && GFX.view) return;
     ctx.clearRect(0, 0, w, h);
     for (const d of dots) {
       d.p += d.s; d.y -= d.v; d.x += Math.sin(d.p) * 0.3; if (d.y < -5) { d.y = h + 5; d.x = Math.random() * w; }
@@ -52,7 +55,6 @@ function floaties() {
       ctx.fillStyle = d.c;
       ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
     }
-    requestAnimationFrame(tick);
   };
   tick();
 }

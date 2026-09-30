@@ -19,6 +19,7 @@ const Save = {
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       gear: {},           // 武器の強化段階
       auto: false, speed: 1, ver: 4,
+      eco: null,          // 省エネ（30fps）。null はおまかせ（スマホなら省エネ）
     };
   },
   // 古いセーブを今の台本に合わせる
