@@ -590,7 +590,7 @@ const STORY = [
     { t: 'scene', id: 'c2_03c', g: '宿場の夜' },
     { t: 'scene', id: 'c2_03d', g: 'いなくなったシロ' },
     { t: 'field', zone: 'road1', at: [8, -2], start: ['road_rest', 4, 6], near: ['road_rest', 'road1'], away: ['shiro'], scene: 'c2_03e', battle: '2-3', after: 'c2_03f', g: '宿場の南、街道の風車の畑でシロをさがす' },
-    { t: 'field', zone: 'sekisho', at: [0, 28], scene: 'c2_04a', g: '宿場の北、ころころ岩の切り通しを抜けて、関所へ' },
+    { t: 'field', zone: 'sekisho', at: [0, 28], scene: 'c2_04a', g: '宿場の北、ころころ岩の切り通しを抜けて、なかよし関所へ' },
     { t: 'field', zone: 'sekisho', at: [0, -28], scene: 'c2_04', battle: '2-4', after: 'c2_05', g: '仲間のわざでなかよし関所のからくりを解き、北の大門へ' },
     { t: 'reward', niboshi: 400, g: '第二章 おしまい' },
   ] },

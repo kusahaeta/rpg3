@@ -542,7 +542,7 @@ const SCENES = {
       ['mike', 'えーっ！', { f: 'pout', g: 'pout' }],
       ['kuro', '……前に立つのは、俺の役目だ。……それだけだ。', { f: 'serious', cam: 'kuro', close: true }],
       ['n', '朝日の畑に、四匹ぶんの影が、並んでのびていた。', { cam: 'wide', dur: 7, look: { all: 'mill' } }],
-      ['n', '【目的】宿場の北、関所あとを越えて、ニャハハ王国へ。', { cam: 'wide', dur: 5 }],
+      ['n', '【目的】宿場の北、なかよし関所を越えて、ニャハハ王国へ。', { cam: 'wide', dur: 5 }],
     ] },
   c2_04a: { title: 'なかよし関所', extra: ['gonji'], bgm: 'village',
     stage: { zone: 'sekisho', at: [0, 27], face: 0,

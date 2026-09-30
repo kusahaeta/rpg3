@@ -2155,7 +2155,7 @@ function worldMapHTML(here) {
   return `<div class="ov-box wm-box"><h2>ミャオニアの地図</h2>
     <div class="wm-graph"><svg width="1000" height="580" viewBox="0 0 1000 580"><defs><radialGradient id="wmtree"><stop offset="0" stop-color="#8ad86a"/><stop offset="1" stop-color="#8ad86a" stop-opacity="0"/></radialGradient></defs>
       <circle cx="470" cy="522" r="70" fill="url(#wmtree)" opacity=".35"/>${lines.join('')}</svg>
-    ${ids.map(id => { const Z = FIELD_ZONES[id], open = zoneOpen(id), vis = visited[id], h = id === here;
+    ${ids.map(id => { const Z = FIELD_ZONES[id], open = zoneOpen(id), vis = floorsOf(id).some(k => visited[k]), h = id === here;
       return `<button class="wm-node ${h ? 'here' : ''} ${open ? '' : 'locked'} ${vis ? 'vis' : ''} ${Z.town ? 'town' : ''}" data-z="${id}" style="left:${Z.map2d[0]}px;top:${Z.map2d[1]}px" ${open && vis && !h ? '' : 'disabled'}>
         ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${open ? Z.name : '？？？'}</b><small>${h ? '現在地' : !open ? 'まだ行けない' : vis ? 'ひとっとび' : 'まだ行ってない'}${open ? `　宝箱 ${chestsLeft(id)}` : ''}</small></button>`; }).join('')}
     </div>`;
