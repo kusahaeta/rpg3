@@ -2151,7 +2151,22 @@ class FieldView extends BaseView {
     const head = V3(p.pos.x, foot + p.y + 0.8, p.pos.z);
     const offAt = pitch => V3(Math.sin(this.camYaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(this.camYaw) * Math.cos(pitch));
     const ceil = T ? T.ceilOf(T.at(p.pos.x, p.pos.z)) - 0.45 : 1e9;
-    let off = offAt(this.camPitch), dist = this.viewDist(head, off, foot, ceil, p.pos.y);
+    // 頭からカメラまでの実際の距離（天井で頭打ちになる分も入れる）
+    const reach = (o, dd) => Math.hypot(Math.hypot(o.x, o.z) * dd, Math.min(o.y * dd, ceil - head.y));
+    const base = this.viewDist(head, offAt(this.camPitch), foot, ceil, p.pos.y);
+    // 細い通路などで後ろがつかえるときは、カメラを上へ持ち上げて見下ろす（寄りすぎて前が見えなくならないように）。
+    // 持ち上げる角度はなめらかに変え、広い所へ出たらゆっくり元の角度へ戻す
+    let want = 0;
+    if (reach(offAt(this.camPitch), base) < this.camDist * 0.8) {
+      let best = reach(offAt(this.camPitch), base);
+      for (let k = 1; k <= 4; k++) {
+        const pt = Math.min(1.35, this.camPitch + 0.25 * k), o = offAt(pt), r = reach(o, this.viewDist(head, o, foot, ceil, p.pos.y));
+        if (r > best + 0.3) { best = r; want = pt - this.camPitch; }
+        if (r >= this.camDist * 0.75 || pt >= 1.35) break;
+      }
+    }
+    this.camLift = lerp(this.camLift || 0, want, 1 - Math.exp(-(want > (this.camLift || 0) ? 5 : 2) * d));
+    let off = offAt(this.camPitch + this.camLift), dist = this.camLift > 0.01 ? this.viewDist(head, off, foot, ceil, p.pos.y) : base;
     // 壁ぎわで後ろがつかえるときは、カメラを上にずらして見下ろす（主人公が画面から消えないように）
     for (let k = 1; k <= 3 && dist < 1.2; k++) {
       const o2 = offAt(Math.min(1.35, this.camPitch + 0.35 * k)), d2 = this.viewDist(head, o2, foot, ceil, p.pos.y);
