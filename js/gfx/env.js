@@ -195,7 +195,7 @@ function buildEnvironment(scene, theme, renderer, opts = {}) {
   root.add(new THREE.HemisphereLight(th.sky, th.ground, 0.85 * (th.light || 1)));
   const key = new THREE.DirectionalLight(th.key, 1.8 * Math.min(th.light || 1, 1.2));
   key.position.set(6, 12, 8); key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.mapSize.set(GFX.shadowSize(), GFX.shadowSize());
   Object.assign(key.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 40 });
   key.shadow.bias = -0.0004; key.shadow.normalBias = 0.02;
   root.add(key); root.add(key.target);

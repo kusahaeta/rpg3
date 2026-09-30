@@ -86,8 +86,9 @@ function HubScreen() {
     </div>
     <div class="hub-foot">
       <button class="link" data-bgm>BGM：${Music.on ? 'ON' : 'OFF'}</button>
+      <button class="link" data-eco>画質：${GFX.eco ? '省エネ（30fps）' : 'なめらか（60fps）'}</button>
       <button class="link" data-reset>データを初期化</button>
-      <span>戦闘：Q 通常攻撃 ／ E スキル ／ R はなす ／ 1〜4 必殺技 ／ C コンボ ／ Space 決定 ／ V オート ／ F 倍速</span>
+      <span class="pc-only">戦闘：Q 通常攻撃 ／ E スキル ／ R はなす ／ 1〜4 必殺技 ／ C コンボ ／ Space 決定 ／ V オート ／ F 倍速</span>
     </div>
   </div>`);
   const map = { story: () => App.go(StoryScreen), field: () => App.go(FieldScreen), chars: () => App.go(CharScreen), team: () => App.go(TeamScreen), bond: () => App.go(BondScreen), stages: () => App.go(StageScreen) };
@@ -95,6 +96,10 @@ function HubScreen() {
   const q = s.querySelector('[data-quest]'); if (q) q.onclick = () => { Sfx.select(); Story.run(); };
   if (v3) v3.bindDrag(s.querySelector('.hero-drag'));
   s.querySelector('[data-bgm]').onclick = e => { Music.toggle(); e.currentTarget.textContent = `BGM：${Music.on ? 'ON' : 'OFF'}`; };
+  s.querySelector('[data-eco]').onclick = e => {
+    GFX.setEco(!GFX.eco); Save.data.eco = GFX.eco; Save.save();
+    e.currentTarget.textContent = `画質：${GFX.eco ? '省エネ（30fps）' : 'なめらか（60fps）'}`;
+  };
   s.querySelector('[data-reset]').onclick = () => { if (confirm('セーブデータを初期化しますか？')) { Save.reset(); App.go(TitleScreen); } };
   return s;
 }

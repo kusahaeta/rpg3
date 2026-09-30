@@ -39,6 +39,8 @@ const GradeShader = {
 
 const GFX = {
   ok: false, renderer: null, composer: null, view: null, tweens: [], time: 0, timeScale: 1, pixelRatio: 1,
+  // 省エネ：30fps・画面の細かさ 1 まで・SMAA なし・影を小さく（スマホは最初から省エネ）
+  eco: false, appScale: 1, lastFrame: 0,
   shakeAmt: 0,
 
   init(app) {
@@ -63,19 +65,33 @@ const GFX = {
       [this.renderPass, this.bloom, this.grade, this.output, this.smaa].forEach(p => this.composer.addPass(p));
       this.clock = new THREE.Clock();
       this.ok = true;
-      this.resize(1);
+      this.setEco(Save.data.eco ?? matchMedia('(pointer: coarse)').matches);
       this.buildPortraits();
-      const tick = () => { requestAnimationFrame(tick); this.frame(); };
-      tick();
+      const tick = now => {
+        requestAnimationFrame(tick);
+        // 省エネは 30fps（60Hz でも 120Hz の画面でも、約 33ms ごとに描く）
+        if (this.eco && now - this.lastFrame < 1000 / 30 - 8) return;
+        this.lastFrame = now; this.frame();
+      };
+      requestAnimationFrame(tick);
     } catch (e) {
       console.warn('WebGL を初期化できませんでした。2D表示で動作します。', e);
       this.ok = false;
     }
   },
 
-  resize(appScale) {
+  setEco(on) {
+    this.eco = !!on;
     if (!this.ok) return;
-    const pr = Math.min(2, Math.max(0.75, (window.devicePixelRatio || 1) * appScale));
+    this.smaa.enabled = !this.eco;
+    this.resize(this.appScale);
+  },
+  shadowSize() { return this.eco ? 1024 : 2048; },
+
+  resize(appScale) {
+    this.appScale = appScale;
+    if (!this.ok) return;
+    const pr = Math.min(this.eco ? 1 : 2, Math.max(0.75, (window.devicePixelRatio || 1) * appScale));
     this.pixelRatio = pr;
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(1280, 720, false);
