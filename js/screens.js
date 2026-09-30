@@ -49,7 +49,7 @@ function TitleScreen() {
       <h1><span>に</span><span>ゃ</span><span>ん</span><span>こ</span><br><span>フ</span><span>ァ</span><span>ン</span><span>タ</span><span>ジ</span><span>ー</span></h1>
       <div class="t-name">〜 一匹では弱くても 〜</div>
     </div>
-    <div class="t-start">— クリックして はじめる —</div>
+    <div class="t-start">— <span class="pc-only">クリック</span><span class="touch-only">タップ</span>して はじめる —</div>
     <div class="t-note">3D コマンドRPG ／ にゃんこはみんな2頭身</div>
   </div>`);
   s.onclick = () => { Sfx.init(); Sfx.meow('mike'); Music.play('village'); App.go(Story.state.ch === 0 && Story.state.step === 0 ? StoryScreen : HubScreen); };
