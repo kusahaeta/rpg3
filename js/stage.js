@@ -661,6 +661,35 @@ const STAGE_FX = {
   revive() { Save.data.flags.treeRevived = true; Save.save(); STAGE_FX.light.call(this, 'sky'); STAGE_FX.laugh.call(this); },
   // 猫じゃらしにじゃれる
   lure(arg) { const a = this.actors[arg || 'maou']; if (!a) return; a.setFace('joy'); a.gesture('laugh'); Sfx.meow(a.base); },
+  // まどろみの林：春風がふきぬける
+  gust() {
+    for (let i = 0; i < 110; i++) GFX.delay(i * 0.012).then(() => this.p.emit(this.W(-10 + Math.random() * 3, Math.random() * 10 - 1, 0.2 + Math.random() * 8), this.R.clone().multiplyScalar(10 + Math.random() * 5).add(V3(0, 0.8 + Math.random(), 0)), hdr(Math.random() < 0.7 ? '#ffffff' : '#c8f0a8', 1.3), { life: 1.2, size: 0.06, drag: 0.2 }));
+    Sfx.noise(1.4, 0.12, 1300); Sfx.fluff();
+  },
+  // その子の頭の上に綿毛の玉（区画の大たんぽぽの綿毛が抜けて、つかまった形）
+  fluff(arg) {
+    const a = this.actors[arg || 'tama']; if (!a) return;
+    if (this.hooks.pluckBig) this.hooks.pluckBig.call(this);
+    const puff = makePuff(1.5); puff.position.y = a.headH + 1.3; a.m.group.add(puff);
+    this.p.burst(a.headPos().add(V3(0, 1.3, 0)), '#ffffff', 50, { speed: 2.5, up: 1, life: 1.6, size: 0.08, drag: 0.8 });
+    Sfx.fluff();
+  },
+  // ねむり花が眠りの粉をはく（桃色の雲が広がり、画面が少し桃色に）
+  pollen(arg) {
+    const c = this.point(arg || 'flower') || this.W(0, 4, 1);
+    const cl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ff9ad8', 0.9), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+    cl.position.copy(c); this.fx.add(cl, 3.4, (k, o) => { o.scale.setScalar(2 + Ease.out(Math.min(1, k * 2)) * 13); o.material.opacity = k < 0.6 ? 0.7 : 0.7 * (1 - (k - 0.6) / 0.4); });
+    for (let i = 0; i < 5; i++) GFX.delay(i * 0.2).then(() => this.p.burst(c, pick(['#ff9ad8', '#ffc8ec', '#e8b8ff']), 60, { speed: 4, up: 0.5, life: 2.6, size: 0.14, drag: 1.2 }));
+    const U = GFX.grade.uniforms; GFX.tween(1.4, k => { U.tint.value.setRGB(1, 1 - 0.14 * k, 1 - 0.05 * k); }, Ease.out, true);
+    if (this.hooks.bigBloom) this.hooks.bigBloom.call(this);
+    Sfx.puff();
+  },
+  // 寝息の「Z」（all ＝ 一行みんな）
+  zzz(arg) {
+    const list = !arg || arg === 'all' ? this.party.filter(a => a.visible()) : [this.actors[arg]].filter(Boolean);
+    list.forEach(a => { for (let i = 0; i < 4; i++) GFX.delay(i * 0.55 + Math.random() * 0.3).then(() => floatZ(this.fx, a.headPos().add(V3(0.2, 0.1, 0)))); });
+    Sfx.snore();
+  },
   // 光を失う（笑いの実が灰色に）
   gray() { const U = GFX.grade.uniforms; GFX.tween(1.0, k => { U.desat.value = 0.55 * k; }, Ease.out, true); },
   color() { const U = GFX.grade.uniforms, d0 = U.desat.value; GFX.tween(1.4, k => { U.desat.value = d0 * (1 - k); }, Ease.inOut, true); },

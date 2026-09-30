@@ -28,6 +28,9 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   (Z.rubble || []).forEach(R => add(id, { k: 'rubble ' + R.id, p: R.at, r: 0.5 }));
   (Z.cushions || []).forEach((p, i) => add(id, { k: 'cushion' + i, p, r: 0.5 }));
   (Z.bounce || []).forEach((B, i) => { add(id, { k: 'bounce' + i, p: B.at, r: 0.9 }); add(id, { k: 'land' + i, p: B.to, r: 0.6 }); });
+  (Z.fluff || []).forEach((B, i) => { add(id, { k: 'fluff' + i, p: B.at, r: 0.9 }); add(id, { k: 'glide' + i, p: B.to, r: 0.6 }); });
+  (Z.nemuri || []).forEach((N, i) => { add(id, { k: 'nemuri' + i, p: N.at, r: 0.2 }); add(id, { k: 'wake' + i, p: N.back, r: 0.6 }); });
+  if (Z.sleepwalk) Z.sleepwalk.route.forEach((p, i) => add(id, { k: 'walk' + i, p, r: 0.5 }));
   (Z.arenas || []).forEach((a, i) => { const [x, z] = zonePoint(Z, [a[0], a[1]]); add(id, { k: 'arena' + i, p: [x, z], area: a[2] || 0 }); });
 }
 STORY.forEach(ch => ch.steps.forEach(st => {

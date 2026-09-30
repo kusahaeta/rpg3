@@ -18,7 +18,7 @@ const Save = {
       bondSeen: {},       // 見た特別イベント
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       gear: {},           // 武器の強化段階
-      auto: false, speed: 1, ver: 2,
+      auto: false, speed: 1, ver: 3,
     };
   },
   // 古いセーブを今の台本に合わせる
@@ -28,6 +28,11 @@ const Save = {
       if (d.cleared['2-3']) d.cleared['2-4'] = true;
       if (d.story && d.story.ch === 1) d.story.step = [0, 1, 3, 4, 7][d.story.step] ?? d.story.step;
       d.ver = 2;
+    }
+    // ver 3：まどろみの林が三つの区画になり、タマが仲間になるまでの段階が増えた（第二章の c2_03 のあと 4 段階）
+    if (ver < 3) {
+      if (d.story && d.story.ch === 1 && d.story.step >= 4) d.story.step += 4;
+      d.ver = 3;
     }
   },
   load() {
