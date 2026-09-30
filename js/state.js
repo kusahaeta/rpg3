@@ -18,7 +18,7 @@ const Save = {
       bondSeen: {},       // 見た特別イベント
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       gear: {},           // 武器の強化段階
-      auto: false, speed: 1, ver: 3,
+      auto: false, speed: 1, ver: 4,
     };
   },
   // 古いセーブを今の台本に合わせる
@@ -33,6 +33,11 @@ const Save = {
     if (ver < 3) {
       if (d.story && d.story.ch === 1 && d.story.step >= 4) d.story.step += 4;
       d.ver = 3;
+    }
+    // ver 4：関所あとに「なかよし関所」が入り、第二章の最後の戦いの前に 1 段階増えた
+    if (ver < 4) {
+      if (d.story && d.story.ch === 1 && d.story.step >= 12) d.story.step += 1;
+      d.ver = 4;
     }
   },
   load() {
