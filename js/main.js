@@ -8,6 +8,31 @@ function fitStage() {
   if (typeof GFX !== 'undefined') GFX.resize(s);
 }
 
+// スマホ・タブレット：タッチで操作していれば body.touch を付ける（キーを押したらPC表示に戻す）
+const Touch = {
+  on: false,
+  set(on) { if (on === this.on) return; this.on = on; document.body.classList.toggle('touch', on); },
+  // 最初のタップで全画面＋横向き固定を試す（対応していないブラウザでは何もしない）
+  fullscreen() {
+    const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req || document.fullscreenElement || document.webkitFullscreenElement) return;
+    try {
+      const p = req.call(el, { navigationUI: 'hide' });
+      if (p && p.then) p.then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {});
+    } catch (e) { /* 全画面にできなくても遊べる */ }
+  },
+  init() {
+    this.set(matchMedia('(pointer: coarse)').matches);
+    document.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') this.set(true); }, true);
+    document.addEventListener('keydown', () => this.set(false), true);
+    const fs = e => { if (e.pointerType !== 'touch') return; document.removeEventListener('pointerup', fs); this.fullscreen(); };
+    document.addEventListener('pointerup', fs);
+    // ピンチでページが拡大されないようにする（iOS Safari は viewport の指定を無視する）
+    document.addEventListener('gesturestart', e => e.preventDefault());
+    document.addEventListener('contextmenu', e => { if (this.on) e.preventDefault(); });
+  },
+};
+
 function floaties() {
   const cv = document.getElementById('sky'), ctx = cv.getContext('2d');
   let w, h, dots;
@@ -36,7 +61,11 @@ window.addEventListener('DOMContentLoaded', () => {
   App.el = document.getElementById('app');
   Save.load();
   GFX.init(App.el);
+  Touch.init();
   fitStage(); window.addEventListener('resize', fitStage);
+  // スマホを回したとき、アドレスバーが出入りしたときも合わせ直す
+  window.addEventListener('orientationchange', () => setTimeout(fitStage, 200));
+  if (window.visualViewport) visualViewport.addEventListener('resize', fitStage);
   floaties();
   document.addEventListener('pointerdown', () => Sfx.init(), { once: true });
   App.go(TitleScreen);

@@ -2,7 +2,13 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#04060e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="にゃんこ">
+  <link rel="manifest" href="manifest.webmanifest">
   <title>にゃんこファンタジー</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="css/style.css">
@@ -10,6 +16,7 @@
 <body>
   <canvas id="sky"></canvas>
   <div id="app"></div>
+  <div id="rotate"><div class="rt-phone"></div><b>スマホを横にしてね</b><small>このゲームは横画面で遊べます</small></div>
   <script src="vendor/three-bundle.js"></script>
   <script src="js/data.js"></script>
   <script src="js/art.js"></script>

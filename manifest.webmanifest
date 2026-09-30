@@ -1,0 +1,9 @@
+{
+  "name": "にゃんこファンタジー",
+  "short_name": "にゃんこ",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#04060e",
+  "theme_color": "#04060e"
+}

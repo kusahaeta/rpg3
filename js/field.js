@@ -829,12 +829,14 @@ class FieldView extends BaseView {
 
   updatePlayer(d) {
     const p = this.player, k = this.keys, m = p.m;
-    const ix = (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0);
-    const iz = (k.has('s') || k.has('arrowdown') ? 1 : 0) - (k.has('w') || k.has('arrowup') ? 1 : 0);
+    let ix = (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0);
+    let iz = (k.has('s') || k.has('arrowdown') ? 1 : 0) - (k.has('w') || k.has('arrowup') ? 1 : 0);
+    let sprint = k.has('shift');
+    const st = this.stick;
+    if (st && (st.x || st.y)) { ix = st.x; iz = st.y; if (Math.hypot(ix, iz) > 0.9) sprint = true; }
     const fx = -Math.sin(this.camYaw), fz = -Math.cos(this.camYaw);
     let mx = fx * -iz + -fz * ix, mz = fz * -iz + fx * ix;
     const len = Math.hypot(mx, mz);
-    const sprint = k.has('shift');
     const attacking = p.atk > 0;
     let target = 0;
     if (len > 0 && !this.busy) { mx /= len; mz /= len; target = sprint ? 7.4 : 4.2; p.dir.set(mx, 0, mz); }
@@ -920,6 +922,9 @@ class FieldView extends BaseView {
     }
   }
 
+  jump() {
+    if (this.player.y === 0) { this.player.vy = 7; Sfx.click(); }
+  }
   attack() {
     const p = this.player;
     if (this.busy || p.atk > 0) return;
@@ -1739,6 +1744,13 @@ class FieldView extends BaseView {
         <div class="fd-act"><kbd>M</kbd>ワールドマップ</div>
       </div>
       <div class="fd-prompt hidden"><kbd>F</kbd><span></span></div>
+      <div class="fd-stick hidden"><i></i></div>
+      <div class="fd-pad">
+        <button class="pad-btn talk" data-pad="talk">調べる</button>
+        <button class="pad-btn tech" data-pad="tech">秘技<b class="tp"></b></button>
+        <button class="pad-btn jump" data-pad="jump">ジャンプ</button>
+        <button class="pad-btn atk" data-pad="atk">攻撃</button>
+      </div>
       <div class="fd-talk hidden"><div class="fd-talk-name"></div><div class="fd-talk-text"></div><div class="fd-talk-next"></div></div>
       <div class="fd-toasts"></div>
       <div class="fd-title"></div>
@@ -1764,18 +1776,61 @@ class FieldView extends BaseView {
     this.npcs.forEach(n => { n.label = document.createElement('div'); n.label.className = 'fd-npc'; n.label.textContent = speakerName(n.key); world.appendChild(n.label); });
     if (q) { q.label = document.createElement('div'); q.label.className = 'fd-qmark'; world.appendChild(q.label); }
 
-    let down = null;
+    // マウス：ドラッグで視点、クリックで攻撃
+    // タッチ：画面の左半分はスティック（端まで倒すとダッシュ）、右半分はドラッグで視点・2本指でズーム・タップで攻撃
+    const pts = new Map(), stick = r.querySelector('.fd-stick'), STICK_R = 80;
+    const local = e => { const b = r.getBoundingClientRect(), k = b.width / 1280; return { x: (e.clientX - b.left) / k, y: (e.clientY - b.top) / k }; };
+    const pinchDist = () => { const c = [...pts.values()].filter(q => !q.stick); return c.length === 2 ? Math.hypot(c[0].x - c[1].x, c[0].y - c[1].y) : 0; };
     r.addEventListener('pointerdown', e => {
-      if (e.button !== 0 || e.target.closest('button, .fd-team, .overlay, .fd-map, .fd-talk')) return;
-      down = { x: e.clientX, y: e.clientY, moved: 0 }; r.setPointerCapture(e.pointerId);
+      if (e.button !== 0 || e.target.closest('button, .fd-team, .overlay, .fd-map, .fd-talk, .fd-prompt')) return;
+      const q = { x: e.clientX, y: e.clientY, moved: 0 };
+      if (e.pointerType === 'touch') {
+        const at = local(e);
+        if (at.x < 640 && ![...pts.values()].some(o => o.stick)) {
+          q.stick = at; this.stick = { x: 0, y: 0 };
+          stick.style.transform = `translate(${at.x}px, ${at.y}px)`; stick.firstChild.style.transform = ''; stick.classList.remove('hidden');
+        }
+      }
+      pts.set(e.pointerId, q); this.pinch = pinchDist();
+      r.setPointerCapture(e.pointerId);
     });
     r.addEventListener('pointermove', e => {
-      if (!down) return;
-      const dx = e.clientX - down.x, dy = e.clientY - down.y;
-      down.moved += Math.abs(dx) + Math.abs(dy); down.x = e.clientX; down.y = e.clientY;
-      this.camYaw -= dx * 0.006; this.camPitch = clamp(this.camPitch + dy * 0.004, -0.05, 1.1);
+      const q = pts.get(e.pointerId); if (!q) return;
+      const dx = e.clientX - q.x, dy = e.clientY - q.y;
+      q.moved += Math.abs(dx) + Math.abs(dy); q.x = e.clientX; q.y = e.clientY;
+      if (q.stick) {
+        const at = local(e); let sx = (at.x - q.stick.x) / STICK_R, sy = (at.y - q.stick.y) / STICK_R;
+        const m = Math.hypot(sx, sy); if (m > 1) { sx /= m; sy /= m; }
+        this.stick = m < 0.2 ? { x: 0, y: 0 } : { x: sx, y: sy };
+        stick.firstChild.style.transform = `translate(${sx * STICK_R}px, ${sy * STICK_R}px)`;
+        return;
+      }
+      const pd = pinchDist();
+      if (pd) {
+        if (this.pinch) this.camDist = clamp(this.camDist * this.pinch / pd, 2.4, 9);
+        this.pinch = pd; q.moved += 99; return;
+      }
+      const k = e.pointerType === 'touch' ? 1.6 : 1;
+      this.camYaw -= dx * 0.006 * k; this.camPitch = clamp(this.camPitch + dy * 0.004 * k, -0.05, 1.1);
     });
-    r.addEventListener('pointerup', () => { if (down && down.moved < 6) this.attack(); down = null; });
+    const up = e => {
+      const q = pts.get(e.pointerId); if (!q) return;
+      pts.delete(e.pointerId); this.pinch = pinchDist();
+      if (q.stick) { this.stick = null; stick.classList.add('hidden'); }
+      else if (e.type === 'pointerup' && q.moved < 6 && !pts.size) this.attack();
+    };
+    r.addEventListener('pointerup', up);
+    r.addEventListener('pointercancel', up);
+    r.querySelectorAll('[data-pad]').forEach(b => b.addEventListener('pointerdown', e => {
+      e.preventDefault(); e.stopPropagation();
+      const a = b.dataset.pad;
+      if (a === 'talk') this.interact();
+      else if (a === 'atk') this.attack();
+      else if (this.busy) return;
+      else if (a === 'jump') this.jump();
+      else if (a === 'tech') this.useTechnique();
+    }));
+    r.querySelector('.fd-prompt').onclick = () => this.interact();
     r.addEventListener('wheel', e => { this.camDist = clamp(this.camDist + e.deltaY * 0.004, 2.4, 9); e.preventDefault(); }, { passive: false });
     r.querySelector('[data-menu]').onclick = () => this.menu();
     r.querySelector('[data-map]').onclick = () => this.mapMenu();
@@ -1787,7 +1842,7 @@ class FieldView extends BaseView {
     const d = Save.data;
     this.root.querySelector('.currency').innerHTML =
       `<span class="c-item" title="にぼし"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><span class="c-item" title="秘技ポイント"><i class="ic-tp"></i>${d.tp}/5</span>`;
-    this.root.querySelector('.fd-act.tech .tp').textContent = `${d.tp}/5`;
+    this.root.querySelectorAll('.fd-act.tech .tp, .pad-btn.tech .tp').forEach(x => { x.textContent = `${d.tp}/5`; });
   }
   renderTeam() {
     const el = this.root.querySelector('.fd-team');
@@ -1849,7 +1904,7 @@ class FieldView extends BaseView {
       return;
     }
     if (!isDown || e.repeat) return;
-    if (k === ' ') { e.preventDefault(); if (this.player.y === 0) { this.player.vy = 7; Sfx.click(); } }
+    if (k === ' ') { e.preventDefault(); this.jump(); }
     else if (k === 'j') this.attack();
     else if (k === 'e') this.useTechnique();
     else if (k === 'f') this.interact();
@@ -2120,6 +2175,7 @@ class FieldView extends BaseView {
     const it = this.busy ? null : this.nearestInteract();
     const pr = this.root.querySelector('.fd-prompt');
     pr.classList.toggle('hidden', !it);
+    this.root.querySelector('.pad-btn.talk').classList.toggle('ready', !!it || !!this.talk);
     if (it) pr.querySelector('span').textContent = it.text;
     this.drawMap();
   }
@@ -2184,7 +2240,7 @@ function FieldScreen(zoneId) {
   v.key = 'field:' + z;
   GFX.setView(v);
   Game.activeField = v;
-  setTimeout(() => { v.showZoneTitle(); if (!Save.data.fieldTips) { Save.data.fieldTips = true; Save.save(); v.toast('WASDで移動。敵に先にクリックで攻撃すると「先制攻撃」！ Fで話す・調べる'); } }, 300);
+  setTimeout(() => { v.showZoneTitle(); if (!Save.data.fieldTips) { Save.data.fieldTips = true; Save.save(); v.toast(document.body.classList.contains('touch') ? '左側をなぞって移動。敵に先に「攻撃」を当てると「先制攻撃」！ 「調べる」で話す・調べる' : 'WASDで移動。敵に先にクリックで攻撃すると「先制攻撃」！ Fで話す・調べる'); } }, 300);
   return v.root;
 }
 

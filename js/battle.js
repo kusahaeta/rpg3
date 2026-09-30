@@ -120,7 +120,7 @@ class Battle {
           <button class="ab-btn" data-ab="skill"><span class="ab-ic">✦</span><span class="k">E</span><span class="l">戦闘スキル</span></button>
           <button class="ab-btn talk ${talkOn() ? '' : 'hidden'}" data-ab="talk"><span class="ab-ic">💬</span><span class="k">R</span><span class="l">はなす</span></button>
         </div>
-        <div class="ult-hint">Space / クリックで発動　Esc でキャンセル</div>
+        <div class="ult-hint"><span class="pc-only">Space / クリックで発動　Esc でキャンセル</span><span class="touch-only">対象をタップで発動</span><button class="ctl ult-cancel">キャンセル</button></div>
       </div>
       <div class="bond hidden"><div class="bond-l">友情ゲージ</div><div class="bond-bar"><i></i></div><button class="bond-btn" data-combo disabled><span class="k">C</span><b>コンボ</b></button></div>
       <div class="combo-menu hidden"></div>
@@ -157,6 +157,7 @@ class Battle {
 
     r.querySelectorAll('.ab-btn').forEach(b => b.addEventListener('click', () => this.selectAbility(b.dataset.ab)));
     r.querySelector('[data-combo]').addEventListener('click', e => { e.stopPropagation(); this.requestCombo(); });
+    r.querySelector('.ult-cancel').addEventListener('click', () => this.cancelUlt());
     r.querySelector('.bf-ctrl').addEventListener('click', e => {
       const c = e.target.closest('[data-c]'); if (!c) return;
       if (c.dataset.c === 'auto') this.toggleAuto();
