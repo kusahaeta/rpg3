@@ -187,7 +187,8 @@ function buildEnvironment(scene, theme, renderer, opts = {}) {
   try {
     const pm = new THREE.PMREMGenerator(renderer);
     const envScene = new THREE.Scene(); envScene.add(makeSky(th));
-    scene.environment = pm.fromScene(envScene, 0.02).texture;
+    const rt = pm.fromScene(envScene, 0.02);
+    scene.environment = rt.texture; scene.userData.envRT = rt;   // 場面を片付けるときに描画先ごと手放す
     scene.environmentIntensity = 0.35;
     pm.dispose(); disposeTree(envScene);
   } catch (e) { /* 環境マップなしでも描画可能 */ }

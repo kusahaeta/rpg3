@@ -26,7 +26,8 @@ class BaseView {
     this.p.update(dt);
   }
   dispose() {
-    if (this.scene.environment) this.scene.environment.dispose();
+    if (this.scene.userData.envRT) this.scene.userData.envRT.dispose();
+    else if (this.scene.environment) this.scene.environment.dispose();
     disposeTree(this.scene);
     if (this.onDispose) this.onDispose();
   }

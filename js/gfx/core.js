@@ -45,24 +45,8 @@ const GFX = {
 
   init(app) {
     try {
-      const canvas = document.createElement('canvas');
-      canvas.id = 'gl';
-      app.prepend(canvas);
-      const r = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
-      r.outputColorSpace = THREE.SRGBColorSpace;
-      r.toneMapping = THREE.ACESFilmicToneMapping;
-      r.toneMappingExposure = 1.0;
-      r.shadowMap.enabled = true;
-      r.shadowMap.type = THREE.PCFSoftShadowMap;
-      this.renderer = r; this.canvas = canvas;
-      const X = THREEX;
-      this.composer = new X.EffectComposer(r);
-      this.renderPass = new X.RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
-      this.bloom = new X.UnrealBloomPass(new THREE.Vector2(1280, 720), 0.85, 0.6, 0.82);
-      this.grade = new X.ShaderPass(GradeShader);
-      this.output = new X.OutputPass();
-      this.smaa = new X.SMAAPass();
-      [this.renderPass, this.bloom, this.grade, this.output, this.smaa].forEach(p => this.composer.addPass(p));
+      this.app = app;
+      this.createRenderer();
       this.clock = new THREE.Clock();
       this.ok = true;
       this.setEco(Save.data.eco ?? matchMedia('(pointer: coarse)').matches);
@@ -78,6 +62,47 @@ const GFX = {
       console.warn('WebGL を初期化できませんでした。2D表示で動作します。', e);
       this.ok = false;
     }
+  },
+
+  // 描画の土台（canvas・renderer・仕上げの処理）を作る
+  createRenderer() {
+    const canvas = document.createElement('canvas');
+    canvas.id = 'gl';
+    this.app.prepend(canvas);
+    const r = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
+    r.outputColorSpace = THREE.SRGBColorSpace;
+    r.toneMapping = THREE.ACESFilmicToneMapping;
+    r.toneMappingExposure = 1.0;
+    r.shadowMap.enabled = true;
+    r.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer = r; this.canvas = canvas;
+    const X = THREEX;
+    this.composer = new X.EffectComposer(r);
+    this.renderPass = new X.RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
+    this.bloom = new X.UnrealBloomPass(new THREE.Vector2(1280, 720), 0.85, 0.6, 0.82);
+    this.grade = new X.ShaderPass(GradeShader);
+    this.output = new X.OutputPass();
+    this.smaa = new X.SMAAPass();
+    [this.renderPass, this.bloom, this.grade, this.output, this.smaa].forEach(p => this.composer.addPass(p));
+    // スマホなどでメモリが足りなくなると、ブラウザが 3D 描画を止める（画面が消える）。
+    // ブラウザが戻すのを少し待ち、戻らなければ作り直す
+    canvas.addEventListener('webglcontextlost', () => { clearTimeout(this.lostTimer); this.lostTimer = setTimeout(() => this.rebuild(), 2500); });
+    canvas.addEventListener('webglcontextrestored', () => clearTimeout(this.lostTimer));
+  },
+  rebuild() {
+    console.warn('3D 描画が止まったので作り直します');
+    const old = this.canvas, clip = this.renderer.localClippingEnabled;
+    try { this.composer.dispose(); this.renderer.dispose(); } catch (e) { /* 止まった描画の後片付けは失敗してもよい */ }
+    old.remove();
+    try { this.createRenderer(); } catch (e) { console.warn('3D 描画を作り直せませんでした', e); return; }
+    this.renderer.localClippingEnabled = clip;
+    this.setEco(this.eco);
+    if (this.view) {
+      // 環境光の画像は前の描画で作ったものなので使えない（次の場面で作り直される）
+      this.view.scene.environment = null;
+      this.applyView(this.view);
+    }
+    this.canvas.style.opacity = this.view ? 1 : 0;
   },
 
   setEco(on) {
@@ -109,14 +134,15 @@ const GFX = {
     this.grade.uniforms.desat.value = 0;
     this.grade.uniforms.aberr.value = 0;
     this.grade.uniforms.tint.value.setRGB(1, 1, 1);
-    if (view) {
-      this.renderPass.scene = view.scene;
-      this.renderPass.camera = view.camera;
-      this.bloom.strength = view.bloomStrength ?? 0.4;
-      this.bloom.threshold = view.bloomThreshold ?? 1.6;
-      this.renderer.toneMappingExposure = view.exposure ?? 1.0;
-    }
+    if (view) this.applyView(view);
     this.canvas.style.opacity = view ? 1 : 0;
+  },
+  applyView(view) {
+    this.renderPass.scene = view.scene;
+    this.renderPass.camera = view.camera;
+    this.bloom.strength = view.bloomStrength ?? 0.4;
+    this.bloom.threshold = view.bloomThreshold ?? 1.6;
+    this.renderer.toneMappingExposure = view.exposure ?? 1.0;
   },
 
   // 同じキーのビューなら再利用する
@@ -207,11 +233,21 @@ const GFX = {
   },
 };
 
+// GPU に載せたものを手放す。画像は模様（map）だけでなく、光る模様・凹凸なども全部。
+// 使い回している画像を手放しても、次に使うときにまた GPU に載る
 function disposeTree(obj) {
+  const texs = new Set();
   obj.traverse(o => {
     if (o.geometry) o.geometry.dispose();
-    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map && m.map.isCanvasTexture) m.map.dispose(); m.dispose(); });
+    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+      for (const k in m) if (m[k] && m[k].isTexture) texs.add(m[k]);
+      if (m.uniforms) for (const k in m.uniforms) { const v = m.uniforms[k].value; if (v && v.isTexture && !v.isRenderTargetTexture) texs.add(v); }
+      m.dispose();
+    });
+    // 影の画像（ライトごとに 1024〜2048 四方）
+    if (o.isLight && o.shadow && o.shadow.map) o.shadow.dispose();
   });
+  texs.forEach(t => { if (!t.isRenderTargetTexture) t.dispose(); });
 }
 
 function addStudioLights(scene, rimColor) {
