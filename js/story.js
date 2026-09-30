@@ -323,7 +323,14 @@ const Debug = {
     if (level) { const lv = this.levelAt(ci, si); for (const k of Object.keys(d.owned)) if (d.owned[k].lv < lv) Object.assign(d.owned[k], { lv, exp: 0 }); }
     delete d.fieldResume;
     const tgt = STORY[ci] && STORY[ci].steps[si];
-    if (tgt && tgt.t === 'field') { const Z = FIELD_ZONES[tgt.zone]; d.fieldResume = { ci: Z.ci, zone: tgt.zone, x: Z.anchor[0], z: Z.anchor[1], yaw: 0 }; }
+    // 探索の段階：ふつうに遊んだときと同じく、ひとつ前の探索の段階の目的地（そこで物語が進んだ場所）から歩き出す。
+    // 目的地の区画のねこ地蔵からだと、その手前の仕掛け（光の鏡など）を飛びこえてしまうことがある
+    if (tgt && tgt.t === 'field') {
+      const prev = STORY[ci].steps.slice(0, si).reverse().find(st => st.t === 'field');
+      if (tgt.start) { const [zone, x, z] = tgt.start, [wx, wz] = zonePoint(FIELD_ZONES[zone], [x, z]); d.fieldResume = { ci: FIELD_ZONES[zone].ci, zone, x: wx, z: wz, yaw: tgt.yaw || 0 }; }
+      else if (prev) { const [wx, wz] = zonePoint(FIELD_ZONES[prev.zone], prev.at); d.fieldResume = { ci: FIELD_ZONES[prev.zone].ci, zone: prev.zone, x: wx, z: wz, yaw: 0 }; }
+      else { const Z = FIELD_ZONES[tgt.zone]; d.fieldResume = { ci: Z.ci, zone: tgt.zone, x: Z.anchor[0], z: Z.anchor[1], yaw: 0 }; }
+    }
     Save.save();
   },
   restore() {

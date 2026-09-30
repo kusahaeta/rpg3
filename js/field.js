@@ -983,7 +983,8 @@ class FieldView extends BaseView {
     const p = this.player.pos, Z = this.zone;
     for (const n of this.npcs) if (n.pos.distanceTo(p) < 2.2) return { type: 'npc', n, text: `${speakerName(n.key)}と話す${n.shop ? '（' + SHOP_NAMES[n.shop] + '）' : ''}` };
     for (const n of this.notes) if (n.pos.distanceTo(p) < (n.reach || 2.0)) return { type: 'note', n, text: `調べる：${n.title}` };
-    for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || '光の水晶'; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < (o.S.reach || 2.0)) return { type: 'lamp', o, L, text: !o.ready() ? `調べる：${name}` : o.S.verb ? `${o.S.verb}（${speakerName(o.S.who)}）` : o.S.look === 'laugh' ? `${name}を押す` : `${name}に触れる` }; }
+    for (const o of this.sealObjs || []) if (o.beam && !o.open) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) return { type: 'mirror', o, m, text: `${MIRROR_COLS[m.g][0]}の光の鏡の向きを変える（${MIRROR_COLS[m.g][0]}の鏡はみんな回る）` };
+    for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || '光の水晶'; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < (o.S.reach || 2.0)) return { type: 'lamp', o, L, text: !o.ready() ? `調べる：${name}` : o.S.verb ? `${o.S.verb}（${speakerName(o.S.who)}）` : o.S.look === 'laugh' ? `${name}を押す` : o.S.labels ? `${name}（${o.S.labels[L.i]}）にふれる` : `${name}に触れる` }; }
     // 二匹の門の踏み板：乗っていれば「ここで待ってて」、仲間が待っていれば「よびもどす」
     for (const o of this.plateObjs || []) {
       if (o.open) continue;
@@ -1037,6 +1038,8 @@ class FieldView extends BaseView {
     } else if (it.type === 'rubble') {
       if (it.o.R.look === 'jackbox') this.startTalk('巨大びっくり箱', ['ねじを巻いたままの、大きなびっくり箱。通路をまるごとふさいでいる。', '……カタ、カタカタ。中で何かが、飛び出したそうにしている。攻撃すれば、開きそうだ。'], null, true);
       else this.startTalk('落石の岩山', ['崩れた岩が、石段の上り口をふさいでいる。……攻撃すれば、砕けそうだ。'], null, true);
+    } else if (it.type === 'mirror') {
+      this.turnMirror(it.o, it.m);
     } else if (it.type === 'hold') {
       this.holdPad(it.o, it.pad, it.f);
     } else if (it.type === 'unhold') {
@@ -1093,20 +1096,71 @@ class FieldView extends BaseView {
       return;
     }
     if (S.look === 'beacon' || S.look === 'bar') { this.doFeat(o, L); return; }
+    // 順番（S.order）：決まった順にふれないと、灯した光はみんな消えてしまう
+    if (S.order && S.order[o.lamps.filter(x => x.lit).length] !== L.i) { this.wrongOrder(o); return; }
     L.setLit(); flags[o.S.id + '_' + L.i] = true;
+    if (S.hold) { L.left = S.hold; flags[S.id + '_t' + L.i] = S.hold; }
     const at = L.pos.clone().add(V3(0, 1.3, 0)), laugh = S.look === 'laugh';
     const col = S.look === 'memory' ? '#ffe2a8' : laugh ? '#ffe07a' : '#cfefff';
     this.fx.pillar(L.pos, col, { h: 5, r: 0.6, life: 0.8 }); this.p.burst(at, col, 50, { speed: 3, up: 1, life: 0.9 });
     if (laugh) { Sfx.laugh(); this.p.burst(at, '#ff9ad8', 30, { speed: 4, up: 2, life: 1.2, size: 0.1 }); } else Sfx.heal();
     const n = o.lamps.filter(x => x.lit).length, all = n === o.lamps.length;
-    if (all) {
-      flags[o.S.id] = true; o.dissolve();
-      setTimeout(() => { Sfx.win(); GFX.shake(0.2); this.toast(S.openToast || '影の壁が、光にとけて消えた！'); }, 500);
-    } else this.toast(S.look === 'memory' || laugh ? `${name}（${n}/${o.lamps.length}）` : `光の水晶が灯った（${n}/${o.lamps.length}）`);
+    if (all && o.beam) {
+      // 光の筋：大水晶が光を放つ。受けの水晶に届いていれば、そのまま壁が消える
+      o.beam.active = true; o.beam.update(); o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
+      this.fx.pillar(V3(o.beam.B.from[0], this.gy(...o.beam.B.from), o.beam.B.from[1]), '#cfefff', { h: 8, r: 1, life: 1 });
+      if (o.beam.hit) this.openSeal(o);
+      else setTimeout(() => { Sfx.heal(); this.toast(S.beamToast || '三つの光が、大水晶に集まった！　光の鏡で、光の筋を影の壁まで導こう'); }, 500);
+    } else if (all) {
+      o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
+      this.openSeal(o);
+    } else this.toast(S.hold && n === 1 ? `光の水晶が灯った（1/${o.lamps.length}）　……この光は、${S.hold}びょうで消えてしまう！` : S.look === 'memory' || laugh ? `${name}（${n}/${o.lamps.length}）` : `光の水晶が灯った（${n}/${o.lamps.length}）`);
     Save.save();
     // 記憶のかけら：その仲間の思い出を、クロが語る。笑い袋：袋が笑い出して、みんなの掛け合い
     if (S.memories && S.memories[L.i]) this.startTalk(speakerName('kuro'), S.memories[L.i]);
     if (laugh) this.startTalk('', [['n', `笑い袋が「${(S.laughs || [])[L.i] || 'ワッハッハ！'}」と笑い出した！`], ...((S.gags || [])[L.i] || []).filter(([k]) => k === 'n' || this.team.some(m => m.key === k))]);
+  }
+  openSeal(o) {
+    Save.data.flags[o.S.id] = true; o.dissolve(); Save.save();
+    setTimeout(() => { Sfx.win(); GFX.shake(0.2); this.toast(o.S.openToast || '影の壁が、光にとけて消えた！'); }, 500);
+  }
+  // 光の鏡の向きを変える（「/」⇔「＼」）。同じ色の鏡は、みんないっしょに回る。光の筋が受けの水晶に届けば、影の壁が消える
+  turnMirror(o, m) {
+    const b = o.beam, flags = Save.data.flags || (Save.data.flags = {}), g = m.g;
+    b.gst[g] ^= 1; flags[`${o.S.id}_g${g}`] = b.gst[g]; Save.save();
+    Sfx.tone(880, 0.12, 'triangle', 0.05, 220); Sfx.tone(1320, 0.18, 'sine', 0.03, 0, 0.06);
+    for (const q of b.mirrors) if (q.g === g) { q.target = q.ry(b.gst[g]); this.p.burst(q.pos.clone().add(V3(0, 1.2, 0)), MIRROR_COLS[g][1], 16, { speed: 2, up: 0.5, life: 0.5, size: 0.08 }); }
+    b.update();
+    if (!b.active) { this.toast('光の鏡の向きが変わった。……今は、光が来ていない'); return; }
+    if (b.hit && !o.open) this.openSeal(o);
+  }
+  // 記憶のかけらを、ちがう順にさわった：灯した光がみんな消えて、遠くへ押しもどされる
+  wrongOrder(o) {
+    const S = o.S, flags = Save.data.flags;
+    o.lamps.forEach(x => { if (x.lit) { x.setUnlit(); delete flags[S.id + '_' + x.i]; } });
+    Save.save();
+    Sfx.tone(90, 1.2, 'sawtooth', 0.06, -40); GFX.flash('#2a1040', 0.6, 0.8); GFX.shake(0.25);
+    const say = S.wrong || [['n', '……光が、すうっと消えていく。']];
+    this.startTalk('', say);
+    if (S.back) this.talk.after = () => this.sendBack(S.back, V3(0, 0, 0), S.backToast || '……気がつくと、ずっと手前に立っていた', 900);
+  }
+  // 灯りの時間（S.hold）：いちばん先に灯した水晶の残りの秒を数える。その光が消えたら、灯した水晶はみんな消えて、やりなおし
+  //   （知らせも、いちばん先に灯した水晶のぶんだけ出す）
+  updateSealTimers(d) {
+    const flags = Save.data.flags;
+    for (const o of this.sealObjs || []) {
+      const S = o.S; if (!S.hold || o.open) continue;
+      const lit = o.lamps.filter(L => L.lit && L.left > 0); if (!lit.length) continue;
+      lit.forEach(L => { L.left -= d; flags[S.id + '_t' + L.i] = Math.max(0, L.left); });
+      const first = lit.reduce((a, b) => (b.left < a.left ? b : a));
+      // 30・20・10・5 秒をこえるたびに知らせる（戦闘から戻ったときも、残りの秒をそのまま出す）
+      const mark = [30, 20, 10, 5].filter(v => first.left <= v).pop();
+      if (mark && mark !== o.warned) { o.warned = mark; this.toast(`光の水晶の光が消えるまで、あと ${Math.ceil(first.left)} びょう！`); Sfx.tone(660, 0.08, 'square', 0.03); }
+      if (first.left > 0) continue;
+      o.lamps.forEach(L => { if (L.lit) { L.setUnlit(); delete flags[S.id + '_' + L.i]; delete flags[S.id + '_t' + L.i]; } });
+      o.warned = 0; Save.save();
+      Sfx.tone(300, 0.6, 'sine', 0.06, -200); this.toast(S.fadeToast || '……光の水晶の光が、影に食べられて消えてしまった。はじめから灯しなおそう');
+    }
   }
   // わざの仕掛け：S.who の子が先頭でなければ、先頭の子のひとことと手がかり（1〜4で交代）
   featReady(S) {
@@ -1459,6 +1513,7 @@ class FieldView extends BaseView {
       if (t.npc) { t.npc.m.setPose(POSES.idle); if (t.npc.m.face) t.npc.m.face.talking = false; }
       this.talk = null; this.busy = false;
       if (t.npc && t.npc.shop) this.shopMenu(t.npc);
+      if (t.after) t.after();
       return;
     }
     Sfx.click(); this.showTalkLine();
@@ -1917,6 +1972,7 @@ class FieldView extends BaseView {
     (this.sealObjs || []).forEach(o => { if (!o.open && o.ready()) o.lamps.forEach(L => { if (!L.lit) dot(L.pos.x, L.pos.y, L.pos.z, { memory: '#ffe2a8', laugh: '#ffe07a', beacon: '#ff9a3a', bar: '#e8c080' }[o.S.look] || '#cfefff', 3.5); }); });
     (this.bounceObjs || []).forEach(b => dot(b.pos.x, b.pos.y, b.pos.z, '#ff9ad8', 2.5));
     (this.fluffObjs || []).forEach(o => dot(o.pos.x, o.pos.y, o.pos.z, '#ffffff', 2.5));
+    (this.sealObjs || []).forEach(o => { if (o.beam && !o.open) o.beam.mirrors.forEach(m => dot(m.pos.x, m.pos.y, m.pos.z, '#9ad8ff', 2.5, true)); });
     (this.plateObjs || []).forEach(o => { if (!o.open && o.ready()) o.pads.forEach(pad => dot(pad.pos.x, pad.pos.y, pad.pos.z, '#8ad8ff', 3.5, true)); });
     (this.guards || []).forEach(g => dot(g.pos.x, g.pos.y, g.pos.z, g.asleep ? '#8a8a96' : '#ffb04a', 3.5));
     (this.rollers || []).forEach(o => dot(o.pos.x, o.pos.y, o.pos.z, '#c8b89a', 3.5));
@@ -1975,7 +2031,7 @@ class FieldView extends BaseView {
     else if (!this.busy) { this.updatePlayer(d); if (!this.busy) this.updateGags(d); }
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
     this.updateNemuri(t);
-    if (!this.busy && !this.flight) this.updatePlates();
+    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); }
     this.updateGuards(d, t); this.updateRollers(d, t);
     if (this.followers && !this.flight) this.updateFollowers(d, t);
     this.updateEnemies(d, t);

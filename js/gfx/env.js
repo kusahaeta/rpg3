@@ -350,7 +350,11 @@ const ENV_PROPS = {
   cave(T) {
     T.noTree = true;
     const cm = new THREE.MeshStandardMaterial({ color: '#1a1428', emissive: '#6a4aff', emissiveIntensity: 0.5, roughness: 0.3, flatShading: true });
-    for (let i = 0; i < (T.bare ? 10 : 18); i++) { const a = Math.random() * Math.PI * 2, r = 14 + Math.random() * 20; const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.8 + Math.random() * 1.5, 0), cm); m.position.set(Math.cos(a) * r, Math.random() * 3, Math.sin(a) * r); m.scale.y = 2 + Math.random() * 2; m.rotation.z = (Math.random() - 0.5) * 0.6; T.root.add(m); }
+    // まわりに小さな水晶の群れ。区画のある場面（探索・会話・その場所での戦闘）は、区画の小物（ZoneKit.ore）にまかせる
+    if (!T.zone) for (let i = 0; i < 14; i++) {
+      const a = Math.random() * Math.PI * 2, r = 14 + Math.random() * 20, cx = Math.cos(a) * r, cz = Math.sin(a) * r;
+      for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.15 + Math.random() * 0.15, 0), cm); m.position.set(cx + (Math.random() - 0.5) * 0.8, 0.3, cz + (Math.random() - 0.5) * 0.8); m.scale.y = 2 + Math.random() * 1.5; m.rotation.set((Math.random() - 0.5) * 0.6, Math.random() * 3, (Math.random() - 0.5) * 0.6); T.root.add(m); }
+    }
     motes(T, '#8a6aff', 18, { size: 0.06, life: 5, k: 2.4 });
   },
   ruins(T) {

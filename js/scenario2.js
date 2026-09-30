@@ -611,9 +611,9 @@ const STORY = [
     { t: 'field', zone: 'valley', at: [18, -5], scene: 'c4_02c', g: '谷の北東、川のほとりの野営あとで、影の四剣の記録をさがす' },
     { t: 'field', zone: 'cave', at: [0, 37], scene: 'c4_03', battle: '4-2', g: '谷の北、黒影洞窟へ' },
     { t: 'field', zone: 'cave', at: [2, -15], scene: 'c4_03b', g: '黒影洞窟の奥へ進む' },
-    { t: 'field', zone: 'cave_lake', at: [-11, 15], scene: 'c4_03c', g: '光の水晶を三つ灯して影の壁を消し、洞窟の下の階へ' },
-    { t: 'field', zone: 'cave_deep', at: [0, 35], scene: 'c4_03d', g: '光の水晶を二つ灯して橋の影の壁を消し、洞窟の最深部へ' },
-    { t: 'field', zone: 'cave_deep', at: [0, -30], scene: 'c4_04', battle: '4-3', after: 'c4_05', g: '三つの記憶のかけらにふれて闇の扉を開き、三本の剣の眠る大広間へ' },
+    { t: 'field', zone: 'cave_lake', at: [-11, 15], scene: 'c4_03c', g: '光の水晶を三つ灯し、大水晶の光を光の鏡で影の壁まで導いて、洞窟の下の階へ' },
+    { t: 'field', zone: 'cave_deep', at: [0, 35], scene: 'c4_03d', g: '最初の光が消える前に光の水晶を三つとも灯して橋の影の壁を消し、洞窟の最深部へ' },
+    { t: 'field', zone: 'cave_deep', at: [0, -30], scene: 'c4_04', battle: '4-3', after: 'c4_05', g: '影の四剣が集まった順に記憶のかけらにふれて闇の扉を開き、三本の剣の眠る大広間へ' },
     { t: 'reward', niboshi: 600, g: '第四章 おしまい' },
   ] },
   { title: '第五章　眠れる子猫', steps: [
