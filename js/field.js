@@ -503,6 +503,7 @@ class FieldView extends BaseView {
       Object.assign(ph, E.cabin ? this.makeCabin(ph, st) : stair ? this.makeStairGate(ph, st, stair) : st.exit === 'arch' ? this.makeArchGate(ph)
         : st.exit === 'bulkhead' ? this.makeBulkhead(ph) : this.makeGate(ph, st));
       if (!ph.apply) ph.apply = o => ph.panels.forEach(q => { q.p.position.x = q.s * o * (ph.width / 2 - 0.3); });
+      if (!E.cabin) ph.camTop = ph.h + Math.max(6.4, this.exitTop(ph) + 0.3);
       this.exitsPhys.push(ph);
       for (const d of dests) this.gates.push({ exit: d.exit, x: ph.x, z: ph.z, nx: ph.nx, nz: ph.nz, locked: d.locked, phys: ph });
     }
@@ -544,6 +545,44 @@ class FieldView extends BaseView {
     sign.position.set(0, H + 1.2, 0.42); g.add(sign);
     const lamps = [-1, 1].map(s => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), glowMat(col, 4)); m.position.set(s * (W / 2 - 0.25), H + 0.65, 0.4); g.add(m); return m; });
     return { g, panels, lamps, H };
+  }
+  // カメラが入れない場所か。カメラは太さ R の玉として、まわり 8 方向も調べる
+  // （屋根のひさし・壁の厚み・家の角・画面の手前の面が壁を切らないように）
+  viewBlocked(x, y, z, R = 0.45) {
+    const T = this.T; if (!T) return false;
+    if (T.blocksView(x, y, z) || this.inGate(x, y, z)) return true;
+    const D = R * 0.7071;
+    return T.blocksView(x + R, y, z) || T.blocksView(x - R, y, z) || T.blocksView(x, y, z + R) || T.blocksView(x, y, z - R)
+      || T.blocksView(x + D, y, z + D) || T.blocksView(x - D, y, z + D) || T.blocksView(x + D, y, z - D) || T.blocksView(x - D, y, z - D);
+  }
+  // 頭から off の向きに、カメラをどこまで離せるか（壁・天井・障害物にぶつかる手前まで）
+  viewDist(head, off, foot, ceil, py) {
+    const T = this.T, cd = this.camDist;
+    const blocked = f => {
+      const x = head.x + off.x * cd * f, y = Math.min(ceil, head.y + off.y * cd * f), z = head.z + off.z * cd * f;
+      // 太さは頭から離れるほど大きく（頭のそばで太いと、壁ぞいを歩くだけでカメラが寄ってしまう）
+      const R = Math.min(0.55, 0.15 + 0.3 * cd * f);
+      // 小物：高さの決まったもの（門の柱など）はその高さまで、決まっていないものは足もとから 4m まで
+      const prop = this.colliders.some(c => (c.box || c.r > 0.5) && (c.top == null ? y - foot < 4 : y - (c.y || 0) < c.top + 0.2) && this.hitsCol(c, x, z, 0.3, T ? py : null));
+      return prop || this.viewBlocked(x, y, z, R);
+    };
+    for (let i = 1; i <= 24; i++) {
+      if (!blocked(i / 24)) continue;
+      // ぶつかる手前まで細かく詰める（壁ぎわでは主人公のすぐ後ろまで寄る）
+      let lo = (i - 1) / 24, hi = i / 24;
+      for (let k = 0; k < 5; k++) { const m = (lo + hi) / 2; if (blocked(m)) hi = m; else lo = m; }
+      return cd * lo;
+    }
+    return cd;
+  }
+  // 出入口の門：門の面の近く（柱が張り出している）と門の外側（扉・奥の通路）には、門の高さまでカメラを入れない
+  inGate(x, y, z) {
+    for (const ph of this.exitsPhys) {
+      if (ph.camTop == null || y > ph.camTop) continue;
+      const dx = x - ph.x, dz = z - ph.z, along = dx * ph.nx + dz * ph.nz, lat = Math.abs(dx * ph.nz - dz * ph.nx);
+      if (along < 0.6 && along > -12 && lat < ph.width / 2 + 0.4) return true;
+    }
+    return false;
   }
   // 出入口の上端（屋外の区画は外側の壁の高さ）
   exitTop(ph) {
@@ -2110,18 +2149,22 @@ class FieldView extends BaseView {
     // カメラ（壁・天井・障害物にめり込まないよう距離を縮める）
     const T = this.T, foot = p.vis ?? 0;
     const head = V3(p.pos.x, foot + p.y + 0.8, p.pos.z);
-    const off = V3(Math.sin(this.camYaw) * Math.cos(this.camPitch), Math.sin(this.camPitch), Math.cos(this.camYaw) * Math.cos(this.camPitch));
+    const offAt = pitch => V3(Math.sin(this.camYaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(this.camYaw) * Math.cos(pitch));
     const ceil = T ? T.ceilOf(T.at(p.pos.x, p.pos.z)) - 0.45 : 1e9;
-    let dist = this.camDist;
-    for (let i = 1; i <= 24; i++) {
-      const f = i / 24, x = head.x + off.x * this.camDist * f, y = Math.min(ceil, head.y + off.y * this.camDist * f), z = head.z + off.z * this.camDist * f;
-      const prop = y - foot < 4 && this.colliders.some(c => (c.box || c.r > 0.5) && (c.top == null || y - (c.y || 0) < c.top + 0.2) && this.hitsCol(c, x, z, 0.3, T ? p.pos.y : null));
-      if (prop || (T && T.blocksView(x, y, z))) { dist = Math.max(1.2, this.camDist * (f - 0.06)); break; }
+    let off = offAt(this.camPitch), dist = this.viewDist(head, off, foot, ceil, p.pos.y);
+    // 壁ぎわで後ろがつかえるときは、カメラを上にずらして見下ろす（主人公が画面から消えないように）
+    for (let k = 1; k <= 3 && dist < 1.2; k++) {
+      const o2 = offAt(Math.min(1.35, this.camPitch + 0.35 * k)), d2 = this.viewDist(head, o2, foot, ceil, p.pos.y);
+      if (d2 > dist) { off = o2; dist = d2; }
     }
     this.curDist = this.curDist == null ? dist : dist < this.curDist ? dist : lerp(this.curDist, dist, 1 - Math.exp(-4 * d));
     const cp = head.clone().addScaledVector(off, this.curDist);
     cp.y = clamp(cp.y, foot + 0.3, ceil);
     this.camera.position.lerp(cp, 1 - Math.exp(-12 * d));
+    // すばやく回したとき、追いかけ途中のカメラが壁や屋根を横切らないようにする
+    if (this.viewBlocked(cam.x, cam.y, cam.z)) cam.copy(cp);
+    // カメラが主人公の頭に近いときは、主人公を消して前が見えるようにする
+    p.m.group.visible = this.curDist > 0.9;
     this.curLook.lerp(head, 1 - Math.exp(-14 * d));
     this.camera.lookAt(this.curLook);
     const key = this.env.key;
