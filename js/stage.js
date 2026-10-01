@@ -485,9 +485,13 @@ class StageView extends BaseView {
     this.last = sp;
   }
   lineDone() { this.stopTalk(); }
+  // 歩いている人物がいるか（台本の waitMove で、着くまで次の行を待つ）
+  walking() { return Object.values(this.actors).some(a => a.path && a.path.length); }
   stopTalk() { for (const a of Object.values(this.actors)) if (!a.foe) a.talk(false); }
   // カメラの選び方
   camFor(sp, A, d) {
+    // keep：前の行のカメラのまま（切りかえは later の cam で）
+    if (d.cam === 'keep') { this.lastShot = 'keep'; return; }
     if (d.cam) { this.shot(d.cam, { to: this.addr, drift: d.drift ?? 0.3, dur: d.dur || 5, close: d.close }); this.lastShot = d.cam; return; }
     if (!A) { this.shot('wide', { drift: 0.5, dur: 7 }); this.lastShot = 'wide'; return; }
     // 登場しながら話す行は、歩いてくるところが映るよう引きの画にする
@@ -656,7 +660,8 @@ const STAGE_FX = {
   // 世界中の猫の光（第八章）
   voices() { const cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a']; for (let i = 0; i < 60; i++) GFX.delay(i * 0.03).then(() => this.p.emit(this.O.clone().add(V3((Math.random() - 0.5) * 20, 10 + Math.random() * 6, (Math.random() - 0.5) * 20)), V3(0, -3, 0), hdr(pick(cols), 2.6), { life: 3, size: 0.16, drag: 0.3 })); Sfx.tone(880, 0.4, 'sine', 0.05); Sfx.tone(1320, 0.5, 'sine', 0.04, 0, 0.15); },
   // 封印の扉が開く
-  seal() { const c = this.point('door') || this.W(0, 8, 3); this.fx.ring(c, '#8affe0', { r: 5, life: 1.2, face: this.camera.position }); this.p.burst(c, '#8affe0', 120, { speed: 6, life: 1.4, size: 0.1 }); GFX.flash('#c8fff0', 0.6, 0.8); Sfx.door(); Sfx.slam(); this.scene.traverse(o => { if (o.isMesh && o.geometry && o.geometry.type === 'CircleGeometry' && o.geometry.parameters.radius > 2.5) o.visible = false; }); },
+  // 封印が解ける：光の輪と粒、白い閃光。封印の扉（ZoneKit.sealDoor）があれば、模様が消えて扉が奥へ開く。seal:出入口の key で、扉の奥の出入口も通れる色にする
+  seal(exit) { const c = this.point('door') || this.W(0, 8, 3); this.fx.ring(c, '#8affe0', { r: 5, life: 1.2, face: this.camera.position }); this.p.burst(c, '#8affe0', 120, { speed: 6, life: 1.4, size: 0.1 }); GFX.flash('#c8fff0', 0.6, 0.8); if (exit) this.openExit(exit); else { Sfx.door(); Sfx.slam(); } if (this.sealDoorObj) this.sealDoorObj.openUp(); else this.scene.traverse(o => { if (o.isMesh && o.geometry && o.geometry.type === 'CircleGeometry' && o.geometry.parameters.radius > 2.5) o.visible = false; }); },
   // 樹がよみがえる
   revive() { Save.data.flags.treeRevived = true; Save.save(); STAGE_FX.light.call(this, 'sky'); STAGE_FX.laugh.call(this); },
   // 猫じゃらしにじゃれる

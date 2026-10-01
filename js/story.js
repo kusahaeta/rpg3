@@ -188,7 +188,7 @@ function DialogueScreen(id, done) {
     <div class="dl-box"><div class="dl-name"></div><div class="dl-text"></div><div class="dl-next">▼</div></div>
   </div>`);
   const queue = scene.lines.slice();
-  let typing = null, full = '', auto = false, autoTimer = null, waitingChoice = false, finished = false, currentChoice = null;
+  let typing = null, full = '', auto = false, autoTimer = null, waitingChoice = false, finished = false, currentChoice = null, holding = false;
   const nameEl = s.querySelector('.dl-name'), textEl = s.querySelector('.dl-text'), box = s.querySelector('.dl-box');
   const choicesEl = s.querySelector('.dl-choices'), portrait = s.querySelector('.dl-portrait');
   // 台本の「そのシーンで起きること」（仲間になる・友情・物語のフラグ）は、スキップしても必ず反映する
@@ -227,7 +227,7 @@ function DialogueScreen(id, done) {
     if (speaker !== 'n' && !speaker.startsWith('e:') && Math.random() < 0.25) Sfx.meow(speaker); else Sfx.tone(700 + Math.random() * 200, 0.03, 'sine', 0.02);
   };
   const advance = () => {
-    if (finished || waitingChoice) return;
+    if (finished || waitingChoice || holding) return;
     if (typing) { clearInterval(typing); typing = null; textEl.textContent = full; if (v && v.lineDone) v.lineDone(); scheduleAuto(); return; }
     const l = queue.shift();
     if (!l) { finish(); return; }
@@ -252,7 +252,14 @@ function DialogueScreen(id, done) {
       if (v) v.choice ? v.choice() : v.focus(HERO);
       return;
     }
-    show(l[0], l[1], typeof l[2] === 'string' ? l[2] : undefined, l.find((x, i) => i >= 2 && x && typeof x === 'object'));
+    const dir = l.find((x, i) => i >= 2 && x && typeof x === 'object'), go = () => show(l[0], l[1], typeof l[2] === 'string' ? l[2] : undefined, dir);
+    // waitMove：前の行で歩きはじめた人物が着くまで待ってから、この行を出す（待つのは長くても 8 秒）
+    if (dir && dir.waitMove && v && v.walking && v.walking()) {
+      holding = true; const t0 = Date.now();
+      const tm = setInterval(() => { if (finished || !v.walking() || Date.now() - t0 > 8000) { clearInterval(tm); holding = false; if (!finished) go(); } }, 100);
+      return;
+    }
+    go();
   };
   const choose = i => {
     const node = currentChoice;
