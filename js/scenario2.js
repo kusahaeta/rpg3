@@ -686,7 +686,7 @@ const BATTLE_SETS = {
   '2-2': { zone: 'woods_valley', at: [8, 18], face: 180 },
   '2-3': { zone: 'road1', at: [12, -2], face: 90 },
   '2-4': { zone: 'sekisho', at: [0, -30], face: 0 },
-  '3-1': { zone: 'tower', at: [0, 7], face: 0 },
+  '3-1': { zone: 'tower', at: [0, 16], face: 0 },
   '3-2': { zone: 'tower_3f', at: [0, 4], face: 0 },
   '3-3': { zone: 'tower_top', at: [0, -26], face: 0 },
   '4-1': { zone: 'valley', at: [-4, -12], face: 90 },

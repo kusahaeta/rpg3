@@ -746,7 +746,7 @@ const FIELD_ZONES = {
   //   1F：玉のりのリング（balls。大玉は、押すと何かにぶつかるまで転がる。三つをスポットライトの下にそろえると、むすっと幕が上がる）
   //   2F：出し物のびっくり箱（rubble の look: 'jackbox'。ねじを出番の数だけ巻いて、ふたをたたく。出番の順は、楽屋のメモから考える）
   //   3F：トランポリン（bounce。走ってきた向きに 3 マス跳ぶ。跳んだ先もトランポリンなら、もう一度）  ブーブークッション（cushions。踏むと鳴る）はあちこちに
-  tower: { ci: 2, name: '笑顔の塔', floor: '1F', stage: '3-1', after: 'c3_02', arenas: [[0, 13, 0]], build: 'tower', arch: 'tower', bg: 'tower', groups: 6, chests: 3, crystals: 3, calmAfter: '3-3',
+  tower: { ci: 2, name: '笑顔の塔', floor: '1F', stage: '3-1', after: 'c3_02', arenas: [[0, 16, 0]], build: 'tower', arch: 'tower', bg: 'tower', groups: 6, chests: 3, crystals: 3, calmAfter: '3-3',
     world: true,
     th: { pattern: 'checker', floor: '#6a3458', floor2: '#7a4068', line: '#ffd27a', floorGlow: 0.25, fog: '#3a1a3a', light: 1.15 },
     // 1F：入口の広間から大ロビーへ。大ロビーの北半分に玉のりのリング。西はびっくり鏡の回廊（迷路）、東は風船の間、

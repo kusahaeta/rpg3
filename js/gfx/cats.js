@@ -444,7 +444,7 @@ function buildCat(key, opt = {}) {
   if (L.scar) { const sc = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.012, 0.01), new THREE.MeshBasicMaterial({ color: '#5a3438' })); sc.position.set(0.2, 0.08, 0.26); sc.rotation.set(0, 0.6, 0.6); headG.add(sc); }
 
   // ---------- 武器 ----------
-  const extras = buildCatWeapon(G.weapon, armR, armL, hips, L, elemCol, P, T, glow);
+  const extras = buildCatWeapon(G.weapon, armR, armL, hips, L, elemCol, P, T, glow, G);
 
   if (c.scale) root.scale.setScalar(c.scale);
   // 素材の特殊な見た目（石像・幽霊・ぬいぐるみ）
@@ -486,8 +486,13 @@ function buildCat(key, opt = {}) {
       hips.rotation.x = pose.lean; hips.rotation.y = pose.twist;
       headPivot.rotation.x = pose.headX + br * 0.025; headPivot.rotation.y = pose.headY;
       headPivot.rotation.z = Math.sin(t * 0.7 + this.seed) * 0.03;
-      setArm(armR, pose.armRx + br * 0.03, pose.armRz, -1); setArm(armL, pose.armLx - br * 0.03, pose.armLz, 1);
-      armR.el.rotation.x = pose.elbowR * 0.8; armL.el.rotation.x = pose.elbowL * 0.8;
+      // 武器が腕の動きを決めるもの（お手玉の腕）は、ポーズより優先する
+      const ja = extras.arms && extras.arms(t);
+      if (ja) { setArm(armR, ja[0], ja[1], -1); setArm(armL, ja[2], ja[3], 1); armR.el.rotation.x = ja[4] * 0.8; armL.el.rotation.x = ja[5] * 0.8; }
+      else {
+        setArm(armR, pose.armRx + br * 0.03, pose.armRz, -1); setArm(armL, pose.armLx - br * 0.03, pose.armLz, 1);
+        armR.el.rotation.x = pose.elbowR * 0.8; armL.el.rotation.x = pose.elbowL * 0.8;
+      }
       legR.pv.rotation.x = pose.legRx; legL.pv.rotation.x = pose.legLx;
       legR.kn.rotation.x = pose.kneeR * 0.6; legL.kn.rotation.x = pose.kneeL * 0.6;
       // しっぽ：気分で上がり下がり、ゆらゆら
@@ -536,7 +541,7 @@ function capeGeo(wt, wb, h, curve) {
 }
 
 // ---------- 武器（右手。持ち方は人型と同じ：腕を下ろすと先が前下を向く） ----------
-function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow) {
+function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow, G = {}) {
   const ex = {}, eg = glowMat(elemCol, 3);
   const hold = new THREE.Group(); hold.rotation.x = Math.PI - 0.55; armR.grip.add(hold);
   const tipAt = (y, parent = hold) => { ex.tip = new THREE.Object3D(); ex.tip.position.y = y; parent.add(ex.tip); };
@@ -594,7 +599,27 @@ function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow) {
     }
     case 'juggle': {  // ピエロのお手玉
       const balls = [0, 1, 2].map(i => { const b = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 10), glowMat(['#ff6a8a', '#ffd76a', '#6ad8ff'][i], 1.8)); hips.add(b); return b; });
-      ex.tip = balls[0]; ex.update = (dt, t) => balls.forEach((b, i) => { const a = t * 3 + i * 2.1; b.position.set(Math.cos(a) * 0.18, 0.62 + Math.abs(Math.sin(a)) * 0.35, 0.22); }); break;
+      ex.tip = balls[0];
+      if (!G.juggleArms) { ex.update = (dt, t) => balls.forEach((b, i) => { const a = t * 3 + i * 2.1; b.position.set(Math.cos(a) * 0.18, 0.62 + Math.abs(Math.sin(a)) * 0.35, 0.22); }); break; }
+      // juggleArms：両腕を横に広げ、投げるたびに手を振り上げる。三つの球は、右手 → 左手 → 右手と、両手のあいだを弧をえがいて行き来する
+      //   一周（右 → 左 → 右）は 1.8 秒、三つの球は 1/3 周ずつずらす → どちらの手も 0.6 秒ごとに投げる（左は右の 0.3 秒あと）。手は投げる直前に振り上がる
+      const C = 1.8, hR = V3(), hL = V3(), toss = k => Math.max(0, Math.sin((k + 0.3) % 1 * Math.PI * 2)) ** 2;
+      ex.arms = t => {
+        const kR = (t / (C / 3)) % 1, kL = ((t + C / 6) / (C / 3)) % 1, uR = toss(kR), uL = toss(kL);
+        return [-0.65 - uR * 0.3, -1.1 + uR * 0.25, -0.65 - uL * 0.3, 1.1 - uL * 0.25, -0.6 - uR * 0.5, -0.6 - uL * 0.5];
+      };
+      ex.update = (dt, t) => {
+        hips.updateWorldMatrix(true, false);
+        hips.worldToLocal(armR.grip.getWorldPosition(hR)); hips.worldToLocal(armL.grip.getWorldPosition(hL));
+        balls.forEach((b, i) => {
+          const p = (t / C + i / 3) % 1, rl = p < 0.5, s = rl ? p * 2 : p * 2 - 1, [a, c] = rl ? [hR, hL] : [hL, hR];
+          b.position.lerpVectors(a, c, s);
+          // 顔とえりにかからないよう、低めの弧で、体の前へふくらませる
+          b.position.y += 4 * 0.24 * s * (1 - s);
+          b.position.z += Math.sin(s * Math.PI) * 0.34;
+        });
+      };
+      break;
     }
     case 'broom': {   // ほうき（宿屋・掃除係）
       const st = P(new THREE.CylinderGeometry(0.012, 0.012, 0.5, 8), T('#a07a4a')); st.position.y = 0.18; hold.add(st);
