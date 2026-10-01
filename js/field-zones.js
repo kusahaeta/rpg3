@@ -1407,8 +1407,8 @@ const FIELD_ZONES = {
       { at: [-14.6, -18], mark: [-1.0, 4.4, 0], title: '古代文字', text: '「樹は、猫たちのつながりから生まれた。つながりが絶えるとき、樹は最後のにゃんこを生む」' }],
     map2d: [770, 30] },
 
-  // 封印の間：封印の扉の奥。樹の根をかたどった祭壇（第五章で守護神が語る場所）
-  ruins_seal: { ci: 4, name: '封印の間', floor: '奥', parent: 'ruins_in', stage: '5-3', after: 'c5_03', build: 'ruinsSeal', bg: 'ruins', groups: 0, chests: 1, crystals: 0, calmAfter: '5-3', skyTree: false,
+  // 封印の間：封印の扉の奥。樹の根をかたどった祭壇（第五章で守護神と戦い、守護神が語る場所）
+  ruins_seal: { ci: 4, name: '封印の間', floor: '奥', parent: 'ruins_in', stage: '5-3', after: 'c5_03', arenas: [[0, 1, 0]], build: 'ruinsSeal', bg: 'ruins', groups: 0, chests: 1, crystals: 0, calmAfter: '5-3', skyTree: false,
     world: true, arch: 'ruin', chestAt: [[8, -4]],
     th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.4, fog: '#2a3a34', fogD: 0.02, light: 0.9 },
     map: [
@@ -3233,15 +3233,33 @@ class ZoneKit {
     this.mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }), x + Math.sin(ry) * 0.17, y, z + Math.cos(ry) * 0.17, { ry, noShadow: true });
   }
   // 封印の扉
+  // 封印の扉：柱とまぐさ石の枠に、左右二枚の石の扉（ry の正面が手前）。扉の面には、二枚にまたがる封印の円と光る輪。
+  //   open なら扉は奥へ開いたまま（くぐれる）。閉じていれば当たり判定。openUp() で、封印の模様が消えて扉が奥へ開く（会話シーンの演出 seal）
   sealDoor(x, z, ry = 0, open = false) {
-    // 開いた扉は、柱とまぐさ石の枠だけ残して、くぐれるようにする
-    if (open) { for (const sd of [-1, 1]) this.box(x + Math.cos(ry) * sd * 3.3, z - Math.sin(ry) * sd * 3.3, 1.4, 7, 1.2, 'stone2', { ry }); this.box(x, z, 8, 1.4, 1.2, 'stone2', { ry, y: 5.6 }); }
-    else this.box(x, z, 8, 7, 1.2, 'stone2', { ry });
-    const d = this.mesh(new THREE.CircleGeometry(2.6, 40), new THREE.MeshStandardMaterial({ color: '#8a846a', roughness: 0.8 }), x + Math.sin(ry) * 0.62, 3.2, z + Math.cos(ry) * 0.62, { ry, noShadow: true });
-    const ring = this.mesh(new THREE.RingGeometry(2.3, 2.5, 48), this.glow('#8affe0', open ? 3 : 1.4), x + Math.sin(ry) * 0.65, 3.2, z + Math.cos(ry) * 0.65, { ry, noShadow: true });
-    ring.material = ring.material.clone(); ring.material.side = THREE.DoubleSide;
-    this.tick((dt, t) => { ring.rotation.z = t * 0.2; });
-    return { d, ring };
+    const c = Math.cos(ry), s = Math.sin(ry), W = 2.6, H = 5.6;
+    for (const sd of [-1, 1]) this.box(x + c * sd * 3.3, z - s * sd * 3.3, 1.4, 7, 1.2, 'stone2', { ry });
+    this.box(x, z, 8, 1.4, 1.2, 'stone2', { ry, y: H });
+    const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry; this.scene.add(g);
+    const stone = this.mat('stone2'), face = new THREE.MeshStandardMaterial({ color: '#8a846a', roughness: 0.8, side: THREE.DoubleSide });
+    // 扉：ちょうつがいは両はしの柱の内側。左（sd = -1）は +角度、右は -角度で、奥（-Z）へ開く
+    const leaves = [-1, 1].map(sd => {
+      const hinge = new THREE.Group(); hinge.position.set(sd * W, 0, 0); g.add(hinge);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(W, H, 0.5), stone); m.position.set(-sd * W / 2, H / 2, 0); m.castShadow = true; m.receiveShadow = true; hinge.add(m);
+      // 封印の円の半分（扉の手前の面）
+      const half = new THREE.Mesh(new THREE.CircleGeometry(2.4, 40, sd < 0 ? Math.PI / 2 : -Math.PI / 2, Math.PI), face); half.position.set(-sd * W, 3.2, 0.26); hinge.add(half);
+      return { hinge, sd, half };
+    });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(2.1, 2.3, 48), this.glow('#8affe0', open ? 3 : 1.4).clone()); ring.material.side = THREE.DoubleSide; ring.material.transparent = true;
+    ring.position.set(0, 3.2, 0.32); g.add(ring);
+    let k = open ? 1 : 0;
+    const pose = () => { leaves.forEach(L => { L.hinge.rotation.y = -L.sd * Ease.inOut(k) * 1.45; }); ring.material.opacity = 1 - k; ring.visible = k < 1; };
+    pose();
+    const col = !open && { box: true, x, z, hw: Math.abs(c) * W + Math.abs(s) * 0.4, hd: Math.abs(s) * W + Math.abs(c) * 0.4, top: H, y: this.gy(x, z) };
+    if (col) this.v.colliders.push(col);
+    const kit = this, o = { ring, leaves, opening: false, openUp() { o.opening = true; leaves.forEach(L => { L.half.visible = false; }); const i = kit.v.colliders.indexOf(col); if (i >= 0) kit.v.colliders.splice(i, 1); } };
+    this.tick((dt, t) => { ring.rotation.z = t * 0.2; if (o.opening && k < 1) { k = Math.min(1, k + dt * 0.45); pose(); } });
+    if (open) leaves.forEach(L => { L.half.visible = false; });
+    return (this.v.sealDoorObj = o);
   }
   // 猫じゃらし（魔王領の野原に生えている）
   nekojarashi(x, z, s = 1) {
@@ -4138,8 +4156,8 @@ const ZONE_BUILD = {
     for (let z = 5; z <= 17; z += 6) for (const x of [-8, 8]) K.column(x, z, 7, 0.6, 'stone');
     for (const z of [-34, -24]) for (const x of [-8, 8]) K.column(x, z, 7, 0.6, 'stone');
     const open = storyCond('scene:c5_03');
-    const d = K.sealDoor(0, -37.2, 0, open);
-    if (open) d.d.visible = false;
+    // 封印の扉：c5_03 でタマが封印を解くと開き、そのあとは開いたまま
+    K.sealDoor(0, -37.2, 0, open);
     for (let i = 0; i < 8; i++) K.mesh(new THREE.RingGeometry(0.5, 0.6, 24), K.glow('#8affe0', 1.2), 0, 0.03, 36 - i * 4.5, { rx: -Math.PI / 2, noShadow: true });
     // 地下墓所の石の棺と、宝物庫の台座
     for (const x of [-9, -3]) K.box(x, -18, 1.4, 0.8, 2.6, 'stone2');
