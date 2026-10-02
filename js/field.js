@@ -408,14 +408,15 @@ class FieldView extends BaseView {
   //  オブジェクト
   // ============================================================
   // 平らな区画の出入口：木のアーチと行き先の立て札。封鎖中は板でふさがれている
-  makeFieldGate(locked, to, W = 4.8) {
+  // plain：木の柱と葉・横木をつけず、光のまくと札だけ（建物の扉の奥など）
+  makeFieldGate(locked, to, W = 4.8, plain = false) {
     const g = new THREE.Group(), hw = W / 2;
     const wood = toon('#8a5a36'), dark = toon('#5a3a22'), leaf = toon('#5ab04a');
-    for (const sd of [-1, 1]) {
+    if (!plain) for (const sd of [-1, 1]) {
       const p = outlined(new THREE.CylinderGeometry(0.22, 0.26, 4.2, 8), wood, { thick: 0.002 }); p.position.set(sd * hw, 2.1, 0); g.add(p);
       for (let i = 0; i < 3; i++) { const l = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), leaf); l.position.set(sd * hw + (Math.random() - 0.5) * 0.6, 3.6 + i * 0.35, (Math.random() - 0.5) * 0.4); g.add(l); }
     }
-    const beam = outlined(new THREE.BoxGeometry(W + 0.8, 0.45, 0.45), dark, { thick: 0.002 }); beam.position.y = 4.1; g.add(beam);
+    if (!plain) { const beam = outlined(new THREE.BoxGeometry(W + 0.8, 0.45, 0.45), dark, { thick: 0.002 }); beam.position.y = 4.1; g.add(beam); }
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.85), new THREE.MeshBasicMaterial({ map: signTex(to, locked ? '通れない' : '▶ この先', locked ? '#ff6a6a' : '#ffd27a'), transparent: true, toneMapped: false, side: THREE.DoubleSide }));
     sign.position.set(0, 4.75, 0.05); g.add(sign);
     const face = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.5, 3.8), new THREE.MeshBasicMaterial({ map: radialTex('#ffffff', '#000000'), color: hdr(locked ? '#ff8a8a' : '#fff0c8', 0.5),
@@ -500,7 +501,7 @@ class FieldView extends BaseView {
         cx: E.x, cz: E.z, dests, locked: !E.cabin && dests[0].locked, open: 0 };
       ph.name = (list.find(e => e.name) || {}).name;
       const st = ARCH_STYLES[this.zone.arch || 'station'], stair = (list.find(e => e.stair) || {}).stair;
-      Object.assign(ph, E.cabin ? this.makeCabin(ph, st) : stair ? this.makeStairGate(ph, st, stair) : st.exit === 'arch' ? this.makeArchGate(ph)
+      Object.assign(ph, E.cabin ? this.makeCabin(ph, st) : stair ? this.makeStairGate(ph, st, stair) : st.exit === 'arch' ? this.makeArchGate(ph, list.some(e => e.plain))
         : st.exit === 'bulkhead' ? this.makeBulkhead(ph) : this.makeGate(ph, st));
       if (!ph.apply) ph.apply = o => ph.panels.forEach(q => { q.p.position.x = q.s * o * (ph.width / 2 - 0.3); });
       if (!E.cabin) ph.camTop = ph.h + Math.max(6.4, this.exitTop(ph) + 0.3);
@@ -641,8 +642,8 @@ class FieldView extends BaseView {
     return { g, panels, lamps, H, apply };
   }
   // 野外の区画の出入口：木のアーチと行き先の立て札（地図の端に立つ）
-  makeArchGate(ph) {
-    const { g, face, arrows } = this.makeFieldGate(ph.locked, FIELD_ZONES[ph.dests[0].to].name, ph.width + 0.4);
+  makeArchGate(ph, plain) {
+    const { g, face, arrows } = this.makeFieldGate(ph.locked, FIELD_ZONES[ph.dests[0].to].name, ph.width + 0.4, plain);
     g.position.set(ph.x, ph.h, ph.z); g.rotation.y = Math.atan2(ph.nx, ph.nz);
     this.scene.add(g);
     return { g, face, arrows, panels: [], apply() {}, H: 4.2 };
@@ -1037,6 +1038,12 @@ class FieldView extends BaseView {
         return { type: 'ball', b, dx: ax > az ? Math.sign(dx) : 0, dz: ax > az ? 0 : Math.sign(dz), text: bo.ready() ? '大玉を押す' : '調べる：大玉' };
       }
     }
+    // 時の水晶
+    const to = this.timeObj;
+    if (to) for (const q of to.crystals) if (Math.hypot(q.pos.x - p.x, q.pos.z - p.z) < 2.0 && Math.abs(q.pos.y - p.y) < 1.5) {
+      const name = TIME_CRYS[q.k];
+      return { type: 'time', o: to, q, text: !to.ready() || !to.can(q) ? `調べる：${name}` : to.past ? `${name}にふれる（今にもどす）` : `${name}にふれる（昔の姿を見る）` };
+    }
     for (const o of this.sealObjs || []) if (o.beam && !o.open) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) return { type: 'mirror', o, m, text: `${MIRROR_COLS[m.g][0]}の光の鏡の向きを変える（${MIRROR_COLS[m.g][0]}の鏡はみんな回る）` };
     for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || '光の水晶'; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < (o.S.reach || 2.0)) return { type: 'lamp', o, L, text: !o.ready() ? `調べる：${name}` : o.S.verb ? `${o.S.verb}（${speakerName(o.S.who)}）` : o.S.look === 'laugh' ? `${name}を押す` : o.S.labels ? `${name}（${o.S.labels[L.i]}）にふれる` : `${name}に触れる` }; }
     // 二匹の門の踏み板：乗っていれば「ここで待ってて」、仲間が待っていれば「よびもどす」
@@ -1103,6 +1110,8 @@ class FieldView extends BaseView {
       this.pushBall(it.b, it.dx, it.dz);
     } else if (it.type === 'ballReset') {
       this.resetBalls();
+    } else if (it.type === 'time') {
+      this.touchTime(it.o, it.q);
     } else if (it.type === 'mirror') {
       this.turnMirror(it.o, it.m);
     } else if (it.type === 'hold') {
@@ -1484,6 +1493,62 @@ class FieldView extends BaseView {
     delete (Save.data.flags || {})[P.id]; Save.save();
     Sfx.tone(1568, 0.3, 'triangle', 0.06); Sfx.tone(2093, 0.4, 'triangle', 0.05, 0, 0.12);
     this.toast('チリリン！　……大玉が、ころころと元の場所へもどった');
+  }
+  // 時の水晶にふれる：遺跡が「今」と「昔」で切りかわる（ZoneKit.timeShift）。仲間は、すぐそばへ呼びよせる
+  touchTime(o, q) {
+    if (!o.ready()) { this.startTalk('時の水晶', ['かすかに鳴っている、縦長の水晶。……ふれても、今は何も起きない。'], null, true); return; }
+    // 片道の水晶（金は昔へ、青は今へ）：もうその姿なら、光は沈んだまま
+    const flags = Save.data.flags || (Save.data.flags = {}), fk = q && q.k !== 'W' ? `${o.S.id}_${q.k}` : null;
+    const about = q && (q.k === 'P' ? ['金の水晶は、遺跡を「昔」へもどすことしかできない、片道の水晶らしい。', '「今」へもどすには、青の水晶か、入口の間の白い水晶をさがそう。'] : ['青の水晶は、遺跡を「今」へもどすことしかできない、片道の水晶らしい。', '「昔」へもどすには、金の水晶か、入口の間の白い水晶をさがそう。']);
+    if (q && !o.can(q)) { flags[fk] = true; Save.save(); this.startTalk(TIME_CRYS[q.k], [q.k === 'P' ? '金の水晶は、暗く沈んでいる。……遺跡はもう「昔」の姿なので、ふれても何も起きない。' : '青の水晶は、暗く沈んでいる。……遺跡はもう「今」の姿なので、ふれても何も起きない。', ...about], null, true); return; }
+    const past = !o.past, first = fk && !flags[fk];
+    o.set(past); flags[o.S.id] = past; if (fk) flags[fk] = true; Save.save();
+    const p = this.player.pos, col = past ? '#ffc86a' : '#8affe0';
+    GFX.flash(past ? '#ffe8c0' : '#d8fff4', 0.5, 0.7);
+    this.fx.ring(p.clone().add(V3(0, 0.1, 0)), col, { r: 9, life: 1.0, width: 0.3 });
+    this.p.burst(p.clone().add(V3(0, 1.2, 0)), col, 60, { speed: 5, up: 1, life: 1.0, size: 0.1 });
+    Sfx.tone(past ? 660 : 880, 0.8, 'sine', 0.06, past ? -330 : 440); Sfx.tone(past ? 990 : 1320, 0.6, 'triangle', 0.03, 0, 0.1);
+    this.spawnFollowers();
+    this.toast(past ? '……遺跡が、昔の姿を思い出した。瓦礫は消え、かわりに古い石の壁や門がよみがえった' : '……遺跡は、今の姿にもどった。昔の壁や門は崩れ、瓦礫が道をふさいでいる');
+    // 金・青の水晶にはじめてふれたときは、片道の水晶だと説明する
+    if (first) this.startTalk(TIME_CRYS[q.k], about, null, true);
+  }
+  // つながりの石畳（ZoneKit.strokeBoards）：踏んだ石が光る。始まりの石から、すべての石を一度ずつ踏み、最後に終わりの石を踏むと、結界が消える。
+  //   光った石をまた踏む・石畳から出る・となりでない石へ跳ぶ・終わりの石を先に踏むと、光は消えてやりなおし。ひとつ前の石へもどると、一歩取り消せる
+  updateStroke() {
+    const pl = this.player, p = pl.pos;
+    if (pl.y > 0.05) return;
+    for (const o of this.strokeObjs || []) {
+      if (o.solved) continue;
+      const t = o.tiles.find(q => Math.abs(q.x - p.x) <= 1 && Math.abs(q.z - p.z) <= 1 && Math.abs(q.y - p.y) < 1);
+      const last = o.path[o.path.length - 1];
+      if (t === last) continue;
+      if (!t) { if (o.path.length) this.breakStroke(o, '石畳の外へ出たので、光がとぎれてしまった……。始まりの石から、やりなおそう'); o.hinted = null; continue; }
+      if (!o.path.length) {
+        if (t.isS) { t.set(true); o.path.push(t); Sfx.tone(523, 0.18, 'triangle', 0.05); }
+        else if (o.hinted !== t) { o.hinted = t; this.toast('石は光らない。……始まりの石（足あとの印）から歩きはじめよう'); }
+        continue;
+      }
+      if (t === o.path[o.path.length - 2]) { last.set(false); o.path.pop(); Sfx.tone(392, 0.12, 'sine', 0.04); continue; }
+      if (t.lit) { o.hinted = t; this.breakStroke(o, '光った石を、もう一度踏んでしまった……。光がとぎれた'); continue; }
+      if (Math.abs(t.x - last.x) + Math.abs(t.z - last.z) > CELL + 0.1) { o.hinted = t; this.breakStroke(o, '石をとばしてしまった……。となりの石へ、一歩ずつ進もう'); continue; }
+      t.set(true); o.path.push(t);
+      const n = o.path.length, all = n === o.tiles.length;
+      Sfx.tone(523 * Math.pow(2, (n % 12) / 12), 0.18, 'triangle', 0.05);
+      if (t.isG && !all) { o.hinted = t; this.breakStroke(o, '終わりの石を、先に踏んでしまった……。終わりの石は、いちばん最後に'); continue; }
+      if (all) this.solveStroke(o);
+    }
+  }
+  breakStroke(o, msg) {
+    o.path.forEach(q => q.set(true, '#ff8a8a')); const path = o.path; o.path = [];
+    setTimeout(() => path.forEach(q => { if (!o.solved && !o.path.includes(q)) q.set(false); }), 450);
+    Sfx.tone(220, 0.5, 'sine', 0.06, -120); this.toast(msg);
+  }
+  solveStroke(o) {
+    const P = o.P; o.open(); (Save.data.flags || (Save.data.flags = {}))[P.id] = true; Save.save();
+    o.tiles.forEach((q, i) => setTimeout(() => { q.set(true, '#ffe8a0'); this.p.burst(V3(q.x, q.y + 0.3, q.z), '#ffe8a0', 8, { speed: 2, up: 1.5, life: 0.8, size: 0.08 }); }, i * 40));
+    setTimeout(() => { Sfx.win(); GFX.shake(0.15); this.toast(P.openToast || '結界が消えた！'); }, 500);
+    if (P.done) this.startTalk('', P.done.filter(([k]) => k === 'n' || this.team.some(m => m.key === k)));
   }
   // 笑顔の塔の仕掛け：ブーブークッション（踏むと鳴る）とトランポリン（乗ると跳ぶ）
   updateGags(d) {
@@ -2169,6 +2234,9 @@ class FieldView extends BaseView {
     this.groups.forEach(gr => { if (gr.alive) dot(gr.pos.x, gr.pos.y, gr.pos.z, gr.state === 'chase' ? '#ff3040' : gr.elite ? '#ff9a4d' : '#ff6b81', gr.elite ? 4 : 3); });
     (this.sealObjs || []).forEach(o => { if (!o.open && o.ready()) o.lamps.forEach(L => { if (!L.lit) dot(L.pos.x, L.pos.y, L.pos.z, { memory: '#ffe2a8', laugh: '#ffe07a', beacon: '#ff9a3a', bar: '#e8c080' }[o.S.look] || '#cfefff', 3.5); }); });
     (this.bounceObjs || []).forEach(b => dot(b.pos.x, b.pos.y, b.pos.z, '#ff9ad8', 2.5));
+    // つながりの石畳：始まりの石（青緑の四角）。時の水晶（今は青緑・昔は琥珀色）
+    (this.strokeObjs || []).forEach(o => { if (!o.solved) o.tiles.forEach(q => { if (q.isS) dot(q.x, q.y, q.z, '#8affe0', 3, true); }); });
+    if (this.timeObj) this.timeObj.crystals.forEach(q => dot(q.pos.x, q.pos.y, q.pos.z, this.timeObj.can(q) ? q.col : '#5a5a5a', 3.5));
     // 玉のりのリング：スポットライト（金の四角）と大玉（赤い点）
     const bo = this.ballObj;
     if (bo && !bo.open && bo.ready()) { const y = this.gy(bo.P.ring[0], bo.P.ring[1]); bo.P.targets.forEach(([x, z]) => dot(x, y, z, '#ffe07a', 3, true)); bo.balls.forEach(b => dot(b.g.position.x, y, b.g.position.z, '#ff6a8a', 3.5)); }
@@ -2232,7 +2300,7 @@ class FieldView extends BaseView {
     else if (!this.busy) { this.updatePlayer(d); if (!this.busy) this.updateGags(d); }
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
     this.updateNemuri(t);
-    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); }
+    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); }
     this.updateGuards(d, t); this.updateRollers(d, t);
     if (this.followers && !this.flight) this.updateFollowers(d, t);
     this.updateEnemies(d, t);

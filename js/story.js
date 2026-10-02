@@ -90,7 +90,11 @@ const Story = {
     const cur = this.current(); if (!cur || cur.step.t !== 'field') return;
     const step = cur.step;
     const next = () => { this.advance(); this.run(); };
-    const fight = () => (step.battle ? this.battle(step.battle, step.after ? () => App.go(DialogueScreen, step.after, next) : next) : next());
+    // clear：戦わずに、そのステージをクリア扱いにする（物語では戦わないステージ。先の区画の鍵になる）
+    const fight = () => {
+      if (step.clear && !Save.data.cleared[step.clear]) { Save.data.cleared[step.clear] = true; Save.save(); }
+      if (step.battle) this.battle(step.battle, step.after ? () => App.go(DialogueScreen, step.after, next) : next); else next();
+    };
     if (step.scene) App.go(DialogueScreen, step.scene, fight); else fight();
   },
 };
@@ -317,7 +321,7 @@ const Debug = {
     for (let c = 0; c < STORY.length; c++) STORY[c].steps.forEach((st, i) => { if (c < ci || (c === ci && i < si)) before.push(st); });
     d.story = { ch: ci, step: si };
     const cleared = {};
-    before.forEach(st => { if (st.stage) cleared[st.stage] = true; if (st.battle) cleared[st.battle] = true; });
+    before.forEach(st => { if (st.stage) cleared[st.stage] = true; if (st.battle) cleared[st.battle] = true; if (st.clear) cleared[st.clear] = true; });
     // 物語で戦わないステージ（章の前半の戦闘）も、先の章へ進むならクリア扱い
     for (const s of allStages()) { const cIdx = CHAPTERS.findIndex(c => c.stages.some(x => x.id === s.id)); if (cIdx < Math.min(ci, CHAPTERS.length)) cleared[s.id] = true; }
     d.cleared = cleared;

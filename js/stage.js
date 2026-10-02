@@ -660,6 +660,8 @@ const STAGE_FX = {
   // 世界中の猫の光（第八章）
   voices() { const cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a']; for (let i = 0; i < 60; i++) GFX.delay(i * 0.03).then(() => this.p.emit(this.O.clone().add(V3((Math.random() - 0.5) * 20, 10 + Math.random() * 6, (Math.random() - 0.5) * 20)), V3(0, -3, 0), hdr(pick(cols), 2.6), { life: 3, size: 0.16, drag: 0.3 })); Sfx.tone(880, 0.4, 'sine', 0.05); Sfx.tone(1320, 0.5, 'sine', 0.04, 0, 0.15); },
   // 封印の扉が開く
+  // 時の水晶：遺跡が「今」と「昔」で切りかわる（ZoneKit.timeShift。シーンの中だけで、セーブには残さない）
+  timeshift() { const o = this.timeObj; if (!o) return; o.set(!o.past); const c = this.point('crystal') || this.O; GFX.flash(o.past ? '#ffe8c0' : '#d8fff4', 0.5, 0.7); this.fx.ring(c.clone().add(V3(0, 0.1, 0)), o.past ? '#ffc86a' : '#8affe0', { r: 10, life: 1.0, width: 0.3 }); this.p.burst(c.clone().add(V3(0, 1.5, 0)), o.past ? '#ffc86a' : '#8affe0', 80, { speed: 5, up: 1, life: 1.2, size: 0.1 }); Sfx.tone(o.past ? 660 : 880, 0.8, 'sine', 0.06, o.past ? -330 : 440); },
   // 封印が解ける：光の輪と粒、白い閃光。封印の扉（ZoneKit.sealDoor）があれば、模様が消えて扉が奥へ開く。seal:出入口の key で、扉の奥の出入口も通れる色にする
   seal(exit) { const c = this.point('door') || this.W(0, 8, 3); this.fx.ring(c, '#8affe0', { r: 5, life: 1.2, face: this.camera.position }); this.p.burst(c, '#8affe0', 120, { speed: 6, life: 1.4, size: 0.1 }); GFX.flash('#c8fff0', 0.6, 0.8); if (exit) this.openExit(exit); else { Sfx.door(); Sfx.slam(); } if (this.sealDoorObj) this.sealDoorObj.openUp(); else this.scene.traverse(o => { if (o.isMesh && o.geometry && o.geometry.type === 'CircleGeometry' && o.geometry.parameters.radius > 2.5) o.visible = false; }); },
   // 樹がよみがえる
