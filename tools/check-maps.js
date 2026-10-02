@@ -29,6 +29,8 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   (Z.cushions || []).forEach((p, i) => add(id, { k: 'cushion' + i, p, r: 0.5 }));
   (Z.bounce || []).forEach((p, i) => add(id, { k: 'bounce' + i, p, r: 0.9 }));
   if (Z.bounceBack) add(id, { k: 'bounceBack', p: Z.bounceBack, r: 0.6 });
+  (Z.stroke || []).forEach(P => { add(id, { k: 'stroke ' + P.id + ' start', p: P.start, r: 0.8 }); add(id, { k: 'stroke ' + P.id + ' goal', p: P.goal, r: 0.8 }); add(id, { k: 'stroke ' + P.id + ' gate', p: [(P.gate[0] + P.gate[2]) / 2, (P.gate[1] + P.gate[3]) / 2], r: 0.3 }); });
+  if (Z.timeShift) Z.timeShift.crystals.forEach((p, i) => add(id, { k: 'crystal' + i, p: p.slice(0, 2), r: 0.8 }));
   if (Z.balls) { const P = Z.balls; [...P.balls, ...P.targets, ...P.blocks].forEach((p, i) => add(id, { k: 'ball ' + P.id + '_' + i, p, r: 0.9 })); add(id, { k: 'reset ' + P.id, p: P.reset, r: 0.5 }); }
   (Z.fluff || []).forEach((B, i) => { add(id, { k: 'fluff' + i, p: B.at, r: 0.9 }); add(id, { k: 'glide' + i, p: B.to, r: 0.6 }); });
   (Z.nemuri || []).forEach((N, i) => { add(id, { k: 'nemuri' + i, p: N.at, r: 0.2 }); add(id, { k: 'wake' + i, p: N.back, r: 0.6 }); });
@@ -96,6 +98,20 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
     if (n === 0) bad.push(`balls ${P.id} is already solved at start`);
     if (verbose) console.log(`   balls ${P.id}: solved in ${n} push(es)`);
   }
+  // つながりの石畳：始まりの石から終わりの石まで、すべての石を一度ずつ通る道があるか（道の数は -v で表示）。石は床の上で、同じ高さか
+  for (const P of Z.stroke || []) {
+    const n = strokePaths(T, P);
+    if (!n) bad.push(`stroke ${P.id} has no solution`);
+    if (verbose) console.log(`   stroke ${P.id}: ${n} solution(s)`);
+  }
+  // 時の水晶：入口（anchor）から、今の姿で歩きはじめて、物語の目的地・宝箱・出入口へ行けるか。目的地までの切りかえの回数は -v で表示
+  if (Z.timeShift) {
+    const r = timeReach(T, Z);
+    if (r.stuck) bad.push(`time: ${r.stuck} state(s) cannot get back to the entrance`);
+    for (const st of STORY.flatMap(c => c.steps).filter(st => st.t === 'field' && st.zone === id)) { const [x, z] = zonePoint(Z, st.at), n = r(x, z); if (n < 0) bad.push(`time: quest ${st.scene} unreachable`); else if (verbose) console.log(`   time: quest ${st.scene} needs ${n} switch(es)`); }
+    (Z.chestAt || []).forEach((p, i) => { if (r(p[0], p[1]) < 0) bad.push(`time: chest${i} unreachable`); });
+    for (const e of Z.exits) { const E = T.exits[e.key]; if (E && !E.cells.some(i => r(T.cx(T.colOf(i)), T.cz(T.rowOf(i))) >= 0)) bad.push(`time: exit ${e.key} unreachable`); }
+  }
   // 階段が急すぎないか（歩くときは、体のまわりの段差が STEP 以内でないと進めない。半径 0.4m で 0.6m まで）
   const steep = new Set();
   for (const [i, s] of T.stairs) if (Math.abs(s.h1 - s.h0) / s.len > 1.25) steep.add(`${T.colOf(i)},${T.rowOf(i)} (${s.h0}→${s.h1}m / ${s.len}m)`);
@@ -111,6 +127,49 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
     }
     for (const s of spots[id] || []) console.log(`   ${s.k[0].toUpperCase()} ${s.k} [${s.p.map(v => v.toFixed(1))}] cell ${Math.floor((s.p[0] + T.hw) / 2)},${Math.floor((s.p[1] + T.hd) / 2)}`);
   }
+}
+// つながりの石畳の道の数（すべての石を一度ずつ、始まりの石から終わりの石まで）
+function strokePaths(T, P) {
+  const near = (q, x, z) => q && Math.abs(q[0] - x) < 0.5 && Math.abs(q[1] - z) < 0.5, cells = [];
+  for (let z = P.area[1]; z <= P.area[3] + 0.01; z += CELL) for (let x = P.area[0]; x <= P.area[2] + 0.01; x += CELL) if (!(P.holes || []).some(q => near(q, x, z))) cells.push([x, z]);
+  const h0 = T.groundAt(...P.start); if (cells.some(([x, z]) => { const i = T.at(x, z); return i < 0 || !T.isWalkKind(T.kind[i]) || Math.abs(T.groundAt(x, z) - h0) > 0.1; })) return 0;
+  const key = (x, z) => x + ',' + z, seen = new Set([key(...P.start)]); let n = 0;
+  const dfs = (x, z) => {
+    if (seen.size === cells.length) { if (near(P.goal, x, z)) n++; return; }
+    if (near(P.goal, x, z)) return;
+    for (const [dx, dz] of [[0, -CELL], [CELL, 0], [0, CELL], [-CELL, 0]]) { const nx = x + dx, nz = z + dz, k = key(nx, nz); if (seen.has(k) || !cells.some(c => near(c, nx, nz))) continue; seen.add(k); dfs(nx, nz); seen.delete(k); }
+  };
+  dfs(...P.start);
+  return n;
+}
+// 時の水晶：入口から、今の姿で歩きはじめて、そのマスまで最小で何回切りかえるか（行けなければ -1）。R は今、A は昔に通れない
+// 水晶の向き（[x, z, 'P'] は昔へだけ、'N' は今へだけ、ほかはどちらへも）。stuck：たどりつける状態のうち、入口（今）へ戻れないものの数
+function timeReach(T, Z) {
+  const S = Z.timeShift, n = T.kind.length, crys = new Map(S.crystals.map(([x, z, k]) => [T.at(x, z), k || 'W']));
+  const ok = (i, p) => i >= 0 && T.isWalkKind(T.kind[i]) && !(p ? T.ch[i] === 'A' : T.ch[i] === 'R');
+  const flip = (i, p) => { const k = crys.get(i); return k != null && (k === 'W' || (k === 'P' && !p) || (k === 'N' && p)); };
+  const steps = (i, p) => {
+    const c = T.colOf(i), r = T.rowOf(i), out = [];
+    for (const [dc, dr] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const j = T.idx(c + dc, r + dr); if (ok(j, p) && Math.abs(T.groundAt(T.cx(c + dc), T.cz(r + dr)) - T.groundAt(T.cx(c), T.cz(r))) <= 0.7) out.push(j); }
+    return out;
+  };
+  const dist = [new Int32Array(n).fill(-1), new Int32Array(n).fill(-1)], s = T.at(Z.anchor[0], Z.anchor[1]), dq = [[s, 0]]; dist[0][s] = 0;
+  while (dq.length) {
+    const [i, p] = dq.shift(), d = dist[p][i];
+    if (flip(i, p) && (dist[1 - p][i] < 0 || dist[1 - p][i] > d + 1)) { dist[1 - p][i] = d + 1; dq.push([i, 1 - p]); }
+    for (const j of steps(i, p)) if (dist[p][j] < 0 || dist[p][j] > d) { dist[p][j] = d; dq.unshift([j, p]); }
+  }
+  // 逆向きに、入口（今）へ戻れる状態をさがす（歩くのは行き来できる。水晶の切りかえだけ逆にたどる）
+  const back = [new Uint8Array(n), new Uint8Array(n)], st = [[s, 0]]; back[0][s] = 1;
+  while (st.length) {
+    const [i, p] = st.pop();
+    for (const j of steps(i, p)) if (!back[p][j]) { back[p][j] = 1; st.push([j, p]); }
+    if (flip(i, 1 - p) && !back[1 - p][i]) { back[1 - p][i] = 1; st.push([i, 1 - p]); }
+  }
+  let stuck = 0; for (let i = 0; i < n; i++) for (const p of [0, 1]) if (dist[p][i] >= 0 && !back[p][i]) stuck++;
+  const f = (x, z) => { const i = T.at(x, z), a = dist[0][i], b = dist[1][i]; return a < 0 ? b : b < 0 ? a : Math.min(a, b); };
+  f.stuck = stuck;
+  return f;
 }
 // 大玉ころがしを、押す回数の少ない順に調べる（プレイヤーは、大玉と台のないマスを歩いて、押す側に回りこめるか）
 function solveBalls(T, P, roll) {

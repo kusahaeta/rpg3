@@ -1310,105 +1310,249 @@ const FIELD_ZONES = {
     map2d: [620, 30] },
 
   // ---------------- 第五章 古代遺跡 ----------------
-  ruins_out: { ci: 4, name: '古代遺跡・外庭', w: 70, d: 70, stage: '5-1', arenas: [[-2, 6, 0]], build: 'ruinsOut', groups: 6, chests: 3, crystals: 3,
-    world: true, arch: 'woods', chestAt: [[-30, 0], [26, -24], [28, 22]],
+  ruins_out: { ci: 4, name: '古代遺跡・外庭', w: 110, d: 102, stage: '5-1', arenas: [[-2, 6, 0]], build: 'ruinsOut', groups: 7, chests: 3, crystals: 3,
+    world: true, arch: 'woods', chestAt: [[-38, -20], [24, -36], [28, 22]],
     th: { path: '#b8b098' },
-    // 谷から北へ。石像の広場と中庭を抜け、大階段を上ると遺跡の入口の高台。西は池のある庭、北東と南東は崩れた塔の行き止まり、東へ魔王領
+    // 谷から北へ。森の小道を抜けると石像の広場と中庭。西は池のある庭と、苔むした庭（北のくぼみに宝箱）。東へ魔王領、その北に林の空き地。
+    // 広場の北の小道を上ると、見張り台の跡の空き地。さらに北が「石畳の丘」（大階段の上に遺跡の入口）
     map: [
-      '################rrr################',
-      '##########333333333333333##########',
-      '##########333333333333333##########',
-      '#########3333333333333333333333####',
-      '#########3333333333333333###3333###',
-      '##########333333333333333###3333###',
-      '##########333333333333333###3333###',
-      '###########3333333333333###########',
-      '##############33333################',
-      '##############^^^^^################',
-      '##############^^^^^################',
-      '#############,,,,,,,###############',
-      '##0000#######,,,,,,################',
-      '#000000#######,,,,,################',
-      '#00~~000######,,,,,################',
-      '#0~~~000######,,,,,################',
-      '#00~~000####000,,,000##############',
-      '#000000####0000,,,0000#############',
-      '##0000,,,,,0000,,,00000############',
-      '###00,,,,,00000,,,000000###########',
-      '##########00000,,,0000000##########',
-      '##########0000,,,,,,,,,,,,,,,,,,,,e',
-      '##########000000,,000000,,,,,,,,,,e',
-      '###########00000,,00000####,,######',
-      '###########00000,,000000###,,######',
-      '##########000000,,00000####,,######',
-      '#######000000000,,0000#####,,,#####',
-      '#######000000000,,000######000000##',
-      '#######00000000,,,000######000000##',
-      '#######0000000,,,0000######000000##',
-      '########00000,,,00000#######0000###',
-      '#########0000,,,0000###############',
-      '#########,,,,,,,###################',
-      '########,,,,#######################',
-      '########bbb########################',
+      '##########################hhh##########################',
+      '#########################,,,,,#########################',
+      '#########################,,,,,#########################',
+      '#########################,,,,,#########################',
+      '###############0000000,,,,,,000000#####################',
+      '###############0000000,,,,,,000000000##################',
+      '##############00000000,,,,,,00000000000000#############',
+      '##############00000000,,,,,,00000000000000#############',
+      '##############00000000,,,,,,00000000000000#############',
+      '##############00000000,,,,,,000000###00000#############',
+      '###############0000000,,,,,,000000#####################',
+      '######################,,,,,,###########################',
+      '######################,,,,,,###########################',
+      '######################,,,,,,###########################',
+      '#######000###############,,,,,#########################',
+      '#######000###############,,,,,#########################',
+      '#######000###############,,,,,#########################',
+      '#######000#############,,,,,,,#########################',
+      '#######0000############,,,,,,,#########################',
+      '#######0000############,,,,,,,#########################',
+      '######00000#0000#######,,,,,,##########################',
+      '######00000000000#######,,,,,##########################',
+      '######0000000~~000######,,,,,#############000000000####',
+      '######000000~~~000######,,,,,#############000000000####',
+      '######0000#00~~000####000,,,000###########000000000####',
+      '######0000#000000####0000,,,0000##########000000000####',
+      '######00000#0000,,,,,0000,,,00000#########000000000####',
+      '#######0000##00,,,,,00000,,,000000######00000000000####',
+      '#######0000#########00000,,,0000000#####00#############',
+      '####################0000,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,e',
+      '####################000000,,000000,,,,,,,,,,,,,,,,,,,,e',
+      '#####################00000,,00000####,,################',
+      '#####################00000,,000000###,,################',
+      '####################000000,,00000####,,################',
+      '#################000000000,,0000#####,,,###############',
+      '#################000000000,,000######000000############',
+      '#################00000000,,,000######000000############',
+      '#################0000000,,,0000######000000############',
+      '##################00000,,,00000#######0000#############',
+      '###################0000,,,0000#########################',
+      '###################,,,,,,,#############################',
+      '##################,,,,#################################',
+      '#################,,,,,#################################',
+      '##################,,,,#################################',
+      '##################,,,,#################################',
+      '##################,,,,#################################',
+      '##################,,,,#################################',
+      '#################,,,,,#################################',
+      '##################,,,,#################################',
+      '##################,,,,#################################',
+      '##################bbb##################################',
     ],
-    anchor: [-10, 24], exits: [{ key: 'b', to: 'valley' }, { key: 'r', to: 'ruins_in' }, { key: 'e', to: 'demon_land' }],
-    notes: [{ at: [8.95, 12], mark: 2.6, title: '倒れた石像', text: '四匹の猫が肩を寄せ合う石像。顔はすり減って、もう分からない。' }],
+    anchor: [-10, 24], exits: [{ key: 'b', to: 'valley' }, { key: 'h', to: 'ruins_hill' }, { key: 'e', to: 'demon_land' }],
+    notes: [{ at: [8.95, 12], mark: 2.6, title: '倒れた石像', text: '四匹の猫が肩を寄せ合う石像。顔はすり減って、もう分からない。' },
+      { at: [-4, -21], face: 0, post: ['↑ 石畳の丘', '遺跡の入口'], title: '道しるべ', text: '「この先、石畳の丘。遺跡の入口は、丘の上」……古い文字の下に、だれかが新しく書き足したらしい。' },
+      { at: [-10, -38], mark: 1.6, title: '見張り台の跡', text: '崩れた石の台。……台の上には、四匹ぶんの肉球の跡が、うっすらと残っている。ここから、丘の上の遺跡を見張っていたのだろうか。' }],
     map2d: [770, 95] },
 
-  ruins_in: { ci: 4, name: '壁画の回廊', w: 36, d: 80, stage: '5-2', arenas: [[0, 14, 0], [0, -26, 0]], build: 'ruinsIn', bg: 'ruins', groups: 5, chests: 3, crystals: 2, calmAfter: '5-3', skyTree: false,
-    world: true, arch: 'ruin', chestAt: [[-7, -17], [7, -3], [-7, 29]],
-    th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.3, fog: '#2a3a34', fogD: 0.02, light: 0.95 },
-    // 入口の間から大広間へ。その先は西と東の二本の回廊（古代文字・壁画）に分かれ、あいだに地下墓所と宝物庫。回廊の奥で合流すると封印の扉（開くと封印の間へ）
+  // 石畳の丘：外庭の北。森の小道 → 丘のふもと（西に光の庭、東に崩れた塔）→ 大階段 → 高台の「つながりの石畳」と、北の石の神殿（遺跡）。
+  //   神殿の扉には結界（石畳をひと筆でつなぐと消える）。扉の奥の通路から、遺跡の中（壁画の回廊）へ。
+  //   ふもとの西の「光の庭」には、練習の石畳と、結界の奥の宝箱
+  ruins_hill: { ci: 4, name: '古代遺跡・石畳の丘', floor: '丘', parent: 'ruins_out', w: 82, d: 82, stage: '5-1', after: 'c5_01', arenas: [[0, 22, 0], [14, -16, 0]], build: 'ruinsHill', groups: 4, chests: 3, crystals: 2,
+    world: true, arch: 'woods', chestAt: [[-34, -10], [34, 4], [30, -28]],
+    th: { path: '#b8b098' },
     map: [
-      '########nn########',
-      '####0000000000####',
-      '###000000000000###',
-      '###000000000000###',
-      '###000000000000###',
-      '###000000000000###',
-      '###000000000000###',
-      '###000000000000###',
-      '#0000000000000000#',
-      '#00############00#',
-      '#00#0000000####00#',
-      '#00D0000000####00#',
-      '#00D0000000####00#',
-      '#00#0000000####00#',
-      '#00############00#',
-      '#00####0000000#00#',
-      '#00####0000000#00#',
-      '#00####0000000D00#',
-      '#00####0000000D00#',
-      '#00####0000000#00#',
-      '#00############00#',
-      '#00############00#',
-      '##00000000000000##',
-      '##00000000000000##',
-      '##00000000000000##',
-      '##00000000000000##',
-      '##00000000000000##',
-      '##00000000000000##',
-      '##00000000000000##',
-      '####0000000000####',
-      '######000000######',
-      '######000000######',
-      '#######0000#######',
-      '####0000000000####',
-      '####0000000000####',
-      '####0000000000####',
-      '####0000000000####',
-      '####0000000000####',
-      '#######0000#######',
-      '########ss########',
+      '###################rrr###################',
+      '###################333###################',
+      '###################333###################',
+      '###################333###################',
+      '#########33333333333333333333333#########',
+      '#########33333333333333333333333#3333####',
+      '########33333333333333333333333333333####',
+      '####333333333333333333333333333333333####',
+      '####333333333333333333333333333333333####',
+      '####33333333333333333333333333333########',
+      '####33333333333333333333333333333########',
+      '########3333333333333333333333333########',
+      '########3333333333333333333333333########',
+      '#########33333333333333333333333#########',
+      '#########33333333333333333333333#########',
+      '##000#############^^^^^##################',
+      '##000#############^^^^^##################',
+      '##000###00000000000,,,00000000000########',
+      '##00000000000000000,,,00000000000########',
+      '##00000000000000000,,,00000000000#000000#',
+      '#000000000000000000,,,00000000000#000000#',
+      '#000000000000000000,,,000000000000000000#',
+      '#000000000000000000,,,000000000000000000#',
+      '#000000000000000000,,,000000000000000000#',
+      '#000000000000000000,,,000000000000000000#',
+      '#000000000000000000,,,000000000000000000#',
+      '#000000000000000000,,,000000000000000000#',
+      '#000000000000000000,,,00000000000########',
+      '#0000000##000000000,,,000000000##########',
+      '##000000##000000000,,,000000000##########',
+      '##000000#########,,,,,,,#################',
+      '#################,,,,,,,#################',
+      '#################,,,,,,,#################',
+      '#################,,,,,,,#################',
+      '###################,,,,,,################',
+      '###################,,,,,,################',
+      '###################,,,,,,################',
+      '##################,,,,,##################',
+      '##################,,,,,##################',
+      '##################,,,,,##################',
+      '###################sss###################',
     ],
-    anchor: [8, 34], exits: [{ key: 's', to: 'ruins_out' }, { key: 'n', to: 'ruins_seal' }],
-    notes: [{ at: [-12.8, 10], mark: [-1.0, 4.4, 0], title: '壁画・一', text: '巨大な猫が、大きな樹を抱いて眠っている。' },
-      { at: [14.6, -4], mark: [1.0, 4.4, 0], title: '壁画・二', text: '四匹の猫が、樹のまわりで手をつないでいる。……一匹は、とても小さい。' },
-      { at: [-14.6, -18], mark: [-1.0, 4.4, 0], title: '古代文字', text: '「樹は、猫たちのつながりから生まれた。つながりが絶えるとき、樹は最後のにゃんこを生む」' }],
+    anchor: [-2, 23], exits: [{ key: 's', to: 'ruins_out' }, { key: 'r', to: 'ruins_in', plain: true }],
+    // つながりの石畳（stroke）：座標はマスの中心。答えは、練習が二通り、高台がちょうど一通り（始まりの石の北と、終わりの石の南東に崩れた柱）
+    stroke: [
+      { id: 'ruinsStroke0', name: '光の庭の石畳', area: [-36, 4, -32, 8], start: [-36, 8], goal: [-32, 4], gate: [-37, -5, -31, -5],
+        openToast: '九つの石がつながると、くぼみの結界が、すうっと消えた！' },
+      { id: 'ruinsStroke1', name: 'つながりの石畳', area: [-4, -28, 4, -20], holes: [[2, -26], [0, -22]], start: [0, -20], goal: [0, -28], gate: [-3, -33, 3, -33], gateH: 7,
+        openToast: 'すべての石がひと筋の光でつながると、遺跡の扉の結界が消えた！',
+        done: [['n', '二十三の石が、ひと筋の光でつながった。……遺跡の扉の結界が、ほどけるように消えていく。'], ['tama', '……つながった……。……あったかい。'],
+          ['shiro', 'ひと筆で、ぜんぶの石を……。古代の猫たちって、ずいぶん凝った鍵を作るのね。'], ['mike', 'みんなで手をつないだみたいだね！'], ['kuro', '……壁画の四匹も、こうだったのかもな。']] },
+    ],
+    notes: [{ at: [-7, -17], face: 0.3, board: ['つながりの石畳', 'ひと筆で、すべての石を'], title: 'つながりの石畳', text: '「始まりの石（足あと）から、すべての石を一度ずつ踏み、最後に終わりの石（星）へ。光った石をまた踏むか、石畳から出れば、光は消える」……「ひとつ前の石へもどれば、一歩だけ取り消せる」' },
+      { at: [-30, 12], face: 0, board: ['光の庭', 'ためしの石畳'], title: '光の庭の石畳', text: '「ためしの石畳。始まりの石から、九つの石をひと筆で。つながれば、くぼみの宝が手に入る」' },
+      { at: [-30, -24], mark: 1.6, title: '見晴らし台', text: '丘の西の見晴らし台。……ずっと南に、くろねこ谷が見える。遺跡を建てた猫たちも、ここから谷をながめたのだろうか。' }],
+    map2d: [770, 95] },
+
+  // 壁画の回廊：遺跡の中。南の入口の間から、北の大広間へ。大広間の西・東・北の壁に、三つの壁画（巨大な猫と樹・手をつなぐ四匹・古代文字）。
+  //   大広間の北の大きな口から「崩れた回廊」へ
+  ruins_in: { ci: 4, name: '壁画の回廊', w: 60, d: 64, stage: '5-2', arenas: [[0, -12, 0]], build: 'ruinsIn', bg: 'ruins', groups: 3, chests: 2, crystals: 2, calmAfter: '5-3', skyTree: false,
+    world: true, arch: 'ruin', chestAt: [[-20, 16], [20, -26]],
+    th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.3, fog: '#2a3a34', fogD: 0.02, light: 0.95 },
+    map: [
+      '#############mmmm#############',
+      '###000000000000000000000000###',
+      '###000000000000000000000000###',
+      '###000000000000000000000000###',
+      '###000000000000000000000000###',
+      '##00000000000000000000000000##',
+      '##00000000000000000000000000##',
+      '##00000000000000000000000000##',
+      '##00000000000000000000000000##',
+      '##00000000000000000000000000##',
+      '##00000000000000000000000000##',
+      '##00000000000000000000000000##',
+      '###000000000000000000000000###',
+      '###000000000000000000000000###',
+      '###000000000000000000000000###',
+      '###000000000000000000000000###',
+      '###########00000000###########',
+      '###########00000000###########',
+      '###########00000000###########',
+      '######000000000000000000######',
+      '######000000000000000000######',
+      '######000000000000000000######',
+      '####0000000000000000000000####',
+      '####0000000000000000000000####',
+      '####0000000000000000000000####',
+      '####0000000000000000000000####',
+      '######000000000000000000######',
+      '######000000000000000000######',
+      '######000000000000000000######',
+      '############000000############',
+      '############000000############',
+      '##############ss##############',
+    ],
+    anchor: [20, 16], exits: [{ key: 's', to: 'ruins_hill' }, { key: 'm', to: 'ruins_maze' }],
+    notes: [{ at: [-24.6, -15], mark: [-1.0, 4.4, 0], title: '壁画・一', text: '巨大な猫が、大きな樹を抱いて眠っている。' },
+      { at: [24.6, -15], mark: [1.0, 4.4, 0], title: '壁画・二', text: '四匹の猫が、樹のまわりで手をつないでいる。……一匹は、とても小さい。' },
+      { at: [-12, -28.4], mark: [0, 4.4, -1.0], title: '古代文字', text: '「樹は、猫たちのつながりから生まれた。つながりが絶えるとき、樹は最後のにゃんこを生む」' }],
+    map2d: [770, 30] },
+
+  // 崩れた回廊：壁画の回廊の奥。南の入口の間から、4x4 の小部屋（地下墓所・宝物庫・墓守の部屋など）を抜けて、北の封印の扉の間（開くと封印の間へ）。
+  //   時の水晶（timeShift）にふれると、遺跡が「今」と「昔」で切りかわる。地図の R は今は瓦礫（昔は通れる）、A は昔は石の門（今は崩れて通れる）。
+  //   入口の間の白い水晶はどちらへも、小部屋の金の水晶は昔へだけ、青の水晶は今へだけ。小部屋は段を北から 北・二・三・南、列を西から 1〜4 とよぶ。
+  //   道順（七回の切りかえ）：入口の白で昔へ → 南2 の青で今へ → 南3・三3・三4・南4 → 南4 の金で昔へ → 南3・三3・三2・二2・二3 → 二3 の青で今へ →
+  //         二4 の金で昔へ → 北4 の青で今へ → 北3・北2・二2・二1 → 二1 の金で昔へ → 北1・北2・北3 → 封印の扉の間。南1 の青の水晶は、より道
+  ruins_maze: { ci: 4, name: '崩れた回廊', floor: '奥', parent: 'ruins_in', w: 78, d: 98, stage: '5-2', after: 'c5_02', arenas: [[0, 35, 0], [0, -38, 0]], build: 'ruinsMaze', bg: 'ruins', groups: 4, chests: 3, crystals: 2, calmAfter: '5-3', skyTree: false,
+    world: true, arch: 'ruin', chestAt: [[-21, 9], [-3, -27], [15, 23]],
+    th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.3, fog: '#2a3a34', fogD: 0.02, light: 0.95 },
+    map: [
+      '##################nnn##################',
+      '#############0000000000000#############',
+      '####0000000000000000000000000000000####',
+      '####0000000000000000000000000000000####',
+      '####0000000000000000000000000000000####',
+      '####0000000000000000000000000000000####',
+      '####0000000000000000000000000000000####',
+      '####0000000000000000000000000000000####',
+      '####0000000000000000000000000000000####',
+      '#####AA################RR##############',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000R00000000D00000000A00000000##',
+      '##00000000R00000000D00000000A00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '#####RR#######AA################RR#####',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000A00000000R00000000A00000000##',
+      '##00000000A00000000R00000000A00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '#####RR#######RR#######################',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000A00000000R00000000A00000000##',
+      '##00000000A00000000R00000000A00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '#####RR################DD#######DD#####',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000#00000000A00000000R00000000##',
+      '##00000000#00000000A00000000R00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '##00000000#00000000#00000000#00000000##',
+      '#####AA#######RR#######################',
+      '##00000000000000000000000000000000000##',
+      '##00000000000000000000000000000000000##',
+      '##00000000000000000000000000000000000##',
+      '##00000000000000000000000000000000000##',
+      '##00000000000000000000000000000000000##',
+      '##00000000000000000000000000000000000##',
+      '##00000000000000000000000000000000000##',
+      '##00000000000000000000000000000000000##',
+      '###############000000000###############',
+      '###############000000000###############',
+      '##################sss##################',
+    ],
+    anchor: [6, 40], exits: [{ key: 's', to: 'ruins_in' }, { key: 'n', to: 'ruins_seal' }],
+    // 回廊は 4x4 の小部屋。部屋どうしの口は、R（今は瓦礫・昔は通れる）、A（昔は石の門・今は通れる）、D（いつも通れる）
+    // crystals：[x, z, 向き]。'W' 白（今と昔を行き来できる。入口の間）、'P' 金（昔へだけ）、'N' 青（今へだけ）
+    // ghosts：昔のあいだだけ見える、昔の猫たちの面影 [x, z, 向き]
+    timeShift: { id: 'ruinsTime', after: 'c5_02b',
+      crystals: [[-18, 32, 'W'], [22, -26, 'N'], [-32, -12, 'P'], [4, -12, 'N'], [22, -12, 'P'], [-32, 16, 'N'], [-14, 16, 'N'], [22, 16, 'P']],
+      ghosts: [[-28, 36, Math.PI / 2], [9, -23, Math.PI], [-9, -9, 0.4], [27, 5, -Math.PI / 2], [-18, -40, Math.PI / 2], [9, 19, 0]] },
     map2d: [770, 30] },
 
   // 封印の間：封印の扉の奥。樹の根をかたどった祭壇（第五章で守護神と戦い、守護神が語る場所）
-  ruins_seal: { ci: 4, name: '封印の間', floor: '奥', parent: 'ruins_in', stage: '5-3', after: 'c5_03', arenas: [[0, 1, 0]], build: 'ruinsSeal', bg: 'ruins', groups: 0, chests: 1, crystals: 0, calmAfter: '5-3', skyTree: false,
+  ruins_seal: { ci: 4, name: '封印の間', floor: '最奥', parent: 'ruins_in', stage: '5-3', after: 'c5_03', arenas: [[0, 1, 0]], build: 'ruinsSeal', bg: 'ruins', groups: 0, chests: 1, crystals: 0, calmAfter: '5-3', skyTree: false,
     world: true, arch: 'ruin', chestAt: [[8, -4]],
     th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.4, fog: '#2a3a34', fogD: 0.02, light: 0.9 },
     map: [
@@ -1427,7 +1571,7 @@ const FIELD_ZONES = {
       '######00######',
       '######ss######',
     ],
-    anchor: [0, 8], exits: [{ key: 's', to: 'ruins_in' }],
+    anchor: [0, 8], exits: [{ key: 's', to: 'ruins_maze' }],
     notes: [{ at: [0, -9], mark: 3.0, reach: 2.4, title: '樹の根の祭壇', text: '樹の根をかたどった祭壇。根は床いっぱいに広がり、その先は闇に消えている。……根のいちばん先に、小さく「世界の果て」と刻まれている。' }],
     map2d: [770, 30] },
 
@@ -1802,7 +1946,7 @@ const CHAPTER_ZONES = [
   ['road1', 'road_rest', 'woods', 'woods_valley', 'woods_deep', 'road2', 'sekisho'],
   ['nyahaha', 'castle', 'castle_in', 'tower', 'tower_2f', 'tower_3f', 'tower_top'],
   ['valley', 'valley_village', 'cave', 'cave_lake', 'cave_deep'],
-  ['ruins_out', 'ruins_in'],
+  ['ruins_out', 'ruins_hill', 'ruins_in', 'ruins_maze', 'ruins_seal'],
   ['demon_land', 'demon_castle', 'demon_castle_2f', 'demon_throne'],
   ['tree_root', 'tree_under'],
   ['world_end'],
@@ -1903,6 +2047,8 @@ function floatZ(fx, pos, s = 0.32) {
 // 光の筋（seals の beam）：from から dir へまっすぐ進み、光の鏡で直角に曲がる（states[i] が 0 ＝ 「/」、1 ＝ 「＼」。鏡ごと）。
 //   壁・段差・岩（rocks: [x, z, 半径]）でとまる。to に届けば hit。鏡と from・to は、マスの中心に置く
 // 光の鏡の色：同じ色の鏡は、いっしょに回る（beam.mirrors の [x, z, 色の番号]、色ごとの最初の向きは beam.init）
+// 時の水晶の名前（向き W・P・N）
+const TIME_CRYS = { W: '白い時の水晶', P: '金の時の水晶', N: '青の時の水晶' };
 const MIRROR_COLS = [['赤', '#ff6a6a'], ['青', '#6aa8ff'], ['黄', '#ffd24a'], ['緑', '#6ad88a'], ['紫', '#c88aff']];
 const beamStates = (B, gst) => B.mirrors.map(m => gst[m[2] || 0]);
 const BEAM_DIR = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
@@ -2817,6 +2963,127 @@ class ZoneKit {
     });
     this.v.ballObj = o;
   }
+  // zone.stroke：つながりの石畳（[{ id, name, area: [x0, z0, x1, z1], holes, start, goal, gate: [x0, z0, x1, z1], openToast, done }]。座標はマスの中心）
+  //   石の板（踏むと光る）と、崩れた柱（holes）、始まりの石（足あと）・終わりの石（星）の印、gate の結界（光のまく）。
+  //   すべての石を一度ずつ踏んで、最後に終わりの石を踏むと、結界が消える（FieldView.updateStroke）。解いたかどうかは Save.data.flags[id]
+  strokeBoards() {
+    const flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {}, kit = this;
+    const near = (q, x, z) => q && Math.abs(q[0] - x) < 0.5 && Math.abs(q[1] - z) < 0.5;
+    this.v.strokeObjs = (this.zone.stroke || []).map(P => {
+      const solved = !!flags[P.id], [x0, z0, x1, z1] = P.area, tiles = [];
+      for (let z = z0; z <= z1 + 0.01; z += CELL) for (let x = x0; x <= x1 + 0.01; x += CELL) {
+        if ((P.holes || []).some(q => near(q, x, z))) { this.pillarBroken(x, z, 1.2 + this.r() * 1.4); this.reserve(x, z, 1.2); continue; }
+        const y = this.gy(x, z), isS = near(P.start, x, z), isG = near(P.goal, x, z);
+        this.mesh(new THREE.BoxGeometry(1.86, 0.1, 1.86), 'stone2', x, 0.05, z, { noShadow: true });
+        const mat = new THREE.MeshBasicMaterial({ color: hdr('#8affe0', 0.25), transparent: true, opacity: 0.85, toneMapped: false });
+        const ring = this.mesh(new THREE.RingGeometry(0.5, 0.66, 28), mat, x, 0.12, z, { rx: -Math.PI / 2, noShadow: true });
+        // 始まりの石：肉球の足あと。終わりの石：四つの光の点（星）
+        if (isS) { this.mesh(new THREE.CircleGeometry(0.2, 16), mat, x, 0.12, z + 0.08, { rx: -Math.PI / 2, noShadow: true }); for (const [px, pz] of [[-0.2, -0.14], [-0.07, -0.26], [0.07, -0.26], [0.2, -0.14]]) this.mesh(new THREE.CircleGeometry(0.07, 10), mat, x + px, 0.12, z + pz, { rx: -Math.PI / 2, noShadow: true }); }
+        if (isG) for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4; this.mesh(new THREE.CircleGeometry(0.1, 4), mat, x + Math.cos(a) * 0.26, 0.12, z + Math.sin(a) * 0.26, { rx: -Math.PI / 2, noShadow: true }); }
+        const t = { x, z, y, mat, ring, isS, isG, lit: false, set(l, col) { t.lit = l; mat.color.copy(hdr(col || '#8affe0', l ? 2.4 : 0.25)); } };
+        tiles.push(t);
+      }
+      this.reserve((x0 + x1) / 2, (z0 + z1) / 2, Math.hypot(x1 - x0, z1 - z0) / 2 + 1.5);
+      // 結界：光る半透明のまく（ゆらゆら）と、通れない当たり判定
+      const [gx0, gz0, gx1, gz1] = P.gate, gcx = (gx0 + gx1) / 2, gcz = (gz0 + gz1) / 2, gw = Math.abs(gx1 - gx0), gd = Math.abs(gz1 - gz0), len = Math.max(gw, gd), gy = this.gy(gcx, gcz);
+      const gmat = new THREE.MeshBasicMaterial({ color: hdr('#8affe0', 1.2), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+      const vh = P.gateH || 5, veil = new THREE.Mesh(new THREE.PlaneGeometry(len, vh, 12, 1), gmat); veil.position.set(gcx, gy + vh / 2, gcz); veil.rotation.y = gw >= gd ? 0 : Math.PI / 2; this.scene.add(veil);
+      const o = { P, tiles, path: [], solved, hinted: null };
+      o.col = { box: true, x: gcx, z: gcz, hw: Math.max(gw / 2, 0.4), hd: Math.max(gd / 2, 0.4), top: Math.max(6, vh), y: gy };
+      if (!solved) this.v.colliders.push(o.col); else { veil.visible = false; tiles.forEach(t => t.set(true, '#ffe8a0')); }
+      o.open = () => { o.solved = true; const i = kit.v.colliders.indexOf(o.col); if (i >= 0) kit.v.colliders.splice(i, 1); };
+      let fade = solved ? 0 : 1;
+      this.tick((dt, t) => {
+        if (o.solved && fade > 0) { fade = Math.max(0, fade - dt * 0.8); if (!fade) veil.visible = false; }
+        gmat.opacity = (0.28 + Math.sin(t * 2.2) * 0.08) * fade;
+        if (!o.solved) tiles.forEach((q, i) => { if (!q.lit && (q.isS || q.isG)) q.mat.color.copy(hdr('#8affe0', 0.5 + Math.sin(t * 3 + i) * 0.25)); });
+        if (kit.v.p && fade > 0 && Math.random() < dt * 12) kit.v.p.emit(V3(gcx + (Math.random() - 0.5) * len * (gw >= gd ? 1 : 0), gy + Math.random() * vh, gcz + (Math.random() - 0.5) * len * (gw >= gd ? 0 : 1)), V3(0, 0.6, 0), hdr('#8affe0', 1.6), { life: 1.4, size: 0.08, drag: 0.5 });
+      });
+      return o;
+    });
+  }
+  // zone.timeShift：時の水晶（{ id, crystals: [[x, z, 向き], ...], after }。向きは 'W' 白：どちらへも、'P' 金：昔へだけ、'N' 青：今へだけ）。地図の R のマスは、今は瓦礫（昔はまだ崩れていない）、
+  //   A のマスは、昔は石の壁や門（今は崩れて、根もとだけ残っている）。水晶にふれると、遺跡が「今」と「昔」で切りかわる（FieldView.touchTime）。
+  //   昔のあいだは、画面が琥珀色になり、昔の猫たちの面影が見える。どちらかは Save.data.flags[id]（true ＝ 昔）に残す
+  timeShift() {
+    const S = this.zone.timeShift, T = this.T; if (!S || !T) return;
+    const flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {}, kit = this;
+    const o = { S, past: !!flags[S.id], cells: [], crystals: [], ghosts: [], tk: 0, ready: () => !S.after || storyCond('scene:' + S.after) };
+    const wallM = this.stdM('#b8b098', 0.85), runeM = this.glow('#ffc86a', 2);
+    for (let i = 0; i < T.kind.length; i++) {
+      const ch = T.ch[i]; if (ch !== 'R' && ch !== 'A') continue;
+      const x = T.cx(T.colOf(i)), z = T.cz(T.rowOf(i)), y = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y, z); this.scene.add(g);
+      const add = (geo, mat, px, py, pz, parent = g) => { const m = new THREE.Mesh(geo, typeof mat === 'string' ? this.mat(mat) : mat); m.position.set(px, py, pz); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+      const now = new THREE.Group(), past = new THREE.Group(); g.add(now, past);
+      if (ch === 'R') {
+        // 今：崩れた岩の山（通れない）
+        for (let k = 0; k < 6; k++) { const s = 0.5 + this.r() * 0.6, m = add(new THREE.DodecahedronGeometry(s, 0), k % 2 ? 'rock' : 'stone', (this.r() - 0.5) * 1.4, s * 0.6 + (k > 3 ? 0.9 : 0), (this.r() - 0.5) * 1.4, now); m.rotation.set(this.r() * 3, this.r() * 3, 0); }
+      } else {
+        // 昔：組み石の壁（金の文様の帯）。今：崩れた根もと
+        add(new THREE.BoxGeometry(2, 4.6, 2), wallM, 0, 2.3, 0, past); add(new THREE.BoxGeometry(2.02, 0.16, 2.02), runeM, 0, 2.6, 0, past);
+        // 今の根もとは、上を歩くので床とほぼ同じ高さ（低い段にすると、仲間が埋まって見える）：割れた石の板と、すみの小石
+        add(new THREE.BoxGeometry(1.94, 0.05, 1.94), wallM, 0, 0.025, 0, now);
+        add(new THREE.BoxGeometry(1.94, 0.012, 0.06), runeM, 0, 0.056, (this.r() - 0.5) * 1.2, now).rotation.y = (this.r() - 0.5) * 0.6;
+        for (let k = 0; k < 2; k++) { const sx = this.r() < 0.5 ? -1 : 1, sz = this.r() < 0.5 ? -1 : 1, chip = add(new THREE.DodecahedronGeometry(0.12 + this.r() * 0.06, 0), 'stone', sx * 0.82, 0.1, sz * 0.82, now); chip.rotation.set(this.r() * 3, 0, this.r() * 3); }
+      }
+      this.reserve(x, z, 1.6);
+      o.cells.push({ ch, now, past, col: { box: true, x, z, hw: 1, hd: 1, top: 4.6, y }, on: false });
+    }
+    // 時の水晶：石の台に、縦長の水晶。白・金・青の色は向き（W どちらへも・P 昔へ・N 今へ）。いまは使えない水晶は、暗く沈む
+    const CRYS = { W: '#f4f0ff', P: '#ffc86a', N: '#8affe0' };
+    o.can = q => q.k === 'W' || (q.k === 'P' && !o.past) || (q.k === 'N' && o.past);
+    for (const [x, z, k = 'W'] of S.crystals) {
+      this.cyl(x, z, 0.7, 0.6, 'stone2', { seg: 8, r2: 0.55 });
+      const mat = new THREE.MeshBasicMaterial({ color: hdr(CRYS[k], 2.2), toneMapped: false });
+      const c = this.mesh(new THREE.OctahedronGeometry(0.42), mat, x, 1.55, z, { noShadow: true }); c.scale.y = 2;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(CRYS[k], 0.8), blending: THREE.AdditiveBlending, depthWrite: false })); sp.scale.setScalar(2.6); sp.position.copy(c.position); this.scene.add(sp);
+      this.reserve(x, z, 1.8);
+      o.crystals.push({ pos: V3(x, this.gy(x, z), z), c, mat, sp, k, col: CRYS[k] });
+    }
+    // 昔の猫たちの面影：昔のあいだだけ、壁画の前や水晶のそばに、昔の猫たち（2頭身の猫のモデル）が、琥珀色に透けて立っている
+    const ghostMats = [], ghostDepthM = new THREE.MeshBasicMaterial({ colorWrite: false, transparent: true });
+    if (typeof buildCat === 'function') (S.ghosts || []).forEach(([x, z, ry], i) => {
+      const m = buildCat(null, { def: { elem: 'imaginary', look: ANCIENT_CAT_LOOKS[i % ANCIENT_CAT_LOOKS.length] } });
+      if (m.setPose && typeof POSES !== 'undefined') m.setPose(POSES.idle);
+      if (m.face) m.face.set('gentle');
+      m.group.position.set(x, this.gy(x, z), z); m.group.rotation.y = ry; this.scene.add(m.group);
+      const parts = []; m.group.traverse(q => { if (q.isMesh || q.isSprite) parts.push(q); });
+      parts.forEach(q => {
+        q.castShadow = false; q.receiveShadow = false;
+        // 輪郭線（裏返しの殻。いつも不透明に描かれる）は消して、透けた体だけにする
+        if (q.material.isShaderMaterial) { q.visible = false; return; }
+        const solid = q.isMesh && !(Array.isArray(q.material) ? q.material : [q.material]).some(mt => mt.transparent || mt.alphaTest > 0);
+        q.material = (Array.isArray(q.material) ? q.material : [q.material]).map(mt => { const c = mt.clone(); c.transparent = true; c.opacity = 0.38; c.depthWrite = false; if (c.color) c.color.lerp(new THREE.Color('#ffd8a0'), 0.45); ghostMats.push(c); return c; });
+        if (q.material.length === 1) q.material = q.material[0];
+        q.renderOrder = 2;
+        // ほっぺや耳など、体にめりこんだ部品が透けて見えないよう、先に奥行きだけ描いて、いちばん手前の面だけに色をのせる
+        if (solid) { const dm = new THREE.Mesh(q.geometry, ghostDepthM); dm.renderOrder = 1; q.add(dm); }
+      });
+      o.ghosts.push(m.group); o.ghostModels = [...(o.ghostModels || []), m];
+    });
+    o.set = past => {
+      o.past = past;
+      for (const c of o.cells) {
+        const block = c.ch === 'R' ? !past : past;
+        c.now.visible = !past; c.past.visible = past;
+        if (block && !c.on) { kit.v.colliders.push(c.col); c.on = true; }
+        else if (!block && c.on) { const i = kit.v.colliders.indexOf(c.col); if (i >= 0) kit.v.colliders.splice(i, 1); c.on = false; }
+      }
+      for (const q of o.crystals) { const on = o.can(q); q.mat.color.copy(hdr(q.col, on ? 2.2 : 0.35)); q.sp.material.color.copy(hdr(q.col, on ? 0.8 : 0.08)); }
+      o.ghosts.forEach(g => { g.visible = past; });
+    };
+    o.set(o.past);
+    // 画面の色：昔のあいだは琥珀色に、すこし色あせる（この区画が映っているときだけ。今にもどると、元の色まで戻して手をはなす）
+    this.tick((dt, t) => {
+      o.crystals.forEach((q, i) => { q.c.rotation.y += dt * 0.6; q.c.position.y = q.pos.y + 1.55 + Math.sin(t * 1.4 + i) * 0.08; q.sp.position.y = q.c.position.y; });
+      if (o.past) { (o.ghostModels || []).forEach(m => m.update(dt, t)); const k = 0.34 + Math.sin(t * 1.6) * 0.06; ghostMats.forEach(mt => { mt.opacity = k; }); }
+      if (typeof GFX === 'undefined' || GFX.view !== kit.v || !GFX.grade) return;
+      const want = o.past ? 1 : 0; if (o.tk === want && !o.past) return;
+      o.tk += (want - o.tk) * (1 - Math.exp(-3 * dt)); if (Math.abs(want - o.tk) < 0.002) o.tk = want;
+      const U = GFX.grade.uniforms, k = o.tk; U.tint.value.setRGB(1, 1 - 0.1 * k, 1 - 0.3 * k); U.desat.value = 0.18 * k;
+    });
+    this.v.timeObj = o;
+  }
   // ---------------- 仕掛け：まどろみの林（綿毛・ねむり花） ----------------
   // たんぽぽ：葉のロゼットと細い茎、てっぺんに綿毛の玉（makePuff）。s で大きさ、bald で綿毛の抜けたあと
   dandelion(x, z, s = 1, o = {}) {
@@ -3215,18 +3482,48 @@ class ZoneKit {
     for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '80,60,30'},${Math.random() * 0.12})`; g.fillRect(Math.random() * 512, Math.random() * 320, 4 + Math.random() * 20, 2 + Math.random() * 6); }
     g.strokeStyle = '#6a5030'; g.fillStyle = '#8a6a40'; g.lineWidth = 5; g.lineCap = 'round';
     const cat = (cx, cy, s, fill) => { g.beginPath(); g.ellipse(cx, cy, 28 * s, 34 * s, 0, 0, Math.PI * 2); fill ? g.fill() : g.stroke(); g.beginPath(); g.arc(cx, cy - 46 * s, 24 * s, 0, Math.PI * 2); fill ? g.fill() : g.stroke(); for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(cx + sd * 12 * s, cy - 64 * s); g.lineTo(cx + sd * 22 * s, cy - 84 * s); g.lineTo(cx + sd * 26 * s, cy - 58 * s); g.stroke(); } };
-    if (kind === 0) {   // 大きな樹を抱く巨大な猫
-      g.lineWidth = 8; g.beginPath(); g.moveTo(256, 300); g.lineTo(256, 150); g.stroke();
-      for (let i = 0; i < 7; i++) { g.beginPath(); g.arc(256 + Math.cos(i) * 70, 110 + Math.sin(i * 2) * 30, 50, 0, Math.PI * 2); g.stroke(); }
-      g.lineWidth = 6; cat(256, 240, 2.2);
+    if (kind === 0) {   // 大きな樹を抱く巨大な猫：ほかの壁画と同じ線だけの絵。樹より大きな猫が寝そべり、前足を幹にまわし、頭を幹に寄せて眠る。空に三日月と星
+      g.lineWidth = 8; g.beginPath(); g.moveTo(390, 302); g.lineTo(390, 160); g.moveTo(390, 294); g.lineTo(368, 304); g.moveTo(390, 294); g.lineTo(412, 304); g.stroke();
+      for (let i = 0; i < 7; i++) { g.beginPath(); g.arc(390 + Math.cos(i) * 55, 92 + Math.sin(i * 2) * 22, 40, 0, Math.PI * 2); g.stroke(); }
+      g.lineWidth = 6;
+      g.beginPath(); g.ellipse(190, 262, 150, 40, 0, 0, Math.PI * 2); g.stroke();
+      g.beginPath(); g.arc(320, 214, 44, 0, Math.PI * 2); g.stroke();
+      for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(320 + sd * 14, 174); g.lineTo(320 + sd * 28, 148); g.lineTo(320 + sd * 38, 182); g.stroke(); }
+      // 前足：胸と首もとから、幹をかかえる
+      g.beginPath(); g.moveTo(300, 264); g.quadraticCurveTo(352, 286, 406, 262); g.moveTo(352, 240); g.quadraticCurveTo(378, 252, 406, 228); g.stroke();
+      // しっぽ：胴のはしから、まるく
+      g.beginPath(); g.moveTo(44, 256); g.bezierCurveTo(8, 232, 4, 302, 70, 302); g.stroke();
+      // 閉じた目
+      g.lineWidth = 4; for (const ex of [304, 332]) { g.beginPath(); g.arc(ex, 210, 7, 0.1 * Math.PI, 0.9 * Math.PI); g.stroke(); }
+      // 夜空：三日月と星
+      g.lineWidth = 5; g.beginPath(); g.arc(96, 74, 30, 0.35 * Math.PI, 1.65 * Math.PI); g.quadraticCurveTo(70, 74, 96 + Math.cos(0.35 * Math.PI) * 30, 74 + Math.sin(0.35 * Math.PI) * 30); g.stroke();
+      g.lineWidth = 4; for (const [sx, sy] of [[168, 52], [200, 108], [146, 132]]) { g.beginPath(); g.moveTo(sx - 8, sy); g.lineTo(sx + 8, sy); g.moveTo(sx, sy - 8); g.lineTo(sx, sy + 8); g.stroke(); }
     } else if (kind === 1) {   // 樹のまわりで手をつなぐ四匹（一匹は小さい）
       g.lineWidth = 6; g.beginPath(); g.moveTo(256, 300); g.lineTo(256, 170); g.stroke(); g.beginPath(); g.arc(256, 130, 60, 0, Math.PI * 2); g.stroke();
       [[110, 250, 1], [190, 250, 1], [320, 250, 1], [400, 262, 0.7]].forEach(([cx, cy, s]) => cat(cx, cy, s));
       g.beginPath(); g.moveTo(138, 240); g.lineTo(162, 240); g.moveTo(348, 240); g.lineTo(380, 248); g.stroke();
-    } else {   // 光る小さな猫と、枯れた樹
-      g.lineWidth = 6; g.beginPath(); g.moveTo(256, 300); g.lineTo(256, 130); g.moveTo(256, 170); g.lineTo(200, 120); g.moveTo(256, 190); g.lineTo(320, 130); g.stroke();
-      g.fillStyle = '#e8d890'; cat(256, 290, 0.7, true);
-      g.strokeStyle = '#e8d890'; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; g.beginPath(); g.moveTo(256 + Math.cos(a) * 50, 250 + Math.sin(a) * 50); g.lineTo(256 + Math.cos(a) * 75, 250 + Math.sin(a) * 75); g.stroke(); }
+    } else {   // 古代文字：まん中に、光る小さな猫と枯れた樹。上の段と左右の列に、古代の文字（丸・線・猫の耳・肉球を組み合わせた形）
+      g.lineWidth = 5; g.beginPath(); g.moveTo(256, 300); g.lineTo(256, 150); g.moveTo(256, 185); g.lineTo(215, 145); g.moveTo(256, 200); g.lineTo(300, 150); g.stroke();
+      g.fillStyle = '#e8d890'; cat(256, 296, 0.55, true);
+      g.strokeStyle = '#e8d890'; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; g.beginPath(); g.moveTo(256 + Math.cos(a) * 42, 262 + Math.sin(a) * 42); g.lineTo(256 + Math.cos(a) * 60, 262 + Math.sin(a) * 60); g.stroke(); }
+      // 文字の形は、いつも同じになるよう、決まった順の乱数で
+      let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+      const glyph = (gx, gy, s) => {
+        g.strokeStyle = '#5a4026'; g.fillStyle = '#5a4026'; g.lineWidth = 3.2;
+        const parts = 2 + Math.floor(rnd() * 2);
+        for (let k = 0; k < parts; k++) {
+          const t = Math.floor(rnd() * 5), ox = (rnd() - 0.5) * s * 0.5, oy = (k - (parts - 1) / 2) * s * 0.42;
+          g.beginPath();
+          if (t === 0) g.arc(gx + ox, gy + oy, s * 0.16, 0, Math.PI * 2);
+          else if (t === 1) { g.moveTo(gx - s * 0.3, gy + oy); g.lineTo(gx + s * 0.3, gy + oy); }
+          else if (t === 2) { g.moveTo(gx - s * 0.22, gy + oy + s * 0.14); g.lineTo(gx - s * 0.1, gy + oy - s * 0.16); g.lineTo(gx, gy + oy + s * 0.06); g.lineTo(gx + s * 0.1, gy + oy - s * 0.16); g.lineTo(gx + s * 0.22, gy + oy + s * 0.14); }
+          else if (t === 3) { g.moveTo(gx + ox, gy + oy - s * 0.2); g.lineTo(gx + ox, gy + oy + s * 0.2); }
+          else { for (const [px, py, r] of [[0, 0.06, 0.09], [-0.12, -0.08, 0.04], [0, -0.13, 0.04], [0.12, -0.08, 0.04]]) { g.moveTo(gx + px * s * 1.6 + r * s, gy + oy + py * s * 1.6); g.arc(gx + px * s * 1.6, gy + oy + py * s * 1.6, r * s, 0, Math.PI * 2); } g.fill(); continue; }
+          g.stroke();
+        }
+      };
+      for (let i = 0; i < 9; i++) glyph(70 + i * 46, 34, 34);
+      for (const cx of [48, 96, 416, 464]) for (let j = 0; j < 5; j++) glyph(cx, 90 + j * 46, 34);
     }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     this.box(x, z, w + 0.5, h + 0.5, 0.3, 'stone2', { ry, y: y - h / 2 - 0.25 });
@@ -3381,6 +3678,45 @@ function balloon(K, x, z, y, s = 1) {
   if (limp) return;
   K.mesh(new THREE.CylinderGeometry(0.01, 0.01, y, 4), 'white', x, y / 2, z, { noShadow: true });
   const y0 = b.position.y, ph = K.r() * 6; K.tick((dt, t) => { b.position.y = y0 + Math.sin(t * 1.3 + ph) * 0.12; b.rotation.z = Math.sin(t * 0.9 + ph) * 0.1; });
+}
+// 崩れた回廊の「昔の猫たちの面影」の見た目（buildCat の look。昔の装束：ローブの色のベストと、首の布）
+const ANCIENT_CAT_LOOKS = [
+  { fur: '#e8dcc0', pattern: 'tabby', patches: ['#b8a07a'], eye: '#8affe0', muzzle: '#fff8e8', paws: '#fff8e8', vest: '#8a7a5a', scarf: '#8affe0', accent: '#8affe0' },
+  { fur: '#5a4a44', pattern: 'tuxedo', eye: '#ffd27a', muzzle: '#f4ece0', paws: '#f4ece0', vest: '#6a5a8a', accent: '#ffd27a' },
+  { fur: '#f4f0e8', pattern: 'point', patches: ['#8a6a50'], eye: '#6aa8ff', muzzle: '#ffffff', scarf: '#c8a05a', accent: '#c8a05a' },
+  { fur: '#d89a5a', pattern: 'tabby', patches: ['#a8683a'], eye: '#8ad86a', muzzle: '#fff4e0', paws: '#fff4e0', vest: '#5a7a6a', accent: '#8ad86a' },
+];
+// 古代遺跡の石の神殿の正面（扉の前の地面が x0, z0。正面は +Z）：左右の石の壁、扉の上のまぐさ、三角の屋根、前に並ぶ六本の柱、
+//   扉のまわりの光る文様と、扉の上の猫の紋章。扉口は幅 6m・高さ 7m（奥の通路へ）。壁と屋根には当たり判定（カメラも入らない）
+function ruinsTemple(K, x0, z0) {
+  const y = K.gy(x0, z0 + 1), stone = K.stdM('#c8bea4', 0.9), dark = K.stdM('#9a9078', 0.95), W = 36, H = 12, D = 14, door = 6, dh = 7;
+  const box = (cx, cy, cz, w, h, d, m) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x0 + cx, y + cy, z0 + cz); b.castShadow = true; b.receiveShadow = true; K.scene.add(b); return b; };
+  const side = (W - door) / 2;
+  for (const s of [-1, 1]) { box(s * (door / 2 + side / 2), H / 2, -D / 2, side, H, D, stone); K.colBox(x0 + s * (door / 2 + side / 2), z0 - D / 2, side / 2, D / 2, H + 6); }
+  box(0, dh + (H - dh) / 2, -D / 2, door, H - dh, D, stone);
+  // 扉の奥の通路（暗い石）：天井、地図の端より奥の床、突き当たりの壁（外の森が透けて見えないように）。突き当たりには、奥へ続く光の筋
+  box(0, dh + 0.25, -D / 2, door, 0.5, D, dark);
+  const inner = K.stdM('#3a342a', 1);
+  box(0, 0.015, -D + 2.5, door, 0.03, 5, inner);
+  box(0, dh / 2, -D + 0.3, door, dh, 0.6, inner);
+  box(0, dh * 0.45, -D + 0.62, 1.6, dh * 0.7, 0.05, K.glow('#8affe0', 0.6));
+  // 正面の敷石（二段）。地面は平らなので、足が埋まらないよう、ごく薄くする
+  for (let k = 0; k < 2; k++) box(0, 0.02 + k * 0.02, 1.2 - k * 0.5, W + 2 - k * 2, 0.04 + k * 0.04, 1.2, dark);
+  // 屋根：平らな屋根と、正面の三角（三角柱）
+  box(0, H + 0.4, -D / 2, W + 2, 0.8, D + 2, dark);
+  const tri = new THREE.Shape(); tri.moveTo(-(W + 2) / 2, 0); tri.lineTo((W + 2) / 2, 0); tri.lineTo(0, 5.5); tri.lineTo(-(W + 2) / 2, 0);
+  const pg = new THREE.Mesh(new THREE.ExtrudeGeometry(tri, { depth: D + 2, bevelEnabled: false }), stone); pg.position.set(x0, y + H + 0.8, z0 - D - 1); pg.castShadow = true; K.scene.add(pg);
+  // 前の六本の柱
+  for (const cx of [-15.5, -10.5, -5.5, 5.5, 10.5, 15.5]) K.column(x0 + cx, z0 + 1.6, H, 0.85, 'stone');
+  // 扉のまわりの光る文様と、扉の上の猫の紋章（光る輪に、猫の頭）
+  const glow = K.glow('#8affe0', 1.6);
+  for (const s of [-1, 1]) box(s * (door / 2 + 0.15), dh / 2, 0.06, 0.18, dh, 0.1, glow);
+  box(0, dh + 0.15, 0.06, door + 0.5, 0.18, 0.1, glow);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.45, 40), glow); ring.position.set(x0, y + dh + 2.6, z0 + 0.05); K.scene.add(ring);
+  const head = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24), glow); head.position.set(x0, y + dh + 2.5, z0 + 0.05); K.scene.add(head);
+  for (const s of [-1, 1]) { const ear = new THREE.Mesh(new THREE.CircleGeometry(0.34, 3), glow); ear.position.set(x0 + s * 0.42, y + dh + 3.05, z0 + 0.05); ear.rotation.z = Math.PI / 2 + s * 0.35; K.scene.add(ear); }
+  // 正面の壁の横帯（金の文様）
+  for (const s of [-1, 1]) box(s * (door / 2 + side / 2), H - 1.2, 0.06, side, 0.3, 0.1, K.glow('#ffd8a0', 1.2));
 }
 // 玉のりの大玉の模様：ビーチボールのような、六色のしま（球の経線に沿う）
 function ballTex() {
@@ -4136,33 +4472,71 @@ const ZONE_BUILD = {
   },
 
   // ---------------- 第五章 ----------------
-  // 古代遺跡・外庭：倒れた柱、四匹の猫の像、大階段の上の遺跡の入口
+  // 古代遺跡・外庭：倒れた柱、四匹の猫の像、池の庭、苔むした庭。北の空き地に見張り台の跡、東の林に崩れた柱の空き地
   ruinsOut(K) {
     K.flora({ trees: [['round', 3], ['pine', 1]], leaf: ['#5a9a4a', '#6aa858', '#4a8a44'], bush: 0.7, rocks: 0.4, rock: '#b0a890' });
-    // 入口の門構え（北の高台）
-    for (const x of [-5, 5]) K.column(x, -31, 8, 0.8, 'stone');
-    K.box(0, -31, 13, 1.4, 2.2, 'stone2', { y: 8, col: false });
-    K.catStatue(-8, -28, 0.3, 1.4, 'stone', '#8affe0'); K.catStatue(8, -28, -0.3, 1.4, 'stone', '#8affe0');
     // 四匹の猫の像
     for (let i = 0; i < 4; i++) K.catStatue(7 + i * 1.3, 12, Math.PI + (i - 1.5) * 0.2, i === 3 ? 0.7 : 1, 'stone');
     // 崩れた柱（道ばたと、木立の中）
-    for (const [x, z, h, f] of [[-16, 6, 4, false], [14, 0, 5, false], [20, 20, 3, true], [-18, 30, 2.5, false], [22, -26, 3, false], [28, -18, 4, false], [30, 24, 2, true], [-9, -20, 2, false], [9, -20, 2, false]]) K.pillarBroken(x, z, h, f);
+    for (const [x, z, h, f] of [[-16, 6, 4, false], [14, 0, 5, false], [20, 20, 3, true], [-18, 30, 2.5, false], [30, 24, 2, true]]) K.pillarBroken(x, z, h, f);
     for (const [x, z] of [[-26, -4], [-30, -8]]) K.flowers(x, z, 10, 1.6, ['#ffffff', '#b8ffe8']);
     K.flowers(-4, 26, 12, 2);
+    // 苔むした庭（西）：崩れた柱と、光る花
+    for (const [x, z, h] of [[-42, -14, 3], [-34, -16, 2.2], [-42, 4, 2.6], [-34, 6, 1.8]]) K.pillarBroken(x, z, h);
+    for (const [x, z] of [[-40, 2], [-36, -1], [-38, -8]]) K.flowers(x, z, 8, 1.4, ['#b8ffe8', '#8affe0', '#ffffff']);
+    // 見張り台の跡（北の空き地）：石の台と、まわりの崩れた柱
+    K.box(-10, -38, 4, 0.8, 4, 'stone2', { round: true }); K.box(-10, -38, 2.4, 0.5, 2.4, 'stone', { y: 0.8 });
+    for (const [x, z, h, fl] of [[-20, -34, 3, false], [4, -40, 2.4, false], [16, -34, 3.4, false], [22, -38, 2, true], [-24, -40, 2.2, false]]) K.pillarBroken(x, z, h, fl);
+    K.flowers(10, -36, 10, 1.8, ['#ffffff', '#ffe08a']);
+    // 東の林の空き地：崩れた柱と、倒れた猫の像
+    for (const [x, z, h, fl] of [[36, -2, 3, false], [42, 2, 2.4, false], [33, 3, 2, true]]) K.pillarBroken(x, z, h, fl);
+    K.catStatue(40, -4, 2.4, 1.2, 'stone');
   },
-  // 壁画の回廊：壁画、柱、光る輪の道、奥に封印の扉
+  // 石畳の丘：大階段の上の高台に、つながりの石畳と遺跡の入口（門構えと猫の像、結界）。ふもとに光の庭と崩れた塔
+  ruinsHill(K) {
+    // 神殿の建つところ（高台の北）には、木を生やさない
+    K.flora({ trees: [['round', 3], ['pine', 2]], leaf: ['#5a9a4a', '#6aa858', '#4a8a44'], bush: 0.6, rocks: 0.4, rock: '#b0a890', skip: (x, z) => Math.abs(x) < 22 && z < -31 });
+    ruinsTemple(K, 0, -33);
+    K.catStatue(-8, -29, 0.3, 1.4, 'stone', '#8affe0'); K.catStatue(8, -29, -0.3, 1.4, 'stone', '#8affe0');
+    // 高台：崩れた柱、大階段の上の燭台
+    for (const [x, z, h, fl] of [[-14, -24, 3, false], [14, -24, 2.5, false], [-16, -14, 2, true], [18, -14, 3, false], [-20, -30, 2.2, false], [22, -30, 2.6, false]]) K.pillarBroken(x, z, h, fl);
+    for (const x of [-7, 7]) K.brazier(x, -13, '#8affe0', 1.2);
+    // 丘のふもと：崩れた柱と花
+    for (const [x, z, h, fl] of [[-12, 20, 3, false], [12, 18, 2.4, false], [-20, 26, 2, true], [22, 24, 3, false], [8, 30, 2, false]]) K.pillarBroken(x, z, h, fl);
+    K.flowers(-6, 16, 10, 2); K.flowers(10, 24, 8, 1.6, ['#ffffff', '#b8ffe8']);
+    // 光の庭（西）：練習の石畳のまわりに、崩れた柱と光る花
+    for (const [x, z, h] of [[-38, -2, 2.6], [-30, -2, 2], [-38, 14, 2.2], [-28, 18, 1.8]]) K.pillarBroken(x, z, h);
+    for (const [x, z] of [[-34, 14], [-37, 1], [-28, 6]]) K.flowers(x, z, 8, 1.4, ['#b8ffe8', '#8affe0', '#ffffff']);
+    // 崩れた塔（東）：円い石の壁の残りと、倒れた柱
+    for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 1.5 + 0.6, h = 1.2 + K.r() * 2.6; K.box(34 + Math.cos(a) * 3.2, 6 + Math.sin(a) * 3.2, 1.6, h, 1.0, 'stone', { ry: -a }); }
+    K.pillarBroken(30, 10, 4, true); K.pillarBroken(37, -1, 2.6, false);
+    K.strokeBoards();
+  },
+  // 壁画の回廊：南の入口の間から、北の大広間へ。大広間の西・東・北の壁に壁画。北の口は崩れた回廊へ
   ruinsIn(K) {
-    K.mural(-13.8, 10, Math.PI / 2, 0); K.mural(15.8, -4, -Math.PI / 2, 1); K.mural(-15.8, -18, Math.PI / 2, 2);
-    for (let z = 5; z <= 17; z += 6) for (const x of [-8, 8]) K.column(x, z, 7, 0.6, 'stone');
-    for (const z of [-34, -24]) for (const x of [-8, 8]) K.column(x, z, 7, 0.6, 'stone');
+    K.mural(-25.8, -15, Math.PI / 2, 0); K.mural(25.8, -15, -Math.PI / 2, 1); K.mural(-12, -29.8, 0, 2);
+    for (const z of [-24, -6]) for (const x of [-17, -9, 9, 17]) K.column(x, z, 7, 0.6, 'stone');
+    for (const [x, z] of [[-6, -27], [6, -27], [-10, 26], [10, 26]]) K.brazier(x, z, '#8affe0', 1.2);
+    for (let i = 0; i < 8; i++) K.mesh(new THREE.RingGeometry(0.5, 0.6, 24), K.glow('#8affe0', 1.2), 0, 0.03, 26 - i * 4, { rx: -Math.PI / 2, noShadow: true });
+    // 入口の間：門番の猫の像（目が光る）
+    for (const x of [-10, 10]) K.catStatue(x, 12, Math.PI, 1.3, 'stone', '#8affe0');
+  },
+  // 崩れた回廊：前室・回廊・地下墓所・宝物庫・墓守の部屋・封印の扉の間。時の水晶と、今の瓦礫・昔の石の壁（K.timeShift）
+  ruinsMaze(K) {
+    // 入口の間と、封印の扉の間の柱
+    for (const z of [32, 38]) for (const x of [-5, 5, -32, 32]) K.column(x, z, 7, 0.6, 'stone');
+    for (const z of [-42, -36]) for (const x of [-12, 12]) K.column(x, z, 7, 0.6, 'stone');
     const open = storyCond('scene:c5_03');
     // 封印の扉：c5_03 でタマが封印を解くと開き、そのあとは開いたまま
-    K.sealDoor(0, -37.2, 0, open);
-    for (let i = 0; i < 8; i++) K.mesh(new THREE.RingGeometry(0.5, 0.6, 24), K.glow('#8affe0', 1.2), 0, 0.03, 36 - i * 4.5, { rx: -Math.PI / 2, noShadow: true });
-    // 地下墓所の石の棺と、宝物庫の台座
-    for (const x of [-9, -3]) K.box(x, -18, 1.4, 0.8, 2.6, 'stone2');
-    K.box(3, -4, 1.2, 1, 1.2, 'stone2'); K.mesh(new THREE.OctahedronGeometry(0.3), K.glow('#8affe0', 2.4), 3, 1.4, -4);
-    for (const [x, z] of [[-6, 30], [6, 30], [-6, -30], [6, -30]]) K.brazier(x, z, '#8affe0', 1.2);
+    K.sealDoor(0, -46.2, 0, open);
+    for (let i = 0; i < 4; i++) K.mesh(new THREE.RingGeometry(0.5, 0.6, 24), K.glow('#8affe0', 1.2), 0, 0.03, 46 - i * 4, { rx: -Math.PI / 2, noShadow: true });
+    // 地下墓所（中段の西から二つ目の小部屋）の石の棺と、宝物庫（北の段の東から二つ目）の台座
+    for (const x of [-13, -5]) K.box(x, 9, 1.4, 0.8, 2.6, 'stone2');
+    K.box(15, -19, 1.2, 1, 1.2, 'stone2'); K.mesh(new THREE.OctahedronGeometry(0.3), K.glow('#8affe0', 2.4), 15, 1.4, -19);
+    for (const [x, z] of [[-6, -42], [6, -42]]) K.brazier(x, z, '#8affe0', 1.2);
+    // 墓守の部屋（中段の西のはし）：石の寝台と、ろうそくの燭台
+    K.box(-33.5, 5, 1.4, 0.7, 2.4, 'stone2'); for (const z of [1.5, 8.5]) K.brazier(-33.5, z, '#ffc86a', 1.0);
+    K.timeShift();
   },
 
   // 封印の間：樹の根をかたどった祭壇と、床に広がる光る根

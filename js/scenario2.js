@@ -5,9 +5,9 @@
 Object.assign(SCENES, {
   // ================= 第五章　眠れる子猫 =================
   c5_01: { title: '古代遺跡', cast: ['e:sekizou'], bgm: 'field',
-    stage: { zone: 'ruins_out', at: [-6, 20], face: 0, cast: { 'e:sekizou': [{ at: [-2.6, 5.4], hidden: true }, { at: [2.4, 5.8], hidden: true }] }, points: { gate: [6, 5, 50] } },
+    stage: { zone: 'ruins_out', at: [-6, 20], face: 0, cast: { 'e:sekizou': [{ at: [-2.6, 5.4], hidden: true }, { at: [2.4, 5.8], hidden: true }] }, points: { ruins: [12, 2.2, 14] } },
     lines: [
-      ['n', 'くろねこ谷の北。森に埋もれるように、古代の遺跡が眠っていた。', { cam: 'look:gate', dur: 7, look: { all: 'gate' } }],
+      ['n', 'くろねこ谷の北。森に埋もれるように、古代の遺跡が眠っていた。倒れた柱のあいだに、猫の石像が並んでいる。', { cam: 'look:ruins', dur: 7, look: { all: 'ruins' } }],
       ['shiro', 'すごい……！　これ、何千年も前の猫たちの遺跡よ！', { f: 'joy', g: 'cheer' }],
       ['tama', '……ここ、しってる……ような……。', { f: 'sleepy', g: 'tilt' }],
       ['kuro', '……タマ？', { f: 'serious', to: 'tama' }],
@@ -15,28 +15,60 @@ Object.assign(SCENES, {
       ['n', '石のねこ像が、ぎぎぎ……と動き出した！', { enter: 'e:sekizou', shake: 0.3, cam: 'wide', r: { all: 'surprise' }, stance: { all: 'ready' } }],
       ['mike', 'わわっ、像が動いた！', { f: 'surprise', g: 'recoil' }],
     ] },
-  c5_02: { title: '壁画の回廊', cast: ['e:hotaru'], bgm: 'dark',
-    stage: { zone: 'ruins_in', at: [0, 14], face: 0,
-      cast: { 'e:hotaru': [{ at: [-2, 6], hidden: true }, { at: [2.2, 6.6], hidden: true }] },
+  // 石畳の丘の、大階段を上りきったところ：石の神殿（遺跡）と扉の結界、その前の「つながりの石畳」が見える
+  c5_01b: { title: 'つながりの石畳', bgm: 'field',
+    stage: { zone: 'ruins_hill', at: [0, -13], face: 0, points: { gate: [0, 4.5, 20], tiles: [0, 0.6, 9] },
+      shots: { gate: { pos: [2, 2.2, -8], look: [0, 8.2, 20] }, tiles: { pos: [0, 6.5, -3], look: [0, 0.6, 9] } } },
+    lines: [
+      ['n', '大階段を上りきると、森の奥に、石の神殿のような遺跡がそびえていた。……遺跡の扉には、うっすらと光る結界が張られている。', { cam: 'gate', dur: 7, look: { all: 'gate' } }],
+      ['shiro', '結界……！　外庭の石像たちは、これを守ってたのね。', { f: 'serious', g: 'point' }],
+      ['kuro', '……扉の前の石畳。足もとの石が、光るようだ。', { f: 'serious', g: 'think', cam: 'tiles', dur: 6, look: { all: 'tiles' } }],
+      ['tama', '……ぜんぶの石を……てを、つなぐ、みたいに……。', { f: 'sleepy', g: 'tilt' }],
+      ['mike', '手をつなぐ？　……石と？', { f: 'neutral', g: 'tilt', to: 'tama' }],
+      ['shiro', '立て札もあるわ。「始まりの石から、すべての石をひと筆で」……ですって。', { f: 'neutral', g: 'think' }],
+      ['n', '（つながりの石畳：始まりの石（足あと）から、すべての石を一度ずつ踏み、最後に終わりの石（星）を踏むと、結界が消える。光った石をまた踏むか、石畳から出ると、やりなおし。ひとつ前の石へもどると、一歩取り消せる。丘のふもとの西、「光の庭」で練習もできる）', { cam: 'tiles', dur: 9 }],
+    ] },
+  c5_02: { title: '壁画の回廊', bgm: 'dark',
+    stage: { zone: 'ruins_in', at: [0, -10], face: 0,
       // 壁画の見る点は、壁画の面のすぐ手前（壁の中に置くと、カメラが壁を突き抜ける）
-      points: { mural0: [-13.5, 2.2, 4], mural1: [15.5, 2.2, 18], mural2: [-15.5, 2.2, 32] },
-      // 壁画・二と古代文字は、大広間の奥の東と西の回廊にある。その回廊の中から、斜めに写す
-      shots: { mural1: { pos: [12.6, 2.4, 24], look: [15.5, 2.2, 18] }, mural2: { pos: [-12.6, 2.4, 38], look: [-15.5, 2.2, 32] } } },
+      points: { mural0: [-25.5, 2.2, 5], mural1: [25.5, 2.2, 5], mural2: [-12, 2.2, 19.5] },
+      // 壁画・二（東のくぼみ）と古代文字（北の壁）は、大広間の中から斜めに写す
+      shots: { mural1: { pos: [16, 2.4, 0], look: [25.5, 2.2, 5] }, mural2: { pos: [-13.5, 2.6, 10], look: [-12, 1.8, 19.5] } } },
     lines: [
       ['shiro', '見て、壁画よ！　……大きな猫が、樹を抱いて眠ってる。', { f: 'joy', g: 'point', cam: 'look:mural0', dur: 6, look: { all: 'mural0' } }],
-      ['n', '回廊を奥へ進むと、壁画は、ほかの部屋にも続いていた。', { cam: 'wide', dur: 5 }],
+      ['n', '大広間の壁には、ほかにも壁画が続いていた。', { cam: 'wide', dur: 5 }],
       ['kuro', '……こっちは、四匹の猫が、樹のまわりで手をつないでいる。', { f: 'serious', g: 'point', cam: 'mural1', dur: 6, look: { all: 'mural1' } }],
       ['mike', '……一匹、すごく小さい。', { f: 'neutral', g: 'tilt' }],
       ['tama', '……。', { f: 'neutral', look: { tama: 'mural1' } }],
       ['shiro', '古代文字もあるわ。えっと……「樹は、猫たちのつながりから生まれた。つながりが絶えるとき、樹は……最後のにゃんこを生む」', { f: 'serious', g: 'think', cam: 'mural2', dur: 7, look: { all: 'mural2' } }],
       ['mike', '……最後のにゃんこ？', { f: 'worry', g: 'tilt' }],
       ['tama', '……。', { f: 'worry', cam: 'tama', close: true }],
-      ['n', '壁画の光に引き寄せられるように、古代ほたるが舞い降りてきた。', { enter: 'e:hotaru', cam: 'wide', stance: { all: 'ready' } }],
+      ['kuro', '……行こう。大広間の奥にも、まだ道が続いている。', { f: 'serious', cam: 'wide', dur: 5 }],
+    ] },
+  // 崩れた回廊の入口の間：白い時の水晶。タマがふれると、遺跡が昔の姿にもどる（シーンの中だけ。もう一度ふれて、今にもどす）
+  c5_02b: { title: '時の水晶', bgm: 'dark',
+    // 入口の間（南）の白い水晶。北の壁に二つの口：右（right：今は瓦礫・昔に通れる）と、左（left：今は崩れて通れる・昔は石の門）
+    // touch：水晶にふれるタマを、水晶の向こう（北）から、顔が見えるように
+    stage: { zone: 'ruins_maze', at: [-18, 38], face: 0, points: { crystal: [0, 1.6, 6], left: [-9, 1.5, 12], right: [9, 1.5, 12] },
+      shots: { left: { pos: [-9, 3.4, 1], look: [-9, 1.4, 12] }, right: { pos: [9, 3.2, 3], look: [9, 1.4, 12] },
+        touch: { pos: [-0.2, 2.1, 9.2], look: [0.7, 1.0, 5.4] } } },
+    lines: [
+      ['n', '大広間の奥は、崩れかけた回廊だった。入口の間に、白く光る縦長の水晶があって、かすかに鳴っている。', { cam: 'look:crystal', dur: 6, look: { all: 'crystal' } }],
+      ['mike', '……奥へ続く口は二つ。でも、右の口は、瓦礫でふさがってるよ。', { f: 'worry', g: 'point', cam: 'right', dur: 6, look: { all: 'right' } }],
+      ['tama', '……この水晶……むかしの、におい。', { f: 'sleepy', move: { tama: [1.1, 5.1] }, speed: 1.4, face: { tama: [0, 6] }, look: { mike: 'tama', kuro: 'tama', shiro: 'tama', tama: 'crystal' }, cam: 'touch', dur: 7 }],
+      ['n', 'タマが水晶にふれると——', { waitMove: true, face: { tama: [0, 6] }, r: { tama: ['neutral', 'reach'] }, cam: 'keep', later: [0.6, { fx: 'timeshift' }] }],
+      ['n', '右の口をふさいでいた瓦礫が、ひとりでに組み上がって、昔の回廊の姿にもどった。', { cam: 'right', dur: 6, look: { all: 'right' } }],
+      ['shiro', 'うそ……遺跡が、昔を思い出してる……！？', { f: 'surprise', g: 'surprise' }],
+      ['kuro', '……だが、左の口には、さっきまでなかった石の門が立っている。', { f: 'serious', g: 'point', cam: 'left', dur: 6, look: { all: 'left' } }],
+      ['mike', 'あっちが通れるようになったら、こっちがふさがっちゃった！？', { f: 'surprise', g: 'tilt' }],
+      ['n', 'タマがもう一度ふれると、遺跡は、今の姿にもどった。', { fx: 'timeshift', cam: 'touch', dur: 6, r: { tama: ['neutral', 'reach'] }, look: { mike: 'tama', kuro: 'tama', shiro: 'tama', tama: 'crystal' } }],
+      ['shiro', '「今」と「昔」で、通れる道がちがうのね。……奥の小部屋にも、こういう水晶があるかもしれないわ。', { f: 'serious', g: 'think' }],
+      ['n', '（時の水晶にふれると、遺跡が「今」と「昔」で切りかわる。今は瓦礫でふさがった道も、昔なら通れる。昔は石の門でふさがっていた道が、今は崩れて通れる。水晶をさがして切りかえながら、奥の封印の扉へ）', { cam: 'wide', dur: 9 }],
     ] },
   c5_03: { title: '封印の扉', bgm: 'dark',
     // walk：タマが扉へ歩いていくのを、広間の東の高い所から（左に歩きはじめの場所、右に扉。手前の燃え台は会話の窓の裏に隠れる）
     // door：扉の前のタマと、開いていく扉を、正面寄りから
-    stage: { zone: 'ruins_in', at: [0, -25], face: 0, points: { door: [0, 3.2, 12] }, shots: { walk: { pos: [9.6, 4.8, 4], look: [-1.5, 0.6, 9] }, door: { pos: [3.4, 2.0, 3.2], look: [0, 1.0, 12] } } },
+    stage: { zone: 'ruins_maze', at: [0, -34], face: 0, points: { door: [0, 3.2, 12] }, shots: { walk: { pos: [9.6, 4.8, 4], look: [-1.5, 0.6, 9] }, door: { pos: [3.4, 2.0, 3.2], look: [0, 1.0, 12] } } },
     lines: [
       ['n', '回廊の奥に、封印された大きな扉があった。', { cam: 'look:door', dur: 6, look: { all: 'door' } }],
       ['shiro', '封印の魔法……天才のわたしでも、びくともしないわ。', { f: 'worry', g: 'reach' }],
@@ -549,7 +581,9 @@ Object.assign(SCENES, {
 // 第五章〜のあらすじ
 const RECAP_2 = {
   c5_01: 'くろねこ谷の北、森に埋もれた古代遺跡へ。タマは、なぜか懐かしそうにしている。',
+  c5_01b: '石畳の丘の大階段を上りきると、森の奥に石の神殿のような遺跡がそびえていた。扉には光る結界。扉の前には、踏むと光る石畳。「始まりの石から、すべての石をひと筆で」。',
   c5_02: '壁画には、樹を抱いて眠る巨大な猫と、樹のまわりで手をつなぐ四匹の猫。古代文字には「つながりが絶えるとき、樹は最後のにゃんこを生む」と記されていた。',
+  c5_02b: '大広間の奥の崩れた回廊。入口の間の白い水晶にタマがふれると、瓦礫でふさがれていた回廊の口が昔の姿にもどり、かわりに別の口に石の門が立った。遺跡は「今」と「昔」で、通れる道がちがう。',
   c5_03: '誰にも開けられない封印の扉は、タマがふれると、ゆっくりと奥へ開いた。扉が「おかえり」と言った、とタマは言う。回廊の古代文字を思い出したシロがつぶやく。「最後のにゃんこ」……「……ぼく？」',
   c5_03b: '扉の奥の封印の間で、祭壇の光から遺跡の守護神が姿を現す。「封印を開けられるのは、最後のにゃんこだけ……。その心、確かめさせてもらおう」',
   c5_04: '戦いを終えた遺跡の守護神は、封印の間の祭壇の前で語る。樹は猫たちの心のつながりを糧に生き、枯れかけると樹を救う子「最後のにゃんこ」を生む。タマがいつも眠っていたのは、弱った樹と心がつながっていたからだった。樹の根は世界じゅうの地下をめぐり、その先は、誰の声も届かない「世界の果て」に行きつくという。樹を枯らしているのは魔王ではなく、世界に広がった孤独だった。樹の心臓はいにしえの猫たちに封じられ、その扉も最後のにゃんこにしか開けられないという。魔王も樹の根の「何か」を知っているらしい。',
@@ -630,8 +664,10 @@ const STORY = [
   ] },
   { title: '第五章　眠れる子猫', steps: [
     { t: 'field', zone: 'ruins_out', at: [-6, 20], scene: 'c5_01', battle: '5-1', g: '谷の北西、古代遺跡へ' },
-    { t: 'field', zone: 'ruins_in', at: [0, 14], scene: 'c5_02', battle: '5-2', g: '遺跡の奥、壁画の回廊を調べる' },
-    { t: 'field', zone: 'ruins_in', at: [0, -25], scene: 'c5_03', g: '回廊の奥、封印の扉へ' },
+    { t: 'field', zone: 'ruins_hill', at: [0, -12.5], scene: 'c5_01b', g: '外庭の北、石畳の丘を上って、遺跡の入口へ' },
+    { t: 'field', zone: 'ruins_in', at: [0, -4], scene: 'c5_02', clear: '5-2', g: '高台の「つながりの石畳」をひと筆でつないで入口の結界を消し、遺跡の中へ' },
+    { t: 'field', zone: 'ruins_maze', at: [0, 40], scene: 'c5_02b', g: '大広間の奥、崩れた回廊へ' },
+    { t: 'field', zone: 'ruins_maze', at: [0, -36], scene: 'c5_03', g: '時の水晶で「今」と「昔」を切りかえながら、小部屋をめぐって、回廊の奥の封印の扉へ' },
     { t: 'field', zone: 'ruins_seal', at: [0, 1], scene: 'c5_03b', battle: '5-3', after: 'c5_04', g: '開いた扉の奥、封印の間へ' },
     { t: 'reward', niboshi: 700, g: '第五章 おしまい' },
   ] },
@@ -705,7 +741,7 @@ const BATTLE_SETS = {
   '4-2': { zone: 'cave', at: [0, 39], face: 0 },
   '4-3': { zone: 'cave_deep', at: [0, -33], face: 0 },
   '5-1': { zone: 'ruins_out', at: [-2, 6], face: 0 },
-  '5-2': { zone: 'ruins_in', at: [0, 14], face: 0 },
+  '5-2': { zone: 'ruins_in', at: [0, -12], face: 0 },
   '5-3': { zone: 'ruins_seal', at: [0, 1], face: 0 },
   '6-1': { zone: 'demon_land', at: [0, -8], face: 0 },
   '6-2': { zone: 'demon_castle', at: [11.5, 15], face: 0 },
