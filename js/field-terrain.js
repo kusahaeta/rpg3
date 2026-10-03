@@ -413,17 +413,22 @@ class Terrain {
 // ============================================================
 //  ジオメトリをまとめて作る（マテリアルごとに1メッシュ）
 // ============================================================
-// 重い扉板（魔王城）：厚い黒っぽい木の板に、浮き出た枠、鉄の帯と鋲、金の合わせ目、猫の顔の金具とノッカーの輪（光る目）。
+// 重い扉板：厚い木の板に、浮き出た枠、帯と鋲、金の合わせ目、猫の顔の金具とノッカーの輪（光る目）。
 //   蝶番が原点で、扉板は -s 側へ w のびる（高さ h）。表と裏の両面に飾りをつける。部品は材質ごとにひとつにまとめる
+//   pal：配色。demon ＝ 魔王城（暗い赤紫の木に鉄の帯）、royal ＝ ニャハハ城（濃い樫の木に金の帯、目は青い宝石）
+const HEAVY_DOOR_PAL = {
+  demon: { wood: '#9a5a78', frame: '#5e3450', band: ['#4a4456', 0.45, 0.45], eye: '#ff8ad8' },
+  royal: { wood: '#b07040', frame: '#6e4022', band: ['#d8a640', 0.55, 0.35], eye: '#6ad8ff' },
+};
 const HEAVY_DOOR_M = {};
-function heavyDoorLeaf(w, h, s, glow = '#ff8ad8') {
-  const M = HEAVY_DOOR_M;
-  if (!M.wood) Object.assign(M, {
-    wood: new THREE.MeshStandardMaterial({ color: '#9a5a78', map: woodTex(), roughness: 0.7 }),
-    frame: new THREE.MeshStandardMaterial({ color: '#5e3450', map: woodTex(), roughness: 0.75 }),
-    iron: new THREE.MeshStandardMaterial({ color: '#4a4456', metalness: 0.45, roughness: 0.45 }),
+function heavyDoorLeaf(w, h, s, glow, pal = 'demon') {
+  const P = HEAVY_DOOR_PAL[pal] || HEAVY_DOOR_PAL.demon, M = HEAVY_DOOR_M[pal] || (HEAVY_DOOR_M[pal] = {
+    wood: new THREE.MeshStandardMaterial({ color: P.wood, map: woodTex(), roughness: 0.7 }),
+    frame: new THREE.MeshStandardMaterial({ color: P.frame, map: woodTex(), roughness: 0.75 }),
+    iron: new THREE.MeshStandardMaterial({ color: P.band[0], metalness: P.band[1], roughness: P.band[2] }),
     gold: new THREE.MeshStandardMaterial({ color: '#f4c454', metalness: 0.4, roughness: 0.35, emissive: '#5a3a08', emissiveIntensity: 0.4 }),
   });
+  glow = glow || P.eye;
   const parts = { wood: [], frame: [], iron: [], gold: [], eye: [] }, T = 0.34, cx = -s * w / 2;
   const put = (k, geo, x, y, z, rx = 0) => { if (rx) geo.rotateX(rx); geo.translate(x, y, z); const g = geo.index ? geo.toNonIndexed() : geo; if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); parts[k].push(g); };
   const B = (w0, h0, d0) => new THREE.BoxGeometry(w0, h0, d0);
@@ -553,12 +558,12 @@ const ARCH_STYLES = {
   sweets: { look: 'cliff', outdoor: 'flora', roof: false, canopy: 3, rock: '#e8b8d8', cap: '#ffd8e8', path: '#fff0c8', trim: '#c88ab8', step: '#ffe8f0', glass: '#bfe8ff', glow: '#ff9ad8', rail: 'wood', door: 'swing', lift: 'cage', exit: 'arch' },
   // ニャハハ王国の城下町：# は建物の敷地（outdoor: lots。ZoneKit の townBlocks で家を建てる）。石畳と石の擁壁、鉄の手すり
   kingdom: { look: 'town', outdoor: 'lots', roof: false, canopy: 7, rock: '#9a948a', cap: '#d8cfc0', cliff: '#b8b0a4', trim: '#5a4a42', step: '#c8c0b2', glass: '#bfe8ff', glow: '#ffd27a', rail: 'iron', door: 'swing', lift: 'cage', exit: 'gate' },
-  // ニャハハ城：空の見える中庭を、白い大理石の城壁（金の縁取り、窓に灯り）が囲む
-  nyacastle: { look: 'palace', roof: false, skyline: 'town', wallH: 11, wall: '#f4ece0', wall2: '#e2d4c0', trim: '#8a6a3a', cliff: '#e8dccb', cap: '#e8c878', step: '#efe6d8', glass: '#ffe8c0', glow: '#ffd27a', light: '#fff4dc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
+  // ニャハハ城：空の見える前庭を、白い大理石の城壁（金の縁取り、窓に灯り）が囲む
+  nyacastle: { look: 'palace', heavy: 'royal', roof: false, skyline: 'town', wallH: 11, wall: '#f4ece0', wall2: '#e2d4c0', trim: '#8a6a3a', cliff: '#e8dccb', cap: '#e8c878', step: '#efe6d8', glass: '#ffe8c0', glow: '#ffd27a', light: '#fff4dc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // 魔王城の中庭：空の見える庭を、紫の石の城壁（桃色の灯り）が囲む
   demoncourt: { look: 'palace', heavy: true, roof: false, skyline: 'town', wallH: 12, wall: '#6a5a80', wall2: '#54466a', trim: '#2a1a3a', cliff: '#5a4a70', cap: '#8a6aa8', step: '#7a6a90', glass: '#d8b0ff', glow: '#ff8ad8', light: '#ffd8f8', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // ニャハハ城の中：クリーム色の大理石、金の縁取りと灯り、格天井
-  nyapalace: { look: 'palace', roof: true, wallH: 8, wall: '#f6eee2', wall2: '#e6d6c0', trim: '#8a6a3a', cliff: '#eadfce', ceil: '#f2e6d4', step: '#efe6d8', glass: '#ffe8c0', glow: '#ffd27a', light: '#fff4dc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
+  nyapalace: { look: 'palace', heavy: 'royal', roof: true, wallH: 8, wall: '#f6eee2', wall2: '#e6d6c0', trim: '#8a6a3a', cliff: '#eadfce', ceil: '#f2e6d4', step: '#efe6d8', glass: '#ffe8c0', glow: '#ffd27a', light: '#fff4dc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // 壁画の回廊：苔むした古い石の回廊（天井あり、青緑に光る縁取り）
   ruin: { look: 'palace', roof: true, wallH: 8, wall: '#c8c0a4', wall2: '#a8a088', trim: '#5a5a48', cliff: '#b0aa90', ceil: '#6a6a58', step: '#b8b098', glass: '#bfffe8', glow: '#8affe0', light: '#e8fff4', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // 樹の地下・黒影洞窟の奥：根と土の洞窟
@@ -1151,7 +1156,7 @@ function buildArchitecture(view, T) {
       const band = style === 'palace' ? glowMat(line, 1.2) : mats.iron;
       panels = [-1, 1].map(s => {
         const p = new THREE.Group(); p.position.x = s * w / 2; g.add(p);
-        if (S.heavy) { p.add(heavyDoorLeaf(w / 2 - 0.04, dh, s, line)); return { p, s }; }
+        if (S.heavy) { p.add(heavyDoorLeaf(w / 2 - 0.04, dh, s, null, S.heavy === true ? 'demon' : S.heavy)); return { p, s }; }
         const m = new THREE.Mesh(new THREE.BoxGeometry(w / 2 - 0.04, dh, 0.16), doorMat); m.position.set(-s * w / 4, dh / 2, 0); m.castShadow = true; p.add(m);
         for (const y of [0.25, 0.75]) { const bnd = new THREE.Mesh(new THREE.BoxGeometry(w / 2 - 0.1, 0.1, 0.19), band); bnd.position.set(-s * w / 4, dh * y, 0); p.add(bnd); }
         const ring = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.02, 6, 12), mats.iron); ring.position.set(-s * (w / 2 - 0.35), dh * 0.45, 0.1); p.add(ring);

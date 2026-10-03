@@ -646,7 +646,7 @@ const FIELD_ZONES = {
       '#######22222220000000000##00000000~~##',
       '#################aaaa#################',
     ],
-    anchor: [8, 12], spawn: [0, 28], exits: [{ key: 'a', to: 'sekisho' }, { key: 'b', to: 'castle' }, { key: 'c', to: 'tower' }, { key: 'd', to: 'valley' }],
+    anchor: [8, 12], spawn: [0, 28], exits: [{ key: 'a', to: 'sekisho' }, { key: 'b', to: 'castle', heavy: 'royal', gateH: 7 }, { key: 'c', to: 'tower' }, { key: 'd', to: 'valley' }],
     npcs: [
       { key: 'shimin_a', at: [-10, 6], walk: 6, lines: ['……笑う？　どうやって笑うんだったかな……。'], v: [['clear:3-3', 'ふふっ……あれ、今わたし、笑った？'], ['done', 'あはははは！　毎日が楽しくってしかたないよ！']] },
       { key: 'shimin_b', at: [14, -4], face: Math.PI, lines: ['この国の宝の「笑いの実」が、魔王軍に盗まれたんだ。', 'それからは、誰も笑わなくなった……。'], v: [['clear:3-3', 'ピエロが笑った日から、少しずつみんなの顔がゆるんできたよ。']] },
@@ -659,13 +659,13 @@ const FIELD_ZONES = {
     notes: [{ at: [0, -8], mark: 3.2, reach: 5.2, title: '広場の噴水', text: '水の止まった噴水。台座に「笑う門には福きたる」と刻まれている。' }],
     map2d: [470, 95] },
 
-  castle: { ci: 2, name: 'ニャハハ城・中庭', stage: '3-1', arenas: [[0, 6, 0]], build: 'castle', town: true, groups: 0, chests: 1, crystals: 0, skyTree: true,
+  castle: { ci: 2, name: 'ニャハハ城・前庭', stage: '3-1', arenas: [[0, 6, 0]], build: 'castle', town: true, groups: 0, chests: 1, crystals: 0, skyTree: true,
     world: true, arch: 'nyacastle', chestAt: [[-14, -10]],
     get bg() { return kingdomJoy() ? 'kingdomJoy' : undefined; },
     get th() { return { ...(kingdomJoy() ? THEMES.kingdomJoy : {}), pattern: 'checker', floor: kingdomJoy() ? '#f6eee2' : '#cfcbc6', floor2: kingdomJoy() ? '#e4d4bc' : '#bdb8b2', floorGlow: 0 }; },
-    // 城門をくぐると、回廊に囲まれた中庭。北の石段を上った前庭の奥に、城内（玉座の間）への扉
+    // 城門をくぐると、回廊に囲まれた前庭（城の建物に入る前の広場）。北の石段を上った先の、城の玄関から城内（玉座の間）へ
     map: [
-      '#######W##bb##W#######',
+      '#######W#bbbb#W#######',
       '#####222222222222#####',
       '#####222222222222#####',
       '#####222222222222#####',
@@ -687,11 +687,11 @@ const FIELD_ZONES = {
       '###0000000000000000###',
       '###0000000000000000###',
       '###0000000000000000###',
-      '##########aa##########',
+      '#########aaaa#########',
     ],
-    anchor: [10, 14], exits: [{ key: 'a', to: 'nyahaha' }, { key: 'b', to: 'castle_in' }],
+    anchor: [10, 14], exits: [{ key: 'a', to: 'nyahaha', gateH: 7 }, { key: 'b', to: 'castle_in', gateH: 8 }],
     npcs: [
-      { key: 'eihei', at: [7, 10], face: -Math.PI / 2, lines: ['ここはニャハハ城の中庭。……ここ数日、誰も通りません。'] },
+      { key: 'eihei', at: [7, 10], face: -Math.PI / 2, lines: ['ここはニャハハ城の前庭。……ここ数日、誰も通りません。'] },
       { key: 'eihei', at: [4, -17.5], face: 0, lines: ['この奥が、玉座の間だ。王さまがお待ちかねだぞ。'], v: [['clear:3-3', '王さまが笑ったんだ！　城じゅう、その話でもちきりさ。']] },
     ],
     map2d: [330, 95] },
@@ -725,9 +725,9 @@ const FIELD_ZONES = {
       '#0000#00000000000000#0000#',
       '#0000#00000000000000#0000#',
       '######00000000000000######',
-      '########W#W#aa#W#W########',
+      '########W##aaaa##W########',
     ],
-    anchor: [8, 17], exits: [{ key: 'a', to: 'castle' }],
+    anchor: [8, 17], exits: [{ key: 'a', to: 'castle', gateH: 6.2 }],
     // 部屋の範囲 [x0, z0, x1, z1]：画面左上と、区画に入ったときに出る場所の名前
     areas: [{ name: 'ニャハハ城・玉座の間', at: [-14, -20, 14, 4] }, { name: 'ニャハハ城・大広間', at: [-14, 4, 14, 22] }, { name: 'ニャハハ城・図書室', at: [-24, -15, -14, -3] },
       { name: 'ニャハハ城・宝物庫', at: [14, -15, 24, -3] }, { name: 'ニャハハ城・食堂', at: [-24, 6, -14, 20] }, { name: 'ニャハハ城・厨房', at: [14, 6, 24, 20] }],
@@ -3808,14 +3808,145 @@ class ZoneKit {
     this.mesh(new THREE.ConeGeometry(1.4, 0.8, 4), 'roofRed', x, 3.4, z, { ry: Math.PI / 4 });
     this.mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.3, 10), 'wood', x, 2.2, z);
   }
-  fountain(x, z, dry = false) {
-    this.cyl(x, z, 2.4, 0.6, 'stone', { seg: 24 });
-    this.cyl(x, z, 0.4, 1.8, 'stone2', { seg: 10, col: false });
-    this.mesh(new THREE.CylinderGeometry(0.9, 0.5, 0.3, 16), 'stone', x, 1.8, z);
-    if (!dry) {
-      this.mesh(new THREE.CircleGeometry(2.2, 24), new THREE.MeshStandardMaterial({ color: '#7ad0f8', transparent: true, opacity: 0.8, roughness: 0.05, emissive: '#3a90d0', emissiveIntensity: 0.3 }), x, 0.55, z, { rx: -Math.PI / 2, noShadow: true });
-      this.v.emitters.push(dt => { for (let i = 0; i < 20 * dt; i++) this.v.p.emit(V3(x, 2.0 + this.gy(x, z), z), V3((Math.random() - 0.5) * 1.2, 2 + Math.random(), (Math.random() - 0.5) * 1.2), hdr('#bfe8ff', 1.4), { life: 0.9, size: 0.07, grav: 6, drag: 0.2 }); });
+
+  // 噴水の水まわりの道具（城下町の大広間と、城の前庭の噴水で共用）。x, z：噴水の中心。y はどれも地面からの高さ
+  //   floor：底のモザイクタイル（水ごしに透けて見える）、water：水面（澄んだ水。wet = false ならにごってよどんだ水）、
+  //   light：底にゆれる光の網目（caus）や水面のきらめき（glint）。二枚目からは逆向きに流して、ゆらぐように見せる
+  //   arc：噴き口から着水点までの放物線、sheet：流れる水の筋の模様の材質（幕やアーチに。offset を動かして流す）
+  fountainKit(x, z, wet) {
+    const tex = this.fountainTexs || (this.fountainTexs = (() => {
+      const canvas = (w, h, draw, srgb) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'));
+        const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+      const tile = canvas(128, 128, g => { const n = 8, w = 128 / n;
+        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const k = Math.random(); g.fillStyle = k < 0.15 ? '#3a8ac8' : k < 0.45 ? '#7ac4e8' : k < 0.8 ? '#a8dcf2' : '#e8f6fc'; g.fillRect(i * w, j * w, w, w); }
+        g.strokeStyle = '#f4fbff'; g.lineWidth = 1.5; for (let i = 0; i <= n; i++) { g.beginPath(); g.moveTo(i * w, 0); g.lineTo(i * w, 128); g.moveTo(0, i * w); g.lineTo(128, i * w); g.stroke(); } }, true);
+      const caus = canvas(256, 256, g => { g.lineCap = 'round';
+        for (let i = 0; i < 90; i++) { const cx = Math.random() * 256, cy = Math.random() * 256, rr = 10 + Math.random() * 22; g.strokeStyle = `rgba(255,255,255,${0.25 + Math.random() * 0.35})`; g.lineWidth = 1.5 + Math.random() * 2;
+          g.beginPath(); for (let k = 0; k <= 7; k++) { const a = k / 7 * Math.PI * 2, q = rr * (0.75 + Math.random() * 0.5); (k ? g.lineTo : g.moveTo).call(g, cx + Math.cos(a) * q, cy + Math.sin(a) * q); } g.stroke(); } });
+      const glint = canvas(256, 256, g => { g.lineCap = 'round';
+        for (let i = 0; i < 160; i++) { const x0 = Math.random() * 256, y0 = Math.random() * 256, l = 3 + Math.random() * 10; g.strokeStyle = `rgba(255,255,255,${0.4 + Math.random() * 0.6})`; g.lineWidth = 1 + Math.random() * 1.5; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + l, y0 + (Math.random() - 0.5) * 3); g.stroke(); } });
+      const fall = canvas(64, 128, g => { for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(255,255,255,${0.2 + Math.random() * 0.6})`; g.fillRect(i * 0.9, Math.random() * 128, 1 + Math.random() * 2, 20 + Math.random() * 60); } });
+      return { tile, caus, glint, fall };
+    })());
+    const rep = (t, a, b = a) => { const c = t.clone(); c.repeat.set(a, b); c.needsUpdate = true; return c; };
+    const disc = (r, y, m) => this.mesh(new THREE.CircleGeometry(r, 40), m, x, y, z, { rx: -Math.PI / 2, noShadow: true });
+    const layers = [];
+    if (wet) this.tick(dt => { for (const L of layers) { L.t.offset.x += L.sp * dt; L.t.offset.y += L.sp * 0.7 * dt; } });
+    return {
+      floor: (r, y, n) => disc(r, y, new THREE.MeshStandardMaterial({ map: rep(tex.tile, n), roughness: 0.4 })),
+      water: (r, y) => disc(r, y, new THREE.MeshStandardMaterial({ color: wet ? '#c8eeff' : '#8a9098', transparent: true, opacity: wet ? 0.3 : 0.7, roughness: 0.02, metalness: 0, emissive: wet ? '#5ab8e8' : '#2a3038', emissiveIntensity: wet ? 0.06 : 0.15, depthWrite: false })),
+      light: (kind, r, y, n, op, col = '#ffffff') => { const t = rep(tex[kind], n);
+        disc(r, y, new THREE.MeshBasicMaterial({ map: t, color: hdr(col, 1), transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false }));
+        layers.push({ t, sp: (layers.length % 2 ? -1 : 1) * (0.02 + layers.length * 0.006) }); },
+      // 噴き口から着水点までの放物線（c, sn：水平の向き、r0, h0 → r1, h1：中心からの距離と高さ、top：直線より上にふくらむ高さ）
+      arc: (c, sn, r0, h0, r1, h1, top) => new THREE.CatmullRomCurve3([...Array(9)].map((_, i) => { const t = i / 8, r = r0 + (r1 - r0) * t;
+        return V3(x + c * r, this.gy(x, z) + h0 + (h1 - h0) * t + 4 * top * t * (1 - t), z + sn * r); })),
+      sheet: (a, b, op) => { const t = rep(tex.fall, a, b); return { t, m: new THREE.MeshStandardMaterial({ color: '#f4fbff', map: t, alphaMap: t, transparent: true, opacity: op, roughness: 0.05, emissive: '#a8dcf8', emissiveIntensity: 0.3, side: THREE.DoubleSide, depthWrite: false }) }; },
+    };
+  }
+  // 城下町の大広間の噴水：ふちに金の噴き口が並ぶ低い水盤、飾りの柱に二段の鉢、てっぺんの金の飾りから噴き上がる水。
+  //   上の鉢からあふれた水が幕になって下の鉢へ、下の鉢から水盤へ流れ落ち、ふちの噴き口からは水のアーチが中へ飛ぶ。
+  //   wet = false（色を失った街）：灰色の石で、水は止まり、水盤によどんだ水が残るだけ
+  plazaFountain(x, z, wet = true) {
+    const y0 = this.gy(x, z), V2 = (a, b) => new THREE.Vector2(a, b), lathe = (pts, seg = 40) => new THREE.LatheGeometry(pts.map(([a, b]) => V2(a, b)), seg);
+    const rim = wet ? 'marble' : 'stone2', trim = wet ? 'gold' : '#9a9aa4', R = 4.6, wy = 0.72, W = this.fountainKit(x, z, wet);
+    // 水盤：台座、ふち（外へ張り出した縁石）、底のタイル、ふちの金の帯
+    this.mg('stone2', new THREE.CylinderGeometry(R + 0.2, R + 0.3, 0.2, 48), x, y0 + 0.1, z);
+    this.mg(rim, lathe([[R - 0.55, 0.2], [R - 0.05, 0.2], [R, 0.35], [R - 0.12, 0.55], [R - 0.02, 0.76], [R + 0.1, 0.84], [R + 0.1, 0.96], [R - 0.62, 0.96], [R - 0.62, 0.84], [R - 0.55, 0.3]], 56), x, y0, z);
+    this.mg(trim, new THREE.TorusGeometry(R - 0.02, 0.05, 6, 56), x, y0 + 0.6, z, [Math.PI / 2, 0, 0]);
+    if (wet) W.floor(R - 0.55, 0.3, 6); else this.mg('#7a7a80', new THREE.CircleGeometry(R - 0.55, 48), x, y0 + 0.3, z, [-Math.PI / 2, 0, 0]);
+    // 柱と二段の鉢（ふちに金の輪）、てっぺんの金の飾り
+    this.mg(rim, lathe([[0, 0.3], [1.3, 0.3], [1.3, 0.55], [1.0, 0.68], [0.78, 0.9], [0.62, 1.2], [0.58, 1.6], [0.72, 1.74], [0.9, 1.9], [0, 1.9]]), x, y0, z);
+    this.mg(rim, lathe([[0, 1.85], [0.7, 1.88], [1.6, 2.08], [2.2, 2.32], [2.32, 2.5], [2.18, 2.52], [2.06, 2.42], [0, 2.42]], 48), x, y0, z);
+    this.mg(trim, new THREE.TorusGeometry(2.28, 0.05, 6, 48), x, y0 + 2.5, z, [Math.PI / 2, 0, 0]);
+    this.mg(rim, lathe([[0, 2.38], [0.48, 2.4], [0.36, 2.6], [0.3, 3.0], [0.34, 3.3], [0.44, 3.42], [0, 3.42]]), x, y0, z);
+    this.mg(rim, lathe([[0, 3.38], [0.42, 3.42], [0.95, 3.6], [1.18, 3.86], [1.08, 3.88], [1.0, 3.74], [0, 3.74]], 40), x, y0, z);
+    this.mg(trim, new THREE.TorusGeometry(1.14, 0.04, 6, 32), x, y0 + 3.86, z, [Math.PI / 2, 0, 0]);
+    this.mg(trim, lathe([[0, 3.72], [0.22, 3.75], [0.26, 3.9], [0.16, 4.1], [0.2, 4.22], [0.08, 4.4], [0, 4.5]], 16), x, y0, z);
+    // ふちの噴き口（金の小さな猫の頭）
+    const N = 8, jets = [];
+    for (let i = 0; i < N; i++) {
+      const a = (i + 0.5) / N * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a), nx = x + c * (R - 0.3), nz = z + sn * (R - 0.3);
+      this.mg(trim, new THREE.SphereGeometry(0.17, 10, 8), nx, y0 + 1.06, nz);
+      for (const sd of [-1, 1]) this.mg(trim, new THREE.ConeGeometry(0.07, 0.16, 4), nx - sn * sd * 0.1, y0 + 1.24, nz + c * sd * 0.1);
+      jets.push({ c, sn, nx, nz });
     }
+    this.col(x, z, R + 0.25, 1);
+    if (!wet) { W.water(R - 0.6, 0.5); return; }
+    // 水面、二段の鉢の底のタイル、底の光の網目と水面のきらめき
+    W.water(R - 0.6, wy); W.water(2.08, 2.47); W.water(1.0, 3.82);
+    W.floor(2.04, 2.425, 2.6); W.floor(0.98, 3.745, 1.3);
+    W.light('caus', R - 0.6, 0.32, 3, 0.35, '#e8fbff'); W.light('caus', R - 0.6, 0.33, 4.2, 0.25, '#c8f0ff');
+    W.light('caus', 2.0, 2.43, 1.6, 0.3, '#e8fbff'); W.light('caus', 2.0, 2.435, 2.2, 0.2, '#c8f0ff');
+    W.light('glint', R - 0.6, wy + 0.01, 3, 0.55); W.light('glint', R - 0.6, wy + 0.015, 4, 0.4);
+    W.light('glint', 2.05, 2.475, 1.5, 0.5); W.light('glint', 1.0, 3.825, 1, 0.5);
+    // 幕：上の鉢から下の鉢へ、下の鉢から水盤へ
+    const s1 = W.sheet(8, 1, 0.55), s2 = W.sheet(14, 1, 0.55);
+    this.mesh(new THREE.LatheGeometry([[1.18, 3.86], [1.3, 3.78], [1.42, 3.4], [1.55, 2.9], [1.62, 2.46]].map(([a, b]) => V2(a, b)), 32), s1.m, x, y0, z, { abs: true, noShadow: true });
+    this.mesh(new THREE.LatheGeometry([[2.32, 2.5], [2.46, 2.42], [2.6, 2.0], [2.76, 1.4], [2.88, wy]].map(([a, b]) => V2(a, b)), 48), s2.m, x, y0, z, { abs: true, noShadow: true });
+    // ふちの噴き口から中へ飛ぶ水のアーチ
+    const s3 = W.sheet(1, 2, 0.85), land = 3.35;
+    for (const j of jets) this.mesh(new THREE.TubeGeometry(W.arc(j.c, j.sn, R - 0.42, 1.06, land, wy, 0.5), 16, 0.065, 6, false), s3.m, 0, 0, 0, { abs: true, noShadow: true });
+    const rings = this.fountainRings(jets.map(j => [x + j.c * land, y0 + wy + 0.02, z + j.sn * land]));
+    this.tick((dt, t) => { s1.t.offset.y = -t * 0.8; s2.t.offset.y = -t * 0.9; s3.t.offset.y = t * 1.8; rings(t); });
+    // しぶき：てっぺんの噴き上げ、アーチの落ちるところ、幕の落ちるところ
+    const top = V3(x, y0 + 4.5, z);
+    this.v.emitters.push(dt => {
+      const p = this.v.p;
+      for (let i = 0; i < 45 * dt; i++) p.emit(top.clone(), V3((Math.random() - 0.5) * 0.7, 3.2 + Math.random() * 0.8, (Math.random() - 0.5) * 0.7), hdr('#d8f2ff', 1.5), { life: 1.0, size: 0.07, grav: 7, drag: 0.1 });
+      for (let i = 0; i < 24 * dt; i++) { const j = jets[(Math.random() * N) | 0]; p.emit(V3(x + j.c * land, y0 + wy + 0.05, z + j.sn * land), V3((Math.random() - 0.5) * 0.8, 0.6 + Math.random() * 0.6, (Math.random() - 0.5) * 0.8), hdr('#e8f8ff', 1.4), { life: 0.4, size: 0.05, grav: 7, drag: 0.1 }); }
+      for (let i = 0; i < 40 * dt; i++) { const a = Math.random() * Math.PI * 2, r = 2.9; p.emit(V3(x + Math.cos(a) * r, y0 + wy + 0.05, z + Math.sin(a) * r), V3(Math.cos(a) * 0.4, 0.5 + Math.random() * 0.6, Math.sin(a) * 0.4), hdr('#e0f4ff', 1.3), { life: 0.45, size: 0.06, grav: 7, drag: 0.1 }); }
+    });
+  }
+  // 水面の波紋：pts の各点で、輪が広がって消える。返す関数を tick の中で時刻 t とともに呼ぶ
+  fountainRings(pts) {
+    const rings = pts.map(([px, py, pz], i) => { const m = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.26, 24), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.5, depthWrite: false }));
+      m.rotation.x = -Math.PI / 2; m.position.set(px, py, pz); this.scene.add(m); return { m, ph: i / pts.length }; });
+    return t => { for (const r of rings) { const k = (t * 0.7 + r.ph) % 1; r.m.scale.setScalar(1 + k * 3); r.m.material.opacity = 0.5 * (1 - k); } };
+  }
+  // 城の前庭の噴水（左右に一つずつ）：金の帯の丸い水盤、中央の台の上に金の首輪の大理石の猫の像（ry = 猫の向き）。
+  //   台の四方の金の猫の頭の噴き口から、水のアーチが水盤へ落ちる。wet = false（色を失った城）：灰色の石で、水は止まっている
+  gardenFountain(x, z, ry = 0, wet = true) {
+    const y0 = this.gy(x, z), V2 = (a, b) => new THREE.Vector2(a, b), lathe = (pts, seg = 40) => new THREE.LatheGeometry(pts.map(([a, b]) => V2(a, b)), seg);
+    const rim = wet ? 'marble' : 'stone2', trim = wet ? 'gold' : '#9a9aa4', R = 2.6, wy = 0.6, W = this.fountainKit(x, z, wet);
+    // 水盤：ふちの縁石と金の帯、底
+    this.mg(rim, lathe([[R - 0.4, 0.05], [R, 0.05], [R + 0.05, 0.2], [R - 0.05, 0.42], [R + 0.08, 0.68], [R + 0.08, 0.78], [R - 0.42, 0.78], [R - 0.42, 0.68], [R - 0.4, 0.2]], 40), x, y0, z);
+    this.mg(trim, new THREE.TorusGeometry(R - 0.03, 0.04, 6, 40), x, y0 + 0.48, z, [Math.PI / 2, 0, 0]);
+    if (wet) W.floor(R - 0.4, 0.22, 3.2); else this.mg('#7a7a80', new THREE.CircleGeometry(R - 0.4, 40), x, y0 + 0.22, z, [-Math.PI / 2, 0, 0]);
+    // 中央の台（飾りの段と金の輪）と、四方の噴き口
+    this.mg(rim, lathe([[0, 0.2], [0.75, 0.2], [0.75, 0.42], [0.55, 0.55], [0.45, 0.75], [0.45, 1.25], [0.6, 1.35], [0.62, 1.48], [0, 1.48]], 24), x, y0, z);
+    this.mg(trim, new THREE.TorusGeometry(0.47, 0.035, 6, 24), x, y0 + 1.0, z, [Math.PI / 2, 0, 0]);
+    const jets = [];
+    for (let i = 0; i < 4; i++) {
+      const a = i / 4 * Math.PI * 2 + Math.PI / 4, c = Math.cos(a), sn = Math.sin(a), nx = x + c * 0.5, nz = z + sn * 0.5;
+      this.mg(trim, new THREE.SphereGeometry(0.12, 10, 8), nx, y0 + 0.95, nz);
+      for (const sd of [-1, 1]) this.mg(trim, new THREE.ConeGeometry(0.05, 0.12, 4), nx - sn * sd * 0.07, y0 + 1.08, nz + c * sd * 0.07);
+      jets.push({ c, sn });
+    }
+    // 猫の像：おすわりした大理石の猫（金の首輪と鈴、しっぽ）
+    { const m = wet ? 'marble' : 'stone', s = 0.9, cy = y0 + 1.48, fx = Math.sin(ry), fz = Math.cos(ry), sx = Math.cos(ry), sz = -Math.sin(ry);
+      this.mg(m, new THREE.SphereGeometry(0.42 * s, 16, 12), x, cy + 0.42 * s, z, [0, ry, 0], [1, 1.15, 0.9]);
+      this.mg(m, new THREE.SphereGeometry(0.36 * s, 16, 12), x + fx * 0.06, cy + 1.05 * s, z + fz * 0.06, [0, ry, 0], [1.12, 0.95, 1]);
+      for (const sd of [-1, 1]) { const eg = new THREE.ConeGeometry(0.15 * s, 0.34 * s, 4); eg.rotateY(Math.PI / 4); this.mg(m, eg, x + sx * sd * 0.21 * s + fx * 0.05, cy + 1.42 * s, z + sz * sd * 0.21 * s + fz * 0.05, [0, ry, -sd * 0.3], [1, 1, 0.55]);
+        this.mg(m, new THREE.SphereGeometry(0.1 * s, 10, 8), x + sx * sd * 0.14 * s + fx * 0.3 * s, cy + 0.1 * s, z + sz * sd * 0.14 * s + fz * 0.3 * s, null, [1, 0.7, 1.3]); }
+      this.mg(trim, new THREE.TorusGeometry(0.27 * s, 0.035, 6, 20), x + fx * 0.04, cy + 0.82 * s, z + fz * 0.04, [Math.PI / 2 - 0.15, 0, 0]);
+      this.mg(trim, new THREE.SphereGeometry(0.06, 8, 6), x + fx * 0.3 * s, cy + 0.76 * s, z + fz * 0.3 * s);
+      this.mg(m, new THREE.TorusGeometry(0.32 * s, 0.06 * s, 6, 16, Math.PI * 1.2), x - fx * 0.3 * s, cy + 0.12 * s, z - fz * 0.3 * s, [Math.PI / 2, 0, ry + Math.PI * 0.4]);
+      if (wet) for (const sd of [-1, 1]) this.mg(this.glow('#6ad8ff', 1.6), new THREE.SphereGeometry(0.04, 8, 6), x + sx * sd * 0.12 * s + fx * 0.36 * s, cy + 1.08 * s, z + sz * sd * 0.12 * s + fz * 0.36 * s); }
+    this.col(x, z, R + 0.15, 1);
+    if (!wet) { W.water(R - 0.45, 0.42); return; }
+    W.water(R - 0.42, wy);
+    W.light('caus', R - 0.45, 0.24, 1.8, 0.35, '#e8fbff'); W.light('caus', R - 0.45, 0.25, 2.5, 0.25, '#c8f0ff');
+    W.light('glint', R - 0.42, wy + 0.01, 1.8, 0.55); W.light('glint', R - 0.42, wy + 0.015, 2.4, 0.4);
+    // 噴き口から外へ飛ぶ水のアーチ
+    const s1 = W.sheet(1, 2, 0.85), land = 1.75;
+    for (const j of jets) this.mesh(new THREE.TubeGeometry(W.arc(j.c, j.sn, 0.6, 0.95, land, wy, 0.35), 14, 0.05, 6, false), s1.m, 0, 0, 0, { abs: true, noShadow: true });
+    const rings = this.fountainRings(jets.map(j => [x + j.c * land, y0 + wy + 0.02, z + j.sn * land]));
+    this.tick((dt, t) => { s1.t.offset.y = t * 1.8; rings(t); });
+    this.v.emitters.push(dt => {
+      const p = this.v.p;
+      for (let i = 0; i < 16 * dt; i++) { const j = jets[(Math.random() * 4) | 0]; p.emit(V3(x + j.c * land, y0 + wy + 0.05, z + j.sn * land), V3((Math.random() - 0.5) * 0.6, 0.5 + Math.random() * 0.5, (Math.random() - 0.5) * 0.6), hdr('#e8f8ff', 1.4), { life: 0.4, size: 0.05, grav: 7, drag: 0.1 }); }
+    });
   }
   bench(x, z, ry = 0) { this.box(x, z, 2, 0.12, 0.6, 'wood', { y: 0.45, ry, col: false }); this.box(x, z, 1.8, 0.45, 0.4, 'wood2', { ry }); }
   barrel(x, z) { this.cyl(x, z, 0.45, 1.1, 'wood', { seg: 12 }); for (const y of [0.2, 0.9]) this.mesh(new THREE.TorusGeometry(0.46, 0.03, 4, 16), 'iron', x, y, z, { rx: Math.PI / 2 }); }
@@ -4586,11 +4717,8 @@ const ZONE_BUILD = {
     K.castleKeep(-12, -72, { happy, s: 1.1 }); K.smileTower(30, -62, { happy });
     K.townBackdrop({ happy, skip: (x, z) => (z < -40 && x > -40 && x < 18) || Math.hypot(x - 30, z + 62) < 12 });
 
-    // ---- 大広場：二段の噴水と笑う猫の像、ベンチ、植え込み、街灯 ----
-    K.cyl(0, -8, 4.2, 0.55, 'stone', { seg: 32 });
-    K.mesh(new THREE.CylinderGeometry(3.9, 3.9, 0.06, 32), new THREE.MeshStandardMaterial({ color: happy ? '#7ad0f8' : '#8a9aa8', transparent: true, opacity: 0.8, roughness: 0.05, emissive: happy ? '#3a90d0' : '#2a3a48', emissiveIntensity: 0.3 }), 0, 0.46, -8, { noShadow: true });
-    K.fountain(0, -8, !happy);
-    K.catStatue(-8, -8, 0.4, 1.1, happy ? 'marble' : 'stone');
+    // ---- 大広場：二段の噴水、ベンチ、植え込み、街灯 ----
+    K.plazaFountain(0, -8, happy);
     for (const a of [0.8, 2.35, 3.9, 5.5]) K.bench(Math.sin(a) * 6.6, -8 + Math.cos(a) * 6.6, a);
     for (const [x, z] of [[-14, -12], [14, -12], [-14, 2], [14, 2]]) K.planterTree(x, z, 1.1, happy);
     for (const [x, z] of [[-13.8, -13.4], [13.8, -13.4], [-20, -13.5], [20, -13.5], [-20, 7.5], [20, 7.5], [-8, 7.5], [8, 7.5]]) K.streetLamp(x, z, happy);
@@ -4647,16 +4775,16 @@ const ZONE_BUILD = {
 
     if (happy) K.light(0, 7, -8, '#fff0c8', 8, 34);
   },
-  // ニャハハ城・中庭：回廊に囲まれた中庭、北の前庭と城内への扉、生け垣と噴水、城壁の垂れ幕と塔
+  // ニャハハ城・前庭：回廊に囲まれた前庭、北の石段の上の玄関と城内への扉、生け垣と噴水、城壁の垂れ幕と塔
   castle(K) {
     const happy = kingdomJoy();
     const clothC = happy ? '#e87aa8' : '#9a8a98';
-    // 赤いじゅうたん：門から石段まで、前庭は城内への扉まで
+    // 赤いじゅうたん：門から石段まで、石段の上は城内への扉まで
     K.mesh(new THREE.PlaneGeometry(3.6, 29.5), 'clothRed', 0, 0.03, 6.25, { rx: -Math.PI / 2, noShadow: true });
     K.mesh(new THREE.PlaneGeometry(3.6, 7.6), 'clothRed', 0, 0.03, -16.8, { rx: -Math.PI / 2, noShadow: true });
     for (const x of [-1.9, 1.9]) K.mesh(new THREE.BoxGeometry(0.12, 0.04, 29.5), 'gold', x, 0.04, 6.25, { noShadow: true });
-    // 城内への扉の両脇：柱と金の猫の像、花の鉢
-    for (const x of [-3.6, 3.6]) { K.column(x, -20, 7, 0.5, 'marble'); K.mesh(new THREE.SphereGeometry(0.3, 12, 10), 'gold', x, 7.3, -20); }
+    // 城内への扉（幅 8m・高さ 8m の城の玄関）の両脇：柱と金の猫の像、花の鉢
+    for (const x of [-5.6, 5.6]) { K.column(x, -20, 9.5, 0.55, 'marble'); K.mesh(new THREE.SphereGeometry(0.34, 12, 10), 'gold', x, 9.85, -20); }
     K.catStatue(-11, -18, 0.4, 1.3, 'marble', happy ? '#ffd27a' : null); K.catStatue(11, -18, -0.4, 1.3, 'marble', happy ? '#ffd27a' : null);
     for (const x of [-7, 7]) { K.cyl(x, -19.4, 0.55, 0.8, 'marble', { seg: 12 }); K.mesh(new THREE.SphereGeometry(0.62, 14, 10), happy ? 'leaf' : 'leafGray', x, 1.25, -19.4); if (happy) K.flowers(x, -19.4, 6, 0.5, ['#ff8ab8', '#ffd24a']); }
     // 回廊：左右の列柱と屋根（金の縁）
@@ -4666,15 +4794,10 @@ const ZONE_BUILD = {
       K.mesh(new THREE.BoxGeometry(0.2, 0.3, 27.4), 'gold', sd * 12.15, 5.3, 7);
       const rf = new THREE.BoxGeometry(4.8, 0.2, 27.8); K.mesh(rf, happy ? 'roofRed' : 'roofGray', sd * 14.1, 5.8, 7, { rz: sd * 0.25 });
     }
-    // 生け垣の庭と猫のトピアリー、小さな噴水
+    // 生け垣の庭と、左右の噴水
     for (const sd of [-1, 1]) {
       K.box(sd * 8.5, -1, 3.2, 0.9, 1.2, 'leaf2', { round: true });
-      const tx = sd * 8.5, tz = -3.4;
-      K.cyl(tx, tz, 0.7, 0.5, 'stone', { seg: 10 });
-      K.mesh(new THREE.SphereGeometry(0.75, 14, 10), happy ? 'leaf' : 'leafGray', tx, 1.2, tz);
-      K.mesh(new THREE.SphereGeometry(0.55, 14, 10), happy ? 'leaf' : 'leafGray', tx, 2.2, tz);
-      for (const e of [-1, 1]) { const ear = new THREE.ConeGeometry(0.18, 0.4, 4); K.mesh(ear, happy ? 'leaf' : 'leafGray', tx + e * 0.3, 2.75, tz, { rz: -e * 0.3 }); }
-      K.fountain(sd * 8.5, 17, !happy);
+      K.gardenFountain(sd * 8.5, 17, -sd * Math.PI / 2, happy);   // 猫の像は、まん中のじゅうたんのほうを向く
       K.flowers(sd * 8.5, 1.5, 10, 1.4, happy ? ['#ff8ab8', '#ffd24a', '#ffffff'] : ['#a8a8a0']);
     }
     // 城壁の垂れ幕（回廊の屋根の上）と、北の壁の紋章の旗
