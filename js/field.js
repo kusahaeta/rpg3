@@ -1388,13 +1388,14 @@ class FieldView extends BaseView {
     this.toast(pick(['ごろごろ……どーん！　ころころ岩に、はねとばされた！', 'ころころ岩「ごめーん！　とまれないのー！」', 'ぽーん！　……ころころ岩は、楽しそうに転がっていった']));
   }
   // 見つかった・眠った：画面を暗くして、pos で目をさます（faceTo のほうを向く）
-  sendBack(pos, faceTo, msg, delay = 1500) {
+  sendBack(pos, faceTo, msg, delay = 1500, then = null) {
     this.busy = true; this.keys.clear();
     setTimeout(() => this.root.querySelector('.fd-wipe').classList.add('on'), delay - 800);
     setTimeout(() => {
       const p = this.player, b = V3(pos[0], 0, pos[1]);
       p.pos.set(b.x, this.gy(b.x, b.z), b.z); p.vis = null; p.y = 0; p.vy = 0; p.speed = 0; p.doze = 0;
       p.yaw = Math.atan2(faceTo.x - b.x, faceTo.z - b.z); this.camYaw = p.yaw + Math.PI;
+      if (then) then();
       this.placePlayer(0); this.spawnFollowers();
       this.camera.position.set(p.pos.x + Math.sin(this.camYaw) * 4, p.pos.y + 2.4, p.pos.z + Math.cos(this.camYaw) * 4); this.curLook.set(p.pos.x, p.pos.y + 0.8, p.pos.z);
       this.root.querySelector('.fd-wipe').classList.remove('on');
@@ -1500,7 +1501,7 @@ class FieldView extends BaseView {
     // 片道の水晶（金は昔へ、青は今へ）：もうその姿なら、光は沈んだまま
     const flags = Save.data.flags || (Save.data.flags = {}), fk = q && q.k !== 'W' ? `${o.S.id}_${q.k}` : null;
     const about = q && (q.k === 'P' ? ['金の水晶は、遺跡を「昔」へもどすことしかできない、片道の水晶らしい。', '「今」へもどすには、青の水晶か、入口の間の白い水晶をさがそう。'] : ['青の水晶は、遺跡を「今」へもどすことしかできない、片道の水晶らしい。', '「昔」へもどすには、金の水晶か、入口の間の白い水晶をさがそう。']);
-    if (q && !o.can(q)) { flags[fk] = true; Save.save(); this.startTalk(TIME_CRYS[q.k], [q.k === 'P' ? '金の水晶は、暗く沈んでいる。……遺跡はもう「昔」の姿なので、ふれても何も起きない。' : '青の水晶は、暗く沈んでいる。……遺跡はもう「今」の姿なので、ふれても何も起きない。', ...about], null, true); return; }
+    if (q && !o.can(q)) { flags[fk] = true; Save.save(); this.startTalk(TIME_CRYS[q.k], [q.k === 'P' ? '金の水晶は、暗く沈んでいる。……遺跡はもう「昔」の姿なので、ふれても何も起きない。' : '青の水晶は、暗く沈んでいる。……遺跡はもう「今」の姿なので、ふれても何も起きない。', ...about], null, true); this.checkTimeTrap(o); return; }
     const past = !o.past, first = fk && !flags[fk];
     o.set(past); flags[o.S.id] = past; if (fk) flags[fk] = true; Save.save();
     const p = this.player.pos, col = past ? '#ffc86a' : '#8affe0';
@@ -1512,6 +1513,60 @@ class FieldView extends BaseView {
     this.toast(past ? '……遺跡が、昔の姿を思い出した。瓦礫は消え、かわりに古い石の壁や門がよみがえった' : '……遺跡は、今の姿にもどった。昔の壁や門は崩れ、瓦礫が道をふさいでいる');
     // 金・青の水晶にはじめてふれたときは、片道の水晶だと説明する
     if (first) this.startTalk(TIME_CRYS[q.k], about, null, true);
+    this.checkTimeTrap(o);
+  }
+  // 閉じこめられたら（どの水晶で切りかえても、入口へ戻れない）、入口の間へもどす。遺跡は今の姿にもどる。
+  //   ①「閉じこめられた！」の文字 → ② 水晶の光に包まれて暗転 → ③ 入口の間で光とともに現れる
+  checkTimeTrap(o) {
+    const p = this.player.pos;
+    if (this.trapWait || !o.trapped || !o.trapped(p.x, p.z)) return;
+    // もどす場所：ねこ地蔵（anchor）のそばの、区画の中ほど寄り（地蔵に重ならないように）
+    const [ax, az] = zonePoint(this.zone, this.zone.anchor), l = Math.hypot(ax, az), dx = l > 1 ? -ax / l : 0, dz = l > 1 ? -az / l : 1;
+    const bx = ax + dx * 5 + dz * 0.6, bz = az + dz * 5 - dx * 0.6;
+    this.trapWait = true;
+    const later = (ms, fn) => setTimeout(() => { if (GFX.view === this) fn(); }, ms);
+    setTimeout(() => {
+      if (this.talk) { const wait = setInterval(() => { if (!this.talk) { clearInterval(wait); go(); } }, 200); } else go();
+    }, 900);
+    const go = () => {
+      this.trapWait = false;
+      // 戦闘などで区画をはなれていたら、もどってきたときに調べなおす
+      if (GFX.view !== this) return;
+      this.busy = true; this.keys.clear();
+      const banner = this.root.querySelector('.fd-banner');
+      banner.className = 'fd-banner'; void banner.offsetWidth; banner.className = 'fd-banner show trap'; banner.textContent = '閉じこめられた！';
+      later(1800, () => { banner.className = 'fd-banner'; });
+      GFX.shake(0.3); Sfx.tone(220, 0.5, 'sawtooth', 0.05, -80); Sfx.tone(165, 0.7, 'sine', 0.06, -60, 0.15);
+      later(1600, rewind);
+    };
+    // 水晶の光に包まれて、入口の間へ
+    const rewind = () => {
+      if (GFX.view !== this) return;
+      this.busy = true; this.keys.clear();
+      this.toast('時の水晶の光が、一行を包みこむ——');
+      Sfx.tone(1320, 1.4, 'sine', 0.05, -1100); Sfx.tone(990, 1.2, 'triangle', 0.03, -700, 0.2);
+      for (let k = 0; k < 5; k++) later(k * 260, () => {
+        const c = k % 2 ? '#8affe0' : '#ffc86a', pp = p.clone().add(V3(0, 0.1 + k * 0.35, 0));
+        this.fx.ring(pp, c, { r: 3.2 - k * 0.4, life: 0.7, width: 0.18 });
+        this.p.burst(p.clone().add(V3(0, 0.6, 0)), c, 24, { speed: 2.5, up: 1.5, life: 0.9, size: 0.09 });
+      });
+      later(1100, () => GFX.flash('#fff4e0', 0.6, 0.6));
+      this.sendBack([bx, bz], V3(bx + dx * 10, 0, bz + dz * 10), null, 2000, () => {
+        o.set(false); (Save.data.flags || (Save.data.flags = {}))[o.S.id] = false; Save.save();
+        // 入口の間：光とともに現れる
+        later(250, () => {
+          const q = this.player.pos;
+          this.fx.ring(q.clone().add(V3(0, 0.08, 0)), '#8affe0', { r: 4, life: 0.9, width: 0.2 });
+          this.fx.pillar(q.clone(), '#d8fff4', { h: 5, r: 0.9, life: 0.8 });
+          this.p.burst(q.clone().add(V3(0, 1, 0)), '#ffffff', 40, { speed: 3, up: 1, life: 0.9, size: 0.1 });
+          Sfx.tone(660, 0.6, 'sine', 0.05, 330); Sfx.tone(990, 0.5, 'triangle', 0.03, 0, 0.12);
+          const bn = this.root.querySelector('.fd-banner');
+          bn.className = 'fd-banner'; void bn.offsetWidth; bn.className = 'fd-banner show good'; bn.textContent = '入口の間にもどった';
+          later(1800, () => { bn.className = 'fd-banner'; });
+          this.toast('遺跡は、今の姿にもどっている。……ちがう水晶の順番を、ためしてみよう');
+        });
+      });
+    };
   }
   // つながりの石畳（ZoneKit.strokeBoards）：踏んだ石が光る。始まりの石から、すべての石を一度ずつ踏み、最後に終わりの石を踏むと、結界が消える。
   //   光った石をまた踏む・石畳から出る・となりでない石へ跳ぶ・終わりの石を先に踏むと、光は消えてやりなおし。ひとつ前の石へもどると、一歩取り消せる
@@ -1915,6 +1970,7 @@ class FieldView extends BaseView {
     this.root.querySelector('.fd-banner').className = 'fd-banner';
     this.busy = false; this.grace = 2.5;
     this.spawnFollowers();
+    if (this.timeObj) this.checkTimeTrap(this.timeObj);
     Music.play(this.zone.bgm || (this.zone.town ? 'village' : ['cave', 'root', 'end'].includes(this.bg) ? 'dark' : 'field'));
     this.renderHud(); this.renderTeam();
     if (res.win && this.groups.every(x => !x.alive)) setTimeout(() => this.toast(`${this.zone.name}の敵をすべて倒した！`), 600);
@@ -2473,6 +2529,7 @@ function FieldScreen(zoneId) {
   v.key = 'field:' + z;
   GFX.setView(v);
   Game.activeField = v;
+  if (v.timeObj) v.checkTimeTrap(v.timeObj);
   setTimeout(() => { v.showZoneTitle(); if (!Save.data.fieldTips) { Save.data.fieldTips = true; Save.save(); v.toast(document.body.classList.contains('touch') ? '左側をなぞって移動。敵に先に「攻撃」を当てると「先制攻撃」！ 「調べる」で話す・調べる' : 'WASDで移動。敵に先にクリックで攻撃すると「先制攻撃」！ Fで話す・調べる'); } }, 300);
   return v.root;
 }
