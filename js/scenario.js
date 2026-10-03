@@ -16,7 +16,7 @@ const SCENES = {
       cast: { mike: { at: [0, 0], item: 'fish' }, sakanaya: { at: [0.2, 2.6], face: 'mike' }, sonchou: { at: [-2.5, -5], hidden: true, face: 'mike' } },
       points: { tree: [120, 30, 20] }, wide: { pos: [-3.4, 2.1, -4.4], look: [0.7, 0.6, 1.8] } },
     lines: [
-      ['n', 'ミャオニアの世界。南の丘の向こうに、大きな「にゃんだーの樹」が見える、ぽかぽか村。……今日も、平和な朝。', { cam: 'wide', dur: 7, r: { mike: 'joy' } }],
+      ['n', 'ミャオニアの世界。南の森の向こうに、大きな「にゃんだーの樹」が見える、ぽかぽか村。……今日も、平和な朝。', { cam: 'wide', dur: 7, r: { mike: 'joy' } }],
       ['n', '……のはずだった。', { cam: 'mike', close: true, r: { mike: ['smile', 'hop'] } }],
       ['sakanaya', 'あっ！　ミケ！　また魚盗ったね！', { f: 'angry', g: 'point', to: 'mike', r: { mike: ['surprise', 'recoil'] } }],
       ['mike', 'と、盗ってないよ！　ちょっと持ってるだけ！', { f: 'surprise', g: 'shrug' }],
@@ -92,7 +92,7 @@ const SCENES = {
       ['sonchou', '森の奥に、ネズミの王国があるらしい。ミケ、クロどの。様子を見てきてはくれんか。……無理はするでないぞ。', { f: 'gentle', g: 'offer' }],
       ['mike', '任せて！　行こう、クロ！', { f: 'joy', g: 'fist', to: 'kuro' }],
       ['kuro', '……面倒だ。', { f: 'serious', g: 'turnAway', later: [1.6, { r: { kuro: ['neutral', 'nod'] } }] }],
-      ['n', '【目的】村の東から、ほしふる森へ。（村の武器屋では「にぼし」で武器を鍛えられる。宿屋で休むとHPが回復する）', { cam: 'wide', dur: 6 }],
+      ['n', '【目的】村の南から、ほしふる森へ。（村の武器屋では「にぼし」で武器を鍛えられる。宿屋で休むとHPが回復する）', { cam: 'wide', dur: 6 }],
     ] },
   c1_05: { title: 'ほしふる森', cast: ['e:slime'], bgm: 'field',
     stage: { zone: 'forest_in', at: [-2, -8], face: 0,
