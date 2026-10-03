@@ -5,7 +5,7 @@
 //  地形マップ（map）のある区画は座標がマス（列, 行）。
 // ============================================================
 // exits: side = n/s/e/w（辺）、at = 辺に沿った位置、to = 行き先
-// town: 人が暮らす区画（敵が出ない）／ calmAfter: そのステージをクリアすると敵が出なくなる
+// town: 人が暮らす区画（敵が出ない）／ calm: 人は暮らしていないが、敵が出ない区画／ calmAfter: そのステージをクリアすると敵が出なくなる
 // mapName: ミャオニアの地図での名前（省略時は name）／ parent: ミャオニアの地図では、この区画にまとめる
 // anchor: ねこ地蔵（休めて、ワールドマップのひとっとびの着く場所）／ noAnchor: ねこ地蔵を置かない（ワールドマップからひとっとびできない。anchor は入ってくる場所・もどる場所としてだけ使う）
 // npcs[].v: [[条件, 台詞...]]（条件 'scene:ID' 'clear:ステージ' 'done' 'flag:名前'。後ろのものほど優先）
@@ -50,7 +50,7 @@ const FIELD_ZONES = {
       { at: [-21.8, -8], mark: [-0.9, 2.3, 0], title: 'ミケの家', text: '表札に「ミケ」。……窓辺に、食べかけの魚が干してある。' }],
     map2d: [470, 380] },
 
-  hill: { ci: 0, name: '村はずれの丘', w: 52, d: 48, stage: '1-1', arenas: [[0, 10, 0]], build: 'hill', groups: 2, chests: 2, crystals: 2,
+  hill: { ci: 0, name: '村はずれの丘', w: 52, d: 48, stage: '1-1', arenas: [[0, 10, 0]], build: 'hill', calm: true, groups: 0, chests: 2, crystals: 2,
     world: true, arch: 'woods', chestAt: [[-19, -17], [21, 1]],
     // 村から東へ出ると原っぱ。石段を上ると丘の上（高さ3m）。流れ星のクレーター、西に見晴らしのベンチ、東に崖の上の行き止まり
     map: [
@@ -2272,7 +2272,7 @@ function zoneOpen(id) {
 // 区画の戦場（ワールド座標）。地形マップの区画はマス座標から直す
 function zoneArenas(Z) { return (Z.arenas || []).map(([x, z, f]) => { const [wx, wz] = Z.map ? zonePoint(Z, [x, z]) : [x, z]; return { x: wx, z: wz, face: f || 0 }; }); }
 // その区画に敵が出るか（calmAfter のステージを越えると静かになる）
-function zoneCalm(Z) { return !!(Z.town || (Z.calmAfter && Save.data.cleared[Z.calmAfter])); }
+function zoneCalm(Z) { return !!(Z.town || Z.calm || (Z.calmAfter && Save.data.cleared[Z.calmAfter])); }
 function exitPos(zone, e) {
   const hw = zone.w / 2, hd = zone.d / 2;
   switch (e.side) {
