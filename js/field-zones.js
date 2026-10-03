@@ -7,6 +7,7 @@
 // exits: side = n/s/e/w（辺）、at = 辺に沿った位置、to = 行き先
 // town: 人が暮らす区画（敵が出ない）／ calm: 人は暮らしていないが、敵が出ない区画／ calmAfter: そのステージをクリアすると敵が出なくなる
 // mapName: ミャオニアの地図での名前（省略時は name）／ parent: ミャオニアの地図では、この区画にまとめる
+// dents: 床のくぼみ [{ at, r, depth, rim, w }]（地図のある区画だけ。半径 r の内側がすり鉢状に depth まで下がり、縁の幅 w が rim だけ盛り上がる。歩いて出入りできる）
 // anchor: ねこ地蔵（休めて、ワールドマップのひとっとびの着く場所）／ noAnchor: ねこ地蔵を置かない（ワールドマップからひとっとびできない。anchor は入ってくる場所・もどる場所としてだけ使う）
 // npcs[].v: [[条件, 台詞...]]（条件 'scene:ID' 'clear:ステージ' 'done' 'flag:名前'。後ろのものほど優先）
 // npcs[].shop: weapon / item / inn / fish（話しかけると店）
@@ -52,6 +53,8 @@ const FIELD_ZONES = {
 
   hill: { ci: 0, name: '村はずれの丘', w: 52, d: 48, stage: '1-1', arenas: [[0, 10, 0]], build: 'hill', calm: true, groups: 0, chests: 2, crystals: 2,
     world: true, arch: 'woods', chestAt: [[21, -17], [21, 1]],
+    // 流れ星のクレーター（北の石段にかからないよう、流れ星の岩より少し南）
+    dents: [{ at: [0, -2], r: 4, depth: 0.9, rim: 0.25, w: 1.3 }],
     // 村から東へ出ると原っぱ。石段を上ると丘の上（高さ3m）。流れ星のクレーター、西に見晴らしのベンチ、東に崖の上の行き止まり
     map: [
       '##########################',
@@ -4187,13 +4190,23 @@ class ZoneKit {
     if (name) this.sign(x + Math.sin(ry) * 0.17, z + Math.cos(ry) * 0.17, ry, name, null, '#c8a8ff', 0.7, 0.72);
     this.flowers(x + Math.sin(ry) * 0.5, z + Math.cos(ry) * 0.5, 4, 0.3, [flowerCol]);
   }
-  // 縁の土手は歩いて越えられるので、足が埋まらないよう地面から 0.1m ほどしか盛り上げない
+  // クレーター：地面のくぼみ（zone.dents）の上に、焦げた土の色を外へ向かって薄く重ね、まわりに岩を飛び散らせる
   crater(x, z, r = 5) {
-    const m = this.mesh(new THREE.TorusGeometry(r, r * 0.22, 10, 36), 'dirt', x, -r * 0.22 * 0.35 + 0.1, z, { rx: Math.PI / 2 }); m.scale.z = 0.35;
-    this.mesh(new THREE.CircleGeometry(r * 0.95, 32), new THREE.MeshStandardMaterial({ color: '#5a4a38', roughness: 1 }), x, 0.03, z, { rx: -Math.PI / 2, noShadow: true });
-    // 飛び散った岩：クレーターと同じ高さの地面にだけ置く（階段や崖の下に落ちないように）
-    const y0 = this.gy(x, z);
-    for (let i = 0; i < 14; i++) { const a = this.r() * Math.PI * 2, d = r * (1.2 + this.r() * 0.6), s = 0.2 + this.r() * 0.3, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; if (Math.abs(this.gy(px, pz) - y0) < 0.1) this.mesh(new THREE.DodecahedronGeometry(s, 0), 'rockDark', px, 0.1, pz); }
+    const T = this.T, flat = (px, pz) => this.gy(px, pz) - (T ? T.dentAt(px, pz) : 0);
+    // 焦げた土：くぼみの曲面に沿う円（rings × segs）。中心は濃く、縁の外で草地に溶ける
+    const R = r * 1.25, rings = 10, segs = 40, pos = [], col = [], idx = [], c0 = new THREE.Color('#3e3024'), c1 = new THREE.Color('#7a6248');
+    for (let k = 0; k <= rings; k++) for (let j = 0; j < segs; j++) {
+      const f = k / rings, a = j / segs * Math.PI * 2, px = x + Math.cos(a) * R * f, pz = z + Math.sin(a) * R * f, c = c0.clone().lerp(c1, f);
+      pos.push(px, this.gy(px, pz) + 0.02, pz); col.push(c.r, c.g, c.b, f < 0.6 ? 1 : 1 - (f - 0.6) / 0.4);
+      if (k < rings) { const n = (k + 1) * segs, m = k * segs, j1 = (j + 1) % segs; idx.push(m + j, n + j1, n + j, m + j, m + j1, n + j1); }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4)); geo.setIndex(idx); geo.computeVertexNormals();
+    const scorch = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    scorch.receiveShadow = true; scorch.renderOrder = 1; this.add(scorch);
+    // 飛び散った岩：くぼみを除いた地面がクレーターと同じ高さのところにだけ置く（階段や崖の下に落ちないように）
+    const y0 = flat(x, z);
+    for (let i = 0; i < 14; i++) { const a = this.r() * Math.PI * 2, d = r * (1.1 + this.r() * 0.45), s = 0.12 + this.r() * 0.22, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; if (Math.abs(flat(px, pz) - y0) < 0.1) this.mesh(new THREE.DodecahedronGeometry(s, 0), 'rockDark', px, 0.1, pz); }
   }
   // 友情の実のかけら（流れ星に見えた、樹から落ちた実の残り）
   starRock(x, z, s = 1, col = '#fff0a8') {
@@ -4647,8 +4660,7 @@ const ZONE_BUILD = {
   // 村はずれの丘：丘の上に流れ星の落ちたクレーター、西の見晴らしに大きな木とベンチ
   hill(K) {
     K.flora({ trees: [['round', 4], ['pine', 1]], leaf: ['#6abf52', '#5ab04a', '#7ac85a'], fruit: '#ff9a9a', bush: 0.7, flower: ['#ffffff', '#ffe07a', '#ffb8d8'] });
-    // クレーターは北の石段にかからないよう、流れ星の岩より少し南に広げる
-    K.crater(0, -2, 4.5);
+    K.crater(0, -2, 4);
     if (storyCond('scene:c1_02') && !storyCond('scene:c1_03')) K.starRock(0, -4, 1.1); else if (storyCond('scene:c1_03')) K.starRock(-2.5, -3.5, 0.4);
     K.roundTree(-14, 8, 1.7, 'leaf', { lush: true, fruit: '#ff9a9a' }); K.bench(-11, 10, 0.5);
     K.flowers(-8, 14, 16, 2.5); K.flowers(12, 6, 12, 2, ['#ffe07a', '#ffffff']); K.flowers(-16, -16, 16, 3); K.flowers(14, -16, 12, 2.5, ['#ffe07a', '#ffffff']);

@@ -32,6 +32,8 @@ class Terrain {
     this.liftOf = new Int16Array(n).fill(-1); this.doorOf = new Int16Array(n).fill(-1); this.roomOf = new Int16Array(n).fill(-1);
     this.locked = new Set();     // 封鎖中の出入口の key
     this.cabinKeys = new Set((zone.exits || []).filter(e => e.lift).map(e => e.key));
+    // くぼみ（zone.dents）：床をすり鉢状に下げる（流れ星のクレーターなど）
+    this.dents = (zone.dents || []).map(d => { const [x, z] = zonePoint(zone, d.at); return { x, z, r: d.r, depth: d.depth || 0.8, rim: d.rim || 0, w: d.w || 1 }; });
     for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) {
       const i = r * this.cols + c, ch = rows[r][c] ?? '#';
       this.ch[i] = ch;
@@ -249,11 +251,28 @@ class Terrain {
 
   // ---------------- 高さ・通行 ----------------
   groundAt(x, z) { const i = this.at(x, z); return i < 0 ? NaN : this.groundOf(i, x, z); }
+  // くぼみの分の高さ：半径 r の内側はすり鉢状に depth まで下がり、縁（幅 w）は rim だけ盛り上がる
+  dentAt(x, z) {
+    let y = 0;
+    for (const d of this.dents) {
+      const s = Math.hypot(x - d.x, z - d.z);
+      if (s < d.r) { const u = 1 - (s / d.r) ** 2; y -= d.depth * u * u; }
+      const e = (s - d.r) / d.w;
+      if (Math.abs(e) < 1) { const u = 1 - e * e; y += d.rim * u * u; }
+    }
+    return y;
+  }
+  // そのマスにくぼみがかかるか
+  dentTouches(c, r) {
+    const x0 = this.cx(c) - CELL / 2, z0 = this.cz(r) - CELL / 2;
+    return this.dents.some(d => Math.hypot(clamp(d.x, x0, x0 + CELL) - d.x, clamp(d.z, z0, z0 + CELL) - d.z) < d.r + d.w);
+  }
   groundOf(i, x, z) {
     switch (this.kind[i]) {
       case TK.STAIR: { const s = this.stairs.get(i), t = clamp(((s.axis === 'x' ? x : z) - s.start) * s.up / s.len, 0, 1); return s.h0 + (s.h1 - s.h0) * t; }
       case TK.LIFT: return this.lifts[this.liftOf[i]].y;
       case TK.SOLID: case TK.WINDOW: return NaN;
+      case TK.FLOOR: return this.dents.length && !this.bridge[i] ? this.h[i] + this.dentAt(x, z) : this.h[i];
       default: return this.h[i];
     }
   }
@@ -840,6 +859,15 @@ function buildArchitecture(view, T) {
   const walk = i => i >= 0 && kind[i] >= K.FLOOR;
   // マス i の、辺の端点での高さ（階段は傾き、昇降機はいちばん低い階）
   const hAt = (i, x, z) => kind[i] === K.LIFT ? T.lifts[T.liftOf[i]].levels[0] : kind[i] === K.VOID ? ABYSS : T.groundOf(i, x, z);
+  // くぼみにかかる床：細かく分けて、くぼみの曲面に沿わせる
+  const dented = (c, r) => T.dents.length > 0 && T.dentTouches(c, r);
+  const dentSurf = (G, i, x0, z0, x1, z1, lift = 0, uvf) => {
+    const n = 8, P = (a, b) => { const x = x0 + (x1 - x0) * a / n, z = z0 + (z1 - z0) * b / n; return [x, T.groundOf(i, x, z) + lift, z]; };
+    for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) {
+      const q = [P(a, b + 1), P(a + 1, b + 1), P(a + 1, b), P(a, b)];
+      G.quad(...q, uvf && q.map(p => uvf(p[0], p[2])));
+    }
+  };
   const cabinRoom = i => T.roomOf[i] >= 0 && T.rooms[T.roomOf[i]].cabin;
   const hasRoof = i => !open || cabinRoom(i);
   const flora = T.outdoor === 'flora', lots = T.outdoor === 'lots', EDGE = -1.3;   // 屋外の区画の外側の地面（環境の床）の高さ
@@ -867,7 +895,8 @@ function buildArchitecture(view, T) {
       const y = T.h[i];
       acc('wood', 4).box(x0, y - 0.22, z0, x1, y, z1, 'b');
       flat('water', y - 0.45, x0, z0, x1, z1, 8); flat('bed', y - 1.25, x0, z0, x1, z1, 8);
-    } else if (k === K.FLOOR || k === K.DOOR || k === K.EXIT) acc('floor', lots ? 5 : 16).quad([x0, T.h[i], z1], [x1, T.h[i], z1], [x1, T.h[i], z0], [x0, T.h[i], z0]);
+    } else if (k === K.FLOOR && dented(c, r)) dentSurf(acc('floor', lots ? 5 : 16), i, x0, z0, x1, z1);
+    else if (k === K.FLOOR || k === K.DOOR || k === K.EXIT) acc('floor', lots ? 5 : 16).quad([x0, T.h[i], z1], [x1, T.h[i], z1], [x1, T.h[i], z0], [x0, T.h[i], z0]);
     if (k === K.LIFT) { const y = T.lifts[T.liftOf[i]].levels[0] - 0.45; acc('pit').quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]); }
     // 水面：底と、壁・地図の端に面した側面（屋内は天井も）
     if (T.water[i]) {
@@ -1254,7 +1283,8 @@ function buildArchitecture(view, T) {
       for (let dr = -1; dr <= 1 && !near; dr++) for (let dc = -1; dc <= 1; dc++) { const j = T.idx(c + dc, r + dr); if (j >= 0 && T.paint[j] && Math.abs(T.h[j] - T.h[i]) < 0.05) { near = true; break; } }
       if (!near) continue;
       const x0 = X(c), x1 = X(c + 1), z0 = Zc(r), z1 = Zc(r + 1), y = T.h[i] + 0.01;
-      G.quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0], [uv(x0, z1), uv(x1, z1), uv(x1, z0), uv(x0, z0)]);
+      if (kind[i] === K.FLOOR && dented(c, r)) dentSurf(G, i, x0, z0, x1, z1, 0.01, uv);
+      else G.quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0], [uv(x0, z1), uv(x1, z1), uv(x1, z0), uv(x0, z0)]);
     }
     const pmesh = G.mesh(pm); if (pmesh) { pmesh.renderOrder = 1; scene.add(pmesh); }
   }

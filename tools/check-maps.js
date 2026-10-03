@@ -76,7 +76,8 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
       else if (miss > 6) bad.push(`${s.k} at ${x.toFixed(1)},${z.toFixed(1)} too cramped (${miss} bad cells)`);
       continue;
     }
-    const h0 = s.ref ? T.groundAt(s.ref[0], s.ref[1]) : undefined;
+    // 基準の地点と同じ高さの床か（床のくぼみ zone.dents の分は除いて比べる）
+    const h0 = s.ref ? T.groundAt(s.ref[0], s.ref[1]) - T.dentAt(s.ref[0], s.ref[1]) + T.dentAt(x, z) : undefined;
     if (!ok(x, z, s.r, h0)) bad.push(`${s.k} at ${x.toFixed(1)},${z.toFixed(1)} blocked`);
   }
   for (const e of Z.exits) { const E = T.exits[e.key]; if (!E) bad.push(`exit key ${e.key} missing in map`); else if (!E.cells.some(i => T.reach[i])) bad.push(`exit ${e.key} (${e.to}) unreachable`); }
