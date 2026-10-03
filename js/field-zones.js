@@ -51,26 +51,26 @@ const FIELD_ZONES = {
     map2d: [470, 380] },
 
   hill: { ci: 0, name: '村はずれの丘', w: 52, d: 48, stage: '1-1', arenas: [[0, 10, 0]], build: 'hill', calm: true, groups: 0, chests: 2, crystals: 2,
-    world: true, arch: 'woods', chestAt: [[-19, -17], [21, 1]],
+    world: true, arch: 'woods', chestAt: [[21, -17], [21, 1]],
     // 村から東へ出ると原っぱ。石段を上ると丘の上（高さ3m）。流れ星のクレーター、西に見晴らしのベンチ、東に崖の上の行き止まり
     map: [
       '##########################',
       '##########################',
       '###000000#########0000####',
-      'a,0000000####,,,,,000000##',
+      'a,0000000,###,,,,,000000##',
       'a,00000000,,,,,,,0000000##',
       '###000000#,,,######00000##',
-      '####0000###vv#########0###',
+      '####0000###vv########00###',
       '###########vv#############',
       '#########3333333##########',
       '#######33333333333########',
       '######3333333333333#######',
       '######33333333333333######',
       '#####333333333333333,,,3##',
-      '#####333333333333333##33##',
+      '#####333333333333333,,33##',
       '######3333333333333#######',
       '####3333333333333333######',
-      '###3333333333333333#######',
+      '###33333333333333333######',
       '###333333333333333########',
       '####33333333333333########',
       '########3333333333########',
@@ -80,7 +80,7 @@ const FIELD_ZONES = {
       '##########################',
     ],
     anchor: [8, 12], exits: [{ key: 'a', to: 'pokapoka' }],
-    notes: [{ at: [-3, -5], mark: 1.3, when: 'scene:c1_03', title: '友情の実のかけら', text: 'えぐれた地面に、流れ星に見えた実のかけらが残っている。ほんのりあたたかく、かすかに光っている。' }],
+    notes: [{ at: [-2.5, -3.5], mark: 1.3, when: 'scene:c1_03', title: '友情の実のかけら', text: 'えぐれた地面に、流れ星に見えた実のかけらが残っている。ほんのりあたたかく、かすかに光っている。' }],
     map2d: [610, 380] },
 
   forest_in: { ci: 0, name: 'ほしふる森・入口', mapName: 'ほしふる森', w: 60, d: 72, stage: '1-1', arenas: [[-2, -18, 0]], build: 'forest', bg: 'forest', groups: 5, chests: 3, crystals: 3,
@@ -4187,10 +4187,13 @@ class ZoneKit {
     if (name) this.sign(x + Math.sin(ry) * 0.17, z + Math.cos(ry) * 0.17, ry, name, null, '#c8a8ff', 0.7, 0.72);
     this.flowers(x + Math.sin(ry) * 0.5, z + Math.cos(ry) * 0.5, 4, 0.3, [flowerCol]);
   }
+  // 縁の土手は歩いて越えられるので、足が埋まらないよう地面から 0.1m ほどしか盛り上げない
   crater(x, z, r = 5) {
-    const m = this.mesh(new THREE.TorusGeometry(r, r * 0.22, 10, 36), 'dirt', x, 0, z, { rx: Math.PI / 2 }); m.scale.z = 0.35;
+    const m = this.mesh(new THREE.TorusGeometry(r, r * 0.22, 10, 36), 'dirt', x, -r * 0.22 * 0.35 + 0.1, z, { rx: Math.PI / 2 }); m.scale.z = 0.35;
     this.mesh(new THREE.CircleGeometry(r * 0.95, 32), new THREE.MeshStandardMaterial({ color: '#5a4a38', roughness: 1 }), x, 0.03, z, { rx: -Math.PI / 2, noShadow: true });
-    for (let i = 0; i < 14; i++) { const a = this.r() * Math.PI * 2, d = r * (1.2 + this.r() * 0.6); this.mesh(new THREE.DodecahedronGeometry(0.2 + this.r() * 0.3, 0), 'rockDark', x + Math.cos(a) * d, 0.1, z + Math.sin(a) * d); }
+    // 飛び散った岩：クレーターと同じ高さの地面にだけ置く（階段や崖の下に落ちないように）
+    const y0 = this.gy(x, z);
+    for (let i = 0; i < 14; i++) { const a = this.r() * Math.PI * 2, d = r * (1.2 + this.r() * 0.6), s = 0.2 + this.r() * 0.3, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; if (Math.abs(this.gy(px, pz) - y0) < 0.1) this.mesh(new THREE.DodecahedronGeometry(s, 0), 'rockDark', px, 0.1, pz); }
   }
   // 友情の実のかけら（流れ星に見えた、樹から落ちた実の残り）
   starRock(x, z, s = 1, col = '#fff0a8') {
@@ -4644,8 +4647,9 @@ const ZONE_BUILD = {
   // 村はずれの丘：丘の上に流れ星の落ちたクレーター、西の見晴らしに大きな木とベンチ
   hill(K) {
     K.flora({ trees: [['round', 4], ['pine', 1]], leaf: ['#6abf52', '#5ab04a', '#7ac85a'], fruit: '#ff9a9a', bush: 0.7, flower: ['#ffffff', '#ffe07a', '#ffb8d8'] });
-    K.crater(0, -4, 5);
-    if (storyCond('scene:c1_02') && !storyCond('scene:c1_03')) K.starRock(0, -4, 1.1); else if (storyCond('scene:c1_03')) K.starRock(-3, -5, 0.4);
+    // クレーターは北の石段にかからないよう、流れ星の岩より少し南に広げる
+    K.crater(0, -2, 4.5);
+    if (storyCond('scene:c1_02') && !storyCond('scene:c1_03')) K.starRock(0, -4, 1.1); else if (storyCond('scene:c1_03')) K.starRock(-2.5, -3.5, 0.4);
     K.roundTree(-14, 8, 1.7, 'leaf', { lush: true, fruit: '#ff9a9a' }); K.bench(-11, 10, 0.5);
     K.flowers(-8, 14, 16, 2.5); K.flowers(12, 6, 12, 2, ['#ffe07a', '#ffffff']); K.flowers(-16, -16, 16, 3); K.flowers(14, -16, 12, 2.5, ['#ffe07a', '#ffffff']);
     for (const [x, z, sz] of [[16, -18, 1.2], [-17, -18, 0.9], [22, 3, 0.8]]) K.rock(x, z, sz);
