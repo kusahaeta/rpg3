@@ -9,6 +9,8 @@
 
 // ---------- 会話用の姿勢（立ち方）と身振り ----------
 Object.assign(POSES, {
+  // 猫じゃらしで遊ぶ：左手の猫じゃらしを頭の上にかかげ、右の前足でじゃれつく（猫じゃらしは jarashiUp で持たせる）
+  jarashi:     { armLx: -2.5, armLz: 0.3, elbowL: -0.55, armRx: -1.7, armRz: -0.25, elbowR: -1.1, headX: -0.32, lean: -0.04 },
   armsCrossed: { armRx: -0.5, armRz: 0.6, elbowR: -1.95, armLx: -0.45, armLz: -0.62, elbowL: -1.9, headX: 0.04 },
   polite:      { armRx: -0.28, armRz: 0.36, elbowR: -1.15, armLx: -0.28, armLz: -0.36, elbowL: -1.15 },
   hipHand:     { armLz: 0.75, armLx: 0.25, elbowL: -1.5, armRz: -0.12, elbowR: -0.3, twist: 0.06 },
@@ -67,6 +69,11 @@ const CHAR_ACT = {
   king_npc: { stance: 'idle', face: 'sad', talk: ['lookDown', 'talk', 'shake'] },
   piero_npc: { stance: 'idle', face: 'cry', talk: ['bothChest', 'lookDown', 'shrug'] },
   nyahaha_ou: { stance: 'idle', face: 'sad', talk: ['explain', 'lookDown', 'shake'] },
+  uketsuke: { stance: 'idle', face: 'smile', excite: 'joy', talk: ['bow', 'explain', 'point'] },
+  gutsugutsu: { stance: 'hipHand', face: 'joy', excite: 'joy', talk: ['explain', 'point', 'laugh', 'fist'] },
+  nemunemu: { stance: 'idle', face: 'sleepy', talk: ['tilt', 'lookDown', null] },
+  chokichoki: { stance: 'idle', face: 'gentle', talk: ['nod', 'explain', 'lookUp'] },
+  dodon: { stance: 'armsCrossed', face: 'smug', excite: 'joy', talk: ['nod', 'explain', 'laugh', 'fist'] },
 };
 // 台詞から表情と身振りを推し量る（台本に書かれていないとき）
 function inferAct(key, text) {
@@ -142,6 +149,7 @@ class Actor {
       if (lp) { const dy = ((Math.atan2(lp.x - this.pos.x, lp.z - this.pos.z) - yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; yaw += clamp(dy * 0.35, -0.5, 0.5); }
       this.yaw = lerpAngle(this.yaw, yaw, 1 - Math.exp(-5 * dt));
     }
+    if (this.item && this.item.userData.swing) this.item.rotation.z = Math.sin(t * 7) * 0.45;
     if (this.foe) { this.updateFoe(dt, t); return; }
     // 姿勢：立ち方 + 身振り（なめらかに移る）
     const tgt = { ...POSES.idle, ...(POSES[this.stance] || {}) };
@@ -229,7 +237,7 @@ class Actor {
       const f = new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 10), item === 'fruit' ? glowMat('#ffd24a', 2.2) : toon('#9a9488')); g.add(f);
       const lf = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), toon('#5ab04a')); lf.scale.set(1.4, 0.4, 0.8); lf.position.set(0.04, 0.09, 0); g.add(lf);
       if (item === 'fruit') { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffd24a', 0.9), blending: THREE.AdditiveBlending, depthWrite: false })); sp.scale.setScalar(0.5); g.add(sp); }
-    } else if (item === 'jarashi') {   // 猫じゃらし
+    } else if (item === 'jarashi' || item === 'jarashiUp') {   // 猫じゃらし（jarashiUp：手の先へのばして持ち、ゆらゆら振る）
       const st = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.4, 5), toon('#8ab85a')); st.position.y = 0.18; g.add(st);
       const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.12, 3, 8), toon('#e8d890')); ear.position.set(0.03, 0.42, 0); ear.rotation.z = -0.5; g.add(ear);
     } else if (item === 'book') {   // 古い記録
@@ -237,10 +245,20 @@ class Actor {
     } else if (item === 'flower') {
       for (let i = 0; i < 3; i++) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), toon('#ffffff')); f.position.set((i - 1) * 0.04, 0.18, 0); g.add(f); }
       const st = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.18, 5), toon('#5ab04a')); st.position.y = 0.09; g.add(st);
+    } else if (item === 'card') {   // 魔王城の面会許可証（ハンコの欄が五つ）
+      const c = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.01), toon('#f8f0e0')); c.position.y = 0.06; g.add(c);
+      for (let i = 0; i < 5; i++) { const s = new THREE.Mesh(new THREE.CircleGeometry(0.014, 10), toon('#d84a4a')); s.position.set(-0.07 + i * 0.035, 0.04, 0.006); g.add(s); }
+    } else if (item === 'manju') {   // 温泉まんじゅう
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), toon('#c8885a')); b.scale.y = 0.7; b.position.y = 0.05; g.add(b);
+      const s = new THREE.Mesh(new THREE.CircleGeometry(0.025, 10), toon('#6a3a2a')); s.position.set(0, 0.09, 0.03); s.rotation.x = -0.9; g.add(s);
+    } else if (item === 'ladle') {   // おたま
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 6), toon('#c8c8d8')); st.position.y = 0.12; g.add(st);
+      const cup = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), toon('#e8e8f0', { side: THREE.DoubleSide })); cup.position.y = 0.28; cup.rotation.x = Math.PI; g.add(cup);
     } else if (item === 'star') {   // 星のかけら
       const s2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.07), glowMat('#fff0a8', 2.6)); g.add(s2);
     }
     g.position.y = -0.03;
+    if (item === 'jarashiUp') { g.rotation.x = Math.PI; g.userData.swing = true; }   // 手の先（腕の向き）へのばす
     this.m.armL.grip.add(g); this.item = g;
   }
   showWeapon(on) { if (this.m.armR && this.m.armR.grip) this.m.armR.grip.visible = on; }

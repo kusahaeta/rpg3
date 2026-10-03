@@ -178,7 +178,8 @@ class FieldView extends BaseView {
   buildWorld() {
     const Z = this.zone, P = (a, r) => ({ x: a[0], z: a[1], r });
     // 物語でまだ出会っていない人物はいない
-    const npcDefs = (Z.npcs || []).filter(n => !n.after || typeof Story === 'undefined' || Story.seen(n.after));
+    // when / until：その条件を満たしてから出る／満たすと消える（storyCond の条件）
+    const npcDefs = (Z.npcs || []).filter(n => (!n.after || typeof Story === 'undefined' || Story.seen(n.after)) && storyCond(n.when) && !(n.until && storyCond(n.until)));
     const noteDefs = (Z.notes || []).filter(n => (!n.when || storyCond(n.when)) && !(n.until && storyCond(n.until)));
     this.reserved = [P(Z.anchor, 3.5), ...zoneArenas(Z).map(a => ({ x: a.x, z: a.z, r: 7 }))];
     if (Z.spawn) this.reserved.push(P(Z.spawn, 4));
@@ -219,16 +220,26 @@ class FieldView extends BaseView {
     col(Z.anchor[0], Z.anchor[1], 0.7);
     // 住人
     this.npcs = npcDefs.map(n => {
-      const m = buildCharacter(n.key); m.setPose(POSES.idle); if (m.face) m.face.set(defaultFace(n.key));
+      const m = buildCharacter(n.key); m.setPose(POSES[n.pose || 'idle']); if (m.face) m.face.set(n.pose === 'sleep' ? 'sleepy' : n.play ? 'joy' : defaultFace(n.key));
+      // play：猫じゃらしを左手に持って、ひとりでじゃれている（魔王）
+      let toy = null;
+      if (n.play && m.armL) {
+        if (POSES.jarashi) m.setPose(POSES.jarashi);   // 猫じゃらしを頭の上にかかげる（js/stage.js）
+        toy = new THREE.Group(); toy.rotation.x = Math.PI;
+        const st = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.5, 5), toon('#8ab85a')); st.position.y = 0.22; toy.add(st);
+        const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.14, 3, 8), toon('#e8d890')); ear.position.set(0.03, 0.5, 0); ear.rotation.z = -0.5; toy.add(ear);
+        m.armL.grip.add(toy);
+      }
       const y = put(m.group, n.at[0], n.at[1]); m.group.rotation.y = n.face != null ? n.face : Math.atan2(-n.at[0], -n.at[1] + 6);
       this.scene.add(m.group);
       // 歩き回る住人は固定の当たり判定を持たない
       if (!n.walk) col(n.at[0], n.at[1], 0.5);
-      return { ...n, m, pos: V3(n.at[0], y, n.at[1]), home: V3(n.at[0], y, n.at[1]), yaw: m.group.rotation.y, line: 0, wait: this.rand() * 3, wp: null, speed: 0, phase: 0 };
+      return { ...n, m, toy, pos: V3(n.at[0], y, n.at[1]), home: V3(n.at[0], y, n.at[1]), yaw: m.group.rotation.y, line: 0, wait: this.rand() * 3, wp: null, speed: 0, phase: 0 };
     });
     // 眠っている子（zone.naps）と、ねぼけ歩きの子（zone.sleepwalk）：物語でその場面を追っているあいだだけ出る
     const sceneNow = cur && cur.step.t === 'field' && cur.step.zone === this.zoneId ? cur.step.scene : null;
-    this.naps = (Z.naps || []).filter(n => n.scene === sceneNow).map(n => {
+    // when：その場面のあとも、条件を満たすあいだは眠っている
+    this.naps = (Z.naps || []).filter(n => n.scene === sceneNow || (n.when && storyCond(n.when) && !(n.until && storyCond(n.until)))).map(n => {
       const m = buildCharacter(n.key); m.setPose(POSES.sleep); if (m.face) m.face.set('sleepy');
       const y = this.gy(n.at[0], n.at[1]) + (n.y || 0);
       m.group.position.set(n.at[0], y, n.at[1]); m.group.rotation.y = n.face || 0; this.scene.add(m.group);
@@ -271,7 +282,9 @@ class FieldView extends BaseView {
       this.scene.add(o.g);
       if (n.post) this.kit.signpost(n.at[0], n.at[1], n.face || 0, ...n.post);
       if (n.board) this.kit.board(n.at[0], n.at[1], n.face || 0, ...n.board);
-      return { ...n, pos: V3(n.at[0], y, n.at[1]), ...o };
+      // 目印を小物の上にずらしたときは、目印の真下に近づいても調べられる
+      const mx = n.at[0] + mark[0], mz = n.at[1] + mark[2], markAt = mark[0] || mark[2] ? { x: mx, z: mz, y: this.gy(mx, mz) } : null;
+      return { ...n, pos: V3(n.at[0], y, n.at[1]), markAt, ...o };
     });
     // 宝箱
     const opened = (Save.data.fieldChests || {})[this.zoneId] || [];
@@ -1027,7 +1040,10 @@ class FieldView extends BaseView {
   nearestInteract() {
     const p = this.player.pos, Z = this.zone;
     for (const n of this.npcs) if (n.pos.distanceTo(p) < 2.2) return { type: 'npc', n, text: `${speakerName(n.key)}と話す${n.shop ? '（' + SHOP_NAMES[n.shop] + '）' : ''}` };
-    for (const n of this.notes) if (n.pos.distanceTo(p) < (n.reach || 2.0)) return { type: 'note', n, text: `調べる：${n.title}` };
+    for (const n of this.notes) {
+      const m = n.markAt, nearMark = m && Math.hypot(m.x - p.x, m.z - p.z) < (n.reach || 2.0) + 0.4 && Math.abs(m.y - p.y) < 1.6;
+      if (n.pos.distanceTo(p) < (n.reach || 2.0) || nearMark) return { type: 'note', n, text: `調べる：${n.title}` };
+    }
     // 玉のりのリング：やりなおしのベルと、大玉（前後・左右にまっすぐ並んだとき、向こう側へ押せる）
     const bo = this.ballObj;
     if (bo && !bo.open) {
@@ -1897,11 +1913,12 @@ class FieldView extends BaseView {
         // 引っかかったら行き先を選び直す
         if (n.pos.distanceTo(before) < n.speed * d * 0.3) { n.wp = null; n.wait = 0.5; }
         n.yaw = lerpAngle(n.yaw, Math.atan2(dir.x, dir.z), 1 - Math.exp(-8 * d));
-      } else if (n.pos.distanceTo(pp) < 6) {
+      } else if (n.pos.distanceTo(pp) < 6 && n.pose !== 'sleep' && !n.play) {
         n.yaw = lerpAngle(n.yaw, Math.atan2(pp.x - n.pos.x, pp.z - n.pos.z), 1 - Math.exp(-5 * d));
       }
       if (n.walk && !(this.talk && this.talk.npc === n)) this.walkPose(n, d, false);
-      n.m.group.position.set(n.pos.x, n.pos.y, n.pos.z);
+      n.m.group.position.set(n.pos.x, n.pos.y + (n.play ? Math.abs(Math.sin(t * 5)) * 0.12 : 0), n.pos.z);
+      if (n.toy) { n.toy.rotation.z = Math.sin(t * 7) * 0.5; n.toy.rotation.x = Math.PI + Math.cos(t * 5) * 0.2; }
       n.m.group.rotation.y = n.yaw;
       n.m.update(d, t);
     }

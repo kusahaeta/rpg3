@@ -89,6 +89,17 @@ const NPCS = {
     look: { fur: '#ffb8d8', eye: '#7a4ad8', muzzle: '#ffe0ec', earIn: '#ff6a9a', horns: '#fff0d8', wings: '#8a3a6a', cap: '#ffffff', capType: 'chef', apron: '#ffffff', accent: '#ff6a9a' } },
   mazoku_d:  { name: '魔族兵', title: '休憩中', elem: 'quantum', face: 'sleepy',
     look: { fur: '#6a5ab8', eye: '#ffe07a', muzzle: '#9a8ad8', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#3a1a6a', scarf: '#ff8ad8', accent: '#ffcf4a' } },
+  uketsuke:  { name: '受付のメリー', title: '魔王城の面会受付', elem: 'imaginary', face: 'smile',
+    look: { fur: '#b49af0', eye: '#ffe07a', muzzle: '#dccff8', paws: '#dccff8', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#5a3a8a', ribbon: '#ff8ad8', vest: '#3a2a5a', accent: '#ff8ad8', blush: 0.4 } },
+  // ---------------- 魔王軍四天王（戦うときの姿は js/gfx/monsters.js の CRITTER_LOOKS が、この見た目を使う） ----------------
+  gutsugutsu:{ name: '四天王 炎のグツグツ', title: '魔王軍四天王・台所の火の番', elem: 'fire', face: 'joy', scale: 1.3,
+    look: { fur: '#e8784a', eye: '#ffe07a', muzzle: '#f8c8a8', paws: '#f8c8a8', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#8a3a2a', cap: '#ffffff', capType: 'chef', apron: '#ffffff', kerchief: '#ff4a3a', accent: '#ff9a3a', blush: 0.35 }, gear: { weapon: 'ladle' } },
+  nemunemu:  { name: '四天王 眠りのネムネム', title: '魔王軍四天王・夜勤明け', elem: 'ice', face: 'sleepy', scale: 1.3,
+    look: { fur: '#6a7ad8', eye: '#ffe07a', muzzle: '#b8c0f0', paws: '#b8c0f0', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#2a2a6a', cap: '#8ab8ff', capType: 'night', sleepy: true, accent: '#8ab8ff', blush: 0.3 }, gear: { weapon: 'pillow' } },
+  chokichoki:{ name: '四天王 風のチョキチョキ', title: '魔王軍四天王・庭師', elem: 'wind', face: 'gentle', scale: 1.25,
+    look: { fur: '#5aa87a', eye: '#ffe07a', muzzle: '#c8e8d0', paws: '#c8e8d0', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#2a5a3a', hat: '#e8c870', hatBand: '#5a8a4a', beard: '#ffffff', apron: '#5a8a4a', accent: '#8affb8' }, gear: { weapon: 'shears' } },
+  dodon:     { name: '四天王 大地のドドン', title: '魔王軍四天王のまとめ役（有給明け）', elem: 'physical', face: 'smug', scale: 1.45,
+    look: { fur: '#a8784a', eye: '#ffe07a', muzzle: '#e8c8a0', paws: '#e8c8a0', belly: '#e8c8a0', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#5a3a2a', band: '#ffffff', scarf: '#ffffff', vest: '#4a6ab8', accent: '#ffb04a', blush: 0.35 } },
 };
 
 // ふだんの表情（物語が進むと変わる人もいる）
