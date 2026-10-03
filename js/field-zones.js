@@ -6,6 +6,7 @@
 // ============================================================
 // exits: side = n/s/e/w（辺）、at = 辺に沿った位置、to = 行き先
 // town: 人が暮らす区画（敵が出ない）／ calmAfter: そのステージをクリアすると敵が出なくなる
+// mapName: ミャオニアの地図での名前（省略時は name）／ parent: ミャオニアの地図では、この区画にまとめる
 // anchor: ねこ地蔵（休めて、ワールドマップのひとっとびの着く場所）／ noAnchor: ねこ地蔵を置かない（ワールドマップからひとっとびできない。anchor は入ってくる場所・もどる場所としてだけ使う）
 // npcs[].v: [[条件, 台詞...]]（条件 'scene:ID' 'clear:ステージ' 'done' 'flag:名前'。後ろのものほど優先）
 // npcs[].shop: weapon / item / inn / fish（話しかけると店）
@@ -82,7 +83,7 @@ const FIELD_ZONES = {
     notes: [{ at: [-3, -5], mark: 1.3, when: 'scene:c1_03', title: '友情の実のかけら', text: 'えぐれた地面に、流れ星に見えた実のかけらが残っている。ほんのりあたたかく、かすかに光っている。' }],
     map2d: [470, 450] },
 
-  forest_in: { ci: 0, name: 'ほしふる森・入口', w: 60, d: 72, stage: '1-1', arenas: [[-2, -18, 0]], build: 'forest', bg: 'forest', groups: 5, chests: 3, crystals: 3,
+  forest_in: { ci: 0, name: 'ほしふる森・入口', mapName: 'ほしふる森', w: 60, d: 72, stage: '1-1', arenas: [[-2, -18, 0]], build: 'forest', bg: 'forest', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-25, -29], [-25, 7], [23, 25]],
     // 村から入って、ねこ地蔵の広場 → 小川の橋 → 北の広場（戦い）→ 奥へ。西の小さな広場・北西の茂み・南東の高台は行き止まり
     map: [
@@ -127,7 +128,7 @@ const FIELD_ZONES = {
     notes: [{ at: [14, 7], face: 0, post: ['ほしふる森', '星をひろった者は、友を得る'], title: '古い立て札', text: '「ほしふる森——夜になると、空から小さな星が降る。星をひろった者は、友を得るという」' }],
     map2d: [610, 380] },
 
-  forest_deep: { ci: 0, name: 'ほしふる森・奥', w: 64, d: 72, stage: '1-2', arenas: [[-4, 0, 0]], build: 'forestDeep', bg: 'forest', groups: 6, chests: 3, crystals: 3,
+  forest_deep: { ci: 0, name: 'ほしふる森・奥', parent: 'forest_in', w: 64, d: 72, stage: '1-2', arenas: [[-4, 0, 0]], build: 'forestDeep', bg: 'forest', groups: 6, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-25, -19], [23, -27], [-21, 15]],
     // 南の広場から北の大広場（戦い）へ。東に星の泉、西に巨木の根の高台（石段）、北東と南西は行き止まりの小さな広場
     map: [
@@ -172,7 +173,7 @@ const FIELD_ZONES = {
     notes: [{ at: [19, -5], mark: [0, 1.0, 1.2], title: '泉のほとり', text: 'すみきった泉。水面に、星のような光がゆらめいている。' }],
     map2d: [750, 380] },
 
-  rat_nest: { ci: 0, name: 'ネズミの王国', w: 54, d: 54, stage: '1-3', arenas: [[0, -2, 0]], build: 'ratNest', bg: 'forest', groups: 3, chests: 3, crystals: 2, calmAfter: '1-3',
+  rat_nest: { ci: 0, name: 'ネズミの王国', parent: 'forest_in', w: 54, d: 54, stage: '1-3', arenas: [[0, -2, 0]], build: 'ratNest', bg: 'forest', groups: 3, chests: 3, crystals: 2, calmAfter: '1-3',
     world: true, arch: 'woods', chestAt: [[-22, -12], [22, -16], [-10, 10]],
     // 根のトンネルをくねくね進むと、玉座の大広間。西はチーズの倉、東は子ネズミの寝床（どちらも行き止まり）
     map: [
@@ -605,7 +606,7 @@ const FIELD_ZONES = {
     map2d: [470, 164] },
 
   // ---------------- 第三章 ニャハハ王国 ----------------
-  nyahaha: { ci: 2, name: 'ニャハハ王国・城下町', stage: '3-1', arenas: [[0, 14, 0]], build: 'kingdom', town: true, groups: 0, chests: 3, crystals: 0,
+  nyahaha: { ci: 2, name: 'ニャハハ王国・城下町', mapName: 'ニャハハ王国', stage: '3-1', arenas: [[0, 14, 0]], build: 'kingdom', town: true, groups: 0, chests: 3, crystals: 0,
     world: true, arch: 'kingdom', chestAt: [[-20, 30], [22, -30], [28, 30]],
     get bg() { return kingdomJoy() ? 'kingdomJoy' : undefined; }, get th() { return kingdomJoy() ? THEMES.kingdomJoy : null; },
     // 南門から大通りを北へ、噴水の大広場。北の大階段を上ると高台の大通り（北西に城の門、北東に塔の門）。
