@@ -123,9 +123,10 @@ function sulkyCat() {
 //  思い出のたたかい（ステージ一覧）
 // ------------------------------------------------------------
 function allStages() { return CHAPTERS.flatMap((c, ci) => c.stages.map(s => ({ ...s, ci }))); }
+// ひとつ前のステージをクリアすると開く。あとから台本にステージが加わっても、それより先をクリアしていれば開いている
 function stageUnlocked(id) {
   const list = allStages(), i = list.findIndex(s => s.id === id);
-  return i === 0 || !!Save.data.cleared[list[i - 1].id];
+  return i === 0 || list.slice(i - 1).some(s => Save.data.cleared[s.id]);
 }
 
 function StageScreen(ci, sid) {

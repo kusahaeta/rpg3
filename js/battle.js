@@ -548,6 +548,13 @@ class Battle {
       this.announce(`${u.name}は猫じゃらしを見せた！`, `${t.name}は夢中になっている……（1ターン行動できない）`, '#ffcf4a');
       this.say(t, '「……！？　こ、これは……っ」');
       if (this.v) this.v.lureFx(t);
+    } else if (t.def.charm && !t.flags.charmed) {
+      // 四天王：話に夢中になる（眠る）。一度だけ、1 ターン行動できない
+      const c = t.def.charm;
+      t.flags.charmed = true; t.flags.skip = 1; t.flags.skipFloat = c.float; t.flags.skipSay = c.wait;
+      this.announce(c.act.replace('{u}', u.name), `${t.name}は${c.float}……（1ターン行動できない）`, '#ffcf4a');
+      this.say(t, c.say);
+      if (this.v) c.nap ? this.v.napFx(t) : this.v.charmFx(t);
     } else {
       this.announce(`${u.name}は${t.name}に話しかけた`, t.def.talk || '……', ELEMENTS[u.elem].color);
       this.say(t, t.def.talk || '……');
@@ -1292,8 +1299,10 @@ class Battle {
       return;
     }
     if (e.flags.skip) {
-      e.flags.skip = 0; this.float(e, '猫じゃらしに夢中……', 'info'); this.say(e, '「ま、まて……もう少しだけ……」');
-      if (this.v) this.v.lureFx(e);
+      const custom = e.flags.skipFloat;
+      e.flags.skip = 0; this.float(e, custom ? custom + '……' : '猫じゃらしに夢中……', 'info'); this.say(e, custom ? e.flags.skipSay : '「ま、まて……もう少しだけ……」');
+      e.flags.skipFloat = null;
+      if (this.v) { if (!custom) this.v.lureFx(e); else if (e.def.charm && e.def.charm.nap) this.v.napFx(e); else this.v.charmFx(e); }
       this.updateUnit(e); await wait(1100); return;
     }
     let mv;
@@ -1324,6 +1333,14 @@ class Battle {
       e.charging = mv.next; this.pulse(e, 'powerup', 900); Sfx.enemy();
       if (this.v) this.v.chargeFx(e);
       this.updateUnit(e); await wait(900); return;
+    }
+    // 休む（二度寝など）：最大 HP の value 分を回復
+    if (mv.type === 'rest') {
+      if (this.v) this.v.napFx(e);
+      this.heal(e, e, e.maxHp * mv.value);
+      this.say(e, '「……すや……」');
+      await wait(900);
+      return;
     }
     if (mv.type === 'summon') {
       const key = e.def.summon || 'scout';

@@ -1679,12 +1679,19 @@ const FIELD_ZONES = {
     areas: [{ name: '魔王城・大広間', at: [-22, -21, 22, 25] }, { name: '魔王城・肖像画の間', at: [-36, -21, -24, -11] }, { name: '魔王城・地下への階段', at: [24, -25, 36, -11] },
       { name: '魔王城・守衛室', at: [-36, 1, -24, 11] }, { name: '魔王城・落とし物置き場', at: [24, 1, 36, 11] }],
     npcs: [
-      { key: 'mazoku_c', at: [-15, -1], face: 0, lines: ['健康診断の方は、西の廊下の先、保健の間へどうぞー。', '……え、侵入者？　まあまあ、まずは健康診断を受けてからで。'],
-        v: [['scene:c6_02', '保健の間の騒ぎ、ここまで聞こえてたよ。……体重のことは、気にしないでね。'], ['clear:6-3', '魔王さま、ときどき大広間まで下りてきて、みんなに「遊ぼう」って声をかけるようになったんだ。']] },
+      { key: 'uketsuke', at: [2.3, 11.2], face: 0, lines: ['ようこそ、魔王城へ〜。魔王さまとの面会は、こちらで受付しておりまーす。'],
+        v: [['clear:6-2', '健康診断、おつかれさまでした〜。あとは四天王さまのハンコ四つですね。', '最初は、東の兵の詰め所の奥、厨房にいるグツグツさまです〜。'],
+          ['clear:6-k1', 'ハンコ、ふたつめですね〜。次は、地下の牢屋で寝ているネムネムさまです。', '……寝てても、ハンコはもらえますよ〜。たぶん。'],
+          ['clear:6-k2', 'あと二つ〜。中庭のチョキチョキさまは、猫じゃらしの花壇のそばにいらっしゃいます。'],
+          ['clear:6-k3', '最後は 2F の、まとめ役のドドンさまです〜。今朝、有給の温泉から戻られたばかりで、ごきげんですよ。'],
+          ['clear:6-k4', 'ハンコが五つそろいましたね！　三階の玉座の間へどうぞ〜。', '……手続きを最後まで終えた方は、はじめてなんです。魔王さま、きっとびっくりしますよ。'],
+          ['clear:6-3', '最近、魔王さまが受付まで下りてきて「今日はだれか来たか」って聞くんです。', '面会の手続き、もう少しかんたんにしようかって、幹部さんと相談中です〜。']] },
+      { key: 'mazoku_c', at: [-15, -1], face: 0, lines: ['健康診断の方は、西の廊下の先、保健の間へどうぞー。', '健康診断がすむまで、ほかの扉にはカギがかかってるんだ。決まりでね。'],
+        v: [['clear:6-2', '健康診断、すんだんだね。……体重のことは、気にしないでね。', '東の詰め所も、北の中庭も、地下倉庫も、もう通れるよ。'], ['clear:6-3', '魔王さま、ときどき大広間まで下りてきて、みんなに「遊ぼう」って声をかけるようになったんだ。']] },
       { key: 'mazoku_c', at: [15, 8], face: 0, lines: ['東の廊下の先は、兵の詰め所。食堂のカレーが、ちょっと自慢なんだ。', '北の通路の先は中庭だよ。2F へは、中庭の奥の高台から上るんだ。'] },
       { key: 'mazoku_d', at: [-31, 8], face: Math.PI / 2, lines: ['……ぐう。……はっ！　ね、寝てません！　見張ってました！', '守衛の仕事って、ひまなんですよ……。誰も攻めてこないから。'] },
     ],
-    notes: [{ at: [-9, 17], mark: [-0.8, 2.9, 0], title: '魔王城の掲示', text: '「本日の予定：健康診断（全員）　会場は西の保健の間。　魔王さまの遊び相手（募集中）」' },
+    notes: [{ at: [-9, 17], mark: [-0.8, 2.9, 0], title: '魔王城の掲示', text: '「本日の予定：健康診断（全員）　会場は西の保健の間。　魔王さまとの面会は、受付で許可証を（ハンコ五つ）。　魔王さまの遊び相手（募集中）」' },
       { at: [-7, -17], mark: [0, 3.0, -1.6], title: '魔王さまの像', text: '黒い石でできた、大きな魔王さまの像。……台座のすみに、小さく「ほんとうは、もっと小さい」と彫ってある。' },
       { at: [-28, -17], mark: [0, 3.2, -3.4], title: '歴代の魔王の肖像画', text: '歴代の魔王さまの肖像画。どの魔王も、いかめしい顔で……よく見ると、みんな背中に猫じゃらしを隠し持っている。' },
       { at: [33, 4], mark: [1.6, 1.4, -0.4], title: '落とし物の箱', text: '「落とし物：猫じゃらし×12、毛糸玉×7、鈴×3　——持ち主：魔王さま（たぶん）」' }],
@@ -1742,12 +1749,20 @@ const FIELD_ZONES = {
       { at: [19, -19], mark: [0, 1.9, -3.9], title: '胃薬の棚', text: '胃薬の棚。「幹部さま用」と書いた箱だけ、やけに減っている。' }],
     map2d: [910, 30] },
 
-  // 1F 兵の詰め所（大広間の東）：西の入口から東へのびる広い廊下。北に食堂・休憩室・寝室、南に武器庫と広い訓練場
-  demon_barracks: { ci: 5, name: '魔王城・兵の詰め所', floor: '1F', parent: 'demon_castle', stage: '6-2', arenas: [[9, 12, 0]], build: 'demonBarracks', arch: 'castle', bg: 'demon', groups: 3, chests: 2, crystals: 1, calmAfter: '6-3',
+  // 1F 兵の詰め所（大広間の東）：西の入口から東へのびる広い廊下。北に食堂・休憩室・寝室、食堂の奥に広い厨房（四天王グツグツの持ち場）、南に武器庫と広い訓練場
+  demon_barracks: { ci: 5, name: '魔王城・兵の詰め所', floor: '1F', parent: 'demon_castle', stage: '6-k1', arenas: [[9, 12, 0], [-11, -26.5, 0]], build: 'demonBarracks', arch: 'castle', bg: 'demon', groups: 3, chests: 2, crystals: 1, calmAfter: '6-3',
     world: true, chestAt: [[22, -10], [-23, 7]],
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.014, light: 1.1 },
     map: [
       '############################',
+      '#000000000000000############',
+      '#000000000000000############',
+      'W000000000000000############',
+      '#000000000000000############',
+      '#000000000000000############',
+      'W000000000000000############',
+      '#000000000000000############',
+      '##0000######################',
       'W00000000#000000#0000000000W',
       '#00000000#000000#0000000000#',
       '#00000000#000000#0000000000#',
@@ -1768,25 +1783,36 @@ const FIELD_ZONES = {
       'W00000000#00000000000000000#',
       '#00000000#00000000000000000#',
       '############################',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
+      '############################',
     ],
     anchor: [-20, -1], exits: [{ key: 'w', to: 'demon_castle' }],
-    areas: [{ name: '魔王城・食堂', at: [-26, -19, -10, -7] }, { name: '魔王城・休憩室', at: [-8, -19, 4, -7] }, { name: '魔王城・寝室', at: [6, -19, 26, -7] },
+    areas: [{ name: '魔王城・厨房', at: [-26, -35, 4, -19] }, { name: '魔王城・食堂', at: [-26, -19, -10, -7] }, { name: '魔王城・休憩室', at: [-8, -19, 4, -7] }, { name: '魔王城・寝室', at: [6, -19, 26, -7] },
       { name: '魔王城・武器庫', at: [-26, 5, -10, 19] }, { name: '魔王城・訓練場', at: [-8, 5, 26, 19] }],
     npcs: [
       { key: 'mazoku_d', at: [-2, -10.5], face: Math.PI, lines: ['……ここ、魔王軍の休憩室。お茶、飲む？'],
         v: [['clear:6-3', '魔王さま、ときどきここでお茶を飲んでいくんだ。……猫舌だから、ずっとふーふーしてる。']] },
-      { key: 'mazoku_c', at: [-14, -9], face: Math.PI, lines: ['今日の献立は「魔界カレー」。……健康診断の前の日に、大盛りを食べちゃった。'] },
+      { key: 'mazoku_c', at: [-14, -9], face: Math.PI, lines: ['今日の献立は「魔界カレー」。……健康診断の前の日に、大盛りを食べちゃった。', '奥の厨房では、四天王のグツグツさまが、毎日みんなのごはんを作ってるんだ。'] },
       { key: 'mazoku_c', at: [11, -11], face: Math.PI / 2, lines: ['……夜勤明けなんだ。静かにしてね……。'] },
-      { key: 'mazoku_c', at: [18, 10], walk: 5, lines: ['ここは訓練場。……でも魔王軍って、城の外で戦ったこと、一度もないんだよね。'] },
+      { key: 'mazoku_c', at: [2, 9], walk: 4, lines: ['ここは訓練場。……でも魔王軍って、城の外で戦ったこと、一度もないんだよね。', '今日は健康診断で、訓練はお休み。'] },
+      { key: 'gutsugutsu', at: [-15, -30.5], face: 0, when: 'clear:6-2', lines: ['（大なべの前で味見をしては、ため息をついている）', '……塩を入れたい……でも健康診断が……。'],
+        v: [['clear:6-k1', '魚の骨でだしをとったら、減塩でもうまくなったぞ！　ほら、一杯どうだ？', '……健康診断、来年は「異常なし」をもらってみせる！']] },
     ],
-    notes: [{ at: [-22.5, -15], mark: [-1.5, 1.6, -1.5], title: '魔界カレーの大なべ', text: '大なべいっぱいの「魔界カレー」。……甘口。魔王さまの好みらしい。' },
+    notes: [{ at: [-11, -30.6], mark: [0, 2.4, -2.6], title: '魔界カレーの大なべ', text: 'かまどの上の大なべいっぱいの「魔界カレー」。……甘口。魔王さまの好みらしい。' },
+      { at: [-23.5, -27], mark: [-2.2, 2.2, 0], title: '調味料の棚', text: 'ずらりとならんだ調味料のびん。……「塩」のびんにだけ、「健康診断が終わるまで禁止」の札がはってある。' },
       { at: [7, -13], mark: [-0.9, 2.2, 0], title: '夜の当番表', text: '「夜の当番：見回り……猫じゃらしをかくす係（全員）」。魔王さまに見つからないよう、毎晩かくしているらしい。' },
       { at: [-22.5, 11], mark: [-2, 1.6, 0], title: '武器庫の棚', text: '「武器庫」……と書いてあるが、棚にあるのは、ほうきとモップとはたきばかり。' }],
     map2d: [910, 30] },
 
   // 中庭（大広間の北）：城壁に囲まれた、空の見える魔王さまの遊び場。キャットタワー・猫じゃらしの花壇・毛糸玉の山・砂場・ハンモック。
   //   北の高台（高さ 2m）の奥に、2F の回廊への階段
-  demon_court: { ci: 5, name: '魔王城・中庭', floor: '中庭', parent: 'demon_castle', stage: '6-2', arenas: [[0, 2, 0]], build: 'demonCourt', arch: 'demoncourt', bg: 'demon', groups: 4, chests: 2, crystals: 2, calmAfter: '6-3',
+  demon_court: { ci: 5, name: '魔王城・中庭', floor: '中庭', parent: 'demon_castle', stage: '6-k1', arenas: [[0, 2, 0]], build: 'demonCourt', arch: 'demoncourt', bg: 'demon', groups: 4, chests: 2, crystals: 2, calmAfter: '6-3',
     world: true, chestAt: [[-30, 4], [30, 6]],
     th: { pattern: 'checker', floor: '#5a4a6a', floor2: '#4e405e', line: '#ff8ad8', floorGlow: 0.15 },
     map: [
@@ -1824,18 +1850,20 @@ const FIELD_ZONES = {
     ],
     anchor: [6, 25], exits: [{ key: 's', to: 'demon_castle' }, { key: 'u', to: 'demon_castle_2f', stair: 'up' }],
     npcs: [
-      { key: 'mazoku_c', at: [15, -5], face: Math.PI / 2, lines: ['ここは、魔王さま専用の遊び場だよ。', '猫じゃらしの花壇は、毎朝ぼくが水をやってる。……魔王さま、ひとりで遊ぶばっかりでさ。'],
+      { key: 'mazoku_c', at: [-4, 12], face: 0, lines: ['ここは、魔王さま専用の遊び場だよ。', '花壇の手入れは、四天王のチョキチョキさまの仕事。……魔王さま、ひとりで遊ぶばっかりでさ。'],
         v: [['clear:6-3', '最近は、魔王さまが「いっしょに遊べ」って呼びにくるんだ。……花壇の手入れが、追いつかないよ。']] },
+      { key: 'chokichoki', at: [21.5, -8.8], face: Math.PI, when: 'clear:6-2', lines: ['（猫じゃらしの穂を、一本一本ていねいにそろえている）'],
+        v: [['clear:6-k3', 'わしの猫じゃらし、魔王さまに振ってみたかね？', 'ほっほっ。……今年の穂は、よく育ったじゃろう。'], ['clear:6-3', '魔王さまが毎朝ここへ来て、「今日はこれで皆と遊ぶ」と、一本ずつ選んでいかれるようになった。', '……ほっほっ。たくさん遊んでもらえるよう、来年は花壇を倍の広さにせんとのう。']] },
       { key: 'mazoku_d', at: [-12, 17], face: 0, lines: ['……ここ、魔王さまのハンモック。……内緒で寝てたの、言わないでね。'] },
     ],
-    notes: [{ at: [-19, -7], mark: [-3, 5.2, -3], title: 'キャットタワー', text: '魔王さま専用の、大きなキャットタワー。てっぺんの爪とぎだけ、ぼろぼろにすり切れている。……毎日、ひとりで登っていたのだろうか。' },
+    notes: [{ at: [-22, -6.6], mark: [0, 2.4, -3.4], reach: 3.2, title: 'キャットタワー', text: '魔王さま専用の、大きなキャットタワー。てっぺんの爪とぎだけ、ぼろぼろにすり切れている。……毎日、ひとりで登っていたのだろうか。' },
       { at: [20, -8.5], mark: [0, 1.2, -3.5], title: '猫じゃらしの花壇', text: '猫じゃらしが、ふさふさとゆれている。「魔王さまの花壇・とってはいけません」の札。' },
       { at: [22, 4.5], mark: [0, 0.8, -4], title: '砂場', text: '砂場。……砂の上に、猫の足あとが、ひとり分だけ、ぐるぐると続いている。' },
       { at: [5, 21], face: 0, board: ['魔王さまの遊び場', '関係者以外立入禁止（遊んでくれる者は歓迎）'], title: '立て札', text: '「魔王さまの遊び場　関係者以外立入禁止（遊んでくれる者は歓迎）」' }],
     map2d: [910, 30] },
 
   // 地下倉庫（大広間の北東の階段から）：まん中にミルクの樽がならぶ蔵。西に鉄格子の牢屋（扉は開けっぱなし）と看守室、東に食料庫と宝物庫
-  demon_cellar: { ci: 5, name: '魔王城・地下倉庫', floor: 'B1', parent: 'demon_castle', stage: '6-2', arenas: [[2, -4, 0]], build: 'demonCellar', arch: 'castle', bg: 'demon', groups: 3, chests: 3, crystals: 2, calmAfter: '6-3',
+  demon_cellar: { ci: 5, name: '魔王城・地下倉庫', floor: 'B1', parent: 'demon_castle', stage: '6-k1', arenas: [[2, -4, 0]], build: 'demonCellar', arch: 'castle', bg: 'demon', groups: 3, chests: 3, crystals: 2, calmAfter: '6-3',
     world: true, chestAt: [[-29, -20], [27, 4], [22, 15]],
     th: { pattern: 'checker', floor: '#3a3040', floor2: '#322838', line: '#ff8ad8', floorGlow: 0.2, fog: '#1a1024', fogD: 0.02, light: 0.85 },
     map: [
@@ -1867,6 +1895,9 @@ const FIELD_ZONES = {
     anchor: [8, 15], exits: [{ key: 'u', to: 'demon_castle', stair: 'up' }],
     // 牢屋の鉄格子：x = -20 の線にそって、牢ごとに扉ひとつ分あけておく（[z0, z1, あけた所の z]）
     bars: [[-22, -14, -18], [-12, -4, -8], [-2, 6, 2]],
+    // 四天王ネムネム：いちばん奥の牢で眠っている（寝室はいびきがうるさいので）。戦ったあとも、また眠っている
+    naps: [{ key: 'nemunemu', name: '眠る四天王', at: [-30.2, -19.5], y: 0.25, face: Math.PI / 2, scene: 'c6_k2', talk: ['……ぐう……ぐう……。', '（四天王が、わらの寝床でぐっすり眠っている。……耳もとで呼んでも起きない）'] },
+      { key: 'nemunemu', name: '四天王ネムネム', at: [-30.2, -19.5], y: 0.25, face: Math.PI / 2, when: 'clear:6-k2', talk: ['……むにゃ……通ってよし……。', '（よく動いたので、前よりもっとぐっすり眠っている）'] }],
     areas: [{ name: '魔王城・牢屋', at: [-32, -22, -12, 6] }, { name: '魔王城・看守室', at: [-32, 8, -12, 18] }, { name: '魔王城・ミルク蔵', at: [-10, -22, 14, 24] },
       { name: '魔王城・食料庫', at: [16, -22, 32, -2] }, { name: '魔王城・宝物庫', at: [16, 0, 32, 18] }],
     npcs: [
@@ -1881,11 +1912,10 @@ const FIELD_ZONES = {
       { at: [-6, 13], mark: [-2, 1.6, 0], title: 'ミルクの樽', text: '「魔王さまのミルク・毎朝あたためること」。……樽のひとつに、「ぬるめ」と書きこまれている。' }],
     map2d: [910, 30] },
   // 2F：まん中の吹き抜けを広い回廊がぐるりと囲み、吹き抜けのまん中を橋が渡る。四すみに魔王さまの私室（おもちゃ部屋・没収品の倉庫・衣装部屋・寝室）
-  //   回廊は戦うには細長いので、戦闘は中庭で行う
-  demon_castle_2f: { ci: 5, name: '魔王城・回廊', floor: '2F', parent: 'demon_castle', stage: '6-3', pool: '6-2', build: 'demonCastle2f', arch: 'castle', bg: 'demon', groups: 4, chests: 3, crystals: 2, calmAfter: '6-3',
+  //   戦闘は、三階への階段の前（北の回廊と踊り場）で行う
+  demon_castle_2f: { ci: 5, name: '魔王城・回廊', floor: '2F', parent: 'demon_castle', stage: '6-k4', arenas: [[0, -18, 0]], build: 'demonCastle2f', arch: 'castle', bg: 'demon', groups: 4, chests: 3, crystals: 2, calmAfter: '6-3',
     world: true, chestAt: [[-30, -7], [30, -7], [-30, 19]],
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.014, light: 1.1 },
-    battleAt: { zone: 'demon_court', at: [0, 2], face: 0 },
     map: [
       '#################uu#################',
       '#############0000000000#############',
@@ -1919,7 +1949,10 @@ const FIELD_ZONES = {
     anchor: [7, 24], exits: [{ key: 'd', to: 'demon_court', stair: 'down' }, { key: 'u', to: 'demon_throne', stair: 'up' }],
     areas: [{ name: '魔王城・おもちゃ部屋', at: [-34, -22, -18, -4] }, { name: '魔王城・没収品の倉庫', at: [-34, 2, -18, 22] },
       { name: '魔王城・衣装部屋', at: [18, -22, 34, -4] }, { name: '魔王城・魔王の寝室', at: [18, 2, 34, 22] }],
-    npcs: [{ key: 'mazoku_c', at: [-12, 18], face: 0, lines: ['2F は、魔王さまのお部屋の階。……あんまり騒がないでね。', '三階の玉座の間へは、北の階段から。'] }],
+    npcs: [{ key: 'mazoku_c', at: [-12, 18], face: 0, lines: ['2F は、魔王さまのお部屋の階。……あんまり騒がないでね。', '三階の玉座の間へは、北の階段から。……階段の前には、四天王のまとめ役のドドンさまがいるけどね。'] },
+      { key: 'dodon', at: [0, -20.5], face: 0, when: 'clear:6-k3', until: 'clear:6-k4', lines: ['（浴衣すがたで腕を組み、三階への階段の前に立っている）', '……ふう。温泉帰りの体に、この城の空気はちと冷えるわい。'] },
+      { key: 'dodon', at: [-6, -23], face: Math.PI / 2, when: 'clear:6-k4', lines: ['温泉まんじゅう、まだあるぞ。……食うか？', '魔王さまに、ちゃんと会えたか？'],
+        v: [['clear:6-3', '魔王さまが「次の有給は、皆で温泉に行くぞ」と言い出してな。', '……四天王全員そろって有給とは、前代未聞だ！　はっはっは！']] }],
     notes: [{ at: [-27, 13], mark: [-2.6, 2.0, 0], title: '没収品の山', text: '猫じゃらし、毛糸玉、鈴つきのボール……。「城内持ちこみ禁止」の札。……よく見ると、魔王さまの名前が書いてある。' },
       { at: [-26, -12], mark: [0, 1.2, -1.6], title: '二人用のボードゲーム', text: '二人で遊ぶボードゲーム。……向かいの席のこまは、ひとつも動いていない。' },
       { at: [31, -16], mark: [0, 2.4, -3.6], title: '大きな姿見', text: '大きな姿見。床に「かっこいいマントのひるがえし方」という本が開いたまま落ちている。' },
@@ -1957,6 +1990,8 @@ const FIELD_ZONES = {
       '##############dd##############',
     ],
     anchor: [6, 19], exits: [{ key: 'd', to: 'demon_castle_2f', stair: 'down' }],
+    // 魔王：玉座の前で、ひとりで猫じゃらしにじゃれている（会いに来るまで。会ったあとは一行に加わる）
+    npcs: [{ key: 'maou', at: [-2.6, -16.4], face: Math.PI * 0.85, play: 'jarashi', when: 'clear:6-k4', until: 'clear:6-3', lines: ['にゃっ、にゃっ……ふふ……。', '（猫じゃらしに夢中で、こちらに気づいていない）'] }],
     areas: [{ name: '魔王城・玉座の間', at: [-24, -23, 24, 1] }, { name: '魔王城・謁見の廊下', at: [-14, 1, 14, 24] },
       { name: '魔王城・ひみつの遊び部屋', at: [-28, 1, -16, 16] }, { name: '魔王城・謁見の待合室', at: [16, 1, 28, 16] }],
     notes: [{ at: [-24, 4], mark: [0, 1.4, -2.4], title: 'ひみつのおもちゃ箱', text: '猫じゃらし、毛糸玉、鈴……。「城内持ちこみ禁止」の札を、はがしたあとがある。魔王さまの、ひみつのおもちゃ箱らしい。' },
@@ -3882,11 +3917,26 @@ class ZoneKit {
     return (this.v.sealDoorObj = o);
   }
   // 猫じゃらし（魔王領の野原に生えている）
+  // おもちゃの猫じゃらし（屋内の小物）：木の柄の先に、ふさふさの穂。(x, y, z) は柄の根もと、ry は向き、tilt は床からの持ち上がり
+  jarashiToy(x, z, ry = 0, y = 0.04, tilt = 0, s = 1) {
+    const d = V3(Math.cos(ry) * Math.cos(tilt), Math.sin(tilt), -Math.sin(ry) * Math.cos(tilt)), q = new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), d);
+    const e = new THREE.Euler().setFromQuaternion(q), rot = [e.x, e.y, e.z], y0 = this.gy(x, z) + y, L = 0.75 * s;
+    this.mg('wood', new THREE.CylinderGeometry(0.018 * s, 0.022 * s, L, 6), x + d.x * L / 2, y0 + d.y * L / 2, z + d.z * L / 2, rot);
+    this.mg('#8ab85a', new THREE.CylinderGeometry(0.008 * s, 0.008 * s, 0.22 * s, 5), x + d.x * (L + 0.1 * s), y0 + d.y * (L + 0.1 * s), z + d.z * (L + 0.1 * s), rot);
+    this.mg('#e8d890', new THREE.CapsuleGeometry(0.055 * s, 0.2 * s, 3, 8), x + d.x * (L + 0.33 * s), y0 + d.y * (L + 0.33 * s) + 0.03 * s, z + d.z * (L + 0.33 * s), rot);
+  }
+  // 生えている猫じゃらし：根もとを軸に茎ごとしなり、茎の先の穂は少し遅れて大きくゆれる（風の向きは一本ずつ少しちがう）
   nekojarashi(x, z, s = 1) {
-    const stem = this.mesh(new THREE.CylinderGeometry(0.02 * s, 0.03 * s, 1.4 * s, 5), 'leaf2', x, 0.7 * s, z);
-    const ear = this.mesh(new THREE.CapsuleGeometry(0.08 * s, 0.35 * s, 3, 8), '#e8d890', x, 1.55 * s, z);
-    const ph = this.r() * 6, y0 = ear.position.y;
-    this.tick((dt, t) => { const w = Math.sin(t * 1.6 + ph) * 0.2; stem.rotation.z = w * 0.5; ear.rotation.z = w; ear.position.x = x + w * 0.3 * s; });
+    const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = this.r() * Math.PI * 2; this.scene.add(g);
+    this.mesh(new THREE.CylinderGeometry(0.015 * s, 0.028 * s, 1.4 * s, 5), 'leaf2', 0, 0.7 * s, 0, { parent: g });
+    const tip = new THREE.Group(); tip.position.y = 1.4 * s; g.add(tip);
+    this.mesh(new THREE.CapsuleGeometry(0.075 * s, 0.32 * s, 3, 8), '#e8d890', 0, 0.22 * s, 0, { parent: tip });
+    const ph = this.r() * 6, amp = 0.08 + this.r() * 0.05, bend = 0.25 + this.r() * 0.2;
+    this.tick((dt, t) => {
+      const w = Math.sin(t * 1.6 + ph), w2 = Math.sin(t * 1.6 + ph - 0.6);
+      g.rotation.z = w * amp; g.rotation.x = Math.sin(t * 1.1 + ph * 1.7) * amp * 0.4;
+      tip.rotation.z = bend + w2 * amp * 2.2;
+    });
   }
   spookyTree(x, z, s = 1) {
     this.cyl(x, z, 0.25 * s, 2.6 * s, 'darkStone', { r2: 0.12 * s, seg: 6 });
@@ -4937,6 +4987,12 @@ const ZONE_BUILD = {
     // 玄関：両わきの鎧（の形のほうき立て）と、植木鉢
     for (const x of [-8.6, 8.6]) { K.cyl(x, 16.2, 0.45, 0.7, 'purpleStone', { seg: 12 }); K.mesh(new THREE.IcosahedronGeometry(0.75, 1), 'leafPurple', x, 1.35, 16.2); }
     K.signpost(-7, 13.5, 0, '← 保健の間（健康診断）', '→ 兵の詰め所　↑ 中庭');
+    // 面会受付：机と呼び鈴、書類の山、ハンコと朱肉
+    { const x = 5, z = 11.6; K.box(x, z, 3.6, 1.05, 0.9, 'wood2'); K.box(x, z, 3.8, 0.08, 1.1, 'clothPurple', { y: 1.05, col: false });
+      K.sign(x, z + 0.47, 0, '面会受付', '魔王さまとの面会はこちら', '#ff8ad8', 0.62, 2.4);
+      K.mg('gold', new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), x - 1.2, 1.14, z); K.mg('gold', new THREE.CylinderGeometry(0.02, 0.02, 0.06, 6), x - 1.2, 1.28, z);
+      for (let i = 0; i < 4; i++) K.mg('#f4ecd8', new THREE.BoxGeometry(0.42, 0.03, 0.3), x + 1.1, 1.15 + i * 0.03, z, [0, i * 0.12, 0]);
+      K.mg('#d8403a', new THREE.CylinderGeometry(0.1, 0.1, 0.04, 12), x + 0.3, 1.15, z + 0.1); K.mg('wood', new THREE.CylinderGeometry(0.04, 0.05, 0.14, 8), x + 0.6, 1.2, z + 0.1); }
     K.paper(-9.95, 17, Math.PI / 2, '本日の予定', ['健康診断（全員）', '会場：西の保健の間', '魔王さまの遊び相手', '（募集中）'], { bg: '#f0e6f4', ink: '#5a3a7a', w: 1.3 });
     // 肖像画の間：歴代の魔王の額
     const portrait = (x, z, ry, s = 1) => {
@@ -4964,7 +5020,7 @@ const ZONE_BUILD = {
     for (let i = 0; i < 8; i++) K.mg(pick(['#ff6a8a', '#6ad8ff', '#ffd27a', '#b88aff']), new THREE.SphereGeometry(0.22, 10, 8), 24.4 + (i % 4) * 1.05, 1.15 + Math.floor(i / 4) * 0.9, 1.8);
     for (const [x, z, c] of [[31.5, 5.5, '#ff6a8a'], [32.3, 5, '#6ad8ff'], [31.9, 6.2, '#ffd27a']]) K.mg(c, new THREE.SphereGeometry(0.32, 12, 10), x, 0.32, z);
     K.cyl(34.4, 7, 0.5, 0.6, 'wood', { seg: 12, open: true });
-    for (let i = 0; i < 6; i++) K.nekojarashi(34.2 + K.r() * 0.5, 6.8 + K.r() * 0.5, 0.6);
+    for (let i = 0; i < 6; i++) K.jarashiToy(34.4 + (K.r() - 0.5) * 0.3, 7 + (K.r() - 0.5) * 0.3, i * 1.05, 0.15, 1.05 + K.r() * 0.3, 0.8);
     K.light(0, 7, -2, '#ff8ad8', 8, 26); K.light(0, 6, 14, '#ffd8f8', 5, 16);
   },
   // 魔王城 1F 保健の間：待合室の受付・長いす・柱時計・植木鉢、診察室のベッドとカーテン・点滴台・薬の台車・体重計・身長計・視力検査表・
@@ -5027,7 +5083,7 @@ const ZONE_BUILD = {
     for (const x of [13.5, 24.5]) { K.box(x, 23.2, 0.6, 0.6, 0.6, 'wood2'); K.mg(K.glow('#ffd0e4', 1.4), new THREE.SphereGeometry(0.16, 10, 8), x, 0.78, 23.2); }
     K.light(-12, 6, 0, '#fff0f8', 8, 26); K.light(21, 6, 0, '#ffd8f8', 5, 18);
   },
-  // 魔王城 1F 兵の詰め所：食堂の長いテーブルとカレーの大なべ・食器棚、休憩室のソファーとお茶、寝室の二段ベッドとロッカー、
+  // 魔王城 1F 兵の詰め所：厨房のかまどと魔界カレーの大なべ、食堂の長いテーブルと食器棚、休憩室のソファーとお茶、寝室の二段ベッドとロッカー、
   //   武器庫（ほうきとモップの棚）、土の訓練場とわら人形
   demonBarracks(K) {
     K.demonDecor();
@@ -5036,8 +5092,27 @@ const ZONE_BUILD = {
     K.box(-18, -13, 9, 0.85, 1.6, 'wood');
     for (const x of [-21, -15]) for (const z of [-14.9, -11.1]) K.bench(x, z, 0);
     for (let i = 0; i < 6; i++) { const x = -21.5 + i * 1.4; for (const z of [-13.5, -12.5]) { K.mg('white', new THREE.CylinderGeometry(0.22, 0.18, 0.06, 12), x, 0.89, z); K.mg('#c88a3a', new THREE.CylinderGeometry(0.16, 0.16, 0.02, 12), x, 0.92, z); } }
-    { const x = -24, z = -16.5; K.cyl(x, z, 0.9, 0.9, 'iron', { seg: 16 }); K.mesh(new THREE.CircleGeometry(0.82, 16), K.glow('#ffa040', 0.8), x, 0.91, z, { rx: -Math.PI / 2, noShadow: true }); K.smoke(x, 1.1, z, '#e8d8c8', 4); }
-    { K.box(-14, -18.4, 5, 2.6, 0.6, 'wood2'); for (let k = 0; k < 2; k++) for (let i = 0; i < 7; i++) K.mg(k ? '#ff8ad8' : 'white', new THREE.CylinderGeometry(0.16, 0.12, 0.12, 10), -16.2 + i * 0.7, 1.0 + k * 0.9, -18.0); }
+    { K.box(-13.5, -18.4, 3.6, 2.6, 0.6, 'wood2'); for (let k = 0; k < 2; k++) for (let i = 0; i < 5; i++) K.mg(k ? '#ff8ad8' : 'white', new THREE.CylinderGeometry(0.16, 0.12, 0.12, 10), -14.9 + i * 0.7, 1.0 + k * 0.9, -18.0); }
+    // 厨房（四天王グツグツの持ち場）：北の壁にかまど三つ（まん中に魔界カレーの大なべ）と煙突のフード、西の壁に調味料の棚と干し魚、東の壁に調理台
+    for (const x of [-20, -11, -2]) {
+      K.box(x, -34, 3.4, 1.0, 1.6, 'stone2'); K.mesh(new THREE.BoxGeometry(1.6, 0.5, 0.06), '#1a0c08', x, 0.45, -33.17, { noShadow: true });
+      K.fire(x, K.gy(x, -33.5) + 0.35, -33.4, '#ff9a3a', 16, 0.2);
+      K.box(x, -34.4, 3.8, 1.2, 1.0, 'darkStone', { y: 5.2, col: false }); K.box(x, -34.7, 1.0, 3.2, 0.8, 'darkStone', { y: 6.4, col: false });
+    }
+    { const x = -11, z = -34; K.cyl(x, z, 1.15, 1.0, 'iron', { seg: 18, y: 1.0, col: false }); K.mesh(new THREE.CircleGeometry(1.06, 18), K.glow('#ffa040', 0.75), x, 2.01, z, { rx: -Math.PI / 2, noShadow: true });
+      for (const s of [-1, 1]) K.mesh(new THREE.TorusGeometry(0.18, 0.04, 6, 12), 'iron', x + s * 1.2, 1.8, z, { ry: Math.PI / 2 });
+      K.smoke(x, 2.2, z, '#e8d8c8', 6); K.light(x, 3, z + 2, '#ffa040', 6, 14); }
+    for (const x of [-20, -2]) { K.cyl(x - 0.6, -34, 0.45, 0.5, 'iron', { seg: 12, y: 1.0, col: false }); K.mg('#c8c8d8', new THREE.CylinderGeometry(0.4, 0.4, 0.06, 12), x + 0.8, K.gy(x, -34) + 1.03, -34); }
+    for (const z of [-31, -27, -23.5]) { K.box(-25.4, z, 0.7, 2.6, 2.8, 'wood2');
+      for (let k = 0; k < 3; k++) for (let i = 0; i < 6; i++) K.mg(pick(['#ff8a5a', '#ffd27a', '#8ad8ff', '#b8ff8a', '#ffffff']), new THREE.CylinderGeometry(0.09, 0.09, 0.26, 8), -25.0, 0.75 + k * 0.8, z - 1.1 + i * 0.44); }
+    K.fishRack(-21, -22.4);
+    for (const [x, z] of [[-23.4, -21.8], [-24.4, -22.2]]) { K.mesh(new THREE.SphereGeometry(0.5, 10, 8), '#c8b088', x, 0.45, z).scale.set(1, 0.9, 1); K.col(x, z, 0.45, 0.9); }
+    { K.box(2.6, -27.5, 1.6, 0.9, 6, 'wood'); K.box(2.6, -27.5, 1.7, 0.06, 6.1, 'clothWhite', { y: 0.9, col: false });
+      for (let i = 0; i < 5; i++) K.mg(pick(['#ff8a5a', '#ffd27a', '#8ad860', '#c8885a']), new THREE.SphereGeometry(0.18, 10, 8), 2.4, 1.1, -29.8 + i * 1.1);
+      K.mg('#c8c8d8', new THREE.BoxGeometry(0.05, 0.03, 0.5), 2.8, 0.96, -25.5); K.mg('wood2', new THREE.BoxGeometry(0.6, 0.06, 0.9), 2.5, 0.96, -26.4); }
+    for (let i = 0; i < 4; i++) K.mg('iron', new THREE.TorusGeometry(0.28, 0.035, 6, 16), -16 + i * 1.2, K.gy(-16, -34.9) + 3.3, -34.88);
+    for (const [x, z] of [[2.4, -22.4], [1.2, -22.4]]) K.barrel(x, z);
+    K.demonChandelier(-11, -26.5, 1.1, '#ffb04a');
     K.demonChandelier(-18, -13, 0.9, '#ffb04a');
     // 休憩室：ソファー・丸いテーブル・お茶
     K.rug(-2, -13, 8, 8, 'clothRed');
@@ -5100,12 +5175,94 @@ const ZONE_BUILD = {
     { const x = 22, z = 0; for (const sd of [-1, 1]) { K.box(x + sd * 3, z, 0.3, 0.35, 6.3, 'wood'); K.box(x, z + sd * 3, 6.3, 0.35, 0.3, 'wood'); }
       K.mesh(new THREE.PlaneGeometry(5.8, 5.8), '#e8d8a8', x, 0.18, z, { rx: -Math.PI / 2, noShadow: true });
       K.pawPrints([[x - 1.6, z + 1.6], [x + 1.8, z + 1.2], [x + 1.4, z - 1.8], [x - 1.8, z - 1.4], [x - 1.2, z + 0.8]], '#c8a870'); }
-    // ハンモック
-    for (const x of [-15, -9]) K.cyl(x, 19.5, 0.14, 2.2, 'wood2', { seg: 8 });
-    K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-15, 1.9, 19.5), V3(-12, 0.9, 19.5), V3(-9, 1.9, 19.5)]), 16, 0.45, 8, false), 'clothYellow', 0, 0, 0, { abs: true });
-    K.col(-12, 19.5, 1.2, 1.5);
-    // 涸れた噴水と、まわりの長いす
-    K.fountain(0, -11, true);
+    // ハンモック：木の台（左右のA字の脚と、床の横木）に、しま模様の布。両はしの横木からロープで吊り、ゆっくり揺れる。房飾りと、まくら
+    { const cx = -12, cz = 19.5, y0 = K.gy(cx, cz), half = 3.7, top = 2.35;
+      // 二点のあいだの棒
+      const beam = (a, b, r, mat, parent) => { const d = V3().subVectors(b, a), L = d.length(), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L, 8), K.M(mat));
+        m.position.copy(a).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(V3(0, 1, 0), d.normalize()); (parent || K.scene).add(m); m.castShadow = true; return m; };
+      // 台：A字の脚、脚の足もとの横木、左右をつなぐ床の横木
+      for (const sx of [-1, 1]) { const x = cx + sx * half;
+        for (const sz of [-1, 1]) beam(V3(x - sx * 0.25, y0, cz + sz * 0.95), V3(x, y0 + top + 0.1, cz), 0.07, 'wood2');
+        beam(V3(x - sx * 0.25, y0 + 0.08, cz - 1.05), V3(x - sx * 0.25, y0 + 0.08, cz + 1.05), 0.08, 'wood2');
+        K.mesh(new THREE.TorusGeometry(0.09, 0.025, 6, 12), 'iron', x, top + 0.02, cz, { ry: Math.PI / 2 }); }
+      beam(V3(cx - half + 0.25, y0 + 0.1, cz), V3(cx + half - 0.25, y0 + 0.1, cz), 0.08, 'wood2');
+      K.colBox(cx, cz, half + 0.1, 1.05, 1.2);
+      // 揺れる部分：脚のてっぺんを結ぶ線を軸に回る
+      const sw = new THREE.Group(); sw.position.set(cx, y0 + top, cz); K.scene.add(sw);
+      const sp = 2.6, w = 1.25, endY = -0.85, sag = 0.75;
+      // 布：両はしの横木のあいだで、まん中が下がり、幅の方向にもくぼむ
+      const tex = (() => { const c = document.createElement('canvas'); c.width = 8; c.height = 64; const g = c.getContext('2d');
+        const cols = ['#8a5ad8', '#ff8ad8', '#f4ecd8', '#ff8ad8']; for (let i = 0; i < 8; i++) { g.fillStyle = cols[i % 4]; g.fillRect(0, i * 8, 8, 8); }
+        const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.magFilter = THREE.NearestFilter; return tx; })();
+      const NU = 20, NV = 8, pos = [], uv = [], idx = [];
+      const bedAt = (u, v) => [(u - 0.5) * 2 * sp, endY - sag * Math.sin(Math.PI * u) - 0.16 * Math.sin(Math.PI * v) * Math.sin(Math.PI * u) ** 0.5, (v - 0.5) * w];
+      for (let i = 0; i <= NU; i++) for (let j = 0; j <= NV; j++) { pos.push(...bedAt(i / NU, j / NV)); uv.push(i / NU, j / NV); }
+      for (let i = 0; i < NU; i++) for (let j = 0; j < NV; j++) { const a = i * (NV + 1) + j, b = a + NV + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+      const bed = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, side: THREE.DoubleSide })); bed.castShadow = true; sw.add(bed);
+      // 両はしの横木と、脚のてっぺんへのロープ
+      for (const su of [-1, 1]) { const ex = su * sp;
+        beam(V3(ex, endY + 0.02, -w / 2 - 0.12), V3(ex, endY + 0.02, w / 2 + 0.12), 0.045, 'wood', sw);
+        for (const sv of [-1, 0, 1]) beam(V3(ex, endY + 0.04, sv * w / 2), V3(su * (half - 0.05), 0, 0), 0.012, '#e8dcc0', sw); }
+      // 房飾り：両がわのふちに、桃色と金の房
+      for (const sv of [-1, 1]) for (let i = 1; i < 12; i++) { const [px, py, pz] = bedAt(i / 12, sv < 0 ? 0 : 1);
+        const f = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.16, 5), K.M(i % 2 ? 'gold' : 'clothPink')); f.position.set(px, py - 0.1, pz); f.rotation.x = Math.PI; sw.add(f); }
+      // まくら（魔王さまの、猫の顔のまくら）
+      { const [px, py] = bedAt(0.2, 0.5); const pl = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 10), K.M('#ffe8f4')); pl.scale.set(0.9, 0.45, 1.2); pl.position.set(px, py + 0.14, 0); sw.add(pl);
+        for (const sz of [-1, 1]) { const e = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.16, 4), K.M('#ffe8f4')); e.position.set(px, py + 0.26, sz * 0.22); e.rotation.x = sz * 0.5; sw.add(e); } }
+      // たたんだ毛布
+      { const [px, py] = bedAt(0.62, 0.5); const bl = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.8), K.M('clothPurple')); bl.position.set(px, py + 0.09, 0); bl.rotation.z = -0.15; sw.add(bl); }
+      K.tick((dt, tt) => { sw.rotation.x = Math.sin(tt * 0.9) * 0.06; });
+    }
+    // 魔王さまの噴水：紫の石の八角形の水盤に、桃色に光る魔法の水。二段目の水盤の上で、黒い猫の像が口から水をはく。まわりに長いす
+    { const x = 0, z = -11, y0 = K.gy(x, z), R = 2.9;
+      const water = new THREE.MeshStandardMaterial({ color: '#d8a8ff', transparent: true, opacity: 0.82, roughness: 0.08, metalness: 0.1, emissive: '#b860ff', emissiveIntensity: 0.55 });
+      // 水盤：八角形の台座と、低い縁（角に金の飾りと光る玉）
+      K.mg('darkStone', new THREE.CylinderGeometry(R + 0.35, R + 0.45, 0.25, 8), x, y0 + 0.12, z);
+      for (let i = 0; i < 8; i++) {
+        const a = i / 8 * Math.PI * 2, a2 = a + Math.PI / 8, rr = R * Math.cos(Math.PI / 8), side = 2 * R * Math.sin(Math.PI / 8);
+        K.mg('purpleStone', new THREE.BoxGeometry(side + 0.1, 0.62, 0.32), x + Math.cos(a2) * rr, y0 + 0.55, z + Math.sin(a2) * rr, [0, -a2 + Math.PI / 2, 0]);
+        K.mg('stone2', new THREE.BoxGeometry(side + 0.22, 0.1, 0.46), x + Math.cos(a2) * rr, y0 + 0.9, z + Math.sin(a2) * rr, [0, -a2 + Math.PI / 2, 0]);
+        K.mg('gold', new THREE.BoxGeometry(0.34, 0.16, 0.34), x + Math.cos(a) * R, y0 + 1.0, z + Math.sin(a) * R);
+        K.mg(K.glow('#ff8ad8', 1.8), new THREE.SphereGeometry(0.11, 10, 8), x + Math.cos(a) * R, y0 + 1.18, z + Math.sin(a) * R);
+      }
+      K.mesh(new THREE.CircleGeometry(R - 0.2, 8), water, x, 0.72, z, { rx: -Math.PI / 2, noShadow: true });
+      // 柱と二段目の水盤（ふちに丸い飾り）
+      K.mg('purpleStone', new THREE.CylinderGeometry(0.34, 0.5, 1.5, 12), x, y0 + 1.35, z);
+      K.mg('gold', new THREE.TorusGeometry(0.4, 0.05, 6, 16), x, y0 + 1.25, z, [Math.PI / 2, 0, 0]);
+      K.mg('purpleStone', new THREE.CylinderGeometry(1.25, 0.55, 0.36, 16), x, y0 + 2.2, z);
+      for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; K.mg('stone2', new THREE.SphereGeometry(0.12, 8, 6), x + Math.cos(a) * 1.22, y0 + 2.38, z + Math.sin(a) * 1.22); }
+      K.mesh(new THREE.CircleGeometry(1.1, 16), water, x, 2.36, z, { rx: -Math.PI / 2, noShadow: true });
+      // てっぺんの黒い猫の像（光る目、首に金の鈴）
+      const cy = y0 + 2.4;
+      K.mg('purpleStone', new THREE.CylinderGeometry(0.3, 0.36, 0.3, 10), x, cy + 0.15, z);
+      K.mg('obsidian', new THREE.SphereGeometry(0.36, 14, 10), x, cy + 0.62, z, null, [1, 1.15, 0.9]);
+      K.mg('obsidian', new THREE.SphereGeometry(0.32, 14, 10), x, cy + 1.12, z + 0.06, null, [1.15, 0.95, 1]);
+      for (const sd of [-1, 1]) { const eg = new THREE.ConeGeometry(0.1, 0.22, 4); eg.rotateY(Math.PI / 4); K.mg('obsidian', eg, x + sd * 0.2, cy + 1.4, z + 0.04, [0, 0, -sd * 0.35], [1, 1, 0.5]);
+        K.mg(K.glow('#ff8ad8', 3), new THREE.SphereGeometry(0.045, 8, 6), x + sd * 0.12, cy + 1.15, z + 0.34); }
+      K.mg('gold', new THREE.SphereGeometry(0.07, 8, 6), x, cy + 0.9, z + 0.3);
+      K.mg('obsidian', new THREE.CylinderGeometry(0.05, 0.07, 0.6, 6), x - 0.2, cy + 0.55, z - 0.32, [0.9, 0, 0.3]);
+      K.col(x, z, R + 0.3, 1.0);
+      // 水：猫の口から二段目の水盤へ落ちる水の筋と、二段目のふちから下の水盤へぐるりと流れ落ちる水の幕（筋の模様が流れる）
+      const fallTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 128; const g = c.getContext('2d');
+        for (let i = 0; i < 64; i++) { g.fillStyle = `rgba(255,255,255,${0.15 + Math.random() * 0.55})`; g.fillRect(i, Math.random() * 128, 1 + Math.random() * 2, 20 + Math.random() * 60); }
+        const tx = new THREE.CanvasTexture(c); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(6, 1); return tx; })();
+      const fallM = new THREE.MeshStandardMaterial({ color: '#f0d8ff', map: fallTex, alphaMap: fallTex, transparent: true, opacity: 0.75, roughness: 0.1, emissive: '#c080ff', emissiveIntensity: 0.6, side: THREE.DoubleSide, depthWrite: false });
+      const prof = [[1.24, 2.38], [1.36, 2.34], [1.46, 2.12], [1.56, 1.7], [1.66, 1.2], [1.74, 0.76]].map(([r, y]) => new THREE.Vector2(r, y));
+      K.mesh(new THREE.LatheGeometry(prof, 40), fallM, x, 0, z, { noShadow: true });
+      const mouthTex = fallTex.clone(); mouthTex.repeat.set(1, 2); mouthTex.needsUpdate = true;
+      const mouthM = fallM.clone(); mouthM.map = mouthTex; mouthM.alphaMap = mouthTex; mouthM.opacity = 0.85;
+      const arc = new THREE.CatmullRomCurve3([V3(x, cy + 1.03, z + 0.36), V3(x, cy + 1.05, z + 0.6), V3(x, cy + 0.6, z + 0.85), V3(x, y0 + 2.38, z + 0.95)]);
+      K.mesh(new THREE.TubeGeometry(arc, 16, 0.07, 8, false), mouthM, 0, 0, 0, { abs: true, noShadow: true });
+      K.tick((dt, t2) => { fallTex.offset.y = -t2 * 0.9; mouthTex.offset.y = t2 * 1.6; });
+      K.v.emitters.push(dt => {
+        // しぶき：猫の口、二段目の水面、下の水盤に落ちるところ
+        for (let i = 0; i < 40 * dt; i++) K.v.p.emit(V3(x + (Math.random() - 0.5) * 0.2, y0 + 2.4, z + 0.95), V3((Math.random() - 0.5) * 1.2, 0.6 + Math.random() * 0.8, (Math.random() - 0.5) * 1.2), hdr('#f0e0ff', 1.6), { life: 0.45, size: 0.06, grav: 7, drag: 0.1 });
+        for (let i = 0; i < 120 * dt; i++) { const a = Math.random() * Math.PI * 2, r = 1.7 + Math.random() * 0.15; K.v.p.emit(V3(x + Math.cos(a) * r, y0 + 0.78, z + Math.sin(a) * r), V3(Math.cos(a) * (0.4 + Math.random() * 0.6), 0.8 + Math.random() * 1.0, Math.sin(a) * (0.4 + Math.random() * 0.6)), hdr('#e8c8ff', 1.5), { life: 0.5, size: 0.07, grav: 7, drag: 0.1 }); }
+        for (let i = 0; i < 30 * dt; i++) { const a = Math.random() * Math.PI * 2; K.v.p.emit(V3(x + Math.cos(a) * 1.4, y0 + 2.3, z + Math.sin(a) * 1.4), V3(Math.cos(a) * 0.5, -0.5, Math.sin(a) * 0.5), hdr('#d8b0ff', 1.4), { life: 0.6, size: 0.06, grav: 8, drag: 0.1 }); }
+        if (Math.random() < dt * 8) K.v.p.emit(V3(x + (Math.random() - 0.5) * 4, y0 + 0.78, z + (Math.random() - 0.5) * 4), V3(0, 0.5, 0), hdr('#ff8ad8', 2), { life: 1.4, size: 0.08, drag: 0.4 });
+      });
+      K.light(x, y0 + 3, z, '#c880ff', 4, 9); }
     for (const [x, z, ry] of [[-5, -11, Math.PI / 2], [5, -11, -Math.PI / 2]]) K.bench(x, z, ry);
     for (const x of [-16, 16]) K.brazier(x, -15, '#ff8ad8', 1.4);
     for (const [x, z] of [[-3.2, 8], [3.2, 8], [-3.2, 16], [3.2, 16]]) K.brazier(x, z, '#ff8ad8', 1.1);
@@ -5187,7 +5344,7 @@ const ZONE_BUILD = {
     // 没収品の倉庫：箱の山と、没収品の山
     for (const [x, z, s] of [[-32, 4, 1.2], [-32, 5.4, 1.2], [-30.6, 4, 1.2], [-32, 4.6, 0.9], [-21, 20, 1.1], [-22.3, 20, 1.1], [-21, 18.7, 1]]) K.crate(x, z, s);
     { const x = -29.6, z = 13; K.col(x, z, 1.4, 1.4); for (let i = 0; i < 6; i++) K.mg(pick(['#ff6a8a', '#6ad8ff', '#ffd27a']), new THREE.SphereGeometry(0.28, 10, 8), x + Math.cos(i) * 0.8, 0.3 + (i % 2) * 0.4, z + Math.sin(i) * 0.8);
-      for (let i = 0; i < 8; i++) K.nekojarashi(x - 1 + K.r() * 2, z - 1 + K.r() * 2, 0.7); K.sign(x, z + 1.6, 0, '没収品', '城内持ちこみ禁止', '#ff8ad8', 1.6, 1.6); }
+      for (let i = 0; i < 9; i++) K.jarashiToy(x - 1 + K.r() * 2, z - 1 + K.r() * 2, K.r() * 6.3, 0.04 + (i % 3) * 0.12, (i % 3) * 0.12); K.sign(x, z + 1.6, 0, '没収品', '城内持ちこみ禁止', '#ff8ad8', 1.6, 1.6); }
     for (const z of [8, 17]) K.box(-33.2, z, 0.6, 2.6, 3, 'wood2');
     // 衣装部屋：マントかけ、姿見、王冠の棚
     for (const x of [22, 26]) { K.box(x, -10, 2.6, 0.08, 0.08, 'gold', { y: 2.4, col: false }); for (const sd of [-1, 1]) K.box(x + sd * 1.25, -10, 0.08, 2.4, 0.08, 'gold', { col: false }); K.colBox(x, -10, 1.3, 0.3, 2.4);
@@ -5215,7 +5372,7 @@ const ZONE_BUILD = {
       for (const sd of [-1, 1]) K.mesh(new THREE.SphereGeometry(0.28, 12, 10), K.glow('#ff8ad8', 2.6), x + sd * 0.8, 3.6, z - 0.1).scale.set(1, 1.3, 0.4);
       K.mesh(new THREE.TorusGeometry(2.45, 0.12, 8, 32), K.glow('#ff8ad8', 1.6), x, 3.4, z - 0.6, { noShadow: true }); }
     for (const [x, z, col] of [[-5, -17, '#ff6a8a'], [5.5, -18, '#6ad8ff'], [-3, -15, '#ffd27a']]) K.mesh(new THREE.SphereGeometry(0.4, 12, 10), col, x, 0.4, z);
-    for (let i = 0; i < 3; i++) K.nekojarashi(3 + i * 0.5, -16 + i * 0.3, 0.9);
+    for (const [x, z, ry] of [[3.2, -16.2, 0.4], [4.4, -15.4, 2.3], [-4.6, -18.4, -0.8]]) K.jarashiToy(x, z, ry);
     // 玉座の間の奥の光る柱と、左右の柱
     for (let i = 0; i < 6; i++) { const x = -20 + i * 8; if (Math.abs(x) < 3) continue; K.box(x, -22.3, 0.9, 5.4, 0.9, 'purpleStone', { col: false }); K.mesh(new THREE.OctahedronGeometry(0.34), K.glow('#ff8ad8', 2.4), x, 6, -22.3); }
     for (const x of [-9, 9]) for (const z of [-17, -10, -4]) K.demonPillar(x, z, 8.6);
@@ -5223,7 +5380,7 @@ const ZONE_BUILD = {
     K.demonChandelier(0, -12, 1.6); K.demonChandelier(0, 8, 1.1);
     // ひみつの遊び部屋：おもちゃ箱・小さなキャットタワー・毛糸玉
     { const x = -24, z = 2.1; K.box(x, z, 2.2, 1.1, 1.1, 'wood2', { round: true }); K.mesh(new THREE.BoxGeometry(2.3, 0.14, 1.2), 'gold', x, 1.15, z);
-      for (let i = 0; i < 3; i++) K.nekojarashi(x - 0.6 + i * 0.6, z, 0.7); }
+      for (let i = 0; i < 3; i++) K.jarashiToy(x - 0.6 + i * 0.6, z + 0.1, -Math.PI / 2 + (i - 1) * 0.4, 1.0, 0.9, 0.8); }
     { const x = -19.4, z = 12.6; K.box(x, z, 2, 0.3, 2, 'clothPurple', { round: true }); K.cyl(x, z, 0.2, 3.2, 'clothYellow', { seg: 10 }); K.box(x, z, 1.6, 0.25, 1.6, 'clothPurple', { y: 3.2, col: false, round: true }); }
     for (let i = 0; i < 6; i++) K.mg(pick(['#ff6a8a', '#6ad8ff', '#ffd27a', '#b88aff']), new THREE.SphereGeometry(0.3, 10, 8), -26 + (i % 3) * 0.7, 0.3, 12 + Math.floor(i / 3) * 0.7);
     K.rug(-22, 8, 8, 8, 'clothRed');

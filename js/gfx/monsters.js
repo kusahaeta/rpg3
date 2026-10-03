@@ -18,6 +18,11 @@ const CRITTER_LOOKS = {
   impnurse:  { look: { fur: '#ff9ac8', eye: '#7a4ad8', muzzle: '#ffd0e4', paws: '#ffd0e4', earIn: '#ff6a9a', horns: '#fff0d8', wings: '#8a3a6a', cap: '#ffffff', capType: 'chef', apron: '#ffffff', blush: 0.45 }, scale: 1.0, expr: 'smile' },
   impboss:   { look: { fur: '#6a4ab8', eye: '#ffe07a', muzzle: '#9a80d8', paws: '#9a80d8', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#3a1a5a', glasses: '#1a1a2a', vest: '#2a2a3a', ribbon: '#c83a3a', blush: 0 }, scale: 1.45, expr: 'worry' },
   maou:      { key: 'maou', scale: 1.7, expr: 'smug' },
+  // 魔王軍四天王：js/npcs.js の人物の見た目を、そのまま大きくして使う
+  k_gutsu:   { key: 'gutsugutsu', scale: 1.55, expr: 'joy' },
+  k_nemu:    { key: 'nemunemu', scale: 1.55, expr: 'sleepy' },
+  k_choki:   { key: 'chokichoki', scale: 1.5, expr: 'gentle' },
+  k_dodon:   { key: 'dodon', scale: 1.6, expr: 'smug' },
   fakemike:  { key: 'mike', look: { patches: ['#3b302c', '#f29a3e'], eye: '#8a6aff', band: '#3a6ad8', cape: '#3a6ad8' }, scale: 1.0, expr: 'smug' },
   plush:     { key: 'kuro', look: { fur: '#5a5870', muzzle: '#6a6880', eye: '#1a1a22', eyeScale: 0.6, scarf: '#d86a8a', armor: null }, gear: { weapon: null }, scale: 1.25, expr: 'neutral' },
   nekogami:  { look: { fur: '#ffe8a8', pattern: 'tabby', patches: ['#f0c060'], eye: '#ffffff', eye2: '#ffffff', muzzle: '#fff6dc', paws: '#fff6dc', earIn: '#ffb8a8', crown: '#ffcf4a', cape: '#ffffff', capeIn: '#ffcf4a', sleepy: true, blush: 0.35 }, scale: 3.2, expr: 'sleepy' },
@@ -265,7 +270,7 @@ function buildEnemy(key) {
 
 // 骨組みの敵：にゃんこの体を内側に入れ、構えて立たせる
 function critterEnemy(key, d, C) {
-  const base = C.key ? CHARS[C.key] : null;
+  const base = C.key ? CHARS[C.key] || NPCS[C.key] : null;
   const def = { look: { ...(base ? base.look : {}), ...(C.look || {}) }, gear: { ...(base ? base.gear : {}), ...(C.gear || {}) }, elem: base ? base.elem : 'physical', scale: C.scale || 1 };
   const m = buildCat(key, { def });
   m.setPose(POSES.ready);

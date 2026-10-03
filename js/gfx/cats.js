@@ -622,6 +622,19 @@ function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow, G = {}) 
       };
       break;
     }
+    case 'ladle': {   // おたま（四天王グツグツ）
+      const st = P(new THREE.CylinderGeometry(0.012, 0.012, 0.44, 8), T('#c8c8d8')); st.position.y = 0.2; hold.add(st);
+      const cup = P(new THREE.SphereGeometry(0.075, 14, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), T('#e8e8f0', { side: THREE.DoubleSide })); cup.position.y = 0.46; cup.rotation.x = Math.PI; hold.add(cup);
+      tipAt(0.46); break;
+    }
+    case 'shears': {  // せんていバサミ（四天王チョキチョキ）
+      for (const s of [-1, 1]) {
+        const g = new THREE.Group(); g.rotation.z = s * 0.18; hold.add(g);
+        const bl = P(new THREE.BoxGeometry(0.03, 0.24, 0.012), T('#d8dce8')); bl.position.set(s * 0.012, 0.28, 0); g.add(bl);
+        const hd = P(new THREE.CylinderGeometry(0.016, 0.016, 0.16, 8), T('#c84a3a')); hd.position.set(s * 0.02, 0.06, 0); g.add(hd);
+      }
+      tipAt(0.4); break;
+    }
     case 'broom': {   // ほうき（宿屋・掃除係）
       const st = P(new THREE.CylinderGeometry(0.012, 0.012, 0.5, 8), T('#a07a4a')); st.position.y = 0.18; hold.add(st);
       const br = P(new THREE.ConeGeometry(0.07, 0.14, 10), T('#e8c870')); br.position.y = -0.1; br.rotation.x = Math.PI; hold.add(br);

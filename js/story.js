@@ -179,6 +179,12 @@ class DialogueView extends BaseView {
   }
 }
 
+// 第六章の魔王城の面会許可証：ハンコの欄 [欄の名前, ハンコの字, 押し方]
+const PASS_STAMPS = [['健康診断', '異常なし'], ['グツグツ', '通って<br>よし'], ['ネムネム', '通って<br>よし', 'tilt'], ['チョキチョキ', '通って<br>よし'], ['ドドン', '通って<br>よし', 'big']];
+function passCardHTML(n, fresh) {
+  return `<b>魔王さま 面会許可証</b><div class="dc-slots">${PASS_STAMPS.map(([lab, st, cls], i) =>
+    `<div class="dc-slot"><small>${lab}</small>${i < n ? `<i class="${cls || ''} ${fresh && i === n - 1 ? 'new' : ''}">${st}</i>` : ''}</div>`).join('')}</div>`;
+}
 function DialogueScreen(id, done) {
   const scene = SCENES[id];
   const v = GFX.ok ? (SCENE_STAGES[id] ? new StageView(scene, id) : new DialogueView(scene)) : null;
@@ -189,12 +195,21 @@ function DialogueScreen(id, done) {
     <div class="dl-ctrl"><button class="ctl" data-auto>AUTO</button><button class="ctl" data-skip>スキップ</button></div>
     <div class="dl-portrait"></div>
     <div class="dl-choices"></div>
+    <div class="dl-card"></div>
     <div class="dl-box"><div class="dl-name"></div><div class="dl-text"></div><div class="dl-next">▼</div></div>
   </div>`);
   const queue = scene.lines.slice();
   let typing = null, full = '', auto = false, autoTimer = null, waitingChoice = false, finished = false, currentChoice = null, holding = false;
   const nameEl = s.querySelector('.dl-name'), textEl = s.querySelector('.dl-text'), box = s.querySelector('.dl-box');
   const choicesEl = s.querySelector('.dl-choices'), portrait = s.querySelector('.dl-portrait');
+  // 行の card: n で、ハンコ n 個の面会許可証を出す。card のない行で消える
+  //   stamp: true の行で、いちばん新しいハンコが押される（音と、ハンコが降りてくる動き）
+  const cardEl = s.querySelector('.dl-card');
+  const showCard = (n, stamp) => {
+    if (n == null) { cardEl.classList.remove('show'); return; }
+    cardEl.innerHTML = passCardHTML(n, stamp); cardEl.classList.add('show');
+    if (stamp) setTimeout(() => Sfx.tone(180, 0.12, 'square', 0.06, -60), 380);
+  };
   // 台本の「そのシーンで起きること」（仲間になる・友情・物語のフラグ）は、スキップしても必ず反映する
   const applied = new Set();
   const applyMeta = l => {
@@ -220,6 +235,7 @@ function DialogueScreen(id, done) {
     nameEl.textContent = nm; nameEl.style.display = nm ? '' : 'none';
     box.classList.toggle('narr', speaker === 'n');
     box.style.setProperty('--c', speakerColor(speaker));
+    showCard(dir && dir.card != null ? dir.card : null, dir && dir.stamp);
     if (v) { if (v.line) v.line(speaker, text, dir || {}); else speaker === 'n' ? v.wide() : v.focus(speaker); }
     else portrait.innerHTML = speaker === 'n' || speaker.startsWith('e:') ? '' : avatarSVG(speaker);
     let i = 0; textEl.textContent = '';
