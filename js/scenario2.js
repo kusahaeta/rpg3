@@ -806,9 +806,9 @@ const STORY = [
   { title: '第一章　勇者、拾われる', steps: [
     { t: 'scene', id: 'c1_01', g: '魚どろぼう' },
     { t: 'scene', id: 'c1_02', g: '流れ星の夜' },
-    { t: 'field', zone: 'hill', at: [0, 1], start: ['pokapoka', -17, -4], near: ['pokapoka', 'hill'], yaw: 0.6, scene: 'c1_03', g: '流れ星の落ちた、村はずれの丘へ行く' },
+    { t: 'field', zone: 'hill', at: [0, 1], start: ['pokapoka', -17, -4], near: ['pokapoka', 'hill'], yaw: 1.3, scene: 'c1_03', g: '流れ星の落ちた、村はずれの丘へ行く' },
     { t: 'field', zone: 'pokapoka', at: [0, -9], scene: 'c1_04', g: '村に戻って、村長にクロのことを話す' },
-    { t: 'field', zone: 'forest_in', at: [-2, -9], scene: 'c1_05', battle: '1-1', g: '村の東の、ほしふる森へ' },
+    { t: 'field', zone: 'forest_in', at: [-2, -9], scene: 'c1_05', battle: '1-1', g: '村の南の、ほしふる森へ' },
     { t: 'field', zone: 'forest_deep', at: [-4, -5], scene: 'c1_06', battle: '1-2', g: 'ほしふる森の奥へ進む' },
     { t: 'field', zone: 'rat_nest', at: [0, -7], scene: 'c1_07', battle: '1-3', after: 'c1_08', g: '森の北、ネズミの王国をたずねる' },
     { t: 'field', zone: 'pokapoka', at: [0, 5], scene: 'c1_09', g: '村に帰って、村長に報告する' },
@@ -873,7 +873,7 @@ const STORY = [
     { t: 'reward', niboshi: 800, g: '第六章 おしまい' },
   ] },
   { title: '第七章　最後のにゃんこ', steps: [
-    { t: 'field', zone: 'tree_root', at: [0, -20], start: ['tree_root', 0, -38], near: ['tree_root', 'tree_under', 'hill'], scene: 'c7_01', g: 'にゃんだーの樹の根もとへ' },
+    { t: 'field', zone: 'tree_root', at: [0, -20], start: ['tree_root', 0, -38], near: ['tree_root', 'tree_under', 'forest_deep'], scene: 'c7_01', g: 'にゃんだーの樹の根もとへ' },
     { t: 'field', zone: 'tree_root', at: [0, 33], scene: 'c7_01b', battle: '7-1', g: '根もとの南、根のトンネルの奥の扉へ' },
     { t: 'field', zone: 'tree_under', at: [0, -24], scene: 'c7_02', battle: '7-2', g: '封印の扉の奥、樹の地下へ' },
     { t: 'field', zone: 'tree_under', at: [0, 14], scene: 'c7_03', battle: '7-3', after: 'c7_04', g: '地下の奥、樹の心臓へ' },
