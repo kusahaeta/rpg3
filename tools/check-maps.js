@@ -107,10 +107,11 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   // 時の水晶：入口（anchor）から、今の姿で歩きはじめて、物語の目的地・宝箱・出入口へ行けるか。目的地までの切りかえの回数は -v で表示
   if (Z.timeShift) {
     const r = timeReach(T, Z);
-    if (r.stuck) bad.push(`time: ${r.stuck} state(s) cannot get back to the entrance`);
-    for (const st of STORY.flatMap(c => c.steps).filter(st => st.t === 'field' && st.zone === id)) { const [x, z] = zonePoint(Z, st.at), n = r(x, z); if (n < 0) bad.push(`time: quest ${st.scene} unreachable`); else if (verbose) console.log(`   time: quest ${st.scene} needs ${n} switch(es)`); }
+    // 入口へ戻れない状態（閉じこめ）は、遊ぶときは入口の間へもどされるので許す。目的地と出口からは、戻れること
+    if (verbose) console.log(`   time: ${r.stuck} trapped state(s)（入口の間へもどされる）`);
+    for (const st of STORY.flatMap(c => c.steps).filter(st => st.t === 'field' && st.zone === id)) { const [x, z] = zonePoint(Z, st.at), n = r(x, z); if (n < 0) bad.push(`time: quest ${st.scene} unreachable`); else { if (!r.back(x, z)) bad.push(`time: quest ${st.scene} cannot get back to the entrance`); if (verbose) console.log(`   time: quest ${st.scene} needs ${n} switch(es)`); } }
     (Z.chestAt || []).forEach((p, i) => { if (r(p[0], p[1]) < 0) bad.push(`time: chest${i} unreachable`); });
-    for (const e of Z.exits) { const E = T.exits[e.key]; if (E && !E.cells.some(i => r(T.cx(T.colOf(i)), T.cz(T.rowOf(i))) >= 0)) bad.push(`time: exit ${e.key} unreachable`); }
+    for (const e of Z.exits) { const E = T.exits[e.key]; if (!E) continue; const xs = E.cells.map(i => [T.cx(T.colOf(i)), T.cz(T.rowOf(i))]); if (!xs.some(([x, z]) => r(x, z) >= 0)) bad.push(`time: exit ${e.key} unreachable`); else if (!xs.some(([x, z]) => r.back(x, z))) bad.push(`time: exit ${e.key} cannot get back to the entrance`); }
   }
   // 階段が急すぎないか（歩くときは、体のまわりの段差が STEP 以内でないと進めない。半径 0.4m で 0.6m まで）
   const steep = new Set();
@@ -169,6 +170,8 @@ function timeReach(T, Z) {
   let stuck = 0; for (let i = 0; i < n; i++) for (const p of [0, 1]) if (dist[p][i] >= 0 && !back[p][i]) stuck++;
   const f = (x, z) => { const i = T.at(x, z), a = dist[0][i], b = dist[1][i]; return a < 0 ? b : b < 0 ? a : Math.min(a, b); };
   f.stuck = stuck;
+  // そのマスに、入口へ戻れる姿（今か昔）で立てるか
+  f.back = (x, z) => { const i = T.at(x, z); return [0, 1].some(p => dist[p][i] >= 0 && back[p][i]); };
   return f;
 }
 // 大玉ころがしを、押す回数の少ない順に調べる（プレイヤーは、大玉と台のないマスを歩いて、押す側に回りこめるか）
