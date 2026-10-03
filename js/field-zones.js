@@ -6,6 +6,7 @@
 // ============================================================
 // exits: side = n/s/e/w（辺）、at = 辺に沿った位置、to = 行き先
 // town: 人が暮らす区画（敵が出ない）／ calmAfter: そのステージをクリアすると敵が出なくなる
+// anchor: ねこ地蔵（休めて、ワールドマップのひとっとびの着く場所）／ noAnchor: ねこ地蔵を置かない（ワールドマップからひとっとびできない。anchor は入ってくる場所・もどる場所としてだけ使う）
 // npcs[].v: [[条件, 台詞...]]（条件 'scene:ID' 'clear:ステージ' 'done' 'flag:名前'。後ろのものほど優先）
 // npcs[].shop: weapon / item / inn / fish（話しかけると店）
 // naps / sleepwalk の name：まだ名前を知らない子の呼び名（なければ speakerName）
@@ -659,8 +660,8 @@ const FIELD_ZONES = {
     notes: [{ at: [0, -8], mark: 3.2, reach: 5.2, title: '広場の噴水', text: '水の止まった噴水。台座に「笑う門には福きたる」と刻まれている。' }],
     map2d: [470, 95] },
 
-  castle: { ci: 2, name: 'ニャハハ城・前庭', stage: '3-1', arenas: [[0, 6, 0]], build: 'castle', town: true, groups: 0, chests: 1, crystals: 0, skyTree: true,
-    world: true, arch: 'nyacastle', chestAt: [[-14, -10]],
+  castle: { ci: 2, name: 'ニャハハ城・前庭', parent: 'nyahaha', stage: '3-1', arenas: [[0, 6, 0]], build: 'castle', town: true, groups: 0, chests: 1, crystals: 0, skyTree: true,
+    world: true, arch: 'nyacastle', chestAt: [[-14, -10]], noAnchor: true,   // 敵が出ないので休む場所はいらない。ミャオニアの地図では城下町にまとめる
     get bg() { return kingdomJoy() ? 'kingdomJoy' : undefined; },
     get th() { return { ...(kingdomJoy() ? THEMES.kingdomJoy : {}), pattern: 'checker', floor: kingdomJoy() ? '#f6eee2' : '#cfcbc6', floor2: kingdomJoy() ? '#e4d4bc' : '#bdb8b2', floorGlow: 0 }; },
     // 城門をくぐると、回廊に囲まれた前庭（城の建物に入る前の広場）。北の石段を上った先の、城の玄関から城内（玉座の間）へ
@@ -697,8 +698,8 @@ const FIELD_ZONES = {
     map2d: [330, 95] },
 
   // ニャハハ城の中（areas の部屋ごとに場所の名前が変わる）：入口の大広間から北の扉を抜けると玉座の間。玉座の間の西に図書室、東に宝物庫。大広間の西に食堂、東に厨房
-  castle_in: { ci: 2, name: 'ニャハハ城・城内', floor: '城内', parent: 'castle', stage: '3-1', arenas: [[0, -4, 0]], build: 'castleIn', town: true, groups: 0, chests: 1, crystals: 0, skyTree: false,
-    world: true, arch: 'nyapalace', chestAt: [[22.5, -13]],
+  castle_in: { ci: 2, name: 'ニャハハ城・城内', floor: '城内', parent: 'nyahaha', stage: '3-1', arenas: [[0, -4, 0]], build: 'castleIn', town: true, groups: 0, chests: 1, crystals: 0, skyTree: false,
+    world: true, arch: 'nyapalace', chestAt: [[22.5, -13]], noAnchor: true,   // 敵が出ないので休む場所はいらない。ミャオニアの地図では城下町にまとめる
     get bg() { return kingdomJoy() ? 'kingdomJoy' : undefined; },
     get th() { const j = kingdomJoy(); return { pattern: 'checker', floor: j ? '#f6eee2' : '#d4d0cb', floor2: j ? '#e4d2b8' : '#c2bdb6', line: '#ffd27a', floorGlow: 0, fog: j ? '#f4e6d8' : '#d8d4d0', fogD: 0.01, sky: j ? '#fff4e8' : '#eae6e2', ground: '#8a7a6a', light: j ? 1.15 : 1.0 }; },
     map: [
@@ -2677,6 +2678,10 @@ class ZoneKit {
       for (let y = 0; y < d; y++) for (let x = 0; x < w; x++) used[T.idx(c + x, rr + y)] = 1;
       rects.push({ c, r: rr, w, d, base: b });
     }
+    // どのマスがどの家の敷地か（となりの家と接する面では、屋根を張り出さない）
+    const owner = new Int32Array(T.kind.length).fill(-1);
+    rects.forEach((R, k) => { R.id = k; for (let y = 0; y < R.d; y++) for (let x = 0; x < R.w; x++) owner[T.idx(R.c + x, R.r + y)] = k; });
+    this.houseOwner = owner;
     rects.forEach(R => this.townHouse(R, o));
     return rects;
   }
@@ -2688,13 +2693,14 @@ class ZoneKit {
     // 四方のとなり：歩ける床のマス数といちばん高い床（見える面にだけ窓や扉をつける）
     const sides = {};
     for (const [k, dc, dr] of [['s', 0, 1], ['e', 1, 0], ['w', -1, 0], ['n', 0, -1]]) {
-      let n = 0, hi = -1e9;
+      let n = 0, hi = -1e9, abut = false;
       const len = dc ? R.d : R.w;
       for (let q = 0; q < len; q++) {
         const c = dc ? (dc > 0 ? R.c + R.w : R.c - 1) : R.c + q, rr = dr ? (dr > 0 ? R.r + R.d : R.r - 1) : R.r + q, j = T.idx(c, rr);
         if (j >= 0 && T.isWalkKind(T.kind[j])) { n++; hi = Math.max(hi, T.base[j]); }
+        if (j >= 0 && this.houseOwner && this.houseOwner[j] >= 0 && this.houseOwner[j] !== R.id) abut = true;   // となりの家に接している
       }
-      sides[k] = { k, n, hi, nx: dc, nz: dr, len: dc ? D : W, x: cx + dc * W / 2, z: cz + dr * D / 2, ax: dr ? 1 : 0, az: dc ? 1 : 0, ry: Math.atan2(dc, dr) };
+      sides[k] = { k, n, hi, abut, nx: dc, nz: dr, len: dc ? D : W, x: cx + dc * W / 2, z: cz + dr * D / 2, ax: dr ? 1 : 0, az: dc ? 1 : 0, ry: Math.atan2(dc, dr) };
     }
     const vis = Object.values(sides).filter(s => s.n > 0), front = vis.sort((a, b) => b.n - a.n)[0] || null;
     const tower = R.w === 1 && R.d === 1;
@@ -2786,6 +2792,11 @@ class ZoneKit {
     }
     const alongX = W >= D, L = alongX ? W : D, S = alongX ? D : W, RH = Math.min(3.2, S * 0.42), ov = 0.35;
     const ridgeRy = alongX ? Math.PI / 2 : 0;
+    // 張り出し：となりの家に接する面では張り出さない（屋根どうしが重ならないように）。
+    //   ridge の向きの局所座標で、+z / -z が妻の端（猫耳）、+x / -x が軒の側
+    const [eP, eN, sP, sN] = alongX ? ['e', 'w', 'n', 's'] : ['s', 'n', 'e', 'w'];
+    const endOv = k => sides[k].abut ? -0.02 : ov, eaveOv = k => sides[k].abut ? 0 : ov;
+    const oP = endOv(eP), oN = endOv(eN), RL = L + oP + oN, rz0 = (oP - oN) / 2;
     const place = (mat, geo, lx, ly, lz, rz = 0, sc) => {
       const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ridgeRy, 0));
       const p = V3(lx, ly, lz).applyQuaternion(q);
@@ -2794,13 +2805,14 @@ class ZoneKit {
     const tri = new THREE.Shape(); tri.moveTo(-S / 2, 0); tri.lineTo(0, RH); tri.lineTo(S / 2, 0); tri.closePath();
     const prism = new THREE.ExtrudeGeometry(tri, { depth: L - 0.04, bevelEnabled: false }); prism.translate(0, 0, -(L - 0.04) / 2);
     place(wallC, prism, 0, 0, 0);
-    const a = Math.atan2(RH, S / 2), sl = Math.hypot(S / 2, RH) + ov;
+    const a = Math.atan2(RH, S / 2);
     for (const sd of [-1, 1]) {
-      const mx = sd * (S / 4 + Math.cos(a) * ov / 2 * 1) , my = RH / 2 - Math.sin(a) * ov / 2 + 0.1;
-      place(roofC, B(sl, 0.18, L + ov * 2), mx + sd * 0.02, my, 0, -sd * a);
+      const eo = eaveOv(sd > 0 ? sP : sN), sl = Math.hypot(S / 2, RH) + eo;
+      const mx = sd * (S / 4 + Math.cos(a) * eo / 2), my = RH / 2 - Math.sin(a) * eo / 2 + 0.1;
+      place(roofC, B(sl, 0.18, RL), mx + sd * 0.02, my, rz0, -sd * a);
     }
-    place(roofC, B(0.34, 0.24, L + ov * 2 + 0.02), 0, RH + 0.1, 0);
-    for (const sd of [-1, 1]) { const ear = new THREE.ConeGeometry(0.42, 0.8, 4); ear.rotateY(Math.PI / 4); place(roofC, ear, 0, RH + 0.5, sd * (L / 2 + ov - 0.2), 0, [1, 1, 0.5]); }
+    place(roofC, B(0.34, 0.24, RL + 0.02), 0, RH + 0.1, rz0);
+    for (const sd of [-1, 1]) { if (sides[sd > 0 ? eP : eN].abut) continue; const ear = new THREE.ConeGeometry(0.42, 0.8, 4); ear.rotateY(Math.PI / 4); place(roofC, ear, 0, RH + 0.5, sd * (L / 2 + ov - 0.2), 0, [1, 1, 0.5]); }
     if (r() < 0.55) place(stone, B(0.6, 1.8, 0.6), S * 0.22, RH * 0.55 + 0.4, (r() - 0.5) * L * 0.5);
   }
   // ---------------- 町の小物 ----------------
@@ -2833,12 +2845,29 @@ class ZoneKit {
     const tip = new THREE.ConeGeometry(w / 2, 0.5, 3); tip.rotateZ(Math.PI);
     this.mg(this.stdM(col, 0.9, { side: THREE.DoubleSide }), tip, x, y0 - h - 0.2, z, [0, ry, 0], [1, 1, 0.05]);
   }
-  // 丸い植え込みと木
+  // 丸い植え込みと木：石の鉢（ふちに笠石）に土。根もとの張った幹から枝が分かれ、葉の茂った玉（玉仕立てと同じ葉）をいくつも重ねた樹冠。
+  //   happy（王国に笑顔が戻った）：緑の葉と桃色の花。そうでなければ灰緑の葉
   planterTree(x, z, s = 1, happy = true) {
-    this.cyl(x, z, 0.9 * s, 0.55, 'stone', { seg: 14 });
-    this.mesh(new THREE.CylinderGeometry(0.8 * s, 0.8 * s, 0.06, 14), 'dirt', x, 0.56, z, { noShadow: true });
-    this.roundTree(x, z, 0.8 * s, happy ? 'leaf' : 'leafGray', { col: false, fruit: happy && this.r() < 0.5 ? '#ff9ab8' : null });
-    if (happy) this.flowers(x, z, 8, 0.8 * s, ['#ff8ab8', '#ffd24a', '#ffffff']);
+    const y = this.gy(x, z), V2 = (a, b) => new THREE.Vector2(a, b), R = 0.9 * s;
+    this.mesh(new THREE.LatheGeometry([[0, 0], [R * 0.94, 0], [R, 0.06], [R, 0.44], [R + 0.06, 0.46], [R + 0.06, 0.56], [R - 0.1, 0.56], [R - 0.1, 0.5], [0, 0.5]].map(([a, b]) => V2(a, b)), 28), 'stone', x, 0, z);
+    { const g = new THREE.TorusGeometry(R + 0.03, 0.035, 6, 28); g.rotateX(Math.PI / 2); this.mg('stone2', g, x, y + 0.56, z); }
+    this.mesh(new THREE.CircleGeometry(R - 0.1, 24), 'dirt', x, 0.52, z, { rx: -Math.PI / 2, noShadow: true });
+    this.col(x, z, R + 0.06, 0.56);
+    // 幹：根もとの張り、少し傾いた二段の幹、樹冠へのびる枝
+    const lean = (this.r() - 0.5) * 0.12, top = 2.0 * s, tx = x + lean * top;
+    this.mg('bark', new THREE.CylinderGeometry(0.17 * s, 0.3 * s, 0.3 * s, 9), x, y + 0.5 + 0.15 * s, z);
+    this.mg('bark', new THREE.CylinderGeometry(0.12 * s, 0.17 * s, top - 0.5, 9), (x + tx) / 2, y + 0.5 + (top - 0.5) / 2, z, [0, 0, -lean]);
+    const balls = [[0, 2.6, 0, 0.85]], k0 = this.r() * Math.PI * 2;
+    for (let i = 0; i < 4; i++) { const a = k0 + i / 4 * Math.PI * 2 + (this.r() - 0.5) * 0.5; balls.push([Math.cos(a) * 0.62, 2.2 + this.r() * 0.35, Math.sin(a) * 0.62, 0.58 + this.r() * 0.1]); }
+    balls.push([(this.r() - 0.5) * 0.4, 3.25, (this.r() - 0.5) * 0.4, 0.5]);
+    for (const [bx, by, bz] of balls.slice(1, 5)) {   // 枝：幹の上のほうから、まわりの玉の中へ
+      const fx = tx, fy = y + top * 0.85, ex = tx + bx * s * 0.8, ey = y + by * s - 0.1, ez = z + bz * s * 0.8, dx = ex - fx, dy = ey - fy, dz = ez - z, L = Math.hypot(dx, dy, dz);
+      const g = new THREE.CylinderGeometry(0.04 * s, 0.07 * s, L, 6); g.translate(0, L / 2, 0); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), V3(dx / L, dy / L, dz / L)));
+      this.mg('bark', g, fx, fy, z);
+    }
+    // 樹冠：葉の玉（花は、王国に笑顔が戻ったあとの半分の木に）
+    const bloom = happy && this.r() < 0.5;
+    for (const [bx, by, bz, br] of balls) this.topiary(tx + bx * s, z + bz * s, br * s, { y: by * s + 0.0, green: happy, seg: 5, flowers: bloom && ['#ff9ab8', '#ffc8dc'], nFlowers: 4 });
   }
   // 運河の小舟
   boat(x, z, ry, col = '#8a5a3a') {
@@ -3528,10 +3557,11 @@ class ZoneKit {
     if (flower) for (let i = 0; i < 4; i++) this.mesh(new THREE.SphereGeometry(0.09 * s, 6, 4), flower, x + (this.r() - 0.5) * 1.2 * s, 0.62 * s, z + (this.r() - 0.5) * 0.6 * s, { noShadow: true });
     this.col(x, z, 0.8 * s, 0.8 * s);
   }
-  flowers(x, z, n = 10, r = 2, cols = ['#ffffff', '#ffe07a', '#ffb8d8', '#b8d8ff']) {
+  // y0：地面からの高さ（花壇や鉢の土の上に植えるとき）
+  flowers(x, z, n = 10, r = 2, cols = ['#ffffff', '#ffe07a', '#ffb8d8', '#b8d8ff'], y0 = 0) {
     const stem = this.batch('leaf2');
     for (let i = 0; i < n; i++) {
-      const a = this.r() * Math.PI * 2, d = Math.sqrt(this.r()) * r, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d, y = this.gy(px, pz), h = 0.25 + this.r() * 0.2;
+      const a = this.r() * Math.PI * 2, d = Math.sqrt(this.r()) * r, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d, y = this.gy(px, pz) + y0, h = 0.25 + this.r() * 0.2;
       stem.box(px - 0.015, y, pz - 0.015, px + 0.015, y + h, pz + 0.015);
       this.batch(cols[i % cols.length]).box(px - 0.08, y + h, pz - 0.08, px + 0.08, y + h + 0.06, pz + 0.08, '');
     }
@@ -3903,6 +3933,108 @@ class ZoneKit {
     const rings = pts.map(([px, py, pz], i) => { const m = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.26, 24), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.5, depthWrite: false }));
       m.rotation.x = -Math.PI / 2; m.position.set(px, py, pz); this.scene.add(m); return { m, ph: i / pts.length }; });
     return t => { for (const r of rings) { const k = (t * 0.7 + r.ph) % 1; r.m.scale.setScalar(1 + k * 3); r.m.material.opacity = 0.5 * (1 - k); } };
+  }
+  // 刈りこんだ植木の葉の材質（生け垣と玉仕立てで共用）。body：葉がびっしり茂った模様（すき間なく並ぶ）、fringe：ふちが葉の形に透ける帯、
+  //   rim：玉の輪郭の板。どれも頂点の色で明るさをつける。green = false（色を失った城）：くすんだ灰緑
+  leafMats(green = true) {
+    const k = 'hedgeLeaf' + green;
+    if (TexCache[k]) return TexCache[k];
+    const cols = green ? ['#2c5e1c', '#3a7424', '#4b8c2c', '#5fa636', '#7cc043', '#a6dc5c'] : ['#565e50', '#646e5c', '#727c68', '#828c76', '#96a088', '#b4bca4'];
+    // ぎざぎざの葉（とがった先が五つ）と、まん中の葉脈
+    const leaf = (g, x0, y0, r, a, col) => {
+      g.fillStyle = col; g.beginPath();
+      for (let i = 0; i < 10; i++) { const q = (i % 2 ? 0.48 : 1) * r * (0.85 + Math.random() * 0.3), b = a + i / 10 * Math.PI * 2; (i ? g.lineTo : g.moveTo).call(g, x0 + Math.cos(b) * q, y0 + Math.sin(b) * q); }
+      g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(20,50,10,.35)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + Math.cos(a) * r * 0.8, y0 + Math.sin(a) * r * 0.8); g.stroke();
+    };
+    // n 枚の葉を、暗い色（奥）から明るい色（手前）へ重ねる。where で置く場所を決め、横（と縦）にはつなぎ目なく並ぶように反対側にも描く
+    const paint = (W, H, n, where, wrapY) => {
+      const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+      for (let i = 0; i < n; i++) {
+        const t = i / n, [x0, y0] = where(), r = 22 + Math.random() * 16, a = Math.random() * Math.PI * 2;
+        const col = cols[Math.min(cols.length - 1, Math.floor(t * cols.length + (Math.random() - 0.5) * 1.5))] || cols[0];
+        for (const ox of [-W, 0, W]) for (const oy of wrapY ? [-H, 0, H] : [0]) { const px = x0 + ox, py = y0 + oy; if (px > -r && px < W + r && py > -r && py < H + r) leaf(g, px, py, r, a, col); }
+      }
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.wrapT = wrapY ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping; t.anisotropy = 4;
+      return [c, t];
+    };
+    const [bc, bt] = paint(512, 512, 620, () => [Math.random() * 512, Math.random() * 512], true);
+    { const g = bc.getContext('2d'); g.globalCompositeOperation = 'destination-over'; g.fillStyle = cols[0]; g.fillRect(0, 0, 512, 512); bt.needsUpdate = true; }   // 葉のすき間は暗い緑
+    const [, ft] = paint(512, 128, 190, () => [Math.random() * 512, 64 + (Math.random() - 0.5) * 50], false);   // 帯：まん中に葉を集め、上下のふちはぎざぎざに透ける
+    // 丸い輪郭の板（玉仕立ての、ぎざぎざの輪郭。いつもカメラのほうを向く）：まん中は塗りつぶし、ふちに葉を並べる
+    const [rc, rt] = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; return [c, new THREE.CanvasTexture(c)]; })(), rg = rc.getContext('2d');
+    rg.fillStyle = cols[2]; rg.beginPath(); rg.arc(128, 128, 112, 0, Math.PI * 2); rg.fill();
+    for (let i = 0; i < 160; i++) { const a = Math.random() * Math.PI * 2, d = 100 + Math.random() * 12, r = 9 + Math.random() * 6; leaf(rg, 128 + Math.cos(a) * d, 128 + Math.sin(a) * d, r, Math.random() * Math.PI * 2, cols[1 + Math.floor(Math.random() * 3)]); }
+    rt.colorSpace = THREE.SRGBColorSpace;
+    TexCache[k] = {
+      rim: new THREE.SpriteMaterial({ map: rt, color: '#a8a8a8', alphaTest: 0.5 }),
+      body: new THREE.MeshStandardMaterial({ map: bt, vertexColors: true, roughness: 0.95, metalness: 0 }),
+      fringe: new THREE.MeshStandardMaterial({ map: ft, vertexColors: true, roughness: 0.95, metalness: 0, alphaTest: 0.5, side: THREE.DoubleSide }),
+    };
+    return TexCache[k];
+  }
+  // 刈りこんだ生け垣：角の丸い四角い箱に、ぎざぎざの小さな葉がびっしり茂った模様を貼る（下ほど暗く、上ほど明るい）。
+  //   上のふちと四すみには、葉の帯（ふちが葉の形に透ける板）を斜めに立てて、輪郭を葉のぎざぎざにする。
+  //   幅 w（x 方向）・高さ h・奥行き d、o.y = 置く高さ（花壇の土の上など）。green = false（色を失った城）：くすんだ灰緑
+  hedge(x, z, w, h, d, o = {}) {
+    const green = o.green !== false;
+    const M = this.leafMats(green), y0 = this.gy(x, z) + (o.y || 0), T = 1.0, B = 0.25;   // 模様 1 枚 = 1m 四方、帯の幅 = 0.25m
+    const shade = yy => 0.55 + 0.45 * THREE.MathUtils.clamp(yy / h, 0, 1);       // 下ほど暗い
+    const tint = (geo, f) => { const pa = geo.attributes.position, cc = new Float32Array(pa.count * 3); for (let i = 0; i < pa.count; i++) cc.fill(f(pa.getY(i)), i * 3, i * 3 + 3); geo.setAttribute('color', new THREE.BufferAttribute(cc, 3)); return geo; };
+    // 本体：角の丸い箱。UV は面の向きで投影
+    const geo = new THREEX.RoundedBoxGeometry(w, h, d, 2, 0.08), pa = geo.attributes.position, na = geo.attributes.normal, uv = geo.attributes.uv;
+    for (let i = 0; i < pa.count; i++) {
+      const ax = Math.abs(na.getX(i)), ay = Math.abs(na.getY(i)), az = Math.abs(na.getZ(i)), px = pa.getX(i), py = pa.getY(i), pz = pa.getZ(i);
+      if (ay >= ax && ay >= az) uv.setXY(i, px / T, pz / T); else if (ax >= az) uv.setXY(i, pz / T, py / T); else uv.setXY(i, px / T, py / T);
+    }
+    geo.translate(0, h / 2, 0); tint(geo, shade);
+    this.mesh(geo, M.body, x, (o.y || 0), z);
+    // 葉の帯：上の四つのふちには 45° に傾けて、四すみには縦に立てる
+    const cards = [], strip = len => { const g = new THREE.PlaneGeometry(len, B), u = g.attributes.uv; for (let i = 0; i < u.count; i++) u.setX(i, u.getX(i) * len / T + this.r()); return g; };
+    for (const [len, ry, ox, oz] of [[w, 0, 0, d / 2], [w, Math.PI, 0, -d / 2], [d, Math.PI / 2, w / 2, 0], [d, -Math.PI / 2, -w / 2, 0]]) {
+      const g = strip(len + 0.1); g.rotateX(-Math.PI / 4); g.rotateY(ry); g.translate(ox, h - 0.01, oz); cards.push(tint(g, () => 1));
+    }
+    for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const g = strip(h + 0.05); g.rotateZ(Math.PI / 2); g.rotateY(Math.atan2(sx, sz)); g.translate(sx * w / 2, h / 2, sz * d / 2); cards.push(tint(g, shade));
+    }
+    const fm = new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(cards), M.fringe); fm.position.set(x, y0, z); fm.receiveShadow = true; this.scene.add(fm);
+    if (o.col !== false) this.colBox(x, z, w / 2, d / 2, (o.y || 0) + h);
+  }
+  // 玉仕立ての植木：葉の模様の球と、輪郭をぎざぎざにする葉の板（カメラのほうを向く。球の後ろのふちだけが見える）。
+  //   (x, z)、球の半径 r、o.y = 球の中心の高さ、o.green、o.flowers：花の色（小さな五弁の花を上半分に咲かせる）、o.nFlowers：花の数（既定 9）、o.seg：球の細かさ（既定 8）
+  topiary(x, z, r, o = {}) {
+    const M = this.leafMats(o.green !== false), cy = this.gy(x, z) + (o.y ?? r), T = 1.0;
+    // 球：分割した箱をふくらませた球（面ごとの UV がそのまま使えて、模様がのびない）
+    const n = o.seg || 8, geo = new THREE.BoxGeometry(1, 1, 1, n, n, n), pa = geo.attributes.position, na = geo.attributes.normal, uv = geo.attributes.uv, cc = new Float32Array(pa.count * 3), P = new THREE.Vector3(), q = 2.2 * r / T;
+    for (let i = 0; i < pa.count; i++) {
+      P.fromBufferAttribute(pa, i).normalize(); na.setXYZ(i, P.x, P.y, P.z); P.multiplyScalar(r); pa.setXYZ(i, P.x, P.y, P.z); uv.setXY(i, uv.getX(i) * q, uv.getY(i) * q);
+      cc.fill(0.6 + 0.4 * (P.y + r) / (2 * r), i * 3, i * 3 + 3);   // 下ほど暗い
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(cc, 3));
+    const m = new THREE.Mesh(geo, M.body); m.position.set(x, cy, z); m.castShadow = m.receiveShadow = true; this.scene.add(m);
+    const sp = new THREE.Sprite(M.rim); sp.scale.setScalar(r * 2.3); sp.position.set(x, cy, z); this.scene.add(sp);
+    if (o.flowers) {
+      const N = new THREE.Vector3(), Q = new THREE.Quaternion(), E = new THREE.Euler(), Z = new THREE.Vector3(0, 0, 1);
+      const nf = o.nFlowers || 9;
+      for (let i = 0; i < nf; i++) {
+        const a = i / nf * Math.PI * 2 + this.r() * 0.5, e = 0.25 + this.r() * 0.9;
+        N.set(Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e)); E.setFromQuaternion(Q.setFromUnitVectors(Z, N)); const rot = [E.x, E.y, E.z];
+        // 五枚の丸い花びらと、まん中の花芯
+        const pet = THREEX.BufferGeometryUtils.mergeGeometries([0, 1, 2, 3, 4].map(k => new THREE.CircleGeometry(0.034, 8).translate(Math.cos(k * 1.2566) * 0.036, Math.sin(k * 1.2566) * 0.036, 0)));
+        this.mg(o.flowers[i % o.flowers.length], pet, x + N.x * r * 1.03, cy + N.y * r * 1.03, z + N.z * r * 1.03, rot);
+        this.mg('#ffe680', new THREE.CircleGeometry(0.022, 8), x + N.x * r * 1.035, cy + N.y * r * 1.035, z + N.z * r * 1.035, rot);
+      }
+    }
+    return m;
+  }
+  // 大理石の壺の植木鉢（金の帯）。高さ 0.82、口の半径 0.6。上に土
+  urnPot(x, z, trim = 'gold') {
+    const y = this.gy(x, z), V2 = (a, b) => new THREE.Vector2(a, b);
+    const prof = [[0, 0], [0.42, 0], [0.44, 0.05], [0.32, 0.13], [0.27, 0.22], [0.33, 0.3], [0.48, 0.5], [0.55, 0.68], [0.6, 0.74], [0.6, 0.82], [0.52, 0.82], [0.5, 0.76], [0, 0.76]];
+    this.mesh(new THREE.LatheGeometry(prof.map(([a, b]) => V2(a, b)), 32), 'marble', x, 0, z);
+    for (const [rr, yy, t] of [[0.55, 0.66, 0.03], [0.43, 0.05, 0.025], [0.27, 0.22, 0.025]]) { const g = new THREE.TorusGeometry(rr, t, 6, 32); g.rotateX(Math.PI / 2); this.mg(trim, g, x, y + yy, z); }
+    this.mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.02, 24), 'dirt', x, 0.78, z, { noShadow: true });
+    this.col(x, z, 0.6, 0.82);
   }
   // 城の前庭の噴水（左右に一つずつ）：金の帯の丸い水盤、中央の台の上に金の首輪の大理石の猫の像（ry = 猫の向き）。
   //   台の四方の金の猫の頭の噴き口から、水のアーチが水盤へ落ちる。wet = false（色を失った城）：灰色の石で、水は止まっている
@@ -4722,7 +4854,6 @@ const ZONE_BUILD = {
     for (const a of [0.8, 2.35, 3.9, 5.5]) K.bench(Math.sin(a) * 6.6, -8 + Math.cos(a) * 6.6, a);
     for (const [x, z] of [[-14, -12], [14, -12], [-14, 2], [14, 2]]) K.planterTree(x, z, 1.1, happy);
     for (const [x, z] of [[-13.8, -13.4], [13.8, -13.4], [-20, -13.5], [20, -13.5], [-20, 7.5], [20, 7.5], [-8, 7.5], [8, 7.5]]) K.streetLamp(x, z, happy);
-    K.flowers(-18, -4, 14, 2, happy ? ['#ff8ab8', '#ffd24a', '#ffffff'] : ['#a8a8a0']); K.flowers(18, -6, 14, 2, happy ? ['#ffb8d8', '#ffffff', '#b8d8ff'] : ['#a8a8a0']);
     K.bunting(-22, -13, 22, -13, flagCols, 5.2); K.bunting(-22, 7, 22, 7, flagCols, 5.2);
     // 大階段の両脇の猫の像と、高台の擁壁から下がる垂れ幕
     K.catStatue(-11.5, -13.6, 0, 1.4, happy ? 'marble' : 'stone', happy ? '#ffd27a' : null);
@@ -4743,20 +4874,18 @@ const ZONE_BUILD = {
     for (const [x, z] of [[-8.8, 13], [-8.8, 22], [8.8, 23], [-8.8, 29], [8.8, 29]]) K.streetLamp(x, z, happy);
     for (const z of [16, 24]) K.bunting(-9.6, z, 9.6, z + 1, flagCols, 5.4);
 
-    // ---- 北の高台：城への坂と塔への小道、花壇と街灯 ----
+    // ---- 北の高台：城への坂と塔への小道、植え込みの木と街灯 ----
     K.signpost(-12, -21, 0, '↑ ニャハハ城', '王さまのお城', signCol);
     K.signpost(20, -21, 0, '↑ 笑顔の塔', 'この先', signCol);
     for (const x of [-28, -20, -2, 6, 26]) K.planterTree(x, -21, 0.9, happy);
     for (const x of [-24, -6, 2, 10, 30]) K.streetLamp(x, -19.5, happy);
     for (const x of [-15, -5]) K.streetLamp(x, -30, happy);
     K.bunting(-15, -27, -5, -27, flagCols, 4.6);
-    K.flowers(-10, -24, 16, 2.5, happy ? ['#ff8ab8', '#ffd24a', '#ffffff'] : ['#a8a8a0']); K.flowers(20, -28, 10, 1.6, happy ? ['#ffb8d8', '#ffffff'] : ['#a8a8a0']);
 
     // ---- 西の宿屋の街区（一段高い） ----
     K.sign(-23.9, 14, Math.PI / 2, '宿 わらいねこ亭', happy ? 'ようこそ！' : null, signCol, 3.3, 2.6);
     for (const [x, z] of [[-18, 24], [-18, 31]]) K.streetLamp(x, z, happy);
     K.planterTree(-12.5, 20, 0.8, happy); K.barrel(-23, 22); K.barrel(-22.2, 23.2); K.crate(-23, 30);
-    K.flowers(-14, 32, 10, 1.4, happy ? ['#ff8ab8', '#ffd24a'] : ['#a8a8a0']);
 
     // ---- 東の市場通り：運河ぞいの屋台、小舟、橋の灯り ----
     K.stall(25.5, 14, -Math.PI / 2, happy ? 'clothYellow' : 'stone2', ['#ffd27a', '#8ad8ff', '#ff9a7a']);
@@ -4786,7 +4915,7 @@ const ZONE_BUILD = {
     // 城内への扉（幅 8m・高さ 8m の城の玄関）の両脇：柱と金の猫の像、花の鉢
     for (const x of [-5.6, 5.6]) { K.column(x, -20, 9.5, 0.55, 'marble'); K.mesh(new THREE.SphereGeometry(0.34, 12, 10), 'gold', x, 9.85, -20); }
     K.catStatue(-11, -18, 0.4, 1.3, 'marble', happy ? '#ffd27a' : null); K.catStatue(11, -18, -0.4, 1.3, 'marble', happy ? '#ffd27a' : null);
-    for (const x of [-7, 7]) { K.cyl(x, -19.4, 0.55, 0.8, 'marble', { seg: 12 }); K.mesh(new THREE.SphereGeometry(0.62, 14, 10), happy ? 'leaf' : 'leafGray', x, 1.25, -19.4); if (happy) K.flowers(x, -19.4, 6, 0.5, ['#ff8ab8', '#ffd24a']); }
+    for (const x of [-7, 7]) { K.urnPot(x, -19.4); K.topiary(x, -19.4, 0.6, { y: 1.28, green: happy, flowers: happy && ['#ff8ab8', '#ffd24a'] }); }
     // 回廊：左右の列柱と屋根（金の縁）
     for (const sd of [-1, 1]) {
       for (let z = -5; z <= 19; z += 6) K.column(sd * 12.6, z, 5.2, 0.42, 'marble');
@@ -4794,11 +4923,14 @@ const ZONE_BUILD = {
       K.mesh(new THREE.BoxGeometry(0.2, 0.3, 27.4), 'gold', sd * 12.15, 5.3, 7);
       const rf = new THREE.BoxGeometry(4.8, 0.2, 27.8); K.mesh(rf, happy ? 'roofRed' : 'roofGray', sd * 14.1, 5.8, 7, { rz: sd * 0.25 });
     }
-    // 生け垣の庭と、左右の噴水
+    // 生け垣と花の花壇（大理石のふちで囲んだ土。ふちにはぶつかる）と、左右の噴水
     for (const sd of [-1, 1]) {
-      K.box(sd * 8.5, -1, 3.2, 0.9, 1.2, 'leaf2', { round: true });
-      K.gardenFountain(sd * 8.5, 17, -sd * Math.PI / 2, happy);   // 猫の像は、まん中のじゅうたんのほうを向く
-      K.flowers(sd * 8.5, 1.5, 10, 1.4, happy ? ['#ff8ab8', '#ffd24a', '#ffffff'] : ['#a8a8a0']);
+      const bx = sd * 8.5, bz = 0.3, bw = 5.2, bd = 5.2, bh = 0.4;
+      for (const s2 of [-1, 1]) { K.box(bx + s2 * (bw / 2 - 0.2), bz, 0.4, bh, bd, 'marble'); K.box(bx, bz + s2 * (bd / 2 - 0.2), bw, bh, 0.4, 'marble'); }
+      K.mesh(new THREE.PlaneGeometry(bw - 0.8, bd - 0.8), 'dirt', bx, bh - 0.05, bz, { rx: -Math.PI / 2, noShadow: true }); K.colBox(bx, bz, bw / 2, bd / 2, bh);
+      K.hedge(bx, -1, 3.4, 0.9, 1.1, { y: bh - 0.05, green: happy });
+      K.flowers(bx, 1.2, 12, 1.2, happy ? ['#ff8ab8', '#ffd24a', '#ffffff'] : ['#a8a8a0'], bh - 0.05);
+      K.gardenFountain(bx, 17, -sd * Math.PI / 2, happy);   // 猫の像は、まん中のじゅうたんのほうを向く
     }
     // 城壁の垂れ幕（回廊の屋根の上）と、北の壁の紋章の旗
     for (const sd of [-1, 1]) for (const z of [-3, 3, 9, 15]) K.banner(sd * 15.95, z, sd > 0 ? -Math.PI / 2 : Math.PI / 2, 9.4, 3, clothC);
@@ -4865,7 +4997,8 @@ const ZONE_BUILD = {
     K.catStatue(-8.2, -11, 0.3, 1.2, 'gold', '#ffffff'); K.catStatue(8.2, -11, -0.3, 1.2, 'gold', '#ffffff');
     for (const sd of [-1, 1]) for (let z = -10; z <= 2; z += 4) K.column(sd * 9.5, z, T.ceilOf(T.at(sd * 9.5, z)) - 0.1, 0.5, 'marble');
     for (const z of [-12, -2]) chandelier(0, z, 1.1);
-    for (const sd of [-1, 1]) for (const z of [-8, 0]) K.banner(sd * 13.95, z, -sd * Math.PI / 2, 6.8, 3.4, clothC);
+    // 垂れ幕：左右の壁の付け柱（z = -16, 0。壁から 0.34m 出ている）の正面に下げる
+    for (const sd of [-1, 1]) for (const z of [-16, 0]) K.banner(sd * 13.61, z, -sd * Math.PI / 2, 6.0, 3.0, clothC, '#ffd27a', 0.8);
     for (const sd of [-1, 1]) for (const z of [-4, 3]) sconce(sd * 13.9, z, -sd * Math.PI / 2);
     // ---- 宝物庫：笑いの実の台座（ガラスの覆い）、金貨の山と宝箱 ----
     K.cyl(20, -9, 0.7, 1.2, 'marble', { seg: 12 }); K.mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.1, 16), 'gold', 20, 1.25, -9);
@@ -4875,16 +5008,15 @@ const ZONE_BUILD = {
     K.box(17.6, -5, 1.1, 0.8, 0.7, 'clothRed', { round: true }); K.mesh(new THREE.BoxGeometry(1.14, 0.1, 0.74), 'gold', 17.6, 0.55, -5);
     sconce(23.9, -12, -Math.PI / 2); sconce(16.1, -5, Math.PI / 2);
     // ---- 図書室：本棚、読書机と地球儀 ----
-    shelf(-23.6, -10, Math.PI / 2, 3.4); shelf(-23.6, -4.6, Math.PI / 2, 2); shelf(-20, -14.6, 0, 4);
+    shelf(-23.6, -10.4, Math.PI / 2, 3.4); shelf(-23.6, -4.6, Math.PI / 2, 2); shelf(-20, -14.6, 0, 4);
     K.box(-20, -8, 1.4, 0.8, 0.9, 'wood', { round: true });
     K.mesh(new THREE.BoxGeometry(0.5, 0.06, 0.36), '#f4ecd8', -20, 0.84, -8, { ry: 0.3 });
     K.mesh(new THREE.SphereGeometry(0.3, 16, 12), happy ? '#6ab0e8' : '#9aa8b4', -21.6, 1.3, -6); K.cyl(-21.6, -6, 0.1, 1.0, 'wood2', { seg: 6 });
     chandelier(-20, -9, 0.6);
-    // ---- 入口の大広間：じゅうたん、歴代の王の肖像画、猫の騎士の像、鉢植え、大シャンデリア ----
+    // ---- 入口の大広間：じゅうたん、歴代の王の肖像画、玉仕立ての植木、大シャンデリア ----
     K.mesh(new THREE.PlaneGeometry(3.6, 15.6), 'clothRed', 0, 0.03, 14.2, { rx: -Math.PI / 2, noShadow: true });
-    for (const [x, z, ry, col] of [[-13.9, 8.6, Math.PI / 2, '#7a3a4a'], [-13.9, 20, Math.PI / 2, '#3a4a7a'], [13.9, 8.6, -Math.PI / 2, '#3a6a4a'], [13.9, 20, -Math.PI / 2, '#6a4a2a']]) portrait(x, z, ry, happy ? col : '#6a6670');
-    for (const [x, z] of [[-10, 20.6], [10, 20.6]]) { K.catStatue(x, z, Math.PI, 1.2, 'stone2'); K.mg('iron', new THREE.CylinderGeometry(0.03, 0.03, 2.6, 5), x + 0.5, K.gy(x, z) + 1.9, z, [0, 0, 0.1]); }
-    for (const [x, z] of [[-12.5, 7], [12.5, 7], [-12.5, 21], [12.5, 21]]) { K.cyl(x, z, 0.5, 0.7, 'marble', { seg: 12 }); K.mesh(new THREE.SphereGeometry(0.6, 14, 10), happy ? 'leaf' : 'leafGray', x, 1.15, z); }
+    for (const [x, z, ry, col] of [[-13.9, 10, Math.PI / 2, '#7a3a4a'], [-13.9, 20, Math.PI / 2, '#3a4a7a'], [13.9, 10, -Math.PI / 2, '#3a6a4a'], [13.9, 20, -Math.PI / 2, '#6a4a2a']]) portrait(x, z, ry, happy ? col : '#6a6670');
+    for (const [x, z] of [[-12.5, 7], [12.5, 7], [-12.5, 21], [12.5, 21]]) { K.urnPot(x, z); K.topiary(x, z, 0.6, { y: 1.28, green: happy, flowers: happy && ['#ff8ab8', '#ffd24a'] }); }
     chandelier(0, 12, 1.2);
     for (const sd of [-1, 1]) for (const z of [11.5, 18.5]) sconce(sd * 13.9, z, -sd * Math.PI / 2);
     K.bench(-8, 13, Math.PI / 2); K.bench(8, 13, -Math.PI / 2);

@@ -216,8 +216,7 @@ class FieldView extends BaseView {
     const put = (g, x, z) => { const y = this.gy(x, z); g.position.set(x, y, z); return y; };
     const col = (x, z, r) => this.colliders.push({ x, z, r, y: this.gy(x, z) });
     // 時空アンカー
-    this.anchor = this.makeAnchor(); put(this.anchor.g, Z.anchor[0], Z.anchor[1]); this.scene.add(this.anchor.g);
-    col(Z.anchor[0], Z.anchor[1], 0.7);
+    if (!Z.noAnchor) { this.anchor = this.makeAnchor(); put(this.anchor.g, Z.anchor[0], Z.anchor[1]); this.scene.add(this.anchor.g); col(Z.anchor[0], Z.anchor[1], 0.7); }
     // 住人
     this.npcs = npcDefs.map(n => {
       const m = buildCharacter(n.key); m.setPose(POSES[n.pose || 'idle']); if (m.face) m.face.set(n.pose === 'sleep' ? 'sleepy' : n.play ? 'joy' : defaultFace(n.key));
@@ -1087,7 +1086,7 @@ class FieldView extends BaseView {
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
     for (const c of this.crystals) if (!c.broken && c.pos.distanceTo(p) < 1.8) return { type: 'bush', text: '調べる：またたびの茂み' };
     const same = (x, z) => Math.abs(this.gy(x, z) - p.y) < 1.5;
-    if (Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && same(Z.anchor[0], Z.anchor[1])) return { type: 'anchor', text: 'ねこ地蔵：ひと休み（HP回復）／ワールドマップ' };
+    if (!Z.noAnchor && Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && same(Z.anchor[0], Z.anchor[1])) return { type: 'anchor', text: 'ねこ地蔵：ひと休み（HP回復）／ワールドマップ' };
     if (this.T) {
       const i = this.T.at(p.x, p.z);
       // 区画間エレベーターの籠の中
@@ -2267,7 +2266,7 @@ class FieldView extends BaseView {
     }
     const dot = (x, z, col, r, sq) => { const [px, py] = P(x, z); g.fillStyle = col; if (sq) g.fillRect(px - r, py - r, r * 2, r * 2); else { g.beginPath(); g.arc(px, py, r, 0, Math.PI * 2); g.fill(); } };
     for (const gt of this.gates) { const [x, y] = P(gt.x, gt.z); g.fillStyle = gt.locked ? '#ff4d6d' : '#8ae0ff'; g.save(); g.translate(x, y); g.rotate(Math.atan2(-gt.nx, gt.nz)); g.beginPath(); g.moveTo(0, 5); g.lineTo(5, -3); g.lineTo(-5, -3); g.fill(); g.restore(); }
-    dot(this.zone.anchor[0], this.zone.anchor[1], '#6fd6ff', 4, true);
+    if (!this.zone.noAnchor) dot(this.zone.anchor[0], this.zone.anchor[1], '#6fd6ff', 4, true);
     if (this.zone.portal) dot(this.zone.portal[0], this.zone.portal[1], '#e8c77a', 5);
     this.npcs.forEach(n => dot(n.pos.x, n.pos.z, '#6dff9e', 3));
     this.notes.forEach(n => dot(n.pos.x, n.pos.z, '#ffffff', 2.5, true));
@@ -2314,7 +2313,7 @@ class FieldView extends BaseView {
       g.globalAlpha = 1;
     };
     const Z = this.zone;
-    dot(Z.anchor[0], this.gy(Z.anchor[0], Z.anchor[1]), Z.anchor[1], '#6fd6ff', 4, true);
+    if (!Z.noAnchor) dot(Z.anchor[0], this.gy(Z.anchor[0], Z.anchor[1]), Z.anchor[1], '#6fd6ff', 4, true);
     if (Z.portal) dot(Z.portal[0], this.gy(Z.portal[0], Z.portal[1]), Z.portal[1], '#e8c77a', 5);
     this.npcs.forEach(n => dot(n.pos.x, n.pos.y, n.pos.z, '#6dff9e', 3));
     this.notes.forEach(n => dot(n.pos.x, n.pos.y, n.pos.z, '#ffffff', 2.5, true));
@@ -2400,8 +2399,7 @@ class FieldView extends BaseView {
     this.updateSleepers(d, t);
     this.updateSafe(); this.updateArea();
     this.notes.forEach((n, i) => { n.mark.material.opacity = 0.5 + Math.sin(t * 3 + i) * 0.4; });
-    this.anchor.rings.forEach((r, i) => { r.rotation.x = t * (0.8 + i * 0.5); r.rotation.y = t * (0.5 + i * 0.3); });
-    this.anchor.core.rotation.y = t;
+    if (this.anchor) { this.anchor.rings.forEach((r, i) => { r.rotation.x = t * (0.8 + i * 0.5); r.rotation.y = t * (0.5 + i * 0.3); }); this.anchor.core.rotation.y = t; }
     const cam = this.camera.position;
     (this.T ? this.exitsPhys.filter(g => g.arrows) : this.gates).forEach(g => {
       g.arrows.forEach((a, i) => { a.scale.setScalar(0.8 + ((t * 1.5 + i * 0.33) % 1) * 0.4); });
@@ -2575,6 +2573,8 @@ function worldMapHTML(here) {
   let qz = cur && cur.step.t === 'field' ? cur.step.zone : null;
   // 塔・城などの上の階（parent のある区画）は、入口の階にまとめて表示する
   const ids = Object.keys(FIELD_ZONES).filter(id => !FIELD_ZONES[id].parent && (!CHAPTERS[FIELD_ZONES[id].ci].hidden || zoneOpen(id)));
+  // real = 本当にいる区画。上の階・奥の区画にいるときは、入口の区画のねこ地蔵へひとっとびできる
+  const real = here;
   if (here && FIELD_ZONES[here] && FIELD_ZONES[here].parent) here = FIELD_ZONES[here].parent;
   if (qz && FIELD_ZONES[qz].parent) qz = FIELD_ZONES[qz].parent;
   const lines = [];
@@ -2593,8 +2593,8 @@ function worldMapHTML(here) {
     <div class="wm-graph"><svg width="1000" height="580" viewBox="0 0 1000 580"><defs><radialGradient id="wmtree"><stop offset="0" stop-color="#8ad86a"/><stop offset="1" stop-color="#8ad86a" stop-opacity="0"/></radialGradient></defs>
       <circle cx="470" cy="522" r="70" fill="url(#wmtree)" opacity=".35"/>${lines.join('')}</svg>
     ${ids.map(id => { const Z = FIELD_ZONES[id], open = zoneOpen(id), vis = floorsOf(id).some(k => visited[k]), h = id === here;
-      return `<button class="wm-node ${h ? 'here' : ''} ${open ? '' : 'locked'} ${vis ? 'vis' : ''} ${Z.town ? 'town' : ''}" data-z="${id}" style="left:${Z.map2d[0]}px;top:${Z.map2d[1]}px" ${open && vis && !h ? '' : 'disabled'}>
-        ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${open ? Z.name : '？？？'}</b><small>${h ? '現在地' : !open ? 'まだ行けない' : vis ? 'ひとっとび' : 'まだ行ってない'}${open ? `　宝箱 ${chestsLeft(id)}` : ''}</small></button>`; }).join('')}
+      return `<button class="wm-node ${h ? 'here' : ''} ${open ? '' : 'locked'} ${vis ? 'vis' : ''} ${Z.town ? 'town' : ''}" data-z="${id}" style="left:${Z.map2d[0]}px;top:${Z.map2d[1]}px" ${open && vis && id !== real && !Z.noAnchor ? '' : 'disabled'}>
+        ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${open ? Z.name : '？？？'}</b><small>${id === real ? '現在地' : !open ? 'まだ行けない' : !vis ? 'まだ行ってない' : Z.noAnchor ? 'ねこ地蔵なし' : h ? '現在地・ひとっとび' : 'ひとっとび'}${open ? `　宝箱 ${chestsLeft(id)}` : ''}</small></button>`; }).join('')}
     </div>`;
 }
 
