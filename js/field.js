@@ -2594,7 +2594,7 @@ function worldMapHTML(here) {
       <circle cx="470" cy="522" r="70" fill="url(#wmtree)" opacity=".35"/>${lines.join('')}</svg>
     ${ids.map(id => { const Z = FIELD_ZONES[id], open = zoneOpen(id), vis = floorsOf(id).some(k => visited[k]), h = id === here;
       return `<button class="wm-node ${h ? 'here' : ''} ${open ? '' : 'locked'} ${vis ? 'vis' : ''} ${Z.town ? 'town' : ''}" data-z="${id}" style="left:${Z.map2d[0]}px;top:${Z.map2d[1]}px" ${open && vis && id !== real && !Z.noAnchor ? '' : 'disabled'}>
-        ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${open ? Z.name : '？？？'}</b><small>${id === real ? '現在地' : !open ? 'まだ行けない' : !vis ? 'まだ行ってない' : Z.noAnchor ? 'ねこ地蔵なし' : h ? '現在地・ひとっとび' : 'ひとっとび'}${open ? `　宝箱 ${chestsLeft(id)}` : ''}</small></button>`; }).join('')}
+        ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${open ? Z.mapName || Z.name : '？？？'}</b><small>${id === real ? '現在地' : !open ? 'まだ行けない' : !vis ? 'まだ行ってない' : Z.noAnchor ? 'ねこ地蔵なし' : h ? '現在地・ひとっとび' : 'ひとっとび'}${open ? `　宝箱 ${chestsLeft(id)}` : ''}</small></button>`; }).join('')}
     </div>`;
 }
 
