@@ -630,7 +630,7 @@ const SCENES = {
       ['kuro', '……それは本当の話だ。痛かった。', { f: 'angry', g: 'shake' }],
       ['shiro', 'こ、これは重症ね……。', { f: 'worry', g: 'shrug' }],
       ['shimin_b', '……この国の宝、「笑いの実」が盗まれてから、誰も笑えなくなったんだ。……王さまに会ってみるといい。', { f: 'sad', g: 'point', look: { all: [-10, 3, 40] } }],
-      ['n', '【目的】町の北、ニャハハ城の中庭へ。', { cam: 'wide', dur: 5 }],
+      ['n', '【目的】町の北、ニャハハ城の前庭へ。', { cam: 'wide', dur: 5 }],
     ] },
   c3_02: { title: 'ニャハハ王', bgm: 'sad', extra: ['daijin'],
     stage: { zone: 'castle_in', at: [0, -6], face: 0, host: 'nyahaha_ou', cast: { nyahaha_ou: { at: [0, 3.4], face: 'mike' }, daijin: { at: [-2, 3], face: 'mike' } } },

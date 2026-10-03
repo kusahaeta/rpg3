@@ -608,7 +608,9 @@ class FieldView extends BaseView {
   // 石の門・坑道の入口（観音開きの扉、奥に通路）
   makeGate(ph, st) {
     const g = new THREE.Group(), W = ph.width, mine = st.exit === 'tunnel', palace = (st.look || this.zone.arch) === 'palace';
-    const H = mine ? 4.2 : palace ? 5.4 : 4.6, col = ph.locked ? '#ff4d6d' : st.glow || THEMES[this.ch.bg].line;
+    // 門の高さ：出入口ごとの指定（exit.gateH：城の玄関など）がなければ、建物の作りで決まる
+    const gh = (ph.dests.find(d => d.exit.gateH) || { exit: {} }).exit.gateH;
+    const H = gh || (mine ? 4.2 : palace ? 5.4 : 4.6), col = ph.locked ? '#ff4d6d' : st.glow || THEMES[this.ch.bg].line;
     g.position.set(ph.x, ph.h, ph.z); g.rotation.y = Math.atan2(ph.nx, ph.nz);   // ローカル +Z が区画の内側
     this.scene.add(g);
     const top = Math.max(H + 1.2, this.exitTop(ph));
@@ -623,9 +625,11 @@ class FieldView extends BaseView {
     // 観音開きの扉（奥へ開く）
     const dm = palace ? new THREE.MeshStandardMaterial({ color: '#e8eef8', map: marbleTex(), metalness: 0.2, roughness: 0.35 }) : new THREE.MeshStandardMaterial({ color: '#7a5436', map: woodTex(), roughness: 0.85, metalness: 0 });
     const band = palace ? glowMat(col, 1.2) : M.iron, dw = W / 2 - 0.6;
+    // 重い扉：建物の作り（st.heavy）か、出入口ごとの指定（exit.heavy：町から城へ入る門など）。true は魔王城の配色
+    const heavy = st.heavy || (ph.dests.find(d => d.exit.heavy) || { exit: {} }).exit.heavy;
     const panels = [-1, 1].map(s => {
       const p = new THREE.Group(); p.position.set(s * (W / 2 - 0.65), 0, -0.1); g.add(p);
-      if (st.heavy) { p.add(heavyDoorLeaf(dw, H - 0.05, s, col)); return { p, s }; }
+      if (heavy) { p.add(heavyDoorLeaf(dw, H - 0.05, s, null, heavy === true ? 'demon' : heavy)); return { p, s }; }
       const m = new THREE.Mesh(new THREE.BoxGeometry(dw, H - 0.05, 0.18), dm); m.position.set(-s * dw / 2, H / 2, 0); m.castShadow = true; p.add(m);
       for (const y of [0.2, 0.8]) { const b = new THREE.Mesh(new THREE.BoxGeometry(dw - 0.1, 0.12, 0.21), band); b.position.set(-s * dw / 2, H * y, 0); p.add(b); }
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.025, 6, 14), M.iron); ring.position.set(-s * (dw - 0.3), H * 0.45, 0.12); p.add(ring);
