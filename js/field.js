@@ -1044,6 +1044,8 @@ class FieldView extends BaseView {
       const name = TIME_CRYS[q.k];
       return { type: 'time', o: to, q, text: !to.ready() || !to.can(q) ? `調べる：${name}` : to.past ? `${name}にふれる（今にもどす）` : `${name}にふれる（昔の姿を見る）` };
     }
+    // 昔の猫たち（昔のあいだだけ見える）
+    if (to && to.past) for (const g of to.talkers || []) if (Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 1.9 && Math.abs(g.pos.y - p.y) < 1.5) return { type: 'ghost', g, text: '昔の猫と話す' };
     for (const o of this.sealObjs || []) if (o.beam && !o.open) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) return { type: 'mirror', o, m, text: `${MIRROR_COLS[m.g][0]}の光の鏡の向きを変える（${MIRROR_COLS[m.g][0]}の鏡はみんな回る）` };
     for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || '光の水晶'; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < (o.S.reach || 2.0)) return { type: 'lamp', o, L, text: !o.ready() ? `調べる：${name}` : o.S.verb ? `${o.S.verb}（${speakerName(o.S.who)}）` : o.S.look === 'laugh' ? `${name}を押す` : o.S.labels ? `${name}（${o.S.labels[L.i]}）にふれる` : `${name}に触れる` }; }
     // 二匹の門の踏み板：乗っていれば「ここで待ってて」、仲間が待っていれば「よびもどす」
@@ -1110,6 +1112,8 @@ class FieldView extends BaseView {
       this.pushBall(it.b, it.dx, it.dz);
     } else if (it.type === 'ballReset') {
       this.resetBalls();
+    } else if (it.type === 'ghost') {
+      this.talkGhost(it.g);
     } else if (it.type === 'time') {
       this.touchTime(it.o, it.q);
     } else if (it.type === 'mirror') {
@@ -1514,6 +1518,13 @@ class FieldView extends BaseView {
     // 金・青の水晶にはじめてふれたときは、片道の水晶だと説明する
     if (first) this.startTalk(TIME_CRYS[q.k], about, null, true);
     this.checkTimeTrap(o);
+  }
+  // 昔の猫と話す：こちらを向いて話し、話し終えると元の向きにもどる
+  talkGhost(g) {
+    const p = this.player.pos, grp = g.m.group;
+    grp.rotation.y = Math.atan2(p.x - g.pos.x, p.z - g.pos.z);
+    this.startTalk('昔の猫', g.lines, { m: g.m, key: 'ghost', face2: 'gentle' });
+    this.talk.after = () => { grp.rotation.y = g.ry; };
   }
   // 閉じこめられたら（どの水晶で切りかえても、入口へ戻れない）、入口の間へもどす。遺跡は今の姿にもどる。
   //   ①「閉じこめられた！」の文字 → ② 水晶の光に包まれて暗転 → ③ 入口の間で光とともに現れる
