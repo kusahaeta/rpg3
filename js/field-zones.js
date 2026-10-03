@@ -1442,7 +1442,7 @@ const FIELD_ZONES = {
 
   // 壁画の回廊：遺跡の中。南の入口の間から、北の大広間へ。大広間の西・東・北の壁に、三つの壁画（巨大な猫と樹・手をつなぐ四匹・古代文字）。
   //   大広間の北の大きな口から「崩れた回廊」へ
-  ruins_in: { ci: 4, name: '壁画の回廊', w: 60, d: 64, stage: '5-2', arenas: [[0, -12, 0]], build: 'ruinsIn', bg: 'ruins', groups: 3, chests: 2, crystals: 2, calmAfter: '5-3', skyTree: false,
+  ruins_in: { ci: 4, name: '壁画の回廊', mapName: '古代遺跡', w: 60, d: 64, stage: '5-2', arenas: [[0, -12, 0]], build: 'ruinsIn', bg: 'ruins', groups: 3, chests: 2, crystals: 2, calmAfter: '5-3', skyTree: false,
     world: true, arch: 'ruin', chestAt: [[-20, 16], [20, -26]],
     th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.3, fog: '#2a3a34', fogD: 0.02, light: 0.95 },
     map: [
