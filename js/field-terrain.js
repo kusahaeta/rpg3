@@ -506,6 +506,8 @@ const ARCH_STYLES = {
   kingdom: { look: 'town', outdoor: 'lots', roof: false, canopy: 7, rock: '#9a948a', cap: '#d8cfc0', cliff: '#b8b0a4', trim: '#5a4a42', step: '#c8c0b2', glass: '#bfe8ff', glow: '#ffd27a', rail: 'iron', door: 'swing', lift: 'cage', exit: 'gate' },
   // ニャハハ城：空の見える中庭を、白い大理石の城壁（金の縁取り、窓に灯り）が囲む
   nyacastle: { look: 'palace', roof: false, skyline: 'town', wallH: 11, wall: '#f4ece0', wall2: '#e2d4c0', trim: '#8a6a3a', cliff: '#e8dccb', cap: '#e8c878', step: '#efe6d8', glass: '#ffe8c0', glow: '#ffd27a', light: '#fff4dc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
+  // 魔王城の中庭：空の見える庭を、紫の石の城壁（桃色の灯り）が囲む
+  demoncourt: { look: 'palace', roof: false, skyline: 'town', wallH: 12, wall: '#6a5a80', wall2: '#54466a', trim: '#2a1a3a', cliff: '#5a4a70', cap: '#8a6aa8', step: '#7a6a90', glass: '#d8b0ff', glow: '#ff8ad8', light: '#ffd8f8', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // ニャハハ城の中：クリーム色の大理石、金の縁取りと灯り、格天井
   nyapalace: { look: 'palace', roof: true, wallH: 8, wall: '#f6eee2', wall2: '#e6d6c0', trim: '#8a6a3a', cliff: '#eadfce', ceil: '#f2e6d4', step: '#efe6d8', glass: '#ffe8c0', glow: '#ffd27a', light: '#fff4dc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // 壁画の回廊：苔むした古い石の回廊（天井あり、青緑に光る縁取り）

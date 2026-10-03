@@ -448,7 +448,7 @@ const CHAPTERS = [
   { id: 'c6', name: '魔王領', bg: 'demon', desc: '怖い場所のはずなのに、なんだか妙にコミカル。',
     stages: [
       { id: '6-1', name: '魔王領の門',       lv: 44, waves: [['mazoku', 'kangoshi'], ['mazoku', 'kanbu', 'mazoku']] },
-      { id: '6-2', name: '魔王城の廊下',     lv: 47, waves: [['kangoshi', 'mazoku', 'kangoshi'], ['kanbu', 'mazoku']] },
+      { id: '6-2', name: '魔王城の保健の間', lv: 47, waves: [['kangoshi', 'mazoku', 'kangoshi'], ['kanbu', 'mazoku']] },
       { id: '6-3', name: '魔王の間',         lv: 50, boss: true, waves: [['mazoku', 'kanbu', 'mazoku'], ['boss_maou']] },
     ] },
   { id: 'c7', name: 'にゃんだーの樹', bg: 'tree', desc: 'ぽかぽか村の南にそびえる生命樹。その根元に、黒い何かがいる。',

@@ -495,12 +495,13 @@ function buildCat(key, opt = {}) {
       }
       legR.pv.rotation.x = pose.legRx; legL.pv.rotation.x = pose.legLx;
       legR.kn.rotation.x = pose.kneeR * 0.6; legL.kn.rotation.x = pose.kneeL * 0.6;
-      // しっぽ：気分で上がり下がり、ゆらゆら
+      // しっぽ：気分で上がり下がり、ゆらゆら（rotation.x が 0 で真上、負へ回すほど後ろへ倒れる。正へ回すと体の前へ入りこむ）
+      //   うれしいと根もとから立てて先を後ろへ丸め、しょんぼりすると後ろへ垂らして、先は地面につかないよう少し持ち上げる
       const ex = face.expr, want = ['sad', 'worry', 'pained', 'cry'].includes(ex) ? -1 : ['joy', 'smile', 'surprise'].includes(ex) ? 1 : 0;
       mood += (want - mood) * Math.min(1, dt * 3);
       const wag = mood > 0.5 ? 6 : 2.4;
       tail.forEach((g, i) => {
-        const base = sp === 'mouse' ? -0.35 + i * 0.12 : sp === 'dog' ? -0.9 : (i === 0 ? -1.15 : -0.12) - mood * (i === 0 ? 0.35 : 0.08) + (mood < 0 ? -mood * (i === 0 ? 1.6 : 0.05) : 0);
+        const base = sp === 'mouse' ? -0.35 + i * 0.12 : sp === 'dog' ? -0.9 : i === 0 ? -1.15 + mood * (mood > 0 ? 0.55 : 0.8) : -0.12 - mood * (mood > 0 ? 0.08 : 0.18);
         g.rotation.x = base + (i ? Math.sin(t * 1.3 - i * 0.5) * 0.05 : 0) - pose.lean * (i ? 0 : 0.6);
         g.rotation.z = Math.sin(t * wag - i * 0.6 + this.seed) * (0.08 + i * 0.03);
       });

@@ -2397,14 +2397,16 @@ class FieldView extends BaseView {
     const reach = (o, dd) => Math.hypot(Math.hypot(o.x, o.z) * dd, Math.min(o.y * dd, ceil - head.y));
     const base = this.viewDist(head, offAt(this.camPitch), foot, ceil, p.pos.y);
     // 細い通路などで後ろがつかえるときは、カメラを上へ持ち上げて見下ろす（寄りすぎて前が見えなくならないように）。
-    // 持ち上げる角度はなめらかに変え、広い所へ出たらゆっくり元の角度へ戻す
+    // 持ち上げる角度はなめらかに変え、広い所へ出たらゆっくり元の角度へ戻す。
+    // 遠くへ引いているときは、まず 3.4m までは寄せるだけにして、それでも足りない所でだけ持ち上げる（部屋の壁ぎわで真上から見下ろさないように）
     let want = 0;
-    if (reach(offAt(this.camPitch), base) < this.camDist * 0.8) {
+    const need = Math.min(this.camDist * 0.8, 3.4);
+    if (reach(offAt(this.camPitch), base) < need) {
       let best = reach(offAt(this.camPitch), base);
       for (let k = 1; k <= 4; k++) {
         const pt = Math.min(1.35, this.camPitch + 0.25 * k), o = offAt(pt), r = reach(o, this.viewDist(head, o, foot, ceil, p.pos.y));
         if (r > best + 0.3) { best = r; want = pt - this.camPitch; }
-        if (r >= this.camDist * 0.75 || pt >= 1.35) break;
+        if (r >= need * 0.94 || pt >= 1.35) break;
       }
     }
     this.camLift = lerp(this.camLift || 0, want, 1 - Math.exp(-(want > (this.camLift || 0) ? 5 : 2) * d));
