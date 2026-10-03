@@ -527,7 +527,8 @@ class StageView extends BaseView {
     const each = (o, fn) => { if (!o) return; for (const [k, val] of Object.entries(o)) (k === 'all' ? this.party : k === 'foes' ? Object.values(this.actors).filter(a => a.foe) : [this.actors[k]]).forEach(a => a && fn(a, val)); };
     // 周りの反応 r: { キャラ: '表情' | [表情, 身振り] }
     each(d.r, (a, v) => { const [f, g] = Array.isArray(v) ? v : [v]; a.setFace(f); if (g) a.gesture(g); });
-    each(d.look, (a, v) => { a.look = v === null ? null : this.point(v) && !this.actors[v] ? this.point(v) : v; });
+    // 自分自身は見ない（all でまとめて指定したとき。頭の向きが決まらなくなる）
+    each(d.look, (a, v) => { if (v === a.key) return; a.look = v === null ? null : this.point(v) && !this.actors[v] ? this.point(v) : v; });
     each(d.face, (a, v) => { a.faceT = typeof v === 'number' ? v : this.actors[v] ? v : Array.isArray(v) ? this.W(v[0], v[1]) : this.point(v); });
     each(d.stance, (a, v) => { a.setStance(v === 'ready' ? (CHAR_ACT[a.base] || {}).ready || 'ready' : v); if (v === 'ready' && !a.foe) a.showWeapon(true); });
     each(d.move, (a, v) => { const pts = (Array.isArray(v[0]) ? v : [v]).map(p => this.W(p[0], p[1])); a.walkTo(pts, d.speed || 1.6); });

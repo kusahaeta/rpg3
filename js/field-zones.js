@@ -1547,10 +1547,17 @@ const FIELD_ZONES = {
     anchor: [6, 40], exits: [{ key: 's', to: 'ruins_in' }, { key: 'n', to: 'ruins_seal' }],
     // 回廊は 4x4 の小部屋。部屋どうしの口は、R（今は瓦礫・昔は通れる）、A（昔は石の門・今は通れる）、D（いつも通れる）
     // crystals：[x, z, 向き]。'W' 白（今と昔を行き来できる。入口の間）、'P' 金（昔へだけ）、'N' 青（今へだけ）
-    // ghosts：昔のあいだだけ見える、昔の猫たちの面影 [x, z, 向き]
+    // ghosts：昔のあいだだけ見える、昔の猫たちの面影 [x, z, 向き, 台詞]。昔のあいだは、F で話しかけられる
     timeShift: { id: 'ruinsTime', after: 'c5_02b',
       crystals: [[-18, 32, 'W'], [-32, -26, 'N'], [4, -26, 'N'], [22, -26, 'P'], [4, -12, 'P'], [22, -12, 'N'], [-32, 2, 'P'], [-14, 2, 'N'], [4, 2, 'P'], [22, 2, 'W'], [-14, 16, 'N'], [4, 16, 'P']],
-      ghosts: [[-28, 36, Math.PI / 2], [9, -23, Math.PI], [-9, -9, 0.4], [27, 5, -Math.PI / 2], [-18, -40, Math.PI / 2], [9, 19, 0]] },
+      ghosts: [
+        [-28, 36, Math.PI / 2, ['……おや。今の時代から来た子たちかい。', 'この回廊の水晶はね、色で行き先がちがうんだ。金は「昔」へ、青は「今」へ。片道しか運んでくれないよ。', '白い水晶だけは、どちらへも行き来させてくれる。困ったら、ここへもどっておいで。']],
+        [-29, 4, -Math.PI / 2, ['わしは、この回廊の墓守じゃった。……ふしぎじゃのう、白い子の気配がする。なつかしい、においじゃ。', 'となりの部屋の石の棺には、樹を守った猫たちが眠っておる。そっとしておいておくれ。']],
+        [-9, -9, 0.4, ['大きな樹のまわりで、みんなで手をつないで歌ったんだ。', '……あの子は、ずっと眠っていたけれど。いつか目をさましたら、いっしょに歌えるかなあ。']],
+        [27, 5, -Math.PI / 2, ['気をつけて。まちがえた水晶にふれると、前も後ろもふさがって、どこへも行けなくなるよ。', 'そんなときは、水晶の光が入口まで連れもどしてくれる。何度でも、ためしてごらん。']],
+        [27, 19, Math.PI, ['迷ったら、行きたい部屋のことを考えてごらん。', 'その部屋の口は、瓦礫かい？　石の門かい？　……「今」の姿で入るか、「昔」の姿で入るか。それが分かれ道さ。']],
+        [9, -23, Math.PI, ['封印の扉の間へは、北の段の西のはしから入るんだ。', '……でも、あの口は「昔」は石の門でふさがっている。どうすればいいか、わかるかい？']],
+      ] },
     map2d: [770, 30] },
 
   // 封印の間：封印の扉の奥。樹の根をかたどった祭壇（第五章で守護神と戦い、守護神が語る場所）
@@ -3061,7 +3068,7 @@ class ZoneKit {
     }
     // 昔の猫たちの面影：昔のあいだだけ、壁画の前や水晶のそばに、昔の猫たち（2頭身の猫のモデル）が、琥珀色に透けて立っている
     const ghostMats = [], ghostDepthM = new THREE.MeshBasicMaterial({ colorWrite: false, transparent: true });
-    if (typeof buildCat === 'function') (S.ghosts || []).forEach(([x, z, ry], i) => {
+    if (typeof buildCat === 'function') (S.ghosts || []).forEach(([x, z, ry, lines], i) => {
       const m = buildCat(null, { def: { elem: 'imaginary', look: ANCIENT_CAT_LOOKS[i % ANCIENT_CAT_LOOKS.length] } });
       if (m.setPose && typeof POSES !== 'undefined') m.setPose(POSES.idle);
       if (m.face) m.face.set('gentle');
@@ -3079,6 +3086,7 @@ class ZoneKit {
         if (solid) { const dm = new THREE.Mesh(q.geometry, ghostDepthM); dm.renderOrder = 1; q.add(dm); }
       });
       o.ghosts.push(m.group); o.ghostModels = [...(o.ghostModels || []), m];
+      if (lines) { o.talkers = [...(o.talkers || []), { m, pos: V3(x, this.gy(x, z), z), ry, lines }]; this.reserve(x, z, 1.4); }
     });
     o.set = past => {
       o.past = past;

@@ -66,15 +66,15 @@ Object.assign(SCENES, {
       ['n', '（時の水晶にふれると、遺跡が「今」と「昔」で切りかわる。今は瓦礫でふさがった道も、昔なら通れる。昔は石の門でふさがっていた道が、今は崩れて通れる。水晶をさがして切りかえながら、奥の封印の扉へ）', { cam: 'wide', dur: 9 }],
     ] },
   c5_03: { title: '封印の扉', bgm: 'dark',
-    // walk：タマが扉へ歩いていくのを、広間の東の高い所から（左に歩きはじめの場所、右に扉。手前の燃え台は会話の窓の裏に隠れる）
-    // door：扉の前のタマと、開いていく扉を、正面寄りから
-    stage: { zone: 'ruins_maze', at: [0, -34], face: 0, points: { door: [0, 3.2, 12] }, shots: { walk: { pos: [9.6, 4.8, 4], look: [-1.5, 0.6, 9] }, door: { pos: [3.4, 2.0, 3.2], look: [0, 1.0, 12] } } },
+    // ahead：扉へ歩きだすタマを、前（右ななめ前）から。とちゅうで front に切りかえる
+    // front：扉の前に着いたタマと、開いていく扉を、扉の正面（タマのうしろ）から。タマが会話の窓に隠れないよう、高めから見下ろす
+    stage: { zone: 'ruins_maze', at: [0, -34], face: 0, points: { door: [0, 3.2, 12] }, shots: { ahead: { pos: [2.4, 1.7, 10.4], look: [0, 0.9, 7.2] }, front: { pos: [0, 3.2, 0.8], look: [0, 1.45, 12] } } },
     lines: [
       ['n', '回廊の奥に、封印された大きな扉があった。', { cam: 'look:door', dur: 6, look: { all: 'door' } }],
       ['shiro', '封印の魔法……天才のわたしでも、びくともしないわ。', { f: 'worry', g: 'reach' }],
       ['kuro', '……俺の剣でも、無理だ。', { f: 'serious' }],
-      ['tama', '……。', { f: 'neutral', move: { tama: [0, 11.3] }, speed: 1.8, face: { tama: [0, 12] }, look: { all: 'tama' }, cam: 'walk', dur: 7, drift: 0.2 }],
-      ['n', 'タマが扉にふれると、封印の光がやさしく広がり、石の扉が、ゆっくりと奥へ開いていった。', { waitMove: true, face: { tama: [0, 12] }, r: { tama: ['neutral', 'reach'] }, cam: 'keep', later: [0.7, { cam: 'door', dur: 7, fx: 'seal:n', r: { mike: 'surprise', kuro: 'surprise', shiro: 'surprise' } }] }],
+      ['tama', '……。', { f: 'neutral', move: { tama: [0, 11.3] }, speed: 1.8, face: { tama: [0, 12] }, look: { all: 'tama', tama: 'door' }, cam: 'ahead', dur: 6, drift: 0.1, later: [5.2, { cam: 'front', dur: 10 }] }],
+      ['n', 'タマが扉にふれると、封印の光がやさしく広がり、石の扉が、ゆっくりと奥へ開いていった。', { waitMove: true, face: { tama: [0, 12] }, r: { tama: ['neutral', 'reach'] }, cam: 'keep', later: [0.9, { fx: 'seal:n', r: { mike: 'surprise', kuro: 'surprise', shiro: 'surprise' } }] }],
       ['shiro', '開いた……！？　タマ、どうして……', { f: 'surprise', g: 'surprise' }],
       ['tama', '……わかんない。……扉が、「おかえり」って言った。', { f: 'sleepy', g: 'tilt', face: { tama: 'mike' } }],
       ['shiro', '……回廊の古代文字。「つながりが絶えるとき、樹は……最後のにゃんこを生む」。……まさか。', { f: 'surprise', g: 'think', to: 'tama' }],
@@ -666,7 +666,7 @@ const STORY = [
     { t: 'field', zone: 'ruins_out', at: [-6, 20], scene: 'c5_01', battle: '5-1', g: '谷の北西、古代遺跡へ' },
     { t: 'field', zone: 'ruins_hill', at: [0, -12.5], scene: 'c5_01b', g: '外庭の北、石畳の丘を上って、遺跡の入口へ' },
     { t: 'field', zone: 'ruins_in', at: [0, -4], scene: 'c5_02', clear: '5-2', g: '高台の「つながりの石畳」をひと筆でつないで入口の結界を消し、遺跡の中へ' },
-    { t: 'field', zone: 'ruins_maze', at: [0, 40], scene: 'c5_02b', g: '大広間の奥、崩れた回廊へ' },
+    { t: 'field', zone: 'ruins_maze', at: [-18, 35], scene: 'c5_02b', g: '大広間の奥、崩れた回廊へ。入口の間の、白く光る水晶のもとへ' },
     { t: 'field', zone: 'ruins_maze', at: [0, -36], scene: 'c5_03', g: '時の水晶で「今」と「昔」を切りかえながら、小部屋をめぐって、回廊の奥の封印の扉へ' },
     { t: 'field', zone: 'ruins_seal', at: [0, 1], scene: 'c5_03b', battle: '5-3', after: 'c5_04', g: '開いた扉の奥、封印の間へ' },
     { t: 'reward', niboshi: 700, g: '第五章 おしまい' },
