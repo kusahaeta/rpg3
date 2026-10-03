@@ -349,6 +349,9 @@ const Debug = {
     }
     if (level) { const lv = this.levelAt(ci, si); for (const k of Object.keys(d.owned)) if (d.owned[k].lv < lv) Object.assign(d.owned[k], { lv, exp: 0 }); }
     delete d.fieldResume;
+    // 行ける区画はすべて「行ったことがある」ことにして、ミャオニアの地図からひとっとびできるようにする
+    const visited = d.fieldVisited || (d.fieldVisited = {});
+    for (const id of Object.keys(FIELD_ZONES)) if (zoneOpen(id)) visited[id] = true;
     const tgt = STORY[ci] && STORY[ci].steps[si];
     // 探索の段階：ふつうに遊んだときと同じく、ひとつ前の探索の段階の目的地（そこで物語が進んだ場所）から歩き出す。
     // 目的地の区画のねこ地蔵からだと、その手前の仕掛け（光の鏡など）を飛びこえてしまうことがある

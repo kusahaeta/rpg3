@@ -625,6 +625,7 @@ class FieldView extends BaseView {
     const band = palace ? glowMat(col, 1.2) : M.iron, dw = W / 2 - 0.6;
     const panels = [-1, 1].map(s => {
       const p = new THREE.Group(); p.position.set(s * (W / 2 - 0.65), 0, -0.1); g.add(p);
+      if (st.heavy) { p.add(heavyDoorLeaf(dw, H - 0.05, s, col)); return { p, s }; }
       const m = new THREE.Mesh(new THREE.BoxGeometry(dw, H - 0.05, 0.18), dm); m.position.set(-s * dw / 2, H / 2, 0); m.castShadow = true; p.add(m);
       for (const y of [0.2, 0.8]) { const b = new THREE.Mesh(new THREE.BoxGeometry(dw - 0.1, 0.12, 0.21), band); b.position.set(-s * dw / 2, H * y, 0); p.add(b); }
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.025, 6, 14), M.iron); ring.position.set(-s * (dw - 0.3), H * 0.45, 0.12); p.add(ring);
