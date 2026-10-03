@@ -889,7 +889,10 @@ function buildArchitecture(view, T) {
         const j = T.idx(c + dc, r + dr), ex = cx + dc * CELL / 2, ez = cz + dr * CELL / 2;
         const A = [ex - dr * CELL / 2, ez + dc * CELL / 2], B = [ex + dr * CELL / 2, ez - dc * CELL / 2];
         const low = p => j < 0 ? EDGE : walk(j) ? hAt(j, p[0] + dc * 0.02, p[1] + dr * 0.02) : kind[j] === K.VOID ? ABYSS : T.cap[j];
-        const la = low(A), lb = low(B);
+        let la = low(A), lb = low(B);
+        // 階段のわき：面は階段のいちばん下まで下ろす。段は箱で斜面より低いところがあり、
+        // また上の段は片方の端が崖の上と同じ高さになるので、斜面に合わせると隙間や面の抜けができる
+        if (j >= 0 && kind[j] === K.STAIR) la = lb = T.h[j] - 0.02;
         if (Math.max(la, lb) > y - 0.05) return;
         rockFace('rock', ex, ez, dc, dr, CELL, [la, y], [lb, y], j < 0 ? 0 : 0.3);
         if (j >= 0 && walk(j)) snowLip(ex, ez, dc, dr, CELL, y);
