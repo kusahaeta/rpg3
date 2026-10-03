@@ -2130,6 +2130,7 @@ class FieldView extends BaseView {
     r.addEventListener('wheel', e => { this.camDist = clamp(this.camDist + e.deltaY * 0.004, 2.4, 9); e.preventDefault(); }, { passive: false });
     r.querySelector('[data-menu]').onclick = () => this.menu();
     r.querySelector('[data-map]').onclick = () => this.mapMenu();
+    r.querySelector('.fd-map').onclick = () => this.zoneMapMenu();
     r.querySelector('.fd-talk').onclick = () => this.talk && this.advanceTalk();
     this.renderHud(); this.renderTeam();
   }
@@ -2157,7 +2158,7 @@ class FieldView extends BaseView {
     box.appendChild(t);
     setTimeout(() => t.remove(), 3200);
   }
-  closeOverlay() { this.root.querySelector('.overlay').classList.add('hidden'); this.busy = false; this.overlayOpen = false; }
+  closeOverlay() { this.root.querySelector('.overlay').classList.add('hidden'); this.busy = false; this.overlayOpen = false; this.zoneMap = null; }
   menu() {
     const o = this.root.querySelector('.overlay');
     if (this.overlayOpen) { this.closeOverlay(); return; }
@@ -2187,6 +2188,19 @@ class FieldView extends BaseView {
     o.classList.remove('hidden');
     o.querySelector('[data-close]').onclick = () => this.closeOverlay();
     o.querySelectorAll('[data-z]').forEach(b => b.onclick = () => { this.closeOverlay(); this.gotoZone(b.dataset.z, { anchor: true }); });
+  }
+  // 区画の全体図（ミニマップをクリックで開く）
+  zoneMapMenu() {
+    const o = this.root.querySelector('.overlay');
+    if (this.overlayOpen) { this.closeOverlay(); return; }
+    if (this.busy) return;
+    this.busy = true; this.overlayOpen = true; this.keys.clear();
+    o.innerHTML = `<div class="ov-box zm-box"><h2>${this.zone.name}</h2><canvas class="zm-map" width="1000" height="520"></canvas>
+      <div class="wm-foot"><span class="dim">地図をクリックしても閉じられる</span><button class="btn gold" data-close>閉じる</button></div></div>`;
+    o.classList.remove('hidden');
+    this.zoneMap = o.querySelector('.zm-map').getContext('2d');
+    this.drawZoneMap();
+    o.querySelector('.zm-map').onclick = o.querySelector('[data-close]').onclick = () => this.closeOverlay();
   }
   onKey(e, isDown) {
     const k = e.key.toLowerCase();
@@ -2243,16 +2257,23 @@ class FieldView extends BaseView {
     return cv;
   }
   drawMap() {
+    if (this.zoneMap) this.drawZoneMap();
     if (this.T) { this.drawTerrainMap(); return; }
     const g = this.map, S = 200, c = S / 2, sc = 86 / Math.max(this.hw, this.hd);
     g.clearRect(0, 0, S, S);
     g.save();
     g.beginPath(); g.arc(c, c, 96, 0, Math.PI * 2); g.clip();
     g.fillStyle = 'rgba(8,12,30,.8)'; g.fillRect(0, 0, S, S);
-    const P = (x, z) => [c + x * sc, c + z * sc];
-    g.fillStyle = 'rgba(160,180,255,.1)'; g.fillRect(c - this.hw * sc, c - this.hd * sc, this.hw * 2 * sc, this.hd * 2 * sc);
-    if (this.town) { g.fillStyle = 'rgba(109,255,158,.1)'; g.fillRect(c - this.hw * sc, c - this.hd * sc, this.hw * 2 * sc, this.hd * 2 * sc); }
-    g.strokeStyle = 'rgba(232,199,122,.45)'; g.lineWidth = 1.5; g.strokeRect(c - this.hw * sc, c - this.hd * sc, this.hw * 2 * sc, this.hd * 2 * sc);
+    this.drawFlatMap(g, c, c, sc);
+    g.restore();
+    g.strokeStyle = 'rgba(232,199,122,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(c, c, 96, 0, Math.PI * 2); g.stroke();
+  }
+  // 地形のない区画の地図（区画の中心を (cx, cy) に、1m = sc px）
+  drawFlatMap(g, cx, cy, sc) {
+    const P = (x, z) => [cx + x * sc, cy + z * sc];
+    g.fillStyle = 'rgba(160,180,255,.1)'; g.fillRect(cx - this.hw * sc, cy - this.hd * sc, this.hw * 2 * sc, this.hd * 2 * sc);
+    if (this.town) { g.fillStyle = 'rgba(109,255,158,.1)'; g.fillRect(cx - this.hw * sc, cy - this.hd * sc, this.hw * 2 * sc, this.hd * 2 * sc); }
+    g.strokeStyle = 'rgba(232,199,122,.45)'; g.lineWidth = 1.5; g.strokeRect(cx - this.hw * sc, cy - this.hd * sc, this.hw * 2 * sc, this.hd * 2 * sc);
     for (const a of this.safe) {
       const [x, y] = P(a.x, a.z);
       g.fillStyle = 'rgba(109,255,158,.12)'; g.strokeStyle = 'rgba(109,255,158,.45)'; g.lineWidth = 1; g.setLineDash([3, 3]);
@@ -2278,26 +2299,44 @@ class FieldView extends BaseView {
       g.strokeStyle = '#ffd66b'; g.lineWidth = 2; g.beginPath(); g.arc(qx, qy, pul, 0, Math.PI * 2); g.stroke();
       g.fillStyle = '#ffd66b'; g.save(); g.translate(qx, qy); g.rotate(Math.PI / 4); g.fillRect(-3.5, -3.5, 7, 7); g.restore();
     }
-    const [px, py] = P(this.player.pos.x, this.player.pos.z);
+    this.drawPlayerMark(g, ...P(this.player.pos.x, this.player.pos.z));
+  }
+  // 主人公の印（白い矢印）とカメラの向き（水色の扇形を加算合成で光らせ、ゆっくり明るさを揺らす）
+  drawPlayerMark(g, px, py) {
     const va = -this.camYaw - Math.PI / 2;
     const cone = g.createRadialGradient(px, py, 0, px, py, 34);
-    cone.addColorStop(0, 'rgba(255,255,255,.28)'); cone.addColorStop(1, 'rgba(255,255,255,0)');
+    cone.addColorStop(0, `rgba(120,215,255,${0.55 + Math.sin(performance.now() / 600) * 0.1})`); cone.addColorStop(1, 'rgba(120,215,255,0)');
+    g.globalCompositeOperation = 'lighter';
     g.fillStyle = cone; g.beginPath(); g.moveTo(px, py); g.arc(px, py, 34, va - 0.5, va + 0.5); g.fill();
-    g.translate(px, py); g.rotate(-this.player.yaw + Math.PI);
+    g.globalCompositeOperation = 'source-over';
+    g.save(); g.translate(px, py); g.rotate(-this.player.yaw + Math.PI);
     g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(0, -6); g.lineTo(4.5, 5); g.lineTo(0, 2.5); g.lineTo(-4.5, 5); g.fill();
     g.restore();
-    g.strokeStyle = 'rgba(232,199,122,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(c, c, 96, 0, Math.PI * 2); g.stroke();
   }
 
   // プレイヤーを中心にしたミニマップ（北が上）
   drawTerrainMap() {
     const g = this.map, S = 200, c = S / 2, sc = 3.2, T = this.T, pp = this.player.pos;
-    if (!this.mapImg) this.mapImg = this.renderTerrainMap(4);
     g.clearRect(0, 0, S, S);
     g.save();
     g.beginPath(); g.arc(c, c, 96, 0, Math.PI * 2); g.clip();
     g.fillStyle = 'rgba(6,9,22,.85)'; g.fillRect(0, 0, S, S);
-    const P = (x, z) => [c + (x - pp.x) * sc, c + (z - pp.z) * sc];
+    this.drawTerrainLayer(g, (x, z) => [c + (x - pp.x) * sc, c + (z - pp.z) * sc], sc, c);
+    g.restore();
+    g.strokeStyle = 'rgba(232,199,122,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(c, c, 96, 0, Math.PI * 2); g.stroke();
+    // 今いる階
+    const fl = T.floorLabel(pp.y);
+    if (fl) {
+      const w = Math.max(36, fl.length * 11 + 12);
+      g.fillStyle = 'rgba(6,9,22,.9)'; g.fillRect(c - w / 2, 172, w, 20); g.strokeStyle = 'rgba(232,199,122,.8)'; g.lineWidth = 1; g.strokeRect(c - w / 2, 172, w, 20);
+      g.fillStyle = '#ffe6a8'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(fl, c, 182);
+    }
+  }
+  // 地形のある区画の地図。P = 位置 → 地図上の座標、sc = 1m の px。
+  // c を渡すとミニマップ：中心 (c, c) から遠い印は描かず、範囲外の目的地は縁に矢印を出す
+  drawTerrainLayer(g, P, sc, c) {
+    const T = this.T, pp = this.player.pos;
+    if (!this.mapImg) this.mapImg = this.renderTerrainMap(4);
     const [ox, oy] = P(-T.hw, -T.hd);
     g.drawImage(this.mapImg, ox, oy, T.hw * 2 * sc, T.hd * 2 * sc);
     for (const a of this.safe) {
@@ -2307,7 +2346,7 @@ class FieldView extends BaseView {
     }
     // 別の階にあるものは薄く
     const dot = (x, y3, z, col, r, sq) => {
-      const [px, py] = P(x, z); if (Math.hypot(px - c, py - c) > 100) return;
+      const [px, py] = P(x, z); if (c && Math.hypot(px - c, py - c) > 100) return;
       g.globalAlpha = Math.abs(y3 - pp.y) > 2 ? 0.4 : 1; g.fillStyle = col;
       if (sq) g.fillRect(px - r, py - r, r * 2, r * 2); else { g.beginPath(); g.arc(px, py, r, 0, Math.PI * 2); g.fill(); }
       g.globalAlpha = 1;
@@ -2341,7 +2380,7 @@ class FieldView extends BaseView {
     // 目的地（範囲外なら縁に矢印）
     if (this.quest) {
       let [qx, qy] = P(this.quest.pos.x, this.quest.pos.z);
-      const dd = Math.hypot(qx - c, qy - c), pul = 6 + Math.sin(performance.now() / 200) * 2;
+      const dd = c ? Math.hypot(qx - c, qy - c) : 0, pul = 6 + Math.sin(performance.now() / 200) * 2;
       if (dd > 84) {
         const a = Math.atan2(qy - c, qx - c); qx = c + Math.cos(a) * 84; qy = c + Math.sin(a) * 84;
         g.fillStyle = '#ffd66b'; g.save(); g.translate(qx, qy); g.rotate(a); g.beginPath(); g.moveTo(8, 0); g.lineTo(-4, 6); g.lineTo(-4, -6); g.fill(); g.restore();
@@ -2350,22 +2389,17 @@ class FieldView extends BaseView {
         g.fillStyle = '#ffd66b'; g.save(); g.translate(qx, qy); g.rotate(Math.PI / 4); g.fillRect(-3.5, -3.5, 7, 7); g.restore();
       }
     }
-    const va = -this.camYaw - Math.PI / 2;
-    const cone = g.createRadialGradient(c, c, 0, c, c, 34);
-    cone.addColorStop(0, 'rgba(255,255,255,.28)'); cone.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = cone; g.beginPath(); g.moveTo(c, c); g.arc(c, c, 34, va - 0.5, va + 0.5); g.fill();
-    g.save(); g.translate(c, c); g.rotate(-this.player.yaw + Math.PI);
-    g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(0, -6); g.lineTo(4.5, 5); g.lineTo(0, 2.5); g.lineTo(-4.5, 5); g.fill();
-    g.restore();
-    g.restore();
-    g.strokeStyle = 'rgba(232,199,122,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(c, c, 96, 0, Math.PI * 2); g.stroke();
-    // 今いる階
-    const fl = T.floorLabel(pp.y);
-    if (fl) {
-      const w = Math.max(36, fl.length * 11 + 12);
-      g.fillStyle = 'rgba(6,9,22,.9)'; g.fillRect(c - w / 2, 172, w, 20); g.strokeStyle = 'rgba(232,199,122,.8)'; g.lineWidth = 1; g.strokeRect(c - w / 2, 172, w, 20);
-      g.fillStyle = '#ffe6a8'; g.font = '800 13px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(fl, c, 182);
-    }
+    this.drawPlayerMark(g, ...P(pp.x, pp.z));
+  }
+  // 区画の全体図（開いている間は毎フレーム描き直す）
+  drawZoneMap() {
+    const g = this.zoneMap, W = g.canvas.width, H = g.canvas.height, pad = 24;
+    const hw = this.T ? this.T.hw : this.hw, hd = this.T ? this.T.hd : this.hd;
+    const sc = Math.min((W - pad * 2) / (hw * 2), (H - pad * 2) / (hd * 2));
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = 'rgba(6,9,22,.9)'; g.fillRect(0, 0, W, H);
+    if (this.T) this.drawTerrainLayer(g, (x, z) => [W / 2 + x * sc, H / 2 + z * sc], sc);
+    else this.drawFlatMap(g, W / 2, H / 2, sc);
   }
 
   // 3D 位置 → 画面座標（画面外なら null）
