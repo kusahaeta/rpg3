@@ -23,10 +23,49 @@ function kingdomJoy() { return typeof Save !== 'undefined' && !!(Save.data && Sa
 const FIELD_ZONES = {
   // ---------------- 第一章 ぽかぽか村・ほしふる森 ----------------
   pokapoka: { ci: 0, name: 'ぽかぽか村', w: 72, d: 64, stage: '1-1', arenas: [[0, 12, 0]], build: 'village', town: true, groups: 0, chests: 3, crystals: 0,
+    world: true, arch: 'woods', chestAt: [[-30, -20], [29, -25], [-27, 25]],
+    // 木立に囲まれた村。井戸の広場を中心に、北の街道へ出る道の東は村長の家の高台（石段）、北東は鳥居から長い石段を上った猫神社の丘（社の奥の道から夢の世界へ）。
+    // 西は一段高い住宅地（ミケの家・畑）、南西に武器屋、南に道具屋と宿屋、東に魚屋の屋台。東の道は村はずれの丘へ、南の道はほしふる森へ。南東に池
+    map: [
+      '###########aaa######################',
+      '###########0,0######################',
+      '###########0,0#2222222####3333333###',
+      '####111111#0,0222222222##33333333###',
+      '###1111111#0,0222222222##333333333##',
+      '##1111111110,0222222222##3333333333d',
+      '##1111111110,0222222222##3333333333d',
+      '##1111111110,0222222222##333333333##',
+      '##1111111110,0222222222##333333333##',
+      '##111111111000000^^000000####^^#####',
+      '##111111111000000^^000000####^^#####',
+      '##11111111100000000000000####^^#####',
+      '##11111111100000000000000000000000##',
+      '##11111111100000000000000000000000##',
+      '##11111111<00000000000000000000000##',
+      '##11111111<00000000000000000000000##',
+      '##11111111100000000000000000000000##',
+      '##11111111100000000000000000000000##',
+      '##11111111100000000000000000000000##',
+      '##00^^0000000000000000000000000000##',
+      '##000000000000000000000,,,,,,,,,,,,e',
+      '##000000000000000000000,,,,,,,,,,,,e',
+      '##00000000000000000,,0000000000000##',
+      '##00000000000000000,,00000000~~~00##',
+      '##00000000000000000,,000000~~~~~~0##',
+      '##00000000000000000,,000000~~~~~~0##',
+      '##00000000000000000,,000000~~~~~~0##',
+      '##00000000000000000,,0000000~~~~00##',
+      '###0000000000000000,,00000000~~~0###',
+      '####000000000000000,,00000000000####',
+      '###################,,###############',
+      '###################cc###############',
+    ],
     spawn: [0, 10], anchor: [5, 7],
-    exits: [{ side: 'n', at: -10, to: 'road1' }, { side: 'e', at: 10, to: 'hill' }, { side: 's', at: 8, to: 'forest_in' }, { side: 'e', at: -22, to: 'dream' }],
+    exits: [{ key: 'a', to: 'road1' }, { key: 'e', to: 'hill' }, { key: 'c', to: 'forest_in' }, { key: 'd', to: 'dream' }],
+    areas: [{ name: 'ぽかぽか村・村長の家', at: [-8, -28, 10, -14] }, { name: 'ぽかぽか村・猫神社', at: [16, -28, 36, -14] }, { name: 'ぽかぽか村・猫神社の参道', at: [20, -14, 28, -8] },
+      { name: 'ぽかぽか村・ミケの家のあたり', at: [-32, -26, -14, 6] }],
     npcs: [
-      { key: 'sonchou', at: [0, -13], face: 0, lines: ['ミケや、魚屋さんにちゃんと謝ったかの？', 'この村はな、にゃんだーの樹のおかげで、いつもぽかぽかなんじゃ。'],
+      { key: 'sonchou', at: [2.2, -16.4], face: 0, lines: ['ミケや、魚屋さんにちゃんと謝ったかの？', 'この村はな、にゃんだーの樹のおかげで、いつもぽかぽかなんじゃ。'],
         v: [['scene:c1_03', 'クロとやらは、空から落ちてきたのか……ふしぎなこともあるもんじゃ。', 'ほしふる森のネズミどもが、村の食べ物を持っていくので困っておる。'],
           ['clear:1-3', '森のネズミたちも、腹をすかせておったのか……。', 'ミケ、旅に出るなら、ちゃんと食べて寝るんじゃぞ。'],
           ['scene:c7_04', '樹が枯れかけておる……。じゃが、わしらはお前たちを信じとるよ。'],
@@ -35,20 +74,21 @@ const FIELD_ZONES = {
         v: [['scene:c1_09', '旅に出るのかい。……弁当の焼き魚、ちゃんと味わって食べなよ。', 'お代は、ちゃんと帰ってきてから払いな！'],
           ['scene:c8_01', 'あんたに食べさせる魚くらい、いくらでも焼いてやるよ！'],
           ['done', '聞いたよ、あんた魚屋になるんだって？　……うちのライバルじゃないか！', 'まあいいさ。いい魚の見分け方、教えてやるよ。']] },
-      { key: 'bukiya', at: [-18, 12], face: 0, shop: 'weapon', lines: ['おう、武器屋だ。にぼしを持ってくりゃ、得物を鍛えてやるぜ。'] },
-      { key: 'douguya', at: [-5, 14], face: 0, shop: 'item', lines: ['いらっしゃいませ。道具屋ですにゃ。'] },
-      { key: 'yadoya', at: [10.5, 14], face: 0, shop: 'inn', lines: ['宿屋「ひだまり亭」へようこそ。ひと晩休んでいくかい？'] },
-      { key: 'kannushi', at: [24, -14], face: 0, lines: ['ここは猫神社。世界を作った猫の神さまをおまつりしておる。', '神さまは、たいそうめんどうくさがりだという言い伝えがあってのう。'],
-        v: [['done', '……夢の中で、神さまに会うた者がおるらしい。', '鳥居の奥の道から、夢の世界へ行けるとか……。気をつけてな。']] },
+      { key: 'bukiya', at: [-18, 18], face: Math.PI, shop: 'weapon', lines: ['おう、武器屋だ。にぼしを持ってくりゃ、得物を鍛えてやるぜ。'] },
+      { key: 'douguya', at: [-5, 15], face: Math.PI, shop: 'item', lines: ['いらっしゃいませ。道具屋ですにゃ。'] },
+      { key: 'yadoya', at: [11, 15.4], face: Math.PI, shop: 'inn', lines: ['宿屋「ひだまり亭」へようこそ。ひと晩休んでいくかい？'] },
+      { key: 'kannushi', at: [27, -18], face: -0.4, lines: ['ここは猫神社。世界を作った猫の神さまをおまつりしておる。', '神さまは、たいそうめんどうくさがりだという言い伝えがあってのう。'],
+        v: [['done', '……夢の中で、神さまに会うた者がおるらしい。', '社の奥の道から、夢の世界へ行けるとか……。気をつけてな。']] },
       { key: 'koneko_a', at: [-4, 2], walk: 7, lines: ['ミケにいちゃん、あそぼー！', 'ねえねえ、勇者ってなに？　おいしいの？'],
         v: [['scene:c1_03', 'あの黒い猫、ずーっと怒った顔してるね！'], ['done', 'ぼくも大きくなったら勇者になる！　……それか魚屋！']] },
       { key: 'koneko_b', at: [6, -4], walk: 6, lines: ['にゃんだーの樹にはね、笑いの実とか友情の実がなるんだよ。', 'でも最近、実がなってないんだって……。'] },
-      { key: 'murabito_a', at: [-12, -4], walk: 5, lines: ['ゆうべ、流れ星を見たかい？　村はずれの丘のほうに落ちたらしい。'],
+      { key: 'murabito_a', at: [-10, -3], walk: 4, lines: ['ゆうべ、流れ星を見たかい？　村はずれの丘のほうに落ちたらしい。'],
         v: [['scene:c1_09', '森のネズミたちが、持っていった食べ物を返しにきたよ。律儀だねえ。'], ['scene:c7_04', '最近、みんなで集まって話すことが減ったなあ……。']] },
-      { key: 'murabito_b', at: [-22, -18], face: Math.PI / 2, lines: ['ミケの家はそこだよ。……屋根に魚の骨が干してあるのは、見なかったことにしよう。'] },
+      { key: 'murabito_b', at: [-20, -16], face: Math.PI * 0.75, lines: ['ミケの家はそこだよ。……屋根に魚の骨が干してあるのは、見なかったことにしよう。'] },
     ],
-    notes: [{ at: [6, -15], face: -0.4, board: ['村の掲示板', '収穫祭は延期します　——村長'], title: '村の掲示板', text: '「にゃんだーの樹の実りが悪く、今年の収穫祭は延期します——村長」' },
-      { at: [-21.8, -8], mark: [-0.9, 2.3, 0], title: 'ミケの家', text: '表札に「ミケ」。……窓辺に、食べかけの魚が干してある。' }],
+    notes: [{ at: [6.4, -11], face: 0, board: ['村の掲示板', '収穫祭は延期します　——村長'], title: '村の掲示板', text: '「にゃんだーの樹の実りが悪く、今年の収穫祭は延期します——村長」' },
+      { at: [-21.8, -8], mark: [-0.9, 2.3, 0], title: 'ミケの家', text: '表札に「ミケ」。……窓辺に、食べかけの魚が干してある。' },
+      { at: [24, -23], mark: [0, 2.6, 1.4], reach: 3.2, title: '猫神社', text: '世界を作った猫の神さまの社。お賽銭箱の上の絵の神さまは、大きなあくびをしている。' }],
     map2d: [470, 380] },
 
   hill: { ci: 0, name: '村はずれの丘', w: 52, d: 48, stage: '1-1', arenas: [[0, 10, 0]], build: 'hill', calm: true, groups: 0, chests: 2, crystals: 2,
@@ -3835,12 +3875,59 @@ class ZoneKit {
     for (let i = 0; i < 5; i++) { const u = -1 + i * 0.5, f = this.mesh(new THREE.SphereGeometry(0.14, 10, 8), i % 2 ? '#8ab8d8' : '#b8c8d8', x + u * c, 1.4, z - u * sn); f.scale.set(0.5, 2.2, 0.8); this.mesh(new THREE.ConeGeometry(0.12, 0.18, 3), '#8ab8d8', x + u * c, 1.0, z - u * sn, { rx: Math.PI }).scale.z = 0.3; }
     this.col(x, z, 1.4, 1.9);
   }
-  well(x, z) {
-    this.cyl(x, z, 1.0, 0.9, 'stone', { seg: 14 });
-    this.mesh(new THREE.CircleGeometry(0.85, 20), new THREE.MeshStandardMaterial({ color: '#3a7aaa', roughness: 0.1, emissive: '#1a4a7a', emissiveIntensity: 0.3 }), x, 0.85, z, { rx: -Math.PI / 2, noShadow: true });
-    for (const s of [-1, 1]) this.box(x + s * 0.85, z, 0.14, 2.2, 0.14, 'wood2', { y: 0.9, col: false });
-    this.mesh(new THREE.ConeGeometry(1.4, 0.8, 4), 'roofRed', x, 3.4, z, { ry: Math.PI / 4 });
-    this.mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.3, 10), 'wood', x, 2.2, z);
+  // 井戸：石を積んだ井戸枠と水面、二本の柱に渡した滑車の巻き上げ（取っ手と巻いた縄）、縄の先で揺れる桶、猫耳の切妻屋根
+  //   ry：巻き上げの軸の向き（0 で東西）、o.roof：屋根の色
+  well(x, z, ry = 0, o = {}) {
+    const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry;
+    const at = (geo, mat, px, py, pz, r = {}) => this.mesh(geo, mat, px, py, pz, { ...r, parent: g });
+    const H = 0.85, roofM = o.roof || 'roofRed';
+    // 井戸枠：目地と暗い井戸の内側に、色の少しずつ違う石を三段、半分ずつずらして積む
+    at(new THREE.CylinderGeometry(0.8, 0.8, H, 22, 1, true), this.stdM('#6e675c', 1, { side: THREE.DoubleSide }), 0, H / 2, 0);
+    at(new THREE.CylinderGeometry(0.7, 0.7, H, 22, 1, true), this.stdM('#26221e', 1, { side: THREE.BackSide }), 0, H / 2, 0);
+    const stoneGeo = new THREEX.RoundedBoxGeometry(0.44, 0.25, 0.3, 2, 0.06), stoneM = ['#b4ad9f', '#a29b8e', '#bdb5a5', '#9a9284'].map(c => this.stdM(c, 0.95));
+    for (let k = 0; k < 3; k++) for (let i = 0; i < 11; i++) {
+      const a = (i + (k % 2) * 0.5) / 11 * Math.PI * 2, s = 0.85 + this.r() * 0.03;
+      at(stoneGeo, stoneM[(i * 3 + k) % 4], Math.cos(a) * s, 0.14 + k * 0.27, Math.sin(a) * s, { ry: -a - Math.PI / 2 }).rotation.z = (this.r() - 0.5) * 0.06;
+    }
+    const cap = new THREE.LatheGeometry([new THREE.Vector2(0.68, 0), new THREE.Vector2(1.06, 0), new THREE.Vector2(1.08, 0.05), new THREE.Vector2(1.06, 0.11), new THREE.Vector2(0.68, 0.11)], 26);
+    at(cap, this.stdM('#c4bcac', 0.9), 0, H - 0.02, 0);
+    const water = at(new THREE.CircleGeometry(0.7, 24), new THREE.MeshStandardMaterial({ color: '#1e4868', roughness: 0.15, metalness: 0.1, emissive: '#0e2c48', emissiveIntensity: 0.25 }), 0, H - 0.5, 0, { rx: -Math.PI / 2, noShadow: true });
+    // 柱と、屋根を支える梁・妻の板
+    const wood = this.mat('wood'), wood2 = this.mat('wood2');
+    for (const s of [-1, 1]) {
+      at(new THREE.BoxGeometry(0.16, 2.65, 0.16), wood2, s * 0.9, 1.47, 0);
+      at(new THREE.BoxGeometry(0.12, 0.12, 1.7), wood2, s * 0.9, 2.26, 0);
+      const tri = new THREE.Shape(); tri.moveTo(-0.78, 0); tri.lineTo(0.78, 0); tri.lineTo(0, 0.5); tri.closePath();
+      at(new THREE.ShapeGeometry(tri), this.stdM('#9a6a42', 0.85, { side: THREE.DoubleSide }), s * 0.92, 2.32, 0, { ry: Math.PI / 2 });
+    }
+    at(new THREE.BoxGeometry(2.0, 0.12, 0.12), wood2, 0, 2.78, 0);
+    // 巻き上げ：軸、巻いた縄、外側の取っ手
+    at(new THREE.CylinderGeometry(0.08, 0.08, 1.96, 10), wood, 0, 1.6, 0, { rz: Math.PI / 2 });
+    at(new THREE.CylinderGeometry(0.13, 0.13, 0.5, 14), this.stdM('#d8bf8a', 1), 0, 1.6, 0, { rz: Math.PI / 2 });
+    for (const u of [-0.18, 0, 0.18]) at(new THREE.TorusGeometry(0.13, 0.012, 4, 16), this.stdM('#b89a64', 1), u, 1.6, 0, { ry: Math.PI / 2 });
+    at(new THREE.BoxGeometry(0.06, 0.34, 0.06), wood2, 1.03, 1.45, 0);
+    at(new THREE.CylinderGeometry(0.035, 0.035, 0.24, 8), wood, 1.13, 1.3, 0, { rz: Math.PI / 2 });
+    // 縄の先の桶（水が入っている）。そよ風でゆっくり揺れる
+    const swing = new THREE.Group(); swing.position.set(0, 1.47, 0); g.add(swing);
+    const hang = (geo, mat, px, py, pz, r = {}) => this.mesh(geo, mat, px, py, pz, { ...r, parent: swing });
+    hang(new THREE.CylinderGeometry(0.012, 0.012, 0.2, 5), this.stdM('#d8bf8a', 1), 0, -0.1, 0);
+    hang(new THREE.TorusGeometry(0.19, 0.012, 4, 12, Math.PI), this.mat('iron'), 0, -0.39, 0);
+    hang(new THREE.CylinderGeometry(0.2, 0.16, 0.28, 12), wood, 0, -0.53, 0);
+    for (const [y, r] of [[-0.45, 0.195], [-0.61, 0.168]]) hang(new THREE.TorusGeometry(r, 0.014, 4, 16), this.mat('iron'), 0, y, 0, { rx: Math.PI / 2 });
+    hang(new THREE.CircleGeometry(0.18, 14), water.material, 0, -0.42, 0, { rx: -Math.PI / 2, noShadow: true });
+    // 切妻屋根と棟、棟の両端の猫耳
+    for (const s of [-1, 1]) at(new THREE.BoxGeometry(2.5, 0.07, 1.15), roofM, 0, 2.85 - 0.575 * Math.sin(0.6), s * 0.575 * Math.cos(0.6), { rx: s * 0.6 });
+    at(new THREE.BoxGeometry(2.6, 0.1, 0.16), wood2, 0, 2.88, 0);
+    for (const s of [-1, 1]) { const eg = new THREE.ConeGeometry(0.18, 0.34, 4); eg.rotateY(Math.PI / 4); at(eg, roofM, s * 1.1, 3.05, 0).scale.z = 0.5; }
+    // 根もとの草
+    const bladeM = ['#6abf52', '#5ab04a', '#7ac85a'].map(c => this.stdM(c, 0.9));
+    for (let i = 0; i < 8; i++) {
+      const a = (i + this.r() * 0.6) / 8 * Math.PI * 2;
+      for (let k = 0; k < 4; k++) { const h = 0.18 + this.r() * 0.14, b = a + (this.r() - 0.5) * 0.25; at(new THREE.ConeGeometry(0.035, h, 4), bladeM[k % 3], Math.cos(b) * (1.05 + this.r() * 0.06), h / 2, Math.sin(b) * (1.05 + this.r() * 0.06), { rx: (this.r() - 0.5) * 0.5, rz: (this.r() - 0.5) * 0.5 }); }
+    }
+    this.add(g);
+    this.col(x, z, 1.08, H + 0.1);
+    this.tick((dt, t) => { swing.rotation.z = Math.sin(t * 1.1 + x) * 0.06; swing.rotation.x = Math.sin(t * 0.8 + z) * 0.04; water.material.emissiveIntensity = 0.22 + Math.sin(t * 1.6 + x) * 0.06; });
   }
 
   // 噴水の水まわりの道具（城下町の大広間と、城の前庭の噴水で共用）。x, z：噴水の中心。y はどれも地面からの高さ
@@ -4625,36 +4712,63 @@ function audienceMat(k, happy) {
 
 const ZONE_BUILD = {
   // ---------------- 第一章 ----------------
-  // ぽかぽか村：広場の井戸、村長の家、ミケの家、商店、魚屋、猫神社
+  // ぽかぽか村：広場の井戸、高台の村長の家、西の住宅地のミケの家と畑、南の店の並び、魚屋の屋台、丘の上の猫神社、南東の池
   village(K) {
-    K.perimeter('fence');
     const post = storyCond('done');
-    K.mesh(new THREE.CircleGeometry(10, 40), new THREE.MeshStandardMaterial({ color: '#c8b494', roughness: 1 }), 0, 0.015, 2, { rx: -Math.PI / 2, noShadow: true }).receiveShadow = true;
-    K.path(0, 2, -10, -31, 3.2); K.path(0, 2, 35, 10, 3.2); K.path(0, 2, 8, 31, 3.2); K.path(4, -2, 24, -8, 2.6); K.path(24, -8, 35, -22, 2);
+    K.flora({ trees: [['round', 5], ['pine', 1]], leaf: ['#6abf52', '#5ab04a', '#7ac85a', '#8ac862'], fruit: '#ff8a8a', bush: 0.75, flower: ['#ffffff', '#ffe07a', '#ffb8d8'] });
+    // 広場と土の道
+    K.mesh(new THREE.CircleGeometry(9, 40), new THREE.MeshStandardMaterial({ color: '#c8b494', roughness: 1 }), 0, 0.015, 2, { rx: -Math.PI / 2, noShadow: true }).receiveShadow = true;
+    K.path(0, -10, 0, -5, 3.4); K.path(-10, -13, -5, -6, 2.4); K.path(-8, -0.5, -13.5, -2, 2.4); K.path(6, -4, 23, -7.5, 2.4);
+    K.path(5, 8, 11, 10, 3); K.path(2, 9, 4, 13, 3); K.path(-7, 7, -17, 16, 2.4);
+    K.path(-16.5, -2, -21.5, -7, 2.2); K.path(-26, 9, -21, 18.5, 2.2);
     K.well(0, 2);
-    K.catHouse(0, -20, 9, 7, 4, 's', { roof: 'roofRed', sign: '村長の家', lit: true, smoke: true });
+    // 村長の家の高台：石段の上の灯りと、前庭の花と実のなる木
+    K.catHouse(0, -22, 9, 7, 4, 's', { roof: 'roofRed', sign: '村長の家', lit: true, smoke: true });
+    for (const x of [-3.2, 3.2]) K.lantern(x, -14.9, '#ffc86a', 2.4);
+    K.roundTree(-6.2, -24, 1.2, 'leaf', { fruit: '#ff8a8a' }); K.roundTree(8, -25, 1.1, 'leaf2', { fruit: '#ffb84a' });
+    K.flowers(-5.5, -16.5, 12, 1.6); K.flowers(7, -17, 12, 1.8, ['#ffe07a', '#ffffff']); K.bench(7.5, -20.5, -Math.PI / 2);
+    // 西の住宅地：ミケの家、北西の家、畑
     K.catHouse(-26, -8, 6, 6, 3.4, 'e', { roof: 'roofOrange', sign: post ? 'ミケの家（魚屋）' : 'ミケの家' });
-    K.fishRack(-24, -2.5, Math.PI / 2);
-    K.catHouse(-18, 18, 7, 5, 3.6, 'n', { roof: 'roofBlue', sign: '武器屋', sub: 'つめとぎ・つるぎ' });
-    K.catHouse(-5, 19, 6, 5, 3.4, 'n', { roof: 'roofGreen', sign: '道具屋' });
-    K.catHouse(11, 20, 8, 6, 4.2, 'n', { roof: 'roofRed', sign: '宿屋 ひだまり亭', lit: true });
+    K.fishRack(-28.5, -2.5, Math.PI / 2); K.barrel(-23, -12); K.flowers(-22, -3.5, 8, 1.2, ['#ffe07a', '#ffffff']);
     K.catHouse(-24, -22, 6, 5, 3.4, 's', { roof: 'roofGreen' });
-    K.catHouse(-30, 12, 5, 5, 3.2, 'e', { roof: 'roofBlue' });
-    K.catHouse(14, -22, 6, 5, 3.4, 's', { roof: 'roofOrange' });
-    // 魚屋の屋台と干し魚
+    // 畑：土の畝に、キャベツとにんじん
+    for (let i = 0; i < 4; i++) {
+      const z = -17 + i * 1.4;
+      K.box(-26, z, 6, 0.22, 0.9, '#8a6440', { col: false });
+      for (let k = 0; k < 6; k++) {
+        const x = -28.5 + k + (K.r() - 0.5) * 0.2;
+        if (i % 2) { K.mesh(new THREE.ConeGeometry(0.07, 0.25, 6), '#ff9a3a', x, 0.3, z, { rx: Math.PI, noShadow: true }); K.mesh(new THREE.ConeGeometry(0.16, 0.36, 5), 'leaf2', x, 0.42, z, { noShadow: true }); }
+        else K.mesh(new THREE.IcosahedronGeometry(0.26, 1), k % 3 ? '#8ad06a' : '#a8e080', x, 0.4, z);
+      }
+    }
+    K.colBox(-26, -14.9, 3.1, 2.6, 0.5);
+    K.roundTree(-27.5, -25, 1.1, 'leaf', { fruit: '#ff8a8a' }); K.lantern(-15.4, -6, '#ffc86a');
+    // 南西：武器屋と民家
+    K.catHouse(-20, 23, 7, 5, 3.6, 'n', { roof: 'roofBlue', sign: '武器屋', sub: 'つめとぎ・つるぎ' });
+    K.crate(-15.6, 21.5); K.crate(-15.2, 22.8, 0.8); K.barrel(-24.4, 21);
+    K.catHouse(-29.5, 15, 5, 5, 3.2, 'e', { roof: 'roofRed' });
+    // 南の店の並び：道具屋と宿屋
+    K.catHouse(-5, 20, 6, 5, 3.4, 'n', { roof: 'roofGreen', sign: '道具屋' });
+    K.catHouse(12, 20.5, 8, 6, 4.2, 'n', { roof: 'roofRed', sign: '宿屋 ひだまり亭', lit: true });
+    K.barrel(-8.8, 18.5); K.flowers(16.8, 17, 8, 1.2);
+    // 魚屋の屋台と干し魚、東の家
     K.stall(18.5, 1.5, -Math.PI / 2, 'clothRed', ['#8ab8d8', '#b8c8d8', '#ff9a7a']);
     K.sign(17.2, 1.5, -Math.PI / 2, post ? 'ミケと魚屋' : '魚屋', '今日のおすすめ：焼き魚', '#8ad8ff', 3.1, 2.6);
-    K.fishRack(21, -5, 0); K.fishRack(21, 8, 0); K.barrel(16.5, -2); K.barrel(16, 5);
-    // 猫神社
-    K.torii(24, -9, 0, 1); K.shrine(24, -23, 0);
-    K.stoneLantern(21, -13); K.stoneLantern(27, -13);
-    for (let z = -12; z > -20; z -= 1.6) K.mesh(new THREE.BoxGeometry(1.6, 0.06, 1), 'stone', 24, 0.03, z, { noShadow: true });
+    K.fishRack(21.5, -5, 0); K.fishRack(22, 5, 0); K.barrel(16.5, -2); K.barrel(16, 5);
+    K.catHouse(30, -3, 5, 6, 3.4, 'w', { roof: 'roofOrange' });
+    // 南東の池：すいれんと、ほとりのベンチ
+    for (let i = 0; i < 10; i++) { const a = K.r() * 6, d = K.r() * 3.4, x = 24.5 + Math.cos(a) * d, z = 20 + Math.sin(a) * d * 1.3; const pad = K.mesh(new THREE.CircleGeometry(0.35 + K.r() * 0.25, 12, 0.3, Math.PI * 1.85), 'leaf2', x, 0.06, z, { rx: -Math.PI / 2, noShadow: true }); pad.rotation.z = K.r() * 6; if (i % 3 === 0) K.mesh(new THREE.SphereGeometry(0.12, 8, 6), '#ffb8d8', x, 0.14, z, { noShadow: true }); }
+    K.bench(24, 13.1, 0); K.flowers(17, 26.5, 10, 1.4, ['#ffb8d8', '#ffffff']); K.flowers(31.5, 13.2, 8, 1.2, ['#ffb8d8', '#ffffff']); K.rock(31.2, 22, 0.6);
+    // 猫神社：参道の鳥居と石灯籠、丘の上の小さな鳥居、飛び石、社。奥の道に灯籠
+    K.torii(24, -6.8, 0, 1); K.torii(24, -15.4, 0, 0.82); K.shrine(24, -23, 0);
+    for (const [x, z] of [[21.2, -7.6], [26.8, -7.6], [21.4, -16.4], [26.6, -16.4], [31.2, -16.8], [31.2, -23.2]]) K.stoneLantern(x, z);
+    for (let z = -16.6; z > -20.8; z -= 1.4) K.mesh(new THREE.BoxGeometry(1.6, 0.06, 1), 'stone', 24, 0.03, z, { noShadow: true });
+    K.roundTree(29.5, -26, 1.3, 'leaf2', { lush: true }); K.flowers(19, -19, 10, 1.6, ['#ffffff', '#ffb8d8']);
     // 村の小物
-    for (const [x, z, ry] of [[-6, 8, 0.4], [6, -4, -0.6]]) K.bench(x, z, ry);
-    for (const [x, z] of [[-10, -6], [9, 10], [-14, 8], [4, -12]]) K.lantern(x, z, '#ffc86a', 2.6);
-    for (const [x, z] of [[-8, 12], [8, 12], [-12, -12], [12, -10], [-30, -2], [30, 18]]) K.flowers(x, z, 14, 1.8);
-    for (const [x, z, s] of [[-32, -26, 1.3], [-6, -28, 1.1], [30, 26, 1.2], [-32, 26, 1.4], [32, -30, 1.1], [-14, 28, 1], [22, 28, 1]]) K.roundTree(x, z, s, 'leaf', { fruit: s > 1.2 ? '#ff8a8a' : null });
-    K.crate(-14, 21); K.crate(-13, 22.2, 0.8); K.barrel(-22, 21);
+    K.bench(-6, 8, 0.4); K.bench(7.2, -1.6, -0.9);
+    for (const [x, z] of [[-9.2, -7], [8.4, -8.2], [-9.4, 10.4], [8.4, 12.4], [-12, 15.5], [1, 13.6]]) K.lantern(x, z, '#ffc86a', 2.6);
+    for (const [x, z] of [[-8, 12], [8, 13], [-12, -11], [12, -11], [-30, 4], [30, 10], [-4, -12.4]]) K.flowers(x, z, 14, 1.8);
+    for (const [x, z, s] of [[-12, 26, 1.1], [3, 27, 1], [-31, 8.5, 1.2], [12.4, -11.6, 1]]) K.roundTree(x, z, s, 'leaf', { fruit: s > 1.1 ? '#ff8a8a' : null });
     K.light(0, 5, 2, '#fff0c8', 6, 24);
   },
   // 村はずれの丘：丘の上に流れ星の落ちたクレーター、西の見晴らしに大きな木とベンチ
@@ -5210,7 +5324,7 @@ const ZONE_BUILD = {
     K.catHouse(14, 10, 6, 5, 3.4, 'n', { roof: 'roofPurple', lit: true });
     K.catHouse(5, 11.5, 5, 4.6, 3.2, 'n', { roof: 'roofGray' });
     K.catHouse(-14.5, 11.6, 5, 4.4, 3.2, 'n', { roof: 'roofPurple', lit: true });
-    K.well(7, -3);
+    K.well(7, -3, 0, { roof: 'roofPurple' });
     for (const [x, z] of [[-6, -4], [-6, 5], [2.5, -3], [2.5, 6], [12, 4], [17.2, -11], [-17, 8]]) K.lantern(x, z, '#c8a8ff');
     // 洗濯物のひも
     for (const [x0, z0, x1, z1] of [[12.5, -4, 18, -5.5], [-18, 5.2, -12, 5.2]]) K.bunting(x0, z0, x1, z1, ['#f4f0fa', '#c8b8e8', '#fff8f0', '#b8c8e0'], 2.4);
