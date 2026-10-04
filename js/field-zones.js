@@ -8,7 +8,7 @@
 // town: 人が暮らす区画（敵が出ない）／ calm: 人は暮らしていないが、敵が出ない区画／ calmAfter: そのステージをクリアすると敵が出なくなる
 // mapName: ミャオニアの地図での名前（省略時は name）／ parent: ミャオニアの地図では、この区画にまとめる
 // dents: 床のくぼみ [{ at, r, depth, rim, w }]（地図のある区画だけ。半径 r の内側がすり鉢状に depth まで下がり、縁の幅 w が rim だけ盛り上がる。歩いて出入りできる）
-// anchor: ねこ地蔵（休めて、ワールドマップのひとっとびの着く場所）／ noAnchor: ねこ地蔵を置かない（ワールドマップからひとっとびできない。anchor は入ってくる場所・もどる場所としてだけ使う）
+// anchor: ねこ地蔵（近づくとHPが回復して、ワールドマップのひとっとびの着く場所）／ noAnchor: ねこ地蔵を置かない（ワールドマップからひとっとびできない。anchor は入ってくる場所・もどる場所としてだけ使う）
 // npcs[].v: [[条件, 台詞...]]（条件 'scene:ID' 'clear:ステージ' 'done' 'flag:名前'。後ろのものほど優先）
 // npcs[].shop: weapon / item / inn / fish（話しかけると店）
 // naps / sleepwalk の name：まだ名前を知らない子の呼び名（なければ speakerName）
@@ -4984,13 +4984,38 @@ class ZoneKit {
   }
 }
 
+// 土の模様（小石とまだら）。地図の土の道（field-terrain.js）と見た目をそろえる。一辺 DIRT_TILE m で繰り返す
+const DIRT_TILE = 3;
+ZoneKit.prototype.dirtTex = function (col) {
+  const key = 'dirtTex' + col;
+  if (this.mc[key]) return this.mc[key];
+  const S = 128, cv = document.createElement('canvas'); cv.width = cv.height = S;
+  const g = cv.getContext('2d'), rnd = seeded(hashStr(col));
+  g.fillStyle = col; g.fillRect(0, 0, S, S);
+  // ふちをまたぐ模様は反対側にも描いて、つなぎ目を目立たなくする
+  const dot = (x, y, rx, ry, fill) => { g.fillStyle = fill; for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { g.beginPath(); g.ellipse(x + ox, y + oy, rx, ry, 0, 0, Math.PI * 2); g.fill(); } };
+  for (let i = 0; i < 7; i++) dot(rnd() * S, rnd() * S, 16 + rnd() * 16, 10 + rnd() * 12, rnd() < 0.5 ? 'rgba(255,245,220,.10)' : 'rgba(70,50,30,.10)');
+  for (let i = 0; i < 34; i++) dot(rnd() * S, rnd() * S, 1.5 + rnd() * 2.6, 1.5 + rnd() * 2.6, rnd() < 0.5 ? 'rgba(255,245,220,.35)' : 'rgba(70,50,30,.3)');
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = 8;
+  return (this.mc[key] = tex);
+};
+// 土の地面のジオメトリ：UV を大きさに合わせて、模様の大きさがどこでも同じになるようにする
+ZoneKit.prototype.dirtGeo = function (geo, w, h) {
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / DIRT_TILE, uv.getY(i) * h / DIRT_TILE);
+  return geo;
+};
+ZoneKit.prototype.dirtMat = function (col, extra = {}) {
+  const key = 'dirt' + col + JSON.stringify(extra);
+  return this.mc[key] || (this.mc[key] = new THREE.MeshStandardMaterial({ map: this.dirtTex(col), roughness: 1, ...extra }));
+};
 // 土の道（x0,z0 → x1,z1）
 ZoneKit.prototype.path = function (x0, z0, x1, z1, w = 3, col = '#b8946a') {
-  const len = Math.hypot(x1 - x0, z1 - z0), key = 'path' + col;
-  const m = this.mc[key] || (this.mc[key] = new THREE.MeshStandardMaterial({ color: col, roughness: 1, transparent: true, opacity: 0.9, depthWrite: false }));
-  const p = this.mesh(new THREE.PlaneGeometry(w, len + w * 0.6), m, (x0 + x1) / 2, 0.02, (z0 + z1) / 2, { rx: -Math.PI / 2, noShadow: true });
+  const len = Math.hypot(x1 - x0, z1 - z0) + w * 0.6;
+  const m = this.dirtMat(col, { transparent: true, opacity: 0.9, depthWrite: false });
+  const p = this.mesh(this.dirtGeo(new THREE.PlaneGeometry(w, len), w, len), m, (x0 + x1) / 2, 0.02, (z0 + z1) / 2, { rx: -Math.PI / 2, noShadow: true });
   p.rotation.z = -Math.atan2(x1 - x0, -(z1 - z0)); p.renderOrder = -1; p.receiveShadow = true;
-  const disc = this.mesh(new THREE.CircleGeometry(w / 2, 16), m, x1, 0.021, z1, { rx: -Math.PI / 2, noShadow: true }); disc.receiveShadow = true;
+  const disc = this.mesh(this.dirtGeo(new THREE.CircleGeometry(w / 2, 16), w, w), m, x1, 0.021, z1, { rx: -Math.PI / 2, noShadow: true }); disc.receiveShadow = true;
 };
 // 川（colliders で渡れない。bridges の位置だけ通れる）
 ZoneKit.prototype.river = function (z, w, x0, x1, bridges = []) {
@@ -5195,7 +5220,7 @@ const ZONE_BUILD = {
     const post = storyCond('done');
     K.flora({ trees: [['round', 5], ['pine', 1]], leaf: ['#6abf52', '#5ab04a', '#7ac85a', '#8ac862'], fruit: '#ff8a8a', bush: 0.75, flower: ['#ffffff', '#ffe07a', '#ffb8d8'] });
     // 広場と土の道
-    K.mesh(new THREE.CircleGeometry(9, 40), new THREE.MeshStandardMaterial({ color: '#c8b494', roughness: 1 }), 0, 0.015, 2, { rx: -Math.PI / 2, noShadow: true }).receiveShadow = true;
+    K.mesh(K.dirtGeo(new THREE.CircleGeometry(9, 40), 18, 18), K.dirtMat('#c8b494'), 0, 0.015, 2, { rx: -Math.PI / 2, noShadow: true }).receiveShadow = true;
     K.path(0, -10, 0, -5, 3.4); K.path(-10, -13, -5, -6, 2.4); K.path(-8, -0.5, -13.5, -2, 2.4); K.path(6, -4, 23, -7.5, 2.4);
     K.path(5, 8, 11, 10, 3); K.path(2, 9, 4, 13, 3); K.path(-7, 7, -17, 16, 2.4);
     K.path(-16.5, -2, -21.5, -7, 2.2); K.path(-26, 9, -21, 18.5, 2.2);

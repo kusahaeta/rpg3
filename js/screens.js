@@ -22,7 +22,6 @@ function topBar(title, back = true) {
     <div class="tb-title">${title}</div>
     <div class="currency">
       <span class="c-item" title="にぼし（お金）"><i class="ic-jade"></i>${fmt(d.niboshi)}</span>
-      <span class="c-item" title="けいけんち（なかまの画面でレベルアップに使う）"><i class="ic-exp"></i>${fmt(d.expPool)}</span>
       <span class="c-item" title="初手技ポイント（初手技に使う）"><i class="ic-tp"></i>${d.tp}/5</span>
     </div></div>`;
 }
@@ -79,7 +78,7 @@ function HubScreen() {
     <div class="hub-menu">
       <button class="hm gold" data-go="story"><b>ぼうけんの書</b><small>STORY</small><em>物語を進める</em></button>
       <button class="hm" data-go="field"><b>冒険に出る</b><small>EXPLORE</small><em>ミャオニアを歩いて、敵や宝箱をさがす</em></button>
-      <button class="hm" data-go="chars"><b>なかま</b><small>PARTY</small><em>レベルアップ・わざの確認</em></button>
+      <button class="hm" data-go="chars"><b>なかま</b><small>PARTY</small><em>ステータス・わざの確認</em></button>
       <button class="hm" data-go="team"><b>へんせい</b><small>TEAM</small><em>戦いに出る4匹を決める</em></button>
       <button class="hm" data-go="bond"><b>友情</b><small>FRIENDSHIP</small><em>一緒に旅をした時間</em></button>
       <button class="hm" data-go="stages"><b>思い出のたたかい</b><small>BATTLES</small><em>これまでの戦いにもう一度</em></button>
@@ -204,8 +203,8 @@ function startStage(ci, st, techs, after) {
       if (!res.win) return '<div class="dim">へんせいやレベルを見直してみよう。</div>';
       const d = Save.data, exp = (80 + st.lv * 30) * st.waves.length, nib = (10 + st.lv * 3) * (first ? 3 : 1);
       d.cleared[st.id] = true;
-      d.niboshi += nib; d.expPool += st.lv * 20; d.tp = Math.min(5, d.tp + 1);
-      let html = `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}${first ? '（はじめて）' : ''}　<i class="ic-exp"></i>けいけんち +${st.lv * 20}　<i class="ic-tp"></i>初手技ポイント +1</div>`;
+      d.niboshi += nib; d.tp = Math.min(5, d.tp + 1);
+      let html = `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}${first ? '（はじめて）' : ''}　<i class="ic-tp"></i>初手技ポイント +1</div>`;
       html += '<div class="rw-team">' + d.team.map(k => { const up = grantExp(k, exp); return `<div class="rw-mem">${avatarSVG(k)}<span>Lv.${d.owned[k].lv}${up ? `<b> ▲${up}</b>` : ''}</span></div>`; }).join('') + '</div>';
       Save.save();
       return html;
@@ -265,7 +264,7 @@ function TeamScreen(backFn) {
 }
 
 // ------------------------------------------------------------
-//  なかま（レベルアップ・わざ）
+//  なかま（ステータス・わざ）
 // ------------------------------------------------------------
 function CharScreen(sel) {
   const keys = Object.keys(CHARS).filter(k => Save.data.owned[k]);
@@ -274,7 +273,6 @@ function CharScreen(sel) {
   if (v3 && (!v3.model || v3.model.key !== sel)) v3.setChar(sel);
   const c = CHARS[sel], o = Save.data.owned[sel], col = ELEMENTS[c.elem].color, gear = Save.data.gear[sel] || 0;
   const st = charStats(sel, o.lv, o.eid);
-  const need = o.lv < 80 ? expToNext(o.lv) - o.exp : 0;
   const ab = (label, a) => `<div class="ck-ab"><div class="ck-ab-h"><span class="ck-kind">${label}</span><b>${a.name}</b>${a.target ? `<span class="ck-tg">${{ single: '単体', blast: '拡散', aoe: '全体', bounce: 'バウンド', ally: '味方単体', allies: '味方全体', self: '自分' }[a.target]}</span>` : ''}</div><p>${a.desc}</p></div>`;
   const combos = COMBOS.filter(x => x.pair.includes(sel));
   const s = h(`<div class="screen chars">${topBar('なかま')}
@@ -285,11 +283,7 @@ function CharScreen(sel) {
         <div class="ck-tags">${elemIcon(c.elem)}<span>${ELEMENTS[c.elem].name}</span><span class="ck-path">役割：${PATHS[c.path].name}</span><span class="ck-eid">武器：${GEAR_NAMES[sel][gear]}</span></div></div>
       <div class="ck-lv"><b>Lv.${o.lv}</b><span>/80</span>
         <div class="bar exp"><i style="width:${o.lv >= 80 ? 100 : o.exp / expToNext(o.lv) * 100}%"></i></div>
-        <div class="ck-lvbtns">
-          <button class="btn small" data-up="1" ${o.lv >= 80 || Save.data.expPool < need ? 'disabled' : ''}>+1 Lv（${fmt(need)}）</button>
-          <button class="btn small" data-up="10" ${o.lv >= 80 || Save.data.expPool < need ? 'disabled' : ''}>+10 Lv</button>
-          <button class="btn small" data-up="99" ${o.lv >= 80 || Save.data.expPool < need ? 'disabled' : ''}>できるだけ</button>
-        </div></div>
+        <div class="dim">${o.lv >= 80 ? 'レベル最大' : `次のレベルまで あと ${fmt(expToNext(o.lv) - o.exp)}`}</div></div>
       <div class="ck-stats">
         <div><span>HP</span><b>${fmt(st.maxHp)}</b></div><div><span>攻撃力</span><b>${fmt(st.atk)}</b></div>
         <div><span>防御力</span><b>${fmt(st.def)}</b></div><div><span>速度</span><b>${st.spd}</b></div>
@@ -305,11 +299,6 @@ function CharScreen(sel) {
   wireBack(s);
   on(s, '.ck-list .chip', 'click', el => App.go(CharScreen, el.dataset.key));
   if (v3) v3.bindDrag(s.querySelector('.ck-art'));
-  on(s, '[data-up]', 'click', el => {
-    let n = +el.dataset.up;
-    while (n-- > 0 && o.lv < 80) { const nd = expToNext(o.lv) - o.exp; if (Save.data.expPool < nd) break; Save.data.expPool -= nd; grantExp(sel, nd); }
-    Save.save(); Sfx.select(); Sfx.meow(sel); App.go(CharScreen, sel);
-  });
   return s;
 }
 
@@ -358,12 +347,10 @@ function renderShop(o, kind, name, close, field) {
     } else if (kind === 'item') {
       body = `<div class="sh-list">
         <div class="sh-row"><div class="sh-icon">🌿</div><div class="sh-info"><b>またたびの小袋</b><small>初手技ポイントが満タンになる</small></div><button class="btn small" data-item="tp" ${d.niboshi < 60 || d.tp >= 5 ? 'disabled' : ''}>にぼし 60</button></div>
-        <div class="sh-row"><div class="sh-icon">📖</div><div class="sh-info"><b>ねこじゃらしの書</b><small>けいけんち +800（なかまの画面でレベルアップに使う）</small></div><button class="btn small" data-item="exp" ${d.niboshi < 120 ? 'disabled' : ''}>にぼし 120</button></div>
       </div>`;
     } else if (kind === 'fish') {
       body = `<div class="sh-list">
         <div class="sh-row"><div class="sh-icon">🐟</div><div class="sh-info"><b>焼き魚</b><small>冒険中のみんなのHPが全回復する</small></div><button class="btn small" data-item="fish" ${d.niboshi < 30 ? 'disabled' : ''}>にぼし 30</button></div>
-        <div class="sh-row"><div class="sh-icon">🍱</div><div class="sh-info"><b>おさかな弁当</b><small>けいけんち +300</small></div><button class="btn small" data-item="bento" ${d.niboshi < 50 ? 'disabled' : ''}>にぼし 50</button></div>
       </div>`;
     } else if (kind === 'inn') {
       const ks = Object.keys(d.owned);
@@ -381,9 +368,7 @@ function renderShop(o, kind, name, close, field) {
     o.querySelectorAll('[data-item]').forEach(b => b.onclick = () => {
       const it = b.dataset.item;
       if (it === 'tp') { d.niboshi -= 60; d.tp = 5; field && field.toast('初手技ポイントが満タンになった'); }
-      if (it === 'exp') { d.niboshi -= 120; d.expPool += 800; field && field.toast('けいけんち +800'); }
       if (it === 'fish') { d.niboshi -= 30; if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.spawnFollowers(); field.toast('焼き魚をみんなで食べた。HPが全回復！'); } }
-      if (it === 'bento') { d.niboshi -= 50; d.expPool += 300; field && field.toast('けいけんち +300'); }
       if (it === 'rest') { if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.spawnFollowers(); } const ts = d.team; for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++) addBond(ts[i], ts[j], 1); field && field.toast('ぐっすり眠った。みんなのHPが全回復！'); Sfx.heal(); }
       Save.save(); Sfx.select(); draw();
     });
