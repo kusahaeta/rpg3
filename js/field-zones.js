@@ -6598,7 +6598,7 @@ const ZONE_BUILD = {
     const lc = t => '#' + new THREE.Color('#9a9a88').lerp(new THREE.Color(t), h).getHexString();
     K.flora({ trees: [['round', 3], ['dead', 1.2 - h]], leaf: [lc('#5ad06a'), lc('#6abf52'), lc('#4a9a3e')], bush: 0.7, rocks: 0.4 });
     // 幹（区画の外の南にそびえる）
-    K.cyl(0, 62, 22, 90, 'bark', { r2: 14, seg: 24, col: false });
+    K.cyl(0, 64, 22, 90, 'bark', { r2: 14, seg: 24, col: false });   // 手前の縁が封印の扉（z=40.5）に突き出さないよう、扉より南に
     const leaf = new THREE.MeshStandardMaterial({ color: new THREE.Color('#9a9a88').lerp(new THREE.Color('#5ad06a'), h), roughness: 0.9 });
     for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; K.mesh(new THREE.IcosahedronGeometry(18, 1), leaf, Math.cos(a) * 30, 80 + (i % 3) * 8, 62 + Math.sin(a) * 26, { noShadow: true }); }
     // 幹から張り出す根（南の根のトンネルの上をまたぐ）
