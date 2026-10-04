@@ -28,6 +28,19 @@ const CRITTER_LOOKS = {
   nekogami:  { look: { fur: '#ffe8a8', pattern: 'tabby', patches: ['#f0c060'], eye: '#ffffff', eye2: '#ffffff', muzzle: '#fff6dc', paws: '#fff6dc', earIn: '#ffb8a8', crown: '#ffcf4a', cape: '#ffffff', capeIn: '#ffcf4a', sleepy: true, blush: 0.35 }, scale: 3.2, expr: 'sleepy' },
 };
 
+// のぼりの旗の模様：紫の地に、白い太字を縦に（ごろごろ団の総長）
+const FLAG_TEX = {};
+function bossFlagTex(text) {
+  if (FLAG_TEX[text]) return FLAG_TEX[text];
+  const c = document.createElement('canvas'); c.width = 64; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#5a2a8a'; g.fillRect(0, 0, 64, 128);
+  g.strokeStyle = '#ffd27a'; g.lineWidth = 4; g.strokeRect(3, 3, 58, 122);
+  g.fillStyle = '#ffffff'; g.font = 'bold 40px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  [...text].forEach((ch, i, a) => g.fillText(ch, 32, 64 + (i - (a.length - 1) / 2) * 46));
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (FLAG_TEX[text] = t);
+}
 function buildEnemy(key) {
   const d = ENEMIES[key], col = d.color;
   const C = CRITTER_LOOKS[d.shape];
@@ -108,15 +121,23 @@ function buildEnemy(key) {
       update = (dt, t) => wings.forEach((g, i) => { g.rotation.z = (i ? -1 : 1) * Math.sin(t * 12 + root.userData.ph) * 0.6; });
       float = 0.18; height = 1.6; radius = 0.55; break;
     }
-    case 'rock': {   // ころころ岩：ころがる岩に顔、頭に苔
+    case 'rock': {   // ごろごろ岩：ごろごろ団（暴走族のような岩の一団）の団員。ころがる岩に顔、苔のリーゼントと白いハチマキ
       const rm = new THREE.MeshStandardMaterial({ color: col, roughness: 0.95, flatShading: true }); rm.userData.e0 = new THREE.Color(0); rm.userData.ei0 = 0; mats.push(rm);
       const r = add(P(new THREE.DodecahedronGeometry(0.55, 1), rm), 0, 0.55, 0);
-      const moss = add(new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 8, 0, Math.PI * 2, 0, Math.PI / 3), tm('#6aa84a')), 0, 0.9, -0.05); moss.scale.y = 0.6;
+      // 苔のリーゼント：前へつき出す。うしろは短く刈った苔
+      const moss = tm('#3f7a2c');
+      const pomp = add(P(new THREE.CapsuleGeometry(0.19, 0.5, 6, 12), moss), 0, 1.07, 0.25); pomp.rotation.x = Math.PI / 2 - 0.2; pomp.scale.set(1.45, 1, 0.85);
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2.4), moss), 0, 0.98, -0.14).scale.y = 0.55;
+      // ハチマキ：白い帯に赤い丸。うしろで結んだ端がなびく
+      const band = add(new THREE.Mesh(new THREE.TorusGeometry(0.49, 0.05, 6, 28), tm('#ffffff')), 0, 0.84, 0); band.rotation.x = Math.PI / 2;
+      add(new THREE.Mesh(new THREE.CircleGeometry(0.075, 14), tm('#e8304a')), 0, 0.84, 0.545);
+      const tails = [-1, 1].map(sd => { const tl = new THREE.Group(); tl.position.set(sd * 0.06, 0.84, -0.52); tl.rotation.y = sd * 0.35; inner.add(tl); add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.34), tm('#ffffff')), 0, 0, -0.17, tl); return tl; });
       eyes(0.17, 0.62, 0.5, 0.08, inner, { angry: true });
-      update = (dt, t) => { r.rotation.x = Math.sin(t * 2 + root.userData.ph) * 0.2; inner.position.y = Math.abs(Math.sin(t * 2)) * 0.05; };
+      // root.userData.spin：探索で爆走するとき、岩の本体だけを回す（顔とリーゼントは前を向いたまま）
+      update = (dt, t) => { r.rotation.x = (root.userData.spin || 0) + Math.sin(t * 2 + root.userData.ph) * 0.2; inner.position.y = Math.abs(Math.sin(t * 2)) * 0.05; tails.forEach((tl, i) => { tl.rotation.x = Math.sin(t * 13 + i * 1.7) * 0.3 - 0.15; }); };
       height = 1.15; radius = 0.6; scale = 1.1; break;
     }
-    case 'boar': {   // はらぺこイノシシ：大きな体、牙、毛のたてがみ
+    case 'boar': {   // ばくそうイノシシ（ごろごろ団の総長）：大きな体、牙、毛のたてがみ。黒いリーゼント、白いハチマキ、背中に「総長」ののぼり
       const fm = tm(col), sn = tm('#e8a888'), tusk = tm('#fff6e0');
       const body = add(P(new THREE.SphereGeometry(0.7, 24, 16), fm), 0, 0.75, -0.1); body.scale.set(0.95, 0.8, 1.3);
       const head = add(P(new THREE.SphereGeometry(0.45, 20, 14), fm), 0, 0.85, 0.75);
@@ -126,8 +147,17 @@ function buildEnemy(key) {
       eyes(0.18, 0.98, 1.08, 0.075, inner, { angry: true });
       for (let i = 0; i < 6; i++) add(P(new THREE.ConeGeometry(0.08, 0.3, 5), tm('#5a3a2a')), 0, 1.3 - i * 0.03, 0.4 - i * 0.2).rotation.x = -0.4;
       for (const [x, z] of [[-0.35, 0.4], [0.35, 0.4], [-0.35, -0.6], [0.35, -0.6]]) add(P(new THREE.CylinderGeometry(0.12, 0.1, 0.4, 10), fm), x, 0.2, z);
-      update = (dt, t) => { head.rotation.x = Math.sin(t * 2) * 0.05; };
-      height = 1.6; radius = 1.0; scale = 1.5; break;
+      // 黒いリーゼントと、白いハチマキ（赤い丸、うしろで結んだ端）
+      const pomp = add(P(new THREE.CapsuleGeometry(0.2, 0.7, 6, 12), tm('#241a1e')), 0, 1.36, 0.98); pomp.rotation.x = Math.PI / 2 - 0.15; pomp.scale.set(1.5, 1, 0.9);
+      const band = add(new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.045, 6, 28), tm('#ffffff')), 0, 1.15, 0.75); band.rotation.x = Math.PI / 2;
+      add(new THREE.Mesh(new THREE.CircleGeometry(0.07, 14), tm('#e8304a')), 0, 1.15, 1.146);
+      const tails = [-1, 1].map(sd => { const tl = new THREE.Group(); tl.position.set(sd * 0.06, 1.15, 0.42); tl.rotation.y = sd * 0.35; inner.add(tl); add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.4), tm('#ffffff')), 0, 0, -0.2, tl); return tl; });
+      // 背中ののぼり：竿と、「総長」と書いた紫の旗（なびく）
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 1.6, 6), tm('#c8a060')), 0.28, 1.65, -0.7);
+      const flag = new THREE.Group(); flag.position.set(0.28, 1.98, -0.7); inner.add(flag);
+      const fl = add(new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.86), new THREE.MeshStandardMaterial({ map: bossFlagTex('総長'), side: THREE.DoubleSide, roughness: 0.9 })), -0.23, 0, 0, flag);
+      update = (dt, t) => { head.rotation.x = Math.sin(t * 2) * 0.05; flag.rotation.y = Math.sin(t * 5) * 0.25; fl.rotation.y = Math.sin(t * 7 + 1) * 0.12; tails.forEach((tl, i) => { tl.rotation.x = Math.sin(t * 11 + i * 1.7) * 0.3 - 0.15; }); };
+      height = 2.0; radius = 1.0; scale = 1.5; break;
     }
     case 'ghost': {   // ゲラゲラゴースト：白い布おばけ。目を細めて大笑い
       const gm = tm(col, { transparent: true, opacity: 0.85, emissive: new THREE.Color('#b8b8ff'), emissiveIntensity: 0.25 }); gm.userData.e0 = new THREE.Color('#b8b8ff'); gm.userData.ei0 = 0.25;
