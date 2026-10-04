@@ -4773,10 +4773,11 @@ class ZoneKit {
   // 封印の扉
   // 封印の扉：柱とまぐさ石の枠に、左右二枚の石の扉（ry の正面が手前）。扉の面には、二枚にまたがる封印の円と光る輪。
   //   open なら扉は奥へ開いたまま（くぐれる）。閉じていれば当たり判定。openUp() で、封印の模様が消えて扉が奥へ開く（会話シーンの演出 seal）
-  sealDoor(x, z, ry = 0, open = false) {
-    const c = Math.cos(ry), s = Math.sin(ry), W = 2.6, H = 5.6;
-    for (const sd of [-1, 1]) this.box(x + c * sd * 3.3, z - s * sd * 3.3, 1.4, 7, 1.2, 'stone2', { ry });
-    this.box(x, z, 8, 1.4, 1.2, 'stone2', { ry, y: H });
+  //   sc：大きさ（1 ＝ 幅 8m × 高さ 7m の遺跡の扉。根のトンネルのような狭いところでは小さくする）
+  sealDoor(x, z, ry = 0, open = false, sc = 1) {
+    const c = Math.cos(ry), s = Math.sin(ry), W = 2.6 * sc, H = 5.6 * sc;
+    for (const sd of [-1, 1]) this.box(x + c * sd * 3.3 * sc, z - s * sd * 3.3 * sc, 1.4 * sc, 7 * sc, 1.2, 'stone2', { ry });
+    this.box(x, z, 8 * sc, 1.4 * sc, 1.2, 'stone2', { ry, y: H });
     const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry; this.scene.add(g);
     const stone = this.mat('stone2'), face = new THREE.MeshStandardMaterial({ color: '#8a846a', roughness: 0.8, side: THREE.DoubleSide });
     // 扉：ちょうつがいは両はしの柱の内側。左（sd = -1）は +角度、右は -角度で、奥（-Z）へ開く
@@ -4784,11 +4785,11 @@ class ZoneKit {
       const hinge = new THREE.Group(); hinge.position.set(sd * W, 0, 0); g.add(hinge);
       const m = new THREE.Mesh(new THREE.BoxGeometry(W, H, 0.5), stone); m.position.set(-sd * W / 2, H / 2, 0); m.castShadow = true; m.receiveShadow = true; hinge.add(m);
       // 封印の円の半分（扉の手前の面）
-      const half = new THREE.Mesh(new THREE.CircleGeometry(2.4, 40, sd < 0 ? Math.PI / 2 : -Math.PI / 2, Math.PI), face); half.position.set(-sd * W, 3.2, 0.26); hinge.add(half);
+      const half = new THREE.Mesh(new THREE.CircleGeometry(2.4 * sc, 40, sd < 0 ? Math.PI / 2 : -Math.PI / 2, Math.PI), face); half.position.set(-sd * W, 3.2 * sc, 0.26); hinge.add(half);
       return { hinge, sd, half };
     });
-    const ring = new THREE.Mesh(new THREE.RingGeometry(2.1, 2.3, 48), this.glow('#8affe0', open ? 3 : 1.4).clone()); ring.material.side = THREE.DoubleSide; ring.material.transparent = true;
-    ring.position.set(0, 3.2, 0.32); g.add(ring);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(2.1 * sc, 2.3 * sc, 48), this.glow('#8affe0', open ? 3 : 1.4).clone()); ring.material.side = THREE.DoubleSide; ring.material.transparent = true;
+    ring.position.set(0, 3.2 * sc, 0.32); g.add(ring);
     let k = open ? 1 : 0;
     const pose = () => { leaves.forEach(L => { L.hinge.rotation.y = -L.sd * Ease.inOut(k) * 1.45; }); ring.material.opacity = 1 - k; ring.visible = k < 1; };
     pose();
@@ -6477,6 +6478,8 @@ const ZONE_BUILD = {
     for (let i = 0; i < 40; i++) K.mesh(new THREE.CircleGeometry(0.4, 6), revived ? 'leaf' : 'leafGray', (K.r() - 0.5) * 50, 0.04, -16 + (K.r() - 0.5) * 30, { rx: -Math.PI / 2, noShadow: true });
     if (revived) for (let i = 0; i < 24; i++) { const a = K.r() * 6; K.mesh(new THREE.SphereGeometry(1, 10, 8), K.glow(pick(['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a']), 2), Math.cos(a) * 26, 64 + K.r() * 20, 50 + Math.sin(a) * 20, { noShadow: true }); }
     K.signpost(-3, -24, 0.2, '↓ にゃんだーの樹', '→ 世界の果て');
+    // 南の根のトンネルの奥の封印の扉：c7_01b でタマがふれると開き、そのあとは開いたまま（トンネルは幅 4m なので小さめ。北向きの面が正面）
+    K.sealDoor(0, 40.5, Math.PI, storyCond('scene:c7_01b'), 0.7);
     // 灰色に色あせた葉の吹きだまり（調べられる）
     for (let i = 0; i < 16; i++) { const a = K.r() * Math.PI * 2, d = Math.sqrt(K.r()) * 1.3; K.mesh(new THREE.CircleGeometry(0.35, 6), 'leafGray', -10 + Math.cos(a) * d, 0.05 + i * 0.004, 10 + Math.sin(a) * d, { rx: -Math.PI / 2, rz: K.r() * 3, noShadow: true }); }
     // 世界の果てへのびる、いちばん太い根（東の小道の南の縁を這う）
