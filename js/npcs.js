@@ -39,6 +39,8 @@ const NPCS = {
     look: { fur: '#ffffff', pattern: 'spots', patches: ['#2a2a30'], eye: '#4a8ad8', muzzle: '#ffffff', scarf: '#e0453a', accent: '#e0453a' } },
   bukiya2:   { name: '旅の鍛冶屋', title: '街道の鍛冶屋', elem: 'fire', face: 'smile',
     look: { fur: '#8a8a96', pattern: 'tabby', patches: ['#5a5a66'], eye: '#e8a040', muzzle: '#c8c8d0', apron: '#5a4a3a', band: '#e0453a', accent: '#ffb04a' } },
+  tsuribito: { name: '釣り好きのトラ', title: '宿場の川べりの釣り猫', elem: 'wind', face: 'gentle',
+    look: { fur: '#e8b060', pattern: 'tabby', patches: ['#b87a3a'], eye: '#6a8a3a', muzzle: '#fff4e0', paws: '#fff4e0', kerchief: '#e8c870', vest: '#5a7a9a', accent: '#5a8ad8' } },
   hachi:     { name: 'ハチ', title: '旅芸人（笛）', elem: 'wind', face: 'serious', faceAfter: ['scene:c2_01b', 'smile'],
     look: { fur: '#34323c', pattern: 'tuxedo', eye: '#e8c040', muzzle: '#ffffff', paws: '#ffffff', scarf: '#e0a040', cap: '#6a4a8a', accent: '#e0a040' } },
   buchi:     { name: 'ブチ', title: '旅芸人（太鼓）', elem: 'fire', face: 'pout', faceAfter: ['scene:c2_01b', 'smile'],
