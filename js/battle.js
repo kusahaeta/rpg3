@@ -369,7 +369,7 @@ class Battle {
     for (const key of this.opts.techs || []) {
       const u = this.allies.find(a => a.key === key && a.alive);
       if (!u || !this.aliveEnemies().length) continue;
-      this.announce('秘技', `${u.name}「${u.def.technique.name}」`, ELEMENTS[u.elem].color);
+      this.announce('初手技', `${u.name}「${u.def.technique.name}」`, ELEMENTS[u.elem].color);
       await wait(500);
       await u.def.technique.run(this, u);
       if (this.v) await this.v.attackEnd(u);

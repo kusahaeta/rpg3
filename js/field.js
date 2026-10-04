@@ -1,7 +1,7 @@
 'use strict';
 // ============================================================
 //  フィールド探索（3D）— 章ごとに複数の区画がゲートでつながる
-//  WASD 移動／ドラッグで視点／クリック・J で攻撃（先制）／E 秘技／F 調べる・話す／M ワールドマップ
+//  WASD 移動／ドラッグで視点／クリック・J で攻撃（先制）／E 初手技／F 調べる・話す／M ワールドマップ
 //  仲間は先頭の子のうしろを一列になってついてくる
 // ============================================================
 function seeded(seed) {
@@ -298,7 +298,7 @@ class FieldView extends BaseView {
       this.chests.push({ id: i, pos: V3(p.x, y, p.z), opened: done, ...c });
       this.reserved.push({ x: p.x, z: p.z, r: 2 });
     }
-    // またたびの茂み（叩くと秘技ポイントが回復）
+    // ひかりのつぼみ（叩くと初手技ポイントが回復）
     const broken = this.s.set(this.s.broken, this.zoneId);
     this.crystals = [];
     for (let i = 0; i < Z.crystals; i++) {
@@ -465,15 +465,31 @@ class FieldView extends BaseView {
     glow.scale.setScalar(2.0); glow.position.y = 0.6; g.add(glow);
     return { g, lid, glow };
   }
-  // またたびの茂み（叩くと、秘技ポイントが回復）
+  // ひかりのつぼみ（叩くと、初手技ポイントが回復）：根もとに大きな葉が三枚、短い茎の先に、ピンクにほんのり光る大きなつぼみ
+  //   つぼみのまわりを、小さなきらめきが回る（gem）
   makeCrystal() {
-    const g = new THREE.Group();
-    const lm = toon('#6ac05a'), fm = toon('#ffc8e8', { emissive: new THREE.Color('#ff9ad8'), emissiveIntensity: 0.6 });
-    for (let i = 0; i < 4; i++) { const m = outlined(new THREE.IcosahedronGeometry(0.42, 1), lm, { thick: 0.002 }); m.position.set((i % 2 - 0.5) * 0.5, 0.38 + (i > 1 ? 0.28 : 0), (i > 1 ? 0 : 0.2)); m.scale.y = 0.8; g.add(m); }
+    const g = new THREE.Group(), green = toon('#5aa84a');
+    // 葉：平たい楕円を、外へ向けて少し持ち上げる
+    for (let i = 0; i < 3; i++) {
+      const a = i / 3 * Math.PI * 2 + 0.5, lf = outlined(new THREE.SphereGeometry(1, 16, 8), green, { thick: 0.002 });
+      lf.scale.set(0.32, 0.035, 0.15); lf.position.set(Math.cos(a) * 0.26, 0.08, Math.sin(a) * 0.26); lf.rotation.set(0, -a, 0.35); g.add(lf);
+    }
+    // 茎（少し曲がる）
+    const stem = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(V3(0, 0, 0), V3(0.06, 0.35, 0), V3(0, 0.68, 0)), 8, 0.03, 6), green); g.add(stem);
+    // つぼみ：しずく形（先が少しとがる）と、根もとの緑のがく
+    const bud = new THREE.Group(); bud.position.y = 0.88; g.add(bud);
+    const budGeo = new THREE.LatheGeometry([...Array(13)].map((_, k) => { const t = k / 12, y = -0.2 + t * 0.48; return new THREE.Vector2(Math.sin(Math.PI * Math.pow(t, 0.75)) * 0.21 * (1 - t * 0.35) + 0.001, y); }), 20);
+    bud.add(outlined(budGeo, toon('#ffc8e8', { emissive: new THREE.Color('#ff9ad8'), emissiveIntensity: 0.7 }), { thick: 0.002 }));
+    for (let i = 0; i < 4; i++) {
+      const a = i / 4 * Math.PI * 2, se = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.16, 4), green);
+      se.position.set(Math.cos(a) * 0.1, -0.15, Math.sin(a) * 0.1); se.rotation.set(Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9); bud.add(se);
+    }
+    // まわりを回る小さなきらめきと、ピンクの光
     const gem = new THREE.Group(); gem.position.y = 0.9; g.add(gem);
-    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; const f = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), fm); f.position.set(Math.cos(a) * 0.4, Math.sin(i * 2) * 0.1, Math.sin(a) * 0.4); gem.add(f); }
+    const spark = glowMat('#ffb8e0', 2);
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, f = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 0), spark); f.position.set(Math.cos(a) * 0.38, (i - 1) * 0.08, Math.sin(a) * 0.38); gem.add(f); }
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ff9ad8', 0.6), blending: THREE.AdditiveBlending, depthWrite: false }));
-    sp.scale.setScalar(1.8); sp.position.y = 0.7; g.add(sp);
+    sp.scale.setScalar(1.6); sp.position.y = 0.88; g.add(sp);
     return { g, gem, sp };
   }
   // ねこ地蔵（ここで休める。赤いよだれかけ）
@@ -1017,15 +1033,15 @@ class FieldView extends BaseView {
       this.p.burst(c.pos.clone().add(V3(0, 0.8, 0)), '#ff9ad8', 40, { speed: 3, up: 1, life: 0.9 });
       this.fx.sprite(c.pos.clone().add(V3(0, 0.8, 0)), '#ff9ad8', 2.2, 0.4);
       Sfx.meow(this.team[this.leader].key);
-      if (Save.data.tp < 5) { Save.data.tp++; Save.save(); this.toast('またたびの香り……！　秘技ポイント +1'); } else this.toast('秘技ポイントは満タンです');
+      if (Save.data.tp < 5) { Save.data.tp++; Save.save(); this.toast('つぼみがはじけて、光があふれた……！　初手技ポイント +1'); } else this.toast('初手技ポイントは満タンです');
       this.renderHud();
     }
   }
   useTechnique() {
     if (this.busy) return;
     const key = this.team[this.leader].key, c = CHARS[key];
-    if (this.techs.has(key)) { this.toast(`${c.name}の秘技はすでに準備済みです`); return; }
-    if (Save.data.tp < 1) { this.toast('秘技ポイントが足りません（またたびの茂みを叩くと回復）'); return; }
+    if (this.techs.has(key)) { this.toast(`${c.name}の初手技はすでに準備済みです`); return; }
+    if (Save.data.tp < 1) { this.toast('初手技ポイントが足りません（ひかりのつぼみを叩くと回復）'); return; }
     Save.data.tp--; Save.save();
     this.techs.add(key);
     const col = ELEMENTS[c.elem].color, pos = this.player.pos;
@@ -1034,7 +1050,7 @@ class FieldView extends BaseView {
     this.p.burst(pos.clone().add(V3(0, 0.6, 0)), col, 50, { speed: 4, life: 0.8, up: 0.8 });
     this.player.m.flash(col, 0.8);
     Sfx.ult();
-    this.toast(`秘技「${c.technique.name}」：次の戦闘開始時に発動`);
+    this.toast(`初手技「${c.technique.name}」：次の戦闘開始時に発動`);
     this.renderHud(); this.renderTeam();
   }
 
@@ -1084,7 +1100,7 @@ class FieldView extends BaseView {
     for (const n of this.naps) if (Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 2.4) return { type: 'nap', n, text: `${n.name || speakerName(n.key)}に話しかける` };
     for (const o of this.fluffObjs || []) if (o.ready && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < 1.8 && Math.abs(o.pos.y - p.y) < 1) return { type: 'fluff', o, text: '綿毛につかまる' };
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
-    for (const c of this.crystals) if (!c.broken && c.pos.distanceTo(p) < 1.8) return { type: 'bush', text: '調べる：またたびの茂み' };
+    for (const c of this.crystals) if (!c.broken && c.pos.distanceTo(p) < 1.8) return { type: 'bush', text: '調べる：ひかりのつぼみ' };
     const same = (x, z) => Math.abs(this.gy(x, z) - p.y) < 1.5;
     if (!Z.noAnchor && Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && same(Z.anchor[0], Z.anchor[1])) return { type: 'anchor', text: 'ねこ地蔵：ひと休み（HP回復）／ワールドマップ' };
     if (this.T) {
@@ -1152,7 +1168,7 @@ class FieldView extends BaseView {
     } else if (it.type === 'nap') {
       this.startTalk(it.n.name || speakerName(it.n.key), it.n.talk || ['……すぴー……']);
     } else if (it.type === 'bush') {
-      this.startTalk('またたびの茂み', ['ほんのり甘い香りの茂み。……攻撃で叩くと、秘技ポイントが1回復する（最大5）。', '秘技ポイントを使うと、E で先頭の子の秘技を準備できる。次の戦闘のはじめに発動する。'], null, true);
+      this.startTalk('ひかりのつぼみ', ['ピンクにほんのり光る、大きなつぼみ。……攻撃で叩くと、初手技ポイントが1回復する（最大5）。', '初手技ポイントを使うと、E で先頭の子の初手技を準備できる。次の戦闘のはじめに発動する。'], null, true);
     } else if (it.type === 'chest') {
       const c = it.c; c.opened = true;
       const all = Save.data.fieldChests || (Save.data.fieldChests = {});
@@ -2040,7 +2056,7 @@ class FieldView extends BaseView {
       <div class="fd-team"></div>
       <div class="fd-actions">
         <div class="fd-act"><kbd>クリック / J</kbd>攻撃・先制</div>
-        <div class="fd-act tech"><kbd>E</kbd>秘技 <b class="tp"></b></div>
+        <div class="fd-act tech"><kbd>E</kbd>初手技 <b class="tp"></b></div>
         <div class="fd-act"><kbd>Shift</kbd>ダッシュ</div>
         <div class="fd-act"><kbd>M</kbd>ワールドマップ</div>
       </div>
@@ -2048,7 +2064,7 @@ class FieldView extends BaseView {
       <div class="fd-stick hidden"><i></i></div>
       <div class="fd-pad">
         <button class="pad-btn talk" data-pad="talk">調べる</button>
-        <button class="pad-btn tech" data-pad="tech">秘技<b class="tp"></b></button>
+        <button class="pad-btn tech" data-pad="tech">初手技<b class="tp"></b></button>
         <button class="pad-btn jump" data-pad="jump">ジャンプ</button>
         <button class="pad-btn atk" data-pad="atk">攻撃</button>
       </div>
@@ -2143,7 +2159,7 @@ class FieldView extends BaseView {
   renderHud() {
     const d = Save.data;
     this.root.querySelector('.currency').innerHTML =
-      `<span class="c-item" title="にぼし"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><span class="c-item" title="秘技ポイント"><i class="ic-tp"></i>${d.tp}/5</span>`;
+      `<span class="c-item" title="にぼし"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><span class="c-item" title="初手技ポイント"><i class="ic-tp"></i>${d.tp}/5</span>`;
     this.root.querySelectorAll('.fd-act.tech .tp, .pad-btn.tech .tp').forEach(x => { x.textContent = `${d.tp}/5`; });
   }
   renderTeam() {
@@ -2152,7 +2168,7 @@ class FieldView extends BaseView {
       <div class="fd-mem ${i === this.leader ? 'on' : ''} ${m.hpRatio <= 0 ? 'dead' : ''}" data-i="${i}" style="--c:${ELEMENTS[CHARS[m.key].elem].color}">
         <div class="fd-face">${avatarSVG(m.key)}</div>
         <span class="fd-key">${i + 1}</span>
-        ${this.techs.has(m.key) ? '<span class="fd-tech">秘技</span>' : ''}
+        ${this.techs.has(m.key) ? '<span class="fd-tech">初手技</span>' : ''}
         <div class="bar hp"><i style="width:${m.hpRatio * 100}%"></i></div>
       </div>`).join('');
     el.querySelectorAll('.fd-mem').forEach(x => x.onclick = () => this.switchLeader(+x.dataset.i));

@@ -778,7 +778,7 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .ic-jade { background: none; width: 16px; height: 16px; clip-path: none; }
 .ic-jade::before { content: '🐟'; font-size: 14px; line-height: 16px; }
 .ic-exp { background: none; } .ic-exp::before { content: '⭐'; font-size: 12px; line-height: 14px; }
-.ic-tp { background: none; } .ic-tp::before { content: '🌿'; font-size: 12px; line-height: 14px; }
+.ic-tp { background: none; } .ic-tp::before { content: '🌷'; font-size: 12px; line-height: 14px; }
 .c-item { background: rgba(62, 40, 34, .7); border: 2px solid var(--line); }
 .topbar { background: linear-gradient(180deg, rgba(62, 40, 34, .7), transparent); }
 .back { border: 2px solid var(--line); background: rgba(62, 40, 34, .7); }
