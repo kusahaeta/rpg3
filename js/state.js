@@ -40,10 +40,8 @@ const Save = {
       if (d.story && d.story.ch === 1 && d.story.step >= 12) d.story.step += 1;
       d.ver = 4;
     }
-    // ver 5：「けいけんち」をためてあとでレベルアップする仕組みをやめた。ためていた分は、いる仲間みんなに配る
+    // ver 5：「けいけんち」をためてあとでレベルアップする仕組みをやめた。ためていた分は消える
     if (ver < 5) {
-      const pool = d.expPool || 0;
-      if (pool > 0) for (const k of Object.keys(d.owned)) grantExp(k, pool);
       delete d.expPool;
       d.ver = 5;
     }
