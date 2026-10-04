@@ -5643,9 +5643,66 @@ const ZONE_BUILD = {
     for (const [x, z, n] of [[-43, -15, 4], [-43, 25, 3], [-9, -15, 3], [43, -15, 4], [43, 29, 3], [45, 39, 3], [-25, -39, 5], [25, -39, 5], [-25, -27, 3], [25, -27, 3], [-35, 39, 3], [15, 39, 3]]) K.ore(x, z, n, '#a07bff', 1);
     for (const [x, z] of [[-40, 21], [-40, -9], [-24, -13], [30, -13], [41, 1], [41, 21], [-20, 37]]) K.stalag(x, z, 1.8 + K.r() * 1.6);
     for (const sd of [-1, 1]) for (const z of [-38, -32, -27]) K.column(sd * 15, z, 7, 0.6, 'darkStone');
-    for (let i = 0; i < 3; i++) { const x = -1.2 + i * 1.2, z = -39.2 - (i === 1 ? 0.4 : 0); K.mesh(new THREE.BoxGeometry(0.08, 1.2, 0.02), 'metal', x, 0.5, z, { rz: (i - 1) * 0.12 }); K.mesh(new THREE.BoxGeometry(0.34, 0.06, 0.06), 'gold', x, 0.95, z, { rz: (i - 1) * 0.12 }); }
-    K.mesh(new THREE.CircleGeometry(2.2, 24), K.glow('#8a6aff', 0.6), 0, 0.03, -39.4, { rx: -Math.PI / 2, noShadow: true });
+    // 三本の剣（左からリン・ハヤテ・ゴロウ。c4_05 の三匹の立ち位置と同じ並び）：がれきの塚に突き立ち、血溝が持ち主の色にほのかに光る
+    //   リン：細身の剣、柄頭に光の水晶。ハヤテ：まっすぐな片手剣、柄の根もとに青い布（青き風）。ゴロウ：幅広の大剣、厚い鉄の鍔
+    const steel = new THREE.MeshStandardMaterial({ color: '#d8dce8', metalness: 0.7, roughness: 0.3, emissive: new THREE.Color('#3a3a5a'), emissiveIntensity: 0.5 });
+    // 刃：鍔の位置を原点に、下向きに伸びて先がとがる（面取りで刃のふちを出す）
+    const bladeGeo = (w, len, tip) => {
+      const sh = new THREE.Shape(); sh.moveTo(-w / 2, 0); sh.lineTo(-w / 2, -(len - tip)); sh.lineTo(0, -len); sh.lineTo(w / 2, -(len - tip)); sh.lineTo(w / 2, 0); sh.lineTo(-w / 2, 0);
+      const g = new THREE.ExtrudeGeometry(sh, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.01, bevelSegments: 1 }); g.translate(0, 0, -0.006); return g;
+    };
+    let scarf = null;
+    for (const [i, o] of [
+      { w: 0.075, len: 1.0, tip: 0.16, glow: '#fff2b0', guard: 'gold', gw: 0.3, gh: 0.035, grip: '#f0e6d0', gripLen: 0.22, tilt: [0.06, 0.25, 0.12] },
+      { w: 0.1, len: 1.05, tip: 0.14, glow: '#6ab0ff', guard: 'metal', gw: 0.36, gh: 0.05, grip: '#2a3a6a', gripLen: 0.22, tilt: [-0.05, 0, 0.02] },
+      { w: 0.17, len: 1.02, tip: 0.12, glow: '#ffb070', guard: 'iron', gw: 0.46, gh: 0.08, grip: '#6a4a30', gripLen: 0.3, tilt: [0.04, -0.3, -0.14] },
+    ].entries()) {
+      const x = -1.2 + i * 1.2, z = -39.2 - (i === 1 ? 0.4 : 0), sink = 0.18;
+      // がれきの塚
+      K.mesh(new THREE.DodecahedronGeometry(0.32, 0), 'rockDark', x, 0.02, z, { ry: i * 1.3 }).scale.set(1.2, 0.42, 1);
+      for (let k = 0; k < 3; k++) { const a = i * 2 + k * 2.1; K.mesh(new THREE.DodecahedronGeometry(0.07 + 0.03 * (k % 2), 0), 'darkStone', x + Math.cos(a) * 0.38, 0.04, z + Math.sin(a) * 0.32, { ry: a }); }
+      const g = new THREE.Group(); g.position.set(x, K.gy(x, z) + o.len - sink, z); g.rotation.set(...o.tilt);
+      const at = (geo, mat, px, py, pz, opt = {}) => K.mesh(geo, mat, px, py, pz, { ...opt, parent: g });
+      // 刃と、両面の血溝
+      at(bladeGeo(o.w, o.len, o.tip), steel, 0, 0, 0);
+      for (const sd of [-1, 1]) at(new THREE.BoxGeometry(o.w * 0.18, o.len - o.tip - 0.12, 0.004), K.glow(o.glow, 1.4), 0, -(o.len - o.tip) / 2 - 0.02, sd * 0.0125, { noShadow: true });
+      // 鍔
+      at(new THREEX.RoundedBoxGeometry(o.gw, o.gh, 0.07, 2, Math.min(o.gh, 0.07) * 0.4), o.guard, 0, o.gh / 2, 0);
+      if (i === 0) for (const sd of [-1, 1]) at(new THREE.SphereGeometry(0.03, 10, 8), 'gold', sd * o.gw / 2, o.gh / 2, 0);
+      if (i === 2) at(new THREE.BoxGeometry(o.w * 0.9, 0.05, 0.08), 'iron', 0, -0.02, 0);
+      // 柄（巻き紐）と柄頭
+      const gr = 0.026 + i * 0.006, gc = o.gh + o.gripLen / 2;
+      at(new THREE.CylinderGeometry(gr, gr, o.gripLen, 10), o.grip, 0, gc, 0);
+      for (let k = 0; k < 4; k++) at(new THREE.TorusGeometry(gr + 0.004, 0.006, 5, 12), o.grip, 0, o.gh + (k + 0.5) * o.gripLen / 4, 0, { rx: Math.PI / 2 + 0.3 });
+      const py = o.gh + o.gripLen + 0.03;
+      if (i === 0) at(new THREE.OctahedronGeometry(0.05, 0), K.glow('#fff2b0', 2.6), 0, py + 0.02, 0, { noShadow: true }).scale.set(0.8, 1.4, 0.8);
+      else at(new THREE.SphereGeometry(i === 2 ? 0.055 : 0.04, 12, 10), i === 2 ? 'iron' : K.glow('#3a6ad8', 1.2), 0, py, 0);
+      // ハヤテの青い布：柄の根もとに結んで、刃にそって垂れ、風にゆれる
+      if (i === 1) {
+        at(new THREE.TorusGeometry(gr + 0.008, 0.014, 6, 14), 'cloth', 0, o.gh + 0.035, 0, { rx: Math.PI / 2 });
+        const cg = new THREE.PlaneGeometry(0.075, 0.5, 1, 8); cg.translate(0, -0.25, 0);
+        const cp = cg.attributes.position; for (let v = 0; v < cp.count; v++) { const y = cp.getY(v); cp.setZ(v, Math.sin(-y * 6) * 0.03 + y * y * 0.15); }
+        cg.computeVertexNormals();
+        scarf = new THREE.Mesh(cg, new THREE.MeshStandardMaterial({ color: '#3a6ad8', roughness: 0.9, side: THREE.DoubleSide }));
+        scarf.position.set(0.035, o.gh + 0.03, 0.03); g.add(scarf);
+      }
+      K.add(g);
+    }
+    // 剣のまわりの光だまり：ふちへ向かってやわらかく消える（加算で床に重ねる）
+    const poolTex = (() => {
+      const S = 256, R = S / 2, c = document.createElement('canvas'); c.width = c.height = S;
+      const g = c.getContext('2d'), gr = g.createRadialGradient(R, R, 0, R, R, R);
+      gr.addColorStop(0, 'rgba(255,255,255,.5)'); gr.addColorStop(0.5, 'rgba(255,255,255,.3)'); gr.addColorStop(0.85, 'rgba(255,255,255,.08)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, S, S);
+      return new THREE.CanvasTexture(c);
+    })();
+    const poolM = K.mesh(new THREE.PlaneGeometry(6, 6), new THREE.MeshBasicMaterial({ map: poolTex, color: hdr('#8a6aff', 0.85), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }), 0, 0.03, -39.4, { rx: -Math.PI / 2, noShadow: true });
+    poolM.renderOrder = 1;
+    let swT = 0;
     K.v.emitters.push(dt => {
+      swT += dt;
+      poolM.material.opacity = 0.8 + Math.sin(swT * 1.1) * 0.2;
+      if (scarf) { scarf.rotation.set(0.25 + Math.sin(swT * 2.1) * 0.1, 0.5 + Math.sin(swT * 1.3) * 0.35, 0.2 + Math.sin(swT * 1.7) * 0.08); }
       if (Math.random() < dt * 6) K.v.p.emit(V3((Math.random() - 0.5) * 4, 0.2, -39.4 + (Math.random() - 0.5) * 2), V3(0, 0.8, 0), hdr('#b89aff', 2), { life: 2.4, size: 0.07, drag: 0 });
       // 闇の淵の底から立ちのぼる、闇のもやと小さな光
       if (Math.random() < dt * 22) K.v.p.emit(V3((Math.random() - 0.5) * 50, -6 - Math.random() * 6, 12 + (Math.random() - 0.5) * 34), V3(0, 2.2 + Math.random(), 0), hdr(Math.random() < 0.7 ? '#3a1a6a' : '#b89aff', 1.6), { life: 4, size: 0.18, drag: 0.1 });
