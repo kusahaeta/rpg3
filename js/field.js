@@ -298,13 +298,13 @@ class FieldView extends BaseView {
       this.chests.push({ id: i, pos: V3(p.x, y, p.z), opened: done, ...c });
       this.reserved.push({ x: p.x, z: p.z, r: 2 });
     }
-    // ひかりのつぼみ（叩くと初手技ポイントが回復）
+    // 爪とぎの丸太（爪を研ぐと初手技ポイントが回復。使ったあとは爪あとが残る）
     const broken = this.s.set(this.s.broken, this.zoneId);
     this.crystals = [];
     for (let i = 0; i < Z.crystals; i++) {
       const p = this.freeSpot(1.2);
-      const c = this.makeCrystal(), y = put(c.g, p.x, p.z); this.scene.add(c.g);
-      const b = broken.has(i); if (b) c.g.visible = false;
+      const c = this.makeScratchPost(), y = put(c.g, p.x, p.z); this.scene.add(c.g); col(p.x, p.z, 0.25);
+      const b = broken.has(i); if (b) c.setUsed(this.rand() * Math.PI * 2);
       this.crystals.push({ id: i, pos: V3(p.x, y, p.z), broken: b, ...c });
     }
     // 敵グループ（区画に対応するステージの敵）
@@ -465,32 +465,28 @@ class FieldView extends BaseView {
     glow.scale.setScalar(2.0); glow.position.y = 0.6; g.add(glow);
     return { g, lid, glow };
   }
-  // ひかりのつぼみ（叩くと、初手技ポイントが回復）：根もとに大きな葉が三枚、短い茎の先に、ピンクにほんのり光る大きなつぼみ
-  //   つぼみのまわりを、小さなきらめきが回る（gem）
-  makeCrystal() {
-    const g = new THREE.Group(), green = toon('#5aa84a');
-    // 葉：平たい楕円を、外へ向けて少し持ち上げる
-    for (let i = 0; i < 3; i++) {
-      const a = i / 3 * Math.PI * 2 + 0.5, lf = outlined(new THREE.SphereGeometry(1, 16, 8), green, { thick: 0.002 });
-      lf.scale.set(0.32, 0.035, 0.15); lf.position.set(Math.cos(a) * 0.26, 0.08, Math.sin(a) * 0.26); lf.rotation.set(0, -a, 0.35); g.add(lf);
-    }
-    // 茎（少し曲がる）
-    const stem = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(V3(0, 0, 0), V3(0.06, 0.35, 0), V3(0, 0.68, 0)), 8, 0.03, 6), green); g.add(stem);
-    // つぼみ：しずく形（先が少しとがる）と、根もとの緑のがく
-    const bud = new THREE.Group(); bud.position.y = 0.88; g.add(bud);
-    const budGeo = new THREE.LatheGeometry([...Array(13)].map((_, k) => { const t = k / 12, y = -0.2 + t * 0.48; return new THREE.Vector2(Math.sin(Math.PI * Math.pow(t, 0.75)) * 0.21 * (1 - t * 0.35) + 0.001, y); }), 20);
-    bud.add(outlined(budGeo, toon('#ffc8e8', { emissive: new THREE.Color('#ff9ad8'), emissiveIntensity: 0.7 }), { thick: 0.002 }));
-    for (let i = 0; i < 4; i++) {
-      const a = i / 4 * Math.PI * 2, se = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.16, 4), green);
-      se.position.set(Math.cos(a) * 0.1, -0.15, Math.sin(a) * 0.1); se.rotation.set(Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9); bud.add(se);
-    }
-    // まわりを回る小さなきらめきと、ピンクの光
-    const gem = new THREE.Group(); gem.position.y = 0.9; g.add(gem);
-    const spark = glowMat('#ffb8e0', 2);
-    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2, f = new THREE.Mesh(new THREE.OctahedronGeometry(0.04, 0), spark); f.position.set(Math.cos(a) * 0.38, (i - 1) * 0.08, Math.sin(a) * 0.38); gem.add(f); }
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ff9ad8', 0.6), blending: THREE.AdditiveBlending, depthWrite: false }));
-    sp.scale.setScalar(1.6); sp.position.y = 0.88; g.add(sp);
-    return { g, gem, sp };
+  // 爪とぎの丸太：短い丸太を立て、まん中に縄を巻いたもの。上には、研げる目印のピンクに光る肉球
+  //   setUsed(向き)：爪あと（明るい筋）をその向きに出し、肉球の光を消す
+  makeScratchPost() {
+    const g = new THREE.Group();
+    const log = outlined(new THREE.CylinderGeometry(0.22, 0.25, 0.95, 14), toon('#9a6a42'), { thick: 0.002 }); log.position.y = 0.475; g.add(log);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.215, 0.215, 0.02, 14), toon('#e8c890')); top.position.y = 0.955; g.add(top);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.008, 4, 20), toon('#b88a5a')); ring.rotation.x = Math.PI / 2; ring.position.y = 0.967; g.add(ring);
+    // 縄（ひとつのジオメトリにまとめる）
+    g.add(new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries([0, 1, 2, 3, 4, 5, 6].map(k => new THREE.TorusGeometry(0.24, 0.026, 6, 22).rotateX(Math.PI / 2).translate(0, 0.3 + k * 0.058, 0))), toon('#d8c08a')));
+    // 爪あと：四本の明るい筋（+z の側。使ったときに、研いだ向きへまわす）
+    const marks = new THREE.Group(); marks.visible = false; g.add(marks);
+    const markM = toon('#fff0d0');
+    for (let k = 0; k < 4; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.3, 0.014), markM); m.position.set((k - 1.5) * 0.055, 0.48 + (k % 2) * 0.03, 0.28 - Math.abs(k - 1.5) * 0.012); m.rotation.set(-0.05, (k - 1.5) * 0.2, 0.18); marks.add(m); }
+    // 研げる目印：ピンクに光る肉球（まわる）と、やわらかい光
+    const gem = new THREE.Group(); gem.position.y = 1.3; g.add(gem);
+    const pawM = glowMat('#ff9ad8', 1.8);
+    const pad = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 8), pawM); pad.scale.set(1.1, 0.85, 0.45); gem.add(pad);
+    for (const [x, y] of [[-0.075, 0.07], [-0.028, 0.105], [0.028, 0.105], [0.075, 0.07]]) { const t = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), pawM); t.scale.z = 0.5; t.position.set(x, y, 0); gem.add(t); }
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ff9ad8', 0.5), blending: THREE.AdditiveBlending, depthWrite: false }));
+    sp.scale.setScalar(1.0); sp.position.y = 1.3; g.add(sp);
+    const setUsed = ang => { marks.visible = true; marks.rotation.y = ang; gem.visible = false; sp.visible = false; };
+    return { g, gem, sp, marks, setUsed };
   }
   // ねこ地蔵（ここで休める。赤いよだれかけ）
   makeAnchor() {
@@ -986,6 +982,12 @@ class FieldView extends BaseView {
       for (const k of POSE_KEYS) P[k] = lerp(P[k], POSES.jump[k] || 0, w * 0.7);
     }
     if (p.doze) for (const k of POSE_KEYS) P[k] = lerp(P[k], POSES.sleep[k] || 0, p.doze);
+    // 爪とぎ：前のめりになり、両前足を交互に上下させる
+    if (p.scratch > 0) {
+      p.scratch -= d;
+      const sw = Math.sin(p.scratch * 26);
+      Object.assign(P, { lean: 0.22, armLx: -1.45 + sw * 0.35, armRx: -1.45 - sw * 0.35, armLz: 0.2, armRz: -0.2, elbowL: -0.5, elbowR: -0.5 });
+    }
     if (p.atk > 0) {
       const at = 0.45 - p.atk;
       const blend = (pose, w) => { for (const k of POSE_KEYS) P[k] = lerp(P[k], pose[k] || 0, w); };
@@ -1027,21 +1029,34 @@ class FieldView extends BaseView {
       const to = V3(o.pos.x - p.pos.x, 0, o.pos.z - p.pos.z), dist = to.length();
       if (dist < (o.R.r || 1.6) + 1.6 && to.normalize().dot(fwd) > 0.2) { if (o.R.look === 'jackbox') this.hitJackbox(o); else this.breakRubble(o); }
     }
-    for (const c of this.crystals) {
-      if (c.broken || c.pos.distanceTo(p.pos) > 1.9) continue;
-      c.broken = true; c.g.visible = false; this.s.set(this.s.broken, this.zoneId).add(c.id);
-      this.p.burst(c.pos.clone().add(V3(0, 0.8, 0)), '#ff9ad8', 40, { speed: 3, up: 1, life: 0.9 });
-      this.fx.sprite(c.pos.clone().add(V3(0, 0.8, 0)), '#ff9ad8', 2.2, 0.4);
+  }
+  // 爪を研ぐ：先頭の子が丸太のほうを向き、前足でカリカリ。爪あとが残り、初手技ポイント +1（満タンなら研がない）
+  scratch(c) {
+    if (this.busy) return;
+    if (Save.data.tp >= 5) { this.toast('爪はもう、じゅうぶんとがっている（初手技ポイントは満タン）'); return; }
+    const p = this.player, grip = p.m.armR && p.m.armR.grip;
+    // 丸太のすぐ前へ寄り、持ち物はしまう
+    const away = V3(p.pos.x - c.pos.x, 0, p.pos.z - c.pos.z); if (away.lengthSq() < 1e-4) away.set(0, 0, 1);
+    away.normalize(); p.pos.x = c.pos.x + away.x * 0.66; p.pos.z = c.pos.z + away.z * 0.66;
+    p.yaw = Math.atan2(c.pos.x - p.pos.x, c.pos.z - p.pos.z); p.scratch = 0.9; this.busy = true;
+    this.placePlayer(0);   // 動けないあいだは位置の更新が止まるので、ここでモデルを寄せる
+    if (grip) grip.visible = false;
+    for (let k = 0; k < 4; k++) Sfx.noise(0.07, 0.16, 4200 + k * 300, k * 0.18);
+    setTimeout(() => {
+      c.broken = true; this.s.set(this.s.broken, this.zoneId).add(c.id);
+      c.setUsed(Math.atan2(p.pos.x - c.pos.x, p.pos.z - c.pos.z));
+      this.p.burst(c.pos.clone().add(V3(0, 0.55, 0)), '#d8b07a', 16, { speed: 2, up: 0.6, life: 0.5, size: 0.06 });
       Sfx.meow(this.team[this.leader].key);
-      if (Save.data.tp < 5) { Save.data.tp++; Save.save(); this.toast('つぼみがはじけて、光があふれた……！　初手技ポイント +1'); } else this.toast('初手技ポイントは満タンです');
-      this.renderHud();
-    }
+      Save.data.tp++; Save.save(); this.toast('バリバリッ！　爪がとがった。初手技ポイント +1');
+      this.renderHud(); this.busy = false;
+      if (grip) grip.visible = true;
+    }, 900);
   }
   useTechnique() {
     if (this.busy) return;
     const key = this.team[this.leader].key, c = CHARS[key];
     if (this.techs.has(key)) { this.toast(`${c.name}の初手技はすでに準備済みです`); return; }
-    if (Save.data.tp < 1) { this.toast('初手技ポイントが足りません（ひかりのつぼみを叩くと回復）'); return; }
+    if (Save.data.tp < 1) { this.toast('初手技ポイントが足りません（爪とぎの丸太で爪を研ぐと回復）'); return; }
     Save.data.tp--; Save.save();
     this.techs.add(key);
     const col = ELEMENTS[c.elem].color, pos = this.player.pos;
@@ -1100,7 +1115,7 @@ class FieldView extends BaseView {
     for (const n of this.naps) if (Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 2.4) return { type: 'nap', n, text: `${n.name || speakerName(n.key)}に話しかける` };
     for (const o of this.fluffObjs || []) if (o.ready && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < 1.8 && Math.abs(o.pos.y - p.y) < 1) return { type: 'fluff', o, text: '綿毛につかまる' };
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
-    for (const c of this.crystals) if (!c.broken && c.pos.distanceTo(p) < 1.8) return { type: 'bush', text: '調べる：ひかりのつぼみ' };
+    for (const c of this.crystals) if (c.pos.distanceTo(p) < 1.8) return { type: 'post', c, text: c.broken ? '調べる：爪とぎの丸太' : '爪を研ぐ：爪とぎの丸太' };
     const same = (x, z) => Math.abs(this.gy(x, z) - p.y) < 1.5;
     if (!Z.noAnchor && Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && same(Z.anchor[0], Z.anchor[1])) return { type: 'anchor', text: 'ねこ地蔵：ひと休み（HP回復）／ワールドマップ' };
     if (this.T) {
@@ -1167,8 +1182,9 @@ class FieldView extends BaseView {
       this.startTalk(this.sleeper.SW.name || speakerName(this.sleeper.SW.key), this.sleeper.SW.talk || ['……すぴー……']);
     } else if (it.type === 'nap') {
       this.startTalk(it.n.name || speakerName(it.n.key), it.n.talk || ['……すぴー……']);
-    } else if (it.type === 'bush') {
-      this.startTalk('ひかりのつぼみ', ['ピンクにほんのり光る、大きなつぼみ。……攻撃で叩くと、初手技ポイントが1回復する（最大5）。', '初手技ポイントを使うと、E で先頭の子の初手技を準備できる。次の戦闘のはじめに発動する。'], null, true);
+    } else if (it.type === 'post') {
+      if (it.c.broken) this.startTalk('爪とぎの丸太', ['縄に、くっきりと爪あとが残っている。……ここではもう、研いだばかりだ。', '爪とぎの丸太で爪を研ぐと、初手技ポイントが1回復する（最大5）。初手技ポイントを使うと、E で先頭の子の初手技を準備できる。次の戦闘のはじめに発動する。'], null, true);
+      else this.scratch(it.c);
     } else if (it.type === 'chest') {
       const c = it.c; c.opened = true;
       const all = Save.data.fieldChests || (Save.data.fieldChests = {});
@@ -2461,7 +2477,7 @@ class FieldView extends BaseView {
       // カメラがゲートの光の面に近づいたら消す（画面全体が染まるのを防ぐ）
       g.face.material.opacity = 0.55 * clamp((Math.hypot(cam.x - g.x, cam.z - g.z) - 2.5) / 4, 0, 1);
     });
-    this.crystals.forEach(c => { if (!c.broken) { c.gem.rotation.y = t * 0.8; c.gem.position.y = 0.9 + Math.sin(t * 2 + c.pos.x) * 0.06; } });
+    this.crystals.forEach(c => { if (!c.broken) { c.gem.rotation.y = t * 0.8; c.gem.position.y = 1.3 + Math.sin(t * 2 + c.pos.x) * 0.06; } });
     this.chests.forEach(c => { if (!c.opened) c.glow.material.opacity = 0.6 + Math.sin(t * 3 + c.id) * 0.3; });
     // カメラ（壁・天井・障害物にめり込まないよう距離を縮める）
     const T = this.T, foot = p.vis ?? 0;
