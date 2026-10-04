@@ -334,13 +334,6 @@ function BondScreen() {
 //  お店（フィールドの住人から）
 // ------------------------------------------------------------
 const SHOP_NAMES = { weapon: '武器を鍛える', item: '道具屋', inn: 'ひと休み', fish: '魚屋' };
-// お店の道具で、編成のみんなにけいけんちを配る
-function shopExp(field, amount) {
-  const ups = grantTeamExp(amount);
-  if (field) field.team.forEach(m => { m.lv = Save.data.owned[m.key].lv; });
-  field && field.toast(`みんなにけいけんち +${amount}${ups.length ? '　' + ups.map(r => `${CHARS[r.key].name}がレベルアップ！`).join(' ') : ''}`);
-}
-
 function renderShop(o, kind, name, close, field) {
   const d = Save.data;
   const draw = () => {
@@ -354,12 +347,10 @@ function renderShop(o, kind, name, close, field) {
     } else if (kind === 'item') {
       body = `<div class="sh-list">
         <div class="sh-row"><div class="sh-icon">🌿</div><div class="sh-info"><b>またたびの小袋</b><small>初手技ポイントが満タンになる</small></div><button class="btn small" data-item="tp" ${d.niboshi < 60 || d.tp >= 5 ? 'disabled' : ''}>にぼし 60</button></div>
-        <div class="sh-row"><div class="sh-icon">📖</div><div class="sh-info"><b>ねこじゃらしの書</b><small>編成のみんなにけいけんち +800</small></div><button class="btn small" data-item="exp" ${d.niboshi < 120 ? 'disabled' : ''}>にぼし 120</button></div>
       </div>`;
     } else if (kind === 'fish') {
       body = `<div class="sh-list">
         <div class="sh-row"><div class="sh-icon">🐟</div><div class="sh-info"><b>焼き魚</b><small>冒険中のみんなのHPが全回復する</small></div><button class="btn small" data-item="fish" ${d.niboshi < 30 ? 'disabled' : ''}>にぼし 30</button></div>
-        <div class="sh-row"><div class="sh-icon">🍱</div><div class="sh-info"><b>おさかな弁当</b><small>編成のみんなにけいけんち +300</small></div><button class="btn small" data-item="bento" ${d.niboshi < 50 ? 'disabled' : ''}>にぼし 50</button></div>
       </div>`;
     } else if (kind === 'inn') {
       const ks = Object.keys(d.owned);
@@ -377,9 +368,7 @@ function renderShop(o, kind, name, close, field) {
     o.querySelectorAll('[data-item]').forEach(b => b.onclick = () => {
       const it = b.dataset.item;
       if (it === 'tp') { d.niboshi -= 60; d.tp = 5; field && field.toast('初手技ポイントが満タンになった'); }
-      if (it === 'exp') { d.niboshi -= 120; shopExp(field, 800); }
       if (it === 'fish') { d.niboshi -= 30; if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.spawnFollowers(); field.toast('焼き魚をみんなで食べた。HPが全回復！'); } }
-      if (it === 'bento') { d.niboshi -= 50; shopExp(field, 300); }
       if (it === 'rest') { if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.spawnFollowers(); } const ts = d.team; for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++) addBond(ts[i], ts[j], 1); field && field.toast('ぐっすり眠った。みんなのHPが全回復！'); Sfx.heal(); }
       Save.save(); Sfx.select(); draw();
     });

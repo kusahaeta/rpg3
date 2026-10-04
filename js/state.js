@@ -71,11 +71,6 @@ function grantExp(key, amount) {
   return o.lv - before;
 }
 
-// 編成の仲間みんなに経験値を配る。レベルが上がった仲間（key と上がった数）を返す
-function grantTeamExp(amount) {
-  return Save.data.team.map(k => ({ key: k, up: grantExp(k, amount) })).filter(r => r.up > 0);
-}
-
 // 物語の都合で、いまは一行を離れている子（STORY の段階の away）
 function awayNow() {
   const cur = typeof Story !== 'undefined' ? Story.current() : null;

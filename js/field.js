@@ -1189,14 +1189,14 @@ class FieldView extends BaseView {
       const c = it.c; c.opened = true;
       const all = Save.data.fieldChests || (Save.data.fieldChests = {});
       (all[this.zoneId] = all[this.zoneId] || []).push(c.id);
-      const nib = 40 + Math.floor(Math.random() * 7) * 10, exp = 200 + this.ci * 120;
-      Save.data.niboshi += nib; const ups = grantTeamExp(exp); this.team.forEach(m => { m.lv = Save.data.owned[m.key].lv; }); Save.save();
+      const nib = 40 + Math.floor(Math.random() * 7) * 10;
+      Save.data.niboshi += nib; Save.save();
       GFX.tween(0.5, t => { c.lid.rotation.x = -1.9 * t; }, Ease.back);
       c.glow.visible = false;
       this.fx.pillar(c.pos, '#ffd66b', { h: 3, r: 0.4, life: 0.8 });
       this.p.burst(c.pos.clone().add(V3(0, 0.7, 0)), '#ffd66b', 60, { speed: 4, up: 1.2, life: 1.0 });
       Sfx.win();
-      this.toast(`宝箱：にぼし +${nib}　けいけんち +${exp}${ups.length ? '　' + ups.map(r => `${CHARS[r.key].name}がレベルアップ！`).join(' ') : ''}`);
+      this.toast(`宝箱：にぼし +${nib}`);
       this.renderHud();
     } else if (it.type === 'anchor') {
       this.team.forEach(m => { m.hpRatio = 1; });
