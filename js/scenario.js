@@ -234,7 +234,7 @@ const SCENES = {
       ['n', '【目的】街道の宿場をめざそう。', { cam: 'wide', dur: 5 }],
     ] },
   c2_02: { title: '自称・天才魔法使い', cast: ['e:karasu', 'e:noraInu'], extra: ['tabibito_a', 'tabibito_b'],
-    stage: { zone: 'road_rest', at: [0, 5.5], face: 0, host: 'shiro',
+    stage: { zone: 'road_rest', at: [0, -2], face: 0, host: 'shiro',
       cast: { shiro: { at: [0, 3], face: [0, 0], stance: 'hipHand' }, tabibito_a: { at: [-2.6, 3.4], face: 'shiro' }, tabibito_b: { at: [2.5, 3.2], face: 'shiro' },
         'e:karasu': { at: [-3, 7], hidden: true }, 'e:noraInu': { at: [2.6, 7.4], hidden: true } } },
     lines: [
@@ -253,7 +253,7 @@ const SCENES = {
       ['mike', 'いっしょにやろう、シロ！', { f: 'joy', stance: { all: 'ready' } }],
     ] },
   c2_02b: { title: 'シロ', extra: ['chaya'],
-    stage: { zone: 'road_rest', at: [0, 5.5], face: 0, host: 'shiro',
+    stage: { zone: 'road_rest', at: [0, -2], face: 0, host: 'shiro',
       cast: { shiro: { at: [0, 2.6], face: 'mike' }, chaya: { at: [-3.5, 4], hidden: true, face: 'mike' } } },
     lines: [
       ['shiro', 'ま、まあ、なかなかやるじゃない。わたしほどじゃないけど。', { f: 'smug', g: 'hipHand' }],
@@ -448,7 +448,7 @@ const SCENES = {
       { bond: ['kuro', 'tama', 6] },
     ] },
   c2_03c: { title: '宿場の夜', bgm: 'sad', extra: ['chaya'],
-    stage: { zone: 'road_rest', at: [-4, 8], face: 0, bg: 'night',
+    stage: { zone: 'road_rest', at: [-9, -6], face: 270, bg: 'night',
       cast: { mike: { at: [0, 0], stance: 'kneel' }, shiro: { at: [1.3, 0.3], stance: 'kneel' }, kuro: { at: [-2.8, 1] }, tama: { at: [-2.2, 0.4], stance: 'sleep' },
         chaya: { at: [-0.8, 4.5], hidden: true, face: 'mike' } },
       points: { sky: [0, 20, 30] } },
@@ -480,7 +480,7 @@ const SCENES = {
       ['n', '宿場の夜は、しずかにふけていった。', { cam: 'wide', dur: 6, look: { all: 'sky' } }],
     ] },
   c2_03d: { title: 'いなくなったシロ', bgm: 'village',
-    stage: { zone: 'road_rest', at: [2, 6], face: 180, cast: { shiro: null } },
+    stage: { zone: 'road_rest', at: [1, -2], face: 180, cast: { shiro: null } },
     lines: [
       ['n', '次の朝。', { cam: 'wide', dur: 4 }],
       ['mike', 'ふあー、よく寝た！　……あれ？　シロは？', { f: 'smile', g: 'lookUp' }],

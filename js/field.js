@@ -423,11 +423,8 @@ class FieldView extends BaseView {
   // plain：木の柱と葉・横木をつけず、光のまくと札だけ（建物の扉の奥など）
   makeFieldGate(locked, to, W = 4.8, plain = false) {
     const g = new THREE.Group(), hw = W / 2;
-    const wood = toon('#8a5a36'), dark = toon('#5a3a22'), leaf = toon('#5ab04a');
-    if (!plain) for (const sd of [-1, 1]) {
-      const p = outlined(new THREE.CylinderGeometry(0.22, 0.26, 4.2, 8), wood, { thick: 0.002 }); p.position.set(sd * hw, 2.1, 0); g.add(p);
-      for (let i = 0; i < 3; i++) { const l = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), leaf); l.position.set(sd * hw + (Math.random() - 0.5) * 0.6, 3.6 + i * 0.35, (Math.random() - 0.5) * 0.4); g.add(l); }
-    }
+    const wood = toon('#8a5a36'), dark = toon('#5a3a22');
+    if (!plain) for (const sd of [-1, 1]) { const p = outlined(new THREE.CylinderGeometry(0.22, 0.26, 4.2, 8), wood, { thick: 0.002 }); p.position.set(sd * hw, 2.1, 0); g.add(p); }
     if (!plain) { const beam = outlined(new THREE.BoxGeometry(W + 0.8, 0.45, 0.45), dark, { thick: 0.002 }); beam.position.y = 4.1; g.add(beam); }
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.85), new THREE.MeshBasicMaterial({ map: signTex(to, locked ? '通れない' : '▶ この先', locked ? '#ff6a6a' : '#ffd27a'), transparent: true, toneMapped: false, side: THREE.DoubleSide }));
     sign.position.set(0, 4.75, 0.05); g.add(sign);
@@ -660,9 +657,12 @@ class FieldView extends BaseView {
   }
   // 野外の区画の出入口：木のアーチと行き先の立て札（地図の端に立つ）
   makeArchGate(ph, plain) {
-    const { g, face, arrows } = this.makeFieldGate(ph.locked, FIELD_ZONES[ph.dests[0].to].name, ph.width + 0.4, plain);
+    // 岩の崖の区画では、柱が岩にうもれないよう、通路の内側に立てる（柱に当たり判定をつける）
+    const cliff = this.T && this.T.outdoor === 'cliff', W = cliff ? ph.width - 0.9 : ph.width + 0.4;
+    const { g, face, arrows } = this.makeFieldGate(ph.locked, FIELD_ZONES[ph.dests[0].to].name, W, plain);
     g.position.set(ph.x, ph.h, ph.z); g.rotation.y = Math.atan2(ph.nx, ph.nz);
     this.scene.add(g);
+    if (cliff && !plain) for (const sd of [-1, 1]) this.colliders.push({ x: ph.x + sd * W / 2 * Math.cos(g.rotation.y), z: ph.z - sd * W / 2 * Math.sin(g.rotation.y), r: 0.3, top: 4.2, y: ph.h });
     return { g, face, arrows, panels: [], apply() {}, H: 4.2 };
   }
   // 階段の出入口（塔・城・洞窟の上の階／下の階へ）：アーチの奥に、上り（up）または下り（down）の階段が続く

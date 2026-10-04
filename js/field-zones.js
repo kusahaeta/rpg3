@@ -317,17 +317,65 @@ const FIELD_ZONES = {
     notes: [{ at: [-5, 17], face: 0, post: ['↑ ニャハハ王国', '← ひょうたん池　↓ ぽかぽか村'], title: '道しるべ', text: '「北　ニャハハ王国／南　ぽかぽか村／西　ひょうたん池」' }],
     map2d: [470, 308] },
 
-  road_rest: { ci: 1, name: '街道の宿場', w: 60, d: 56, stage: '2-1', arenas: [[0, 10, 0]], build: 'rest', town: true, groups: 0, chests: 2, crystals: 0,
-    anchor: [6, 8], exits: [{ side: 's', at: 4, to: 'road1' }, { side: 'n', at: -4, to: 'road2' }, { side: 'e', at: 6, to: 'woods' }],
+  road_rest: { ci: 1, name: '街道の宿場', w: 68, d: 64, stage: '2-1', arenas: [[0, -4, 0]], build: 'rest', town: true, groups: 0, chests: 2, crystals: 0,
+    world: true, arch: 'woods', chestAt: [[-25, -24], [-23, 9]],
+    // 街道ぞいに、南から北へ上っていく宿場。南の木戸をくぐると下宿（西に田んぼ、東に水車小屋）、川の橋を渡って石段を上ると広場（西に茶屋「ねこじゃらし」、北に高札場、東に鍛冶屋の屋台）。
+    // 広場の東の道はまどろみの林へ。広場から石段を上ると上宿（東に旅籠、西に問屋場）で、北のごろごろ切り通しへ続く。北西は石段を上った見晴らしの高台。広場の下は川べりの小道
+    map: [
+      '###############aaaa###############',
+      '##############2,,,,2##############',
+      '###33333##22222,,,,22222222#######',
+      '##333333#222222,,,,222222222######',
+      '##333333<222222,,,,222222222######',
+      '##333333<222222,,,,222222222######',
+      '##333333#222222,,,,222222222######',
+      '###33333#222222,,,,222222222######',
+      '########2222222,,,,2222222222#####',
+      '####11111111111^^^^11111111111####',
+      '####11111111111,,,,11111111111####',
+      '###111111111111,,,,,,,,,,,,,,,,,,c',
+      '###111111111111,,,,,,,,,,,,,,,,,,c',
+      '###111111111111,,,,111111111111###',
+      '###111111111111,,,,111111111111###',
+      '###111111111111,,,,111111111111###',
+      '###111111111111,,,,111111111111###',
+      '#####1111111111,,,,1111111111#####',
+      '#####1111111111^^^^1111111111#####',
+      '#####0000000000,,,,0000000000#####',
+      '####00000000000,,,,00000000000####',
+      '~~~~~~~~~~~~~~~====~~~~~~~~~~~~~~~',
+      '~~~~~~~~~~~~~~~====~~~~~~~~~~~~~~~',
+      '####00000000000,,,,000000000000###',
+      '###000000000000,,,,000000000000###',
+      '###000000000000,,,,000000000000###',
+      '###000000000000,,,,000000000000###',
+      '###000000000000,,,,00000000000####',
+      '####00000000000,,,,00000000000####',
+      '######000000000,,,,00000000#######',
+      '############000,,,,000############',
+      '###############bbbb###############',
+    ],
+    anchor: [12, 1], exits: [{ key: 'b', to: 'road1' }, { key: 'a', to: 'road2' }, { key: 'c', to: 'woods' }],
+    areas: [{ name: '街道の宿場・見晴らしの高台', at: [-30, -30, -17, -16] }, { name: '街道の宿場・上宿', at: [-17, -32, 24, -14] },
+      { name: '街道の宿場・川べり', at: [-34, 5, 34, 14] }, { name: '街道の宿場・下宿', at: [-34, 14, 34, 32] }],
     npcs: [
-      { key: 'chaya', at: [-10, -3.5], face: 0, shop: 'inn', lines: ['茶屋「ねこじゃらし」へようこそ。お茶でも飲んで、ひと休みしていきな。'],
+      { key: 'chaya', at: [-14.2, -6], face: Math.PI / 2, shop: 'inn', lines: ['茶屋「ねこじゃらし」へようこそ。お茶でも飲んで、ひと休みしていきな。'],
         v: [['scene:c2_01b', '茶屋「ねこじゃらし」へようこそ。……ハチとブチが仲直りしたって？　そりゃよかった。あの二匹の笛と太鼓がないと、この宿場はさみしくてねえ。'],
           ['scene:c2_03c', '茶屋「ねこじゃらし」へようこそ。あんたたちがいると、ひさしぶりに店がにぎやかでいいねえ。']] },
-      { key: 'tabibito_a', at: [8, -8], walk: 6, lines: ['北のニャハハ王国は、笑いの国って呼ばれてたんだ。', 'でも最近、あそこから来た旅人は、みんな暗い顔をしてるんだよ……。'] },
-      { key: 'tabibito_b', at: [-16, 10], face: Math.PI / 2, lines: ['さっき白い猫が魔法を見せてくれたんだけど……空から魚が降ってきたんだ。'],
+      { key: 'tabibito_a', at: [12, -6], walk: 4, lines: ['北のニャハハ王国は、笑いの国って呼ばれてたんだ。', 'でも最近、あそこから来た旅人は、みんな暗い顔をしてるんだよ……。'] },
+      { key: 'tabibito_b', at: [-6, 0], face: Math.PI / 2, lines: ['さっき白い猫が魔法を見せてくれたんだけど……空から魚が降ってきたんだ。'],
         v: [['scene:c2_02', 'あの白い猫、あんたたちの仲間になったのかい。……魚、ありがとうって伝えておいて。']] },
-      { key: 'bukiya2', at: [16, 4], face: -Math.PI / 2, shop: 'weapon', lines: ['旅の鍛冶屋だ。にぼしがあるなら、武器を鍛えてやるよ。'] },
+      { key: 'bukiya2', at: [20.4, -2], face: -Math.PI / 2, shop: 'weapon', lines: ['旅の鍛冶屋だ。にぼしがあるなら、武器を鍛えてやるよ。'] },
+      { key: 'tsuribito', at: [-9, 9.2], face: 0, lines: ['この川はね、東のまどろみの林のほうから流れてくるんだ。……ときどき、綿毛もいっしょに流れてくるよ。', '……釣れない。今日も、釣れない。'],
+        v: [['scene:c2_02', 'このあいだ、広場に空から魚が降ってきたろ？　……釣りざおなんて、いらなかったなあ。'],
+          ['scene:c2_05', '北の切り通しが、しずかになったねえ。ごろごろいう音がしないと、魚もよく寄ってくるよ。']] },
     ],
+    notes: [{ at: [-8, -12.2], face: 0, board: ['高札', '宿場のおふれ'], title: '高札場', until: 'scene:c2_05', text: '「一、宿場で　けんかを　しないこと。　一、北の切り通しに　ごろごろ岩の一団あり。通る者は　気をつけること」' },
+      { at: [-8, -12.2], face: 0, board: ['高札', '宿場のおふれ'], title: '高札場', when: 'scene:c2_05', text: '「一、宿場で　けんかを　しないこと」……ごろごろ岩の一団のおふれの上に、「なかなおりしました」と書いた紙がはってある。' },
+      { at: [8, 15.6], face: 0, post: ['↑ 宿場の広場・ニャハハ王国', '→ まどろみの林は広場から　↓ ミャオ街道'], title: '道しるべ', text: '「北　宿場の広場・ニャハハ王国（ごろごろ切り通し）／東　まどろみの林（広場から）／南　ミャオ街道」' },
+      { at: [17, 15.4], mark: [4, 2.4, -2.2], reach: 3.2, title: '水車小屋', text: '川の流れで、ゆっくり回る水車。……ごとん、ごとん。小屋の中で、粉をひいているらしい。' },
+      { at: [-22, -19.8], mark: [0, 1.3, 1.4], title: '見晴らしの高台', until: 'scene:c2_05', text: '宿場がひと目で見わたせる。茶屋の煙、川の水車、南へのびる街道……。北の岩山の切り通しから、ごろごろと何かが転がる音がする。' },
+      { at: [-22, -19.8], mark: [0, 1.3, 1.4], title: '見晴らしの高台', when: 'scene:c2_05', text: '宿場がひと目で見わたせる。茶屋の煙、川の水車、南へのびる街道……。北の岩山は、もうしずかだ。' }],
     map2d: [470, 236] },
 
   // まどろみの林：入口（たんぽぽの原）→ ねむり花の谷 → 大樹のうろ（parent：ワールドマップでは入口にまとめる）
@@ -3924,6 +3972,137 @@ class ZoneKit {
     for (let i = 0; i < 5; i++) { const u = -1 + i * 0.5, f = this.mesh(new THREE.SphereGeometry(0.14, 10, 8), i % 2 ? '#8ab8d8' : '#b8c8d8', x + u * c, 1.4, z - u * sn); f.scale.set(0.5, 2.2, 0.8); this.mesh(new THREE.ConeGeometry(0.12, 0.18, 3), '#8ab8d8', x + u * c, 1.0, z - u * sn, { rx: Math.PI }).scale.z = 0.3; }
     this.col(x, z, 1.4, 1.9);
   }
+  // 水車：川に立てた、ゆっくり回る木の水車。x, z：軸の中心（川の中）、ry：軸の向き（0 で南北。+Z の側に軸受け）、r：半径、y：軸の高さ（水面から）
+  waterWheel(x, z, ry = 0, r = 1.8, y = 0.9) {
+    const y0 = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y0 + y, z); g.rotation.y = ry;
+    const spin = new THREE.Group(); g.add(spin);
+    const at = (geo, mat, px, py, pz, o = {}) => this.mesh(geo, mat, px, py, pz, { ...o, parent: spin });
+    // 二枚の輪と、輪をつなぐ腕木・羽根板・こしき
+    for (const s of [-0.4, 0.4]) {
+      at(new THREE.TorusGeometry(r, 0.07, 6, 32), 'wood2', 0, 0, s);
+      for (let i = 0; i < 6; i++) at(new THREE.BoxGeometry(r * 2, 0.09, 0.09), 'wood2', 0, 0, s, { rz: i / 6 * Math.PI });
+    }
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; at(new THREE.BoxGeometry(0.62, 0.07, 0.92), 'wood', Math.cos(a) * (r - 0.22), Math.sin(a) * (r - 0.22), 0, { rz: a }); }
+    at(new THREE.CylinderGeometry(0.24, 0.24, 1.0, 12), 'wood2', 0, 0, 0, { rx: Math.PI / 2 });
+    // 軸と、岸の軸受け
+    this.mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.2, 8), 'iron', 0, 0, 0.6, { rx: Math.PI / 2, parent: g });
+    this.mesh(new THREE.BoxGeometry(0.5, y + 0.9, 0.5), 'stone2', 0, -(y + 0.9) / 2 + 0.2, 1.55, { parent: g });
+    this.add(g);
+    this.tick(dt => { spin.rotation.z -= dt * 0.55; });
+    // 羽根が水をかく、しぶき
+    this.v.emitters.push(dt => { if (Math.random() < dt * 9) this.v.p.emit(V3(x + (Math.random() - 0.5) * 1.2, y0 + 0.05, z + (Math.random() - 0.5) * 0.8), V3((Math.random() - 0.5) * 0.6, 1 + Math.random() * 0.8, (Math.random() - 0.5) * 0.4), hdr('#e8f4ff', 1.1), { life: 0.7, size: 0.07, drag: 0.6 }); });
+  }
+  // 川の流れ：水面の上に、流れの筋とゆるいさざなみの模様を重ねて流し、浮かんだ葉っぱや花びらを流す（流れは X の向き）。
+  //   x0〜x1, z0〜z1：川の範囲、y：水面の高さ（絶対）、o.speed：流れの速さ（m/秒。負で -X へ）、o.leaves：浮かべる葉の数、o.avoid：葉を流さない [z0, z1]（水車のあたりなど）
+  riverFlow(x0, z0, x1, z1, y, o = {}) {
+    const W = x1 - x0, D = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, sp = o.speed ?? -1;
+    const tex = this.flowTexs || (this.flowTexs = (() => {
+      const canvas = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'));
+        const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+      // 流れの筋：流れの向きにのびた、細い白い線（少し波打つ）
+      const streak = canvas(256, 128, g => { g.lineCap = 'round';
+        for (let i = 0; i < 70; i++) { const x = Math.random() * 256, yy = Math.random() * 128, l = 18 + Math.random() * 60, a = 0.18 + Math.random() * 0.45;
+          g.strokeStyle = `rgba(255,255,255,${a})`; g.lineWidth = 1 + Math.random() * 1.6; g.beginPath(); g.moveTo(x, yy);
+          for (let k = 1; k <= 6; k++) g.lineTo(x + l * k / 6, yy + Math.sin(k * 1.3 + x) * 1.6);
+          g.stroke(); if (x + l > 256) { g.beginPath(); g.moveTo(x - 256, yy); g.lineTo(x + l - 256, yy); g.stroke(); } } });
+      // さざなみ：ぼんやりした明るい斑
+      const ripple = canvas(256, 128, g => {
+        for (let i = 0; i < 40; i++) { const x = Math.random() * 256, yy = Math.random() * 128, r = 8 + Math.random() * 20;
+          for (const dx of [0, -256, 256]) { const gr = g.createRadialGradient(x + dx, yy, 0, x + dx, yy, r); gr.addColorStop(0, 'rgba(220,245,255,0.35)'); gr.addColorStop(1, 'rgba(220,245,255,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(x + dx, yy, r * 1.8, r * 0.6, 0, 0, Math.PI * 2); g.fill(); } } });
+      return { streak, ripple };
+    })());
+    const layers = [[tex.ripple, 5.5, 0.55, 0.012], [tex.streak, 3.2, 0.7, 0.02], [tex.streak, 4.6, 0.45, 0.028]].map(([base, tile, op, dy], k) => {
+      const t = base.clone(); t.repeat.set(W / tile, Math.max(1, D / tile * 2)); t.offset.y = k * 0.37; t.needsUpdate = true;
+      const m = this.mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshBasicMaterial({ map: t, color: '#eaf8ff', transparent: true, opacity: op, depthWrite: false }), cx, y + dy, cz, { abs: true, rx: -Math.PI / 2, noShadow: true });
+      m.renderOrder = 3;
+      return { t, v: -sp / tile * (k === 2 ? 1.25 : k === 0 ? 0.7 : 1) };
+    });
+    // 浮かんで流れる葉っぱと花びら
+    const avoid = o.avoid, lane = () => { for (let i = 0; i < 10; i++) { const z = z0 + 0.4 + Math.random() * (D - 0.8); if (!avoid || z < avoid[0] || z > avoid[1]) return z; } return z0 + 0.5; };
+    const leaves = [...Array(o.leaves ?? 8)].map((_, i) => {
+      const m = this.mesh(new THREE.SphereGeometry(0.12, 8, 4), ['#6ab850', '#8ac862', '#ffc8dc', '#e8b050'][i % 4], x0 + Math.random() * W, y + 0.03, lane(), { abs: true, noShadow: true });
+      m.scale.set(1, 0.18, 0.6);
+      return { m, k: 0.8 + Math.random() * 0.4, ph: Math.random() * 6, spin: (Math.random() - 0.5) * 1.2 };
+    });
+    this.tick((dt, t) => {
+      for (const L of layers) L.t.offset.x += L.v * dt;
+      for (const L of leaves) {
+        const p = L.m.position; p.x += sp * L.k * dt; p.y = y + 0.03 + Math.sin(t * 2 + L.ph) * 0.015; L.m.rotation.y += L.spin * dt;
+        if (sp < 0 ? p.x < x0 : p.x > x1) { p.x = sp < 0 ? x1 : x0; p.z = lane(); }
+      }
+    });
+    // 水面のきらめき
+    this.v.emitters.push(dt => { if (Math.random() < dt * 8) this.v.p.emit(V3(x0 + Math.random() * W, y + 0.04, z0 + 0.3 + Math.random() * (D - 0.6)), V3(sp, 0.02, 0), hdr('#ffffff', 1.4), { life: 1.0, size: 0.05, drag: 0 }); });
+  }
+  // 宿場の木戸：二本の柱に冠木と貫、小さな切妻屋根、宿場の名の札（ry = 札の正面。0 で南向き）。w：柱の間
+  kido(x, z, ry = 0, w = 10, text = '', sub) {
+    const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry;
+    const at = (geo, mat, px, py, pz, o = {}) => this.mesh(geo, mat, px, py, pz, { ...o, parent: g });
+    const c = Math.cos(ry), sn = Math.sin(ry);
+    for (const u of [-w / 2, w / 2]) {
+      at(new THREE.BoxGeometry(0.42, 4.2, 0.42), 'wood2', u, 2.1, 0);
+      at(new THREE.BoxGeometry(0.8, 0.32, 0.8), 'stone', u, 0.16, 0);
+      this.col(x + u * c, z - u * sn, 0.4, 4.2);
+    }
+    at(new THREE.BoxGeometry(w + 1.4, 0.36, 0.44), 'wood2', 0, 3.75, 0);
+    at(new THREE.BoxGeometry(w + 0.5, 0.22, 0.3), 'wood', 0, 2.75, 0);
+    // 屋根：冠木の上に、灰色の瓦の切妻
+    for (const s of [-1, 1]) at(new THREE.BoxGeometry(w + 2.2, 0.1, 0.9), 'roofGray', 0, 4.12, s * 0.36, { rx: s * 0.45 });
+    at(new THREE.BoxGeometry(w + 2.3, 0.14, 0.16), '#4a4a56', 0, 4.32, 0);
+    for (const s of [-1, 1]) { const eg = new THREE.ConeGeometry(0.2, 0.36, 4); eg.rotateY(Math.PI / 4); at(eg, 'roofGray', s * (w / 2 + 0.9), 4.5, 0).scale.z = 0.5; }
+    if (text) for (const s of [-1, 1]) {
+      const sg = this.mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: signTex(text, sub, '#ffd27a'), transparent: true, toneMapped: false }), 0, 3.22, s * 0.24, { parent: g, noShadow: true });
+      if (s < 0) sg.rotation.y = Math.PI;
+    }
+    this.add(g);
+  }
+  // 茶屋の縁台：赤い毛氈を敷いた長い腰掛け（ry = 長い向き。0 で東西）。o.snack：お茶とおだんご
+  teaBench(x, z, ry = 0, len = 2.2, o = {}) {
+    const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry;
+    const at = (geo, mat, px, py, pz, r = {}) => this.mesh(geo, mat, px, py, pz, { ...r, parent: g });
+    for (const u of [-len / 2 + 0.15, len / 2 - 0.15]) for (const v of [-0.3, 0.3]) at(new THREE.BoxGeometry(0.1, 0.44, 0.1), 'wood2', u, 0.22, v);
+    at(new THREE.BoxGeometry(len, 0.08, 0.8), 'wood', 0, 0.48, 0);
+    at(new THREE.BoxGeometry(len + 0.04, 0.03, 0.84), '#d0403a', 0, 0.535, 0);
+    for (const v of [-0.43, 0.43]) at(new THREE.BoxGeometry(len + 0.04, 0.2, 0.02), '#d0403a', 0, 0.44, v);
+    if (o.snack) {
+      at(new THREE.CylinderGeometry(0.07, 0.055, 0.1, 10), '#e8e0d0', -0.4, 0.6, 0.1);
+      at(new THREE.CylinderGeometry(0.11, 0.11, 0.02, 12), '#6a4a30', 0.3, 0.56, -0.1);
+      ['#ffb8d0', '#ffffff', '#8ad06a'].forEach((col, i) => at(new THREE.SphereGeometry(0.06, 8, 6), col, 0.16 + i * 0.12, 0.62, -0.1));
+    }
+    this.add(g);
+    if (Math.abs(Math.sin(ry)) < 0.1) this.colBox(x, z, len / 2, 0.42, 0.56); else this.colBox(x, z, 0.42, len / 2, 0.56);
+  }
+  // 野点傘：赤い大きな傘（茶屋の縁台のそば）
+  parasol(x, z, col = '#d0403a', h = 2.7, r = 1.7) {
+    const y = this.gy(x, z);
+    this.mg('wood2', new THREE.CylinderGeometry(0.05, 0.05, h + 0.3, 6), x, y + (h + 0.3) / 2, z);
+    this.mesh(new THREE.ConeGeometry(r, 0.55, 20, 1, true), this.stdM(col, 0.85, { side: THREE.DoubleSide }), x, h + 0.2, z);
+    for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; this.mg('#e8d8b0', new THREE.BoxGeometry(r * 0.96, 0.025, 0.025), x + Math.cos(a) * r * 0.48, y + h + 0.17, z + Math.sin(a) * r * 0.48, [0, -a, -0.31]); }
+    this.mesh(new THREE.SphereGeometry(0.08, 8, 6), 'wood2', x, h + 0.5, z);
+    this.col(x, z, 0.12, h);
+  }
+  // 田んぼ：あぜに囲まれた水田と、苗の列（水田の中には入れない。あぜ道を歩く）。x, z：中心、w, d：大きさ
+  paddy(x, z, w = 4.6, d = 4.6) {
+    const y = this.gy(x, z);
+    this.mesh(new THREE.PlaneGeometry(w, d), this.stdM('#6a9aa0', 0.2, { metalness: 0.1 }), x, 0.1, z, { rx: -Math.PI / 2, noShadow: true }).receiveShadow = true;
+    for (const s of [-1, 1]) { this.mg('dirt', new THREE.BoxGeometry(w + 0.4, 0.22, 0.4), x, y + 0.11, z + s * d / 2); this.mg('dirt', new THREE.BoxGeometry(0.4, 0.22, d), x + s * w / 2, y + 0.11, z); }
+    for (let u = -w / 2 + 0.5; u < w / 2 - 0.3; u += 0.55) for (let v = -d / 2 + 0.5; v < d / 2 - 0.3; v += 0.6)
+      this.mg(this.r() < 0.5 ? '#7ac85a' : '#8ad06a', new THREE.ConeGeometry(0.07, 0.38 + this.r() * 0.12, 4), x + u + (this.r() - 0.5) * 0.08, y + 0.28, z + v);
+    this.colBox(x, z, w / 2 - 0.1, d / 2 - 0.1, 0.4);
+  }
+  // かかし：一本足に横木、わらの笠と、ぼろの着物
+  scarecrow(x, z, ry = 0) {
+    const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry;
+    const at = (geo, mat, px, py, pz, r = {}) => this.mesh(geo, mat, px, py, pz, { ...r, parent: g });
+    at(new THREE.CylinderGeometry(0.06, 0.07, 2.2, 6), 'bark', 0, 1.1, 0);
+    at(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 6), 'bark', 0, 1.6, 0, { rz: Math.PI / 2 });
+    at(new THREE.BoxGeometry(0.7, 0.8, 0.3), '#5a8ad8', 0, 1.35, 0);
+    at(new THREE.SphereGeometry(0.26, 12, 10), '#f4ecd8', 0, 2.05, 0);
+    for (const s of [-1, 1]) at(new THREE.SphereGeometry(0.04, 6, 4), '#2a2a30', s * 0.09, 2.08, 0.23);
+    at(new THREE.ConeGeometry(0.55, 0.32, 14), '#e8c870', 0, 2.38, 0);
+    this.add(g);
+    this.col(x, z, 0.3, 2.4);
+  }
   // 井戸：石を積んだ井戸枠と水面、二本の柱に渡した滑車の巻き上げ（取っ手と巻いた縄）、縄の先で揺れる桶、猫耳の切妻屋根
   //   ry：巻き上げの軸の向き（0 で東西）、o.roof：屋根の色
   well(x, z, ry = 0, o = {}) {
@@ -4883,21 +5062,61 @@ const ZONE_BUILD = {
     K.flowers(-18, 28, 12, 2); K.bench(-16, -41, 0.3); K.bench(8, -35, -0.4); K.flowers(10, -34, 10, 1.5, ['#ffe07a', '#ffffff']);
     K.flowers(0, 38, 14, 3); K.flowers(10, 42, 10, 2, ['#ffb8d8', '#ffffff']);
   },
-  // 街道の宿場：茶屋・屋台・井戸
+  // 街道の宿場：南の木戸と下宿（田んぼ・水車小屋）、川べりと橋、広場（茶屋・高札場・井戸・鍛冶屋の屋台）、上宿（旅籠・問屋場）、見晴らしの高台
   rest(K) {
-    K.perimeter('fence');
-    K.path(4, 27, 0, 2, 3); K.path(0, 2, -4, -27, 3); K.path(0, 2, 29, 6, 2.6);
-    K.catHouse(-10, -8, 7, 6, 3.6, 's', { roof: 'roofGreen', sign: '茶屋 ねこじゃらし', lit: true, smoke: true });
-    K.catHouse(12, -16, 7, 5, 3.4, 's', { roof: 'roofRed', sign: '旅人の宿', lit: true });
-    K.catHouse(-20, 12, 5, 5, 3.2, 'e', { roof: 'roofBlue' });
-    K.stall(19, 4, -Math.PI / 2, 'clothYellow', ['#c8c8d8', '#8a8a96', '#ffd27a']); K.sign(18, 4, -Math.PI / 2, '旅の鍛冶屋', null, '#ffd27a', 3.1, 2.4);
-    K.stall(8, 12, Math.PI, 'clothPink');
-    K.well(0, -2);
-    for (const [x, z] of [[-6, 4], [6, -6]]) K.bench(x, z, 0.3);
-    for (const [x, z] of [[-4, -4], [5, 3]]) K.lantern(x, z, '#ffc86a');
+    K.flora({ trees: [['round', 4], ['pine', 1]], leaf: ['#6abf52', '#5ab04a', '#7ac85a'], fruit: '#ff9a7a', bush: 0.7, flower: ['#ffffff', '#ffe07a', '#ffb8d8'] });
+    // ---- 広場：踏み固めた土。北の石段の上に上宿、南の石段の下に川べり ----
+    K.mesh(new THREE.CircleGeometry(8, 40), new THREE.MeshStandardMaterial({ color: '#c8b494', roughness: 1 }), 1, 0.015, -5, { rx: -Math.PI / 2, noShadow: true }).receiveShadow = true;
+    // 茶屋「ねこじゃらし」：店先に赤い毛氈の縁台と野点傘、のぼり旗
+    K.catHouse(-19, -6, 7, 9, 3.8, 'e', { roof: 'roofGreen', sign: '茶屋 ねこじゃらし', sub: 'お茶・おだんご', lit: true, smoke: true });
+    K.teaBench(-13.4, -9.8, Math.PI / 2, 2.2, { snack: true }); K.teaBench(-13.4, -2.4, Math.PI / 2, 2.2);
+    K.parasol(-12.1, -11.3); K.parasol(-12.1, -0.9);
+    for (const z of [-12.4, 0.4]) { K.cyl(-15.4, z, 0.06, 3.7, 'wood2', { col: false, seg: 6 }); K.banner(-15.4, z + 0.36, Math.PI / 2, K.gy(-15.4, z) + 3.5, 2.4, '#f4f0e0', '#5a8a4a', 0.6); }
+    // 井戸と、石段の両わきの灯り
+    K.well(10, -12, Math.PI / 2, { roof: 'roofGreen' });
+    for (const [x, z] of [[-5.2, -11.4], [5.2, -11.4], [-5.2, 2.8], [5.2, 2.8]]) K.lantern(x, z, '#ffc86a');
+    // 東：旅の鍛冶屋の屋台と、まどろみの林への道
+    K.stall(23, -2, -Math.PI / 2, 'clothYellow', ['#c8c8d8', '#8a8a96', '#ffd27a']); K.sign(22, -2, -Math.PI / 2, '旅の鍛冶屋', null, '#ffd27a', 3.1, 2.4);
+    K.box(23.4, 1.2, 0.7, 0.5, 0.4, 'iron', { round: true }); K.barrel(24.2, -5);
+    K.lantern(26, -11.6, '#ffc86a'); K.flowers(27, -4, 10, 1.4); K.flowers(22, -13, 10, 1.6, ['#ffe07a', '#ffffff']);
+    // 南西：大きな木と、木かげのベンチ
+    K.roundTree(-23.5, 0.6, 1.5, 'leaf', { lush: true }); K.bench(-19.5, 2.7, 0);
+    K.flowers(-25, -12, 10, 1.6); K.flowers(-9, -12.8, 8, 1.2, ['#ffe07a', '#ffffff']); K.flowers(13, 2.6, 10, 1.4, ['#ffb8d8', '#ffffff']);
     // シロの魔法の失敗で降ってきた魚
-    if (storyCond('scene:c2_02')) for (let i = 0; i < 6; i++) { const f = K.mesh(new THREE.SphereGeometry(0.14, 8, 6), '#8ab8d8', 2 + K.r() * 3, 0.1, 3 + K.r() * 3, { ry: K.r() * 3 }); f.scale.set(0.5, 0.5, 2); }
-    K.fill('road');
+    if (storyCond('scene:c2_02')) for (let i = 0; i < 6; i++) { const f = K.mesh(new THREE.SphereGeometry(0.14, 8, 6), '#8ab8d8', -1 + K.r() * 4, 0.1, -6.5 + K.r() * 3, { ry: K.r() * 3 }); f.scale.set(0.5, 0.5, 2); }
+    // ---- 上宿：東に旅籠、西に問屋場。街道の上に、のぼりの飾り ----
+    K.catHouse(11, -21, 8, 7, 4.2, 'w', { roof: 'roofRed', sign: '旅籠 またたび', sub: '旅のお宿', lit: true, smoke: true });
+    K.catHouse(-9, -21, 7, 6, 3.6, 'e', { roof: 'roofBlue', sign: '問屋場', sub: '荷物・飛脚' });
+    K.crate(-7.2, -16.4); K.crate(-8.4, -16.2, 0.8); K.barrel(18.6, -16.2); K.barrel(19.8, -16.9); K.crate(19.4, -19.5);
+    K.bunting(-4.6, -15.6, 4.6, -15.6, ['#e05a4a', '#ffd27a', '#6ab85a', '#5a8ad8'], 4.4);
+    for (const [x, z] of [[-4.8, -25.6], [4.8, -25.6]]) K.lantern(x, z, '#ffc86a');
+    K.flowers(-13, -16, 8, 1.2); K.flowers(19.5, -25.5, 8, 1.4, ['#ffe07a', '#ffffff']);
+    // ---- 見晴らしの高台：大きな木とベンチ、ねこの石像と石灯籠 ----
+    K.roundTree(-20.6, -26.2, 1.4, 'leaf2', { lush: true, fruit: '#ff9a7a' }); K.bench(-22, -18.4, 0);
+    K.catStatue(-28.6, -22.6, Math.PI / 2, 0.75); K.stoneLantern(-28.4, -19.6);
+    K.flowers(-26, -18.4, 10, 1.4, ['#ffb8d8', '#ffffff']); K.flowers(-24, -26.6, 8, 1.2);
+    // ---- 川べり：釣り猫の釣りざおと魚籠 ----
+    for (const [x, z] of [[-5.2, 6.9], [5.2, 6.9]]) K.stoneLantern(x, z);
+    {
+      const y = K.gy(-9, 9.2);
+      K.mesh(new THREE.CylinderGeometry(0.012, 0.025, 3.13, 6), 'bark', -8.7, y + 1.5, 11, { abs: true, rx: 1.107 });
+      K.mg('#e8e8e8', new THREE.CylinderGeometry(0.006, 0.006, y + 2.62, 3), -8.7, (y + 2.2 - 0.42) / 2, 12.4);
+      K.mesh(new THREE.SphereGeometry(0.07, 8, 6), '#e05a4a', -8.7, y - 0.42, 12.4, { abs: true, noShadow: true });
+      K.cyl(-10.2, 8.9, 0.24, 0.4, 'wood', { seg: 10, open: true });
+    }
+    K.flowers(-23, 7, 8, 1.2, ['#ffffff', '#b8d8ff']); K.flowers(21, 8.8, 8, 1.2, ['#ffffff', '#b8d8ff']);
+    // ---- 下宿：川の水車小屋、東の民家、西の田んぼ。南の木戸 ----
+    K.catHouse(21, 17.6, 5, 5, 3.4, 'w', { roof: 'roofOrange', sign: '水車小屋' }); K.waterWheel(21, 12.6, 0, 1.8, 0.9);
+    // 川は東（まどろみの林のほう）から西へ流れる
+    K.riverFlow(-34, 10, 34, 14, K.gy(-20, 12), { speed: -1.1, leaves: 9, avoid: [11.9, 13.3] });
+    K.catHouse(13, 25.6, 6, 5, 3.4, 'w', { roof: 'roofBlue' }); K.catHouse(26, 24, 5, 5, 3.2, 'n', { roof: 'roofRed' });
+    K.box(17.2, 23.4, 0.9, 1.0, 2.2, 'bark'); K.barrel(9, 21.5); K.crate(9.6, 20.2);
+    for (const x of [-23, -17.4, -11.8]) for (const z of [18, 23.6]) K.paddy(x, z, 4.6, 4.6);
+    K.scarecrow(-17.4, 23.6, 0.3);
+    K.kido(0, 26.5, 0, 11, '街道の宿場', 'ようこそ');
+    for (const [x, z] of [[-7.4, 27.6], [7.4, 27.6]]) K.stoneLantern(x, z);
+    K.flowers(-7, 17, 10, 1.4); K.flowers(26, 18.4, 8, 1.2, ['#ffe07a', '#ffffff']); K.flowers(-14, 28.4, 10, 1.6, ['#ffe07a', '#ffffff', '#ffb8d8']);
+    K.light(0, 5, -5, '#fff0c8', 6, 24);
   },
   // まどろみの林・入口：たんぽぽの原と、見上げるほど大きなたんぽぽ（タマが綿毛のてっぺんで眠っていた）、綿毛の丘、ねむり川とこわれた丸木橋、すいれんの池
   woods(K) {
@@ -4967,11 +5186,10 @@ const ZONE_BUILD = {
   // ごろごろ切り通し：岩山の切り通し、こわれた外門、ごろごろ岩の通り道、東の野営あと
   checkpoint(K) {
     K.cragTop({ trees: [['dead', 1], ['round', 1]], leaf: ['#8aa860', '#7a9a58'], density: 0.25 });
-    // こわれた外門（なかよし関所の手前）：二本の柱、倒れた横木、割れた板、関所の看板
+    // こわれた外門（なかよし関所の手前）：二本の柱、倒れた横木、割れた板
     for (const x of [-3.5, 3.5]) K.box(x, -37, 0.6, 4.4, 0.6, 'wood2');
     K.mesh(new THREE.BoxGeometry(8.5, 0.5, 0.6), 'wood2', 1.5, 0.4, -35.6, { rz: 0.25, ry: 0.2 });
     K.box(10, -33, 4, 1, 0.3, 'wood', { ry: -0.3 });
-    K.sign(0, -37.4, 0, 'なかよし関所', 'この先', '#ffd27a', 4.8, 2.8);
     // 倒れた関所の札（地面に倒れている。調べられる）
     K.box(-12, -29, 3.4, 0.14, 0.9, 'wood', { ry: 0.3, col: false });
     K.mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: signTex('ニャハハ王国まで あと少し', '笑顔でお越しください'), transparent: true, toneMapped: false }), -12, 0.15, -29, { rx: -Math.PI / 2, rz: 0.3, noShadow: true });
