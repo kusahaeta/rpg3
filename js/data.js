@@ -305,7 +305,7 @@ const ENEMY_MOVES = {
   ratCharge: { name: '腹ぺこで目が回っている…', type: 'charge', next: 'ratStorm' },
   ratStorm: { name: 'ネズミ大行進', type: 'aoe', mult: 1.4 },
   peck:    { name: 'つっつき',       type: 'single', mult: 1.0 },
-  roll:    { name: 'ころころ',       type: 'blast',  mult: 1.2, adj: 0.6 },
+  roll:    { name: 'ごろごろ爆走',       type: 'blast',  mult: 1.2, adj: 0.6 },
   howl:    { name: 'とおぼえ',       type: 'aoe',    mult: 0.5, eff: { kind: 'buff', chance: 0.5, buff: { key: 'e_howl', name: 'びくびく', stat: 'atk', value: -0.15, turns: 2 } } },
   rush:    { name: 'まっしぐら',     type: 'single', mult: 1.7 },
   boarCharge: { name: '鼻息があらい…', type: 'charge', next: 'boarRush' },
@@ -382,10 +382,10 @@ const ENEMIES = {
     phases: [{ weak: ['physical', 'ice', 'wind'] }], summon: 'nezumi', moves: [['kingPress', 2], ['aoe', 1], ['ratCharge', 1], ['summon', 1]], talk: '「俺だって……食べたかったんだよ……」' },
   // 第二章：ミャオ街道
   karasu:   { name: 'いたずらカラス', shape: 'crow',     color: '#4a4a6a', hp: 3000, atk: 1050, spd: 125, tough: 20, weak: ['lightning', 'wind', 'fire'], moves: [['peck', 2], ['slow', 1]], talk: '「光るもの、ちょうだい！　……ひとりで集めるの、つまんないんだ」' },
-  iwa:      { name: 'ころころ岩',     shape: 'rock',     color: '#9a8a7a', hp: 5200, atk: 1000, spd: 75,  tough: 40, weak: ['physical', 'wind', 'ice'], moves: [['roll', 2], ['heavy', 1]], talk: '「……ころがってないと、さみしいんだ」' },
+  iwa:      { name: 'ごろごろ岩',     shape: 'rock',     color: '#9a8a7a', hp: 5200, atk: 1000, spd: 75,  tough: 40, weak: ['physical', 'wind', 'ice'], moves: [['roll', 2], ['heavy', 1]], talk: '「総長のためなら、どこまでも転がるっス！　……ほんとは、ひとりで転がるのが、さみしいだけっス」' },
   noraInu:  { name: 'のら犬',         shape: 'dog',      color: '#b08050', hp: 3600, atk: 1100, spd: 100, tough: 30, weak: ['fire', 'quantum', 'physical'], moves: [['bite', 2], ['howl', 1]], talk: '「群れからはぐれちまってよ……」' },
-  inoshishi:{ name: 'はらぺこイノシシ', shape: 'boar',   color: '#8a5a3a', boss: true, hp: 26000, atk: 1250, spd: 95, tough: 130, eres: 0.25, weak: ['ice', 'lightning', 'wind'],
-    phases: [{ weak: ['fire', 'physical', 'imaginary'] }], summon: 'noraInu', moves: [['rush', 2], ['aoe', 1], ['boarCharge', 1], ['summon', 1]], talk: '「冬ごもりのごはんが見つからないんだブヒ……」' },
+  inoshishi:{ name: 'ばくそうイノシシ', shape: 'boar',   color: '#8a5a3a', boss: true, hp: 26000, atk: 1250, spd: 95, tough: 130, eres: 0.25, weak: ['ice', 'lightning', 'wind'],
+    phases: [{ weak: ['fire', 'physical', 'imaginary'] }], summon: 'iwa', moves: [['rush', 2], ['aoe', 1], ['boarCharge', 1], ['summon', 1]], talk: '「ハラが減っちゃ、走れねえんだブヒ……」' },
   // 第三章：笑顔の塔
   ghost:    { name: 'ゲラゲラゴースト', shape: 'ghost',  color: '#e8e8ff', hp: 3800, atk: 1150, spd: 110, tough: 30, weak: ['imaginary', 'fire', 'wind'], moves: [['giggle', 2], ['strike', 1]], talk: '「ゲラ……ゲラ……。ほんとは、なにがおかしいのか、もうわからないんだ」' },
   mimic:    { name: 'クスクスミミック', shape: 'mimic',  color: '#d8a040', elite: true, hp: 12000, atk: 1250, spd: 90, tough: 80, eres: 0.2, weak: ['lightning', 'physical', 'ice'], moves: [['chomp', 2], ['giggle', 1], ['heavy', 1]], talk: '「クスクス……開けてくれるの、待ってたんだよ。ずっと」' },
@@ -456,7 +456,7 @@ const CHAPTERS = [
       { id: '2-1', name: '街道の丘',         lv: 8,  guests: ['shiro'], waves: [['karasu', 'noraInu'], ['iwa', 'karasu', 'noraInu']] },
       { id: '2-2', name: 'まどろみの林',     lv: 11, waves: [['noraInu', 'karasu', 'noraInu'], ['iwa', 'iwa']] },
       { id: '2-3', name: '風車の畑',         lv: 13, guests: ['shiro'], waves: [['karasu', 'noraInu', 'karasu'], ['noraInu', 'iwa', 'noraInu']] },
-      { id: '2-4', name: 'なかよし関所',     lv: 15, boss: true, waves: [['noraInu', 'iwa', 'noraInu'], ['inoshishi']] },
+      { id: '2-4', name: 'ごろごろ切り通し', lv: 15, boss: true, waves: [['iwa', 'noraInu', 'iwa'], ['inoshishi']] },
     ] },
   { id: 'c3', name: 'ニャハハ王国', bg: 'kingdom', desc: '名前とは正反対に、誰も笑わない街。笑顔の塔に何かがいる。',
     stages: [

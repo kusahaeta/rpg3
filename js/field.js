@@ -265,12 +265,12 @@ class FieldView extends BaseView {
       const yaw = Math.atan2(x1 - x, z1 - z);
       return { G, m, cone, pos: V3(x, this.gy(x, z), z), i: 1, dir: 1, wait: 0, yaw, baseYaw: yaw, alert: 0, zt: 0, asleep: !!gflags[G.id] };
     });
-    // ころころ岩（zone.rollers）：a と b のあいだを、行ったり来たりころがる
-    this.rollers = (Z.rollers || []).map(R => {
+    // ごろごろ岩（zone.rollers）：a と b のあいだを、行ったり来たりころがる（rollersUntil を満たすと、もう走っていない）
+    this.rollers = (Z.rollersUntil && storyCond(Z.rollersUntil) ? [] : Z.rollers || []).map(R => {
       // 当たりの大きさ（R.r）に見た目をそろえる
       const m = buildEnemy('iwa'); m.group.scale.multiplyScalar((R.r || 1.1) / m.radius); this.scene.add(m.group);
       const a = V3(R.a[0], 0, R.a[1]), b = V3(R.b[0], 0, R.b[1]);
-      return { R, m, a, b, pos: a.clone(), roll: 0, yaw: Math.atan2(b.x - a.x, b.z - a.z) };
+      return { R, m, a, b, pos: a.clone(), roll: 0, yaw: Math.atan2(b.x - a.x, b.z - a.z), honk: 2 + Math.random() * 4 };
     });
     // 調べられるもの：道しるべ（post）・看板（board）を立てるか、区画の小物（mark）の上に目印の光を出す。どれでもなければ石碑
     this.notes = noteDefs.map(n => {
@@ -1382,23 +1382,28 @@ class FieldView extends BaseView {
     for (let i = 0; i < 6; i++) setTimeout(() => this.p.emit(this.player.pos.clone().add(V3((Math.random() - 0.5) * 0.6, 1.2, (Math.random() - 0.5) * 0.6)), V3((g.pos.x - this.player.pos.x) * 0.5, 0.6, (g.pos.z - this.player.pos.z) * 0.5), hdr(pick(['#fff0a8', '#ffc8ec', '#c8e8ff']), 2), { life: 1.8, size: 0.12, drag: 0.2 }), i * 180);
     this.startTalk('', [['tama', '……ねんねん、ころりよ……おころりよ……。'], ['n', '番犬は、大きなあくびをひとつすると、その場で丸くなって眠ってしまった。'], ['tama', '……おやすみ。……ぼくも、ねむく……なってきた……。']]);
   }
-  // ころころ岩：谷を行ったり来たりころがる。ぶつかると、はねとばされる
+  // ごろごろ岩：谷を行ったり来たり爆走する（後ろに土けむりと排気のけむり、近くを通るとラッパ）。ぶつかると、はねとばされる
   updateRollers(d, t) {
     const p = this.player;
     for (const o of this.rollers || []) {
       const R = o.R, len = o.a.distanceTo(o.b), per = len / (R.speed || 5);
       const c = ((t / per + (R.ph || 0) * 2) % 2 + 2) % 2, u = c < 1 ? c : 2 - c, e = u * u * (3 - 2 * u) * 0.3 + u * 0.7;
       const x = lerp(o.a.x, o.b.x, e), z = lerp(o.a.z, o.b.z, e), y = this.gy(x, z), dirSign = c < 1 ? 1 : -1;
-      o.roll += (Math.hypot(x - o.pos.x, z - o.pos.z) / (R.r || 1.1)) * dirSign;
+      o.roll += Math.hypot(x - o.pos.x, z - o.pos.z) / (R.r || 1.1);
       o.pos.set(x, y, z);
-      // 足もとではなく、岩のまん中を軸にころがす
-      const rr = R.r || 1.1, fx = Math.sin(o.yaw), fz = Math.cos(o.yaw), cr = Math.cos(o.roll), sr = Math.sin(o.roll);
-      o.m.group.rotation.set(o.roll, o.yaw, 0, 'YXZ');
-      o.m.group.position.set(x - fx * rr * sr, y + rr - rr * cr, z - fz * rr * sr);
+      // 岩の本体だけがころがり、顔とリーゼントは進む向きを向いたまま（向きを変えるときは、くるっとふり返る）。前のめりに、はねながら走る
+      const rr = R.r || 1.1, fx = Math.sin(o.yaw), fz = Math.cos(o.yaw);
+      const want = o.yaw + (dirSign < 0 ? Math.PI : 0); o.face = o.face == null ? want : o.face + Math.atan2(Math.sin(want - o.face), Math.cos(want - o.face)) * (1 - Math.exp(-10 * d));
+      o.m.group.userData.spin = o.roll;
+      o.m.group.rotation.set(0.12, o.face, 0, 'YXZ');
+      o.m.group.position.set(x, y + Math.abs(Math.sin(t * 9 + (R.ph || 0) * 7)) * 0.12 * rr, z);
       o.m.update(d, t);
       if (Math.random() < d * 10) this.p.emit(V3(x + (Math.random() - 0.5), y + 0.1, z + (Math.random() - 0.5)), V3(0, 0.6, 0), hdr('#c8b89a', 0.8), { life: 0.6, size: 0.12, drag: 1 });
+      if (Math.random() < d * 14) { const bx = -fx * dirSign, bz = -fz * dirSign; this.p.emit(V3(x + bx * rr, y + 0.35, z + bz * rr), V3(bx * 1.6 + (Math.random() - 0.5) * 0.4, 0.5 + Math.random() * 0.4, bz * 1.6), hdr(pick(['#8a8a90', '#a8a8ae', '#6a6a72']), 0.5), { life: 1.1, size: 0.32, drag: 0.6 }); }
+      const near = Math.hypot(p.pos.x - x, p.pos.z - z);
+      if ((o.honk -= d) <= 0) { o.honk = 5 + Math.random() * 5; if (near < 14 && !this.busy) Sfx.horn(Math.max(0.25, 1 - near / 14)); }
       if (this.busy || this.flight || this.grace > 0) continue;
-      if (Math.hypot(p.pos.x - x, p.pos.z - z) < (R.r || 1.1) + 0.45 && Math.abs(p.pos.y - y) < 1.2) this.knock(o);
+      if (near < (R.r || 1.1) + 0.45 && Math.abs(p.pos.y - y) < 1.2) this.knock(o);
     }
   }
   // はねとばされる：弧をえがいて back へ（トランポリンと同じ飛び方）
@@ -1409,7 +1414,7 @@ class FieldView extends BaseView {
     (this.followers || []).forEach(f => { f.m.group.visible = false; });
     Sfx.hit(); Sfx.boing(); GFX.shake(0.3);
     this.p.burst(from.clone().add(V3(0, 0.6, 0)), '#c8b89a', 30, { speed: 4, up: 1.5, life: 0.7, size: 0.12 });
-    this.toast(pick(['ごろごろ……どーん！　ころころ岩に、はねとばされた！', 'ころころ岩「ごめーん！　とまれないのー！」', 'ぽーん！　……ころころ岩は、楽しそうに転がっていった']));
+    this.toast(pick(['ごろごろ……どーん！　ごろごろ岩に、はねとばされた！', 'ごろごろ岩「どけどけぇ〜っ！　ごろごろ団のお通りっス！」', 'ごろごろ岩「わりぃっス！　ブレーキ、ついてねえんス！」', 'パラリラパラリラ〜♪　……ごろごろ岩は、ごきげんに走っていった']));
   }
   // 見つかった・眠った：画面を暗くして、pos で目をさます（faceTo のほうを向く）
   sendBack(pos, faceTo, msg, delay = 1500, then = null) {

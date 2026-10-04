@@ -309,9 +309,9 @@ class StageView extends BaseView {
     party.forEach((k, i) => { cast[k] = { at: slots[i] || [i * 1.1 - 2, -1] }; });
     const others = [...new Set([...speakers, ...(st.extra || []), ...(this.sc.cast || [])])].filter(k => !party.includes(k) && !k.startsWith('e:') && !comm(k));
     others.forEach((k, i) => { cast[k] = { at: [(i - (others.length - 1) / 2) * 1.3, 2.6 + (others.length > 3 ? (i % 2) * 0.8 : 0)], face: HERO }; });
-    const foes = [...new Set([...speakers, ...(this.sc.cast || [])])].filter(k => k.startsWith('e:'));
+    const foes = [...new Set([...speakers, ...(this.sc.cast || [])].map(k => k.split('#')[0]))].filter(k => k.startsWith('e:'));   // e:iwa#1（二匹め）は e:iwa の配役から
     foes.forEach((k, i) => { const d = ENEMIES[k.slice(2)]; cast[k] = { at: [(i - (foes.length - 1) / 2) * 3, d.boss ? 8 : 6] }; });
-    for (const [k, o] of Object.entries(st.cast || {})) cast[k] = o === null ? undefined : { ...(cast[k] || {}), ...o };
+    for (const [k, o] of Object.entries(st.cast || {})) cast[k] = o === null ? undefined : Array.isArray(o) ? o.map(x => ({ ...(cast[k] || {}), ...x })) : { ...(cast[k] || {}), ...o };   // 配列 ＝ 同じ役を何匹も
     for (const k of Object.keys(cast)) if (!cast[k]) delete cast[k];
     return cast;
   }

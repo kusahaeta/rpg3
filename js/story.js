@@ -7,12 +7,12 @@
 
 function speakerName(key) {
   if (key === 'n') return '';
-  if (key.startsWith('e:')) return ENEMIES[key.slice(2)].name;
+  if (key.startsWith('e:')) return ENEMIES[key.slice(2).split('#')[0]].name;   // e:iwa#1 ＝ 同じ敵の二匹め
   return (CHARS[key] || NPCS[key]).name;
 }
 function speakerColor(key) {
   if (key === 'n') return '#ffd27a';
-  if (key.startsWith('e:')) return ENEMIES[key.slice(2)].color;
+  if (key.startsWith('e:')) return ENEMIES[key.slice(2).split('#')[0]].color;
   const c = CHARS[key] || NPCS[key];
   return (c.look && c.look.accent) || ELEMENTS[c.elem || 'physical'].color;
 }
@@ -31,11 +31,11 @@ const Story = {
   },
   // エピローグを見終えたら「クリア後」
   done() { return !this.current() || this.seen('c9_01'); },
-  // シーンを見終えたか（そのシーンを含む段階が、現在の段階より前にある）
+  // シーンを見終えたか（そのシーンを含む段階が、現在の段階より前にある）。戦いのあとのシーン（after）も、その段階を終えたら見終えている
   seen(id) {
     const st = this.state;
     for (let ci = 0; ci < STORY.length; ci++) {
-      const i = STORY[ci].steps.findIndex(x => x.id === id || x.scene === id);
+      const i = STORY[ci].steps.findIndex(x => x.id === id || x.scene === id || x.after === id);
       if (i >= 0) return ci < st.ch || (ci === st.ch && i < st.step);
     }
     return false;

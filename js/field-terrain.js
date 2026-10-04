@@ -98,9 +98,10 @@ class Terrain {
         const k = this.idx(c + dc, r + dr); if (k >= 0 && this.isWalkKind(this.kind[k])) base = Math.max(base, hi(k));
       }
       if (base < -1e8) base = maxH;
-      // 低い岩場（zone.lowRock：[c0, r0, c1, r1, 高さ] のマスの範囲）：建物の根もとなど、高い崖がめり込まないところ
+      // 低い岩場（zone.lowRock：[c0, r0, c1, r1, 高さ, 上限] のマスの範囲）：建物の根もとなど、高い崖がめり込まないところ。
+      //   上限（省略可）：岩のてっぺんの高さの上限（床から離れた岩は、区画でいちばん高い床を基準にするので、見晴らし台のまわりなどで使う）
       const low = (this.zone.lowRock || []).find(([c0, r0, c1, r1]) => c >= c0 && c <= c1 && r >= r0 && r <= r1);
-      if (low) { top[i] = base + low[4]; this.cap[i] = top[i]; continue; }
+      if (low) { top[i] = Math.min(base + low[4], low[5] ?? Infinity); this.cap[i] = top[i]; continue; }
       const v = S.skyline === 'town' ? Math.floor(hash(Math.floor(c / 3), Math.floor(r / 3)) * 3) * 1.8
         : S.skyline === 'rock' ? hash(c, r) * 2.6 + hash(Math.floor(c / 2), Math.floor(r / 2)) * 2 : 0;
       top[i] = base + wallH + v;
