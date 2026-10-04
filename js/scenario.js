@@ -612,7 +612,7 @@ const SCENES = {
       ['gonji', 'ここは、ニャハハ王国の「なかよし関所」。……わしは、関所番のゴンじゃ。みんなは、ゴン爺と呼ぶ。', { f: 'serious', g: 'nod' }],
       ['shiro', 'なかよし関所？　聞いたことないわね。', { f: 'smug', g: 'hipHand' }],
       ['gonji', 'むかしの王さまが作った関所でな。「一匹では通れぬ」というのが、決まりなのじゃ。', { f: 'serious', g: 'explain' }],
-      ['gonji', '門には、それぞれからくりがあってのう。力、魔法、こもりうた……。それに、ふたつの足を合わせねば開かぬ門もある。', { f: 'serious', g: 'point', look: { all: 'gate' } }],
+      ['gonji', 'ここの門には、からくりがあってのう。どれも、ひとりの力では、どうやっても開かんようにできておる。……仲間と力を合わせて、はじめて開くのじゃ。', { f: 'serious', g: 'point', look: { all: 'gate' } }],
       ['kuro', '……からくりなど、壊して通ればいい。', { f: 'serious', stance: { kuro: 'ready' } }],
       ['gonji', 'ばかもーん！　壊したら、直すのはわしじゃぞ！', { f: 'angry', g: 'fist', shake: 0.15, r: { kuro: 'surprise', mike: ['surprise', 'recoil'] }, stance: { kuro: 'armsCrossed' } }],
       ['mike', 'じゃあ、ぼくが全部やる！　ぼく、勇者だし！', { f: 'joy', g: 'fist' }],
@@ -634,7 +634,7 @@ const SCENES = {
     stage: { zone: 'sekisho', at: [0, -28], face: 0, cast: { gonji: { at: [-3.2, -1.4], face: 'mike' } }, points: { gate: [0, 3, 12] } },
     lines: [
       ['n', '大門の鉄格子が上がると、北の広場のむこうに、ニャハハ王国の旗が見えた。', { cam: 'look:gate', dur: 6 }],
-      ['gonji', '……見事じゃ。力、魔法、こもりうた、それに二匹の足。……よくぞ、からくりを解いたのう。', { f: 'gentle', g: 'nod', to: 'mike' }],
+      ['gonji', '……見事じゃ。ひとりでは開かぬ門を、みんなで開けてみせたのう。', { f: 'gentle', g: 'nod', to: 'mike' }],
       ['mike', 'えへへ！　みんなのおかげ！', { f: 'joy', g: 'cheer' }],
       ['shiro', '……ま、まあ、天才のわたしがいたんだから、当然よね！', { f: 'smug', g: 'hipHand' }],
       ['kuro', '……悪くなかった。', { f: 'smile', g: 'armsCrossed' }],
