@@ -554,11 +554,11 @@ const FIELD_ZONES = {
       { at: [-3, 14], face: 0, post: ['ころころ岩に注意', '↑ なかよし関所'], title: '立て札', text: '「この先、ころころ岩が谷を横切ります。岩が向こうへ転がっていったすきに、渡りましょう」' }],
     map2d: [470, 164] },
 
-  // なかよし関所：切り通しの先の、石の砦。「一匹では通れぬ」関所で、からくりの門を仲間のわざで開けていく
+  // なかよし関所：切り通しの先の、石の砦。「一匹では通れぬ」関所で、からくりの門を仲間のわざで開けていく（敵は出ない。敵が出るのは手前の切り通しだけ）
   //   二匹の門（plates。踏み板を二匹で同時に踏む）→ 中庭から、力の門（クロ。かんぬき）・番犬の庭（guards。見つからずに抜けるか、タマのこもりうたで眠らせる）
   //   → 三つののろし台（シロ。西の櫓・門楼・東の櫓）に火がつくと、大門の鉄格子が上がる → 北の広場（はらぺこイノシシ）
-  sekisho: { ci: 1, name: 'なかよし関所', floor: '砦', w: 68, d: 84, stage: '2-4', arenas: [[0, -30, 0], [0, -4, 0]], build: 'sekisho', arch: 'fort', groups: 3, chests: 4, crystals: 3, calmAfter: '2-4',
-    world: true, chestAt: [[-25, 29], [-27, 5], [29, 11], [-15, -35]], foes: ['noraInu', 'karasu', 'iwa'],
+  sekisho: { ci: 1, name: 'なかよし関所', floor: '砦', w: 68, d: 84, stage: '2-4', arenas: [[0, -30, 0], [0, -4, 0]], build: 'sekisho', arch: 'fort', calm: true, groups: 0, chests: 4, crystals: 3,
+    world: true, chestAt: [[-25, 29], [-27, 5], [29, 11], [-15, -35]],
     th: { pattern: 'cobble', floor: '#a8a092', floor2: '#98907e', line: '#ffd27a', fog: '#c8d0d8', fogD: 0.012 },
     // 南の外庭（番小屋と二匹の門）→ 中庭。中庭の西は力の門（奥に西の櫓）、東は番犬の庭（奥に東の櫓）、北は門楼と大門 → 北の広場
     map: [
@@ -3105,7 +3105,10 @@ class ZoneKit {
       const L = { i, pos: V3(x, y, z), lit, setLit() { L.lit = true; } };
       if (beacon) {
         this.cyl(x, z, 0.75, 0.9, 'stone2', { seg: 8, r2: 0.62 });
-        this.mesh(new THREE.CylinderGeometry(0.85, 0.45, 0.4, 14, 1, true), 'metal', x, 1.05, z);
+        // 火皿：上の開いた鉄の鉢（内側も見えるよう両面）と、底にたまった灰
+        const bowlM = this.mc.bowl || (this.mc.bowl = Object.assign(this.mat('metal').clone(), { side: THREE.DoubleSide }));
+        this.mesh(new THREE.CylinderGeometry(0.85, 0.45, 0.4, 14, 1, true), bowlM, x, 1.05, z);
+        this.mesh(new THREE.CircleGeometry(0.5, 14), '#3a3430', x, 0.91, z, { rx: -Math.PI / 2, noShadow: true });
         for (let k = 0; k < 4; k++) this.mesh(new THREE.BoxGeometry(0.12, 0.12, 1.0), 'wood2', x, 1.0 + k * 0.08, z, { ry: k * 0.8 });
         const fire = new THREE.Group(); fire.position.set(x, y + 1.15, z); fire.visible = lit; this.scene.add(fire);
         const cones = ['#ff8a2a', '#ffc04a', '#fff0a0'].map((c, k) => { const m = new THREE.Mesh(new THREE.ConeGeometry(0.34 - k * 0.08, 0.9 - k * 0.18, 7), this.glow(c, 2.2)); m.position.set((k - 1) * 0.12, 0.38 - k * 0.06, (k % 2) * 0.1); fire.add(m); return m; });
@@ -3151,14 +3154,16 @@ class ZoneKit {
       const hinge = new THREE.Group(); hinge.position.set(s * hw, 0, 0); g.add(hinge);
       add(new THREE.BoxGeometry(hw - 0.04, H, 0.28), 'wood2', -s * hw / 2, H / 2, 0, hinge);
       for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) add(new THREE.SphereGeometry(0.07, 6, 4), 'metal', -s * (hw * 0.25 + c * hw * 0.5), 0.8 + r * 1.2, 0.15, hinge);
+      add(new THREE.BoxGeometry(0.25, 0.55, 0.3), 'metal', -s * hw * 0.4, 1.6, 0.32, hinge);   // かんぬきの金具（扉といっしょに開く）
       return hinge;
     });
-    for (const s of [-0.6, 0.6]) add(new THREE.BoxGeometry(0.25, 0.55, 0.3), 'metal', s * hw, 1.6, 0.32);
-    const bar = add(new THREE.BoxGeometry(len + 0.9, 0.36, 0.36), 'wood', 0, 1.6, 0.42);
+    // かんぬき：外すと、手前へ引き抜いてから、門の脇（+X 側）の壁に立てかける
+    const BL = len + 0.9, lean = 0.12, bar = add(new THREE.BoxGeometry(BL, 0.36, 0.36), 'wood', 0, 1.6, 0.42);
+    const P0 = V3(0, 1.6, 0.42), P1 = V3(0, 2.0, 1.4), P2 = V3(hw + 1.1, BL / 2 * Math.cos(lean), 1.18 + BL / 2 * Math.sin(lean));
     let k = open ? 1 : 0;
     const pose = () => {
-      const kb = clamp(k / 0.4, 0, 1), kd = clamp((k - 0.4) / 0.6, 0, 1);
-      bar.position.set(kb * 0.5, 1.6 + Math.sin(kb * Math.PI) * 0.7 - kb * 1.42, 0.42 + kb * 0.9); bar.rotation.z = kb * 0.25;
+      const ka = Ease.inOut(clamp(k / 0.25, 0, 1)), kb = Ease.inOut(clamp((k - 0.25) / 0.35, 0, 1)), kd = clamp((k - 0.5) / 0.5, 0, 1);
+      bar.position.lerpVectors(P0, P1, ka).lerp(P2, kb); bar.rotation.set(-kb * lean, 0, kb * Math.PI / 2);
       leaves.forEach((h, i) => { h.rotation.y = (i ? -1 : 1) * Ease.out(kd) * 1.5; });
     };
     pose();
