@@ -84,9 +84,11 @@ class ShowcaseView extends BaseView {
     if (this.model) {
       this.model.group.rotation.y = this.rotY + this.spin;
       this.model.update(rdt, t);
-      // ときどき身振り（手を振る・のびをする）
-      const ph = Math.floor(t / 5) % 4;
-      const pose = ph === 1 ? { ...POSES.idle, armRx: -2.4, armRz: -0.75, elbowR: -0.9 + Math.sin(t * 10) * 0.4 } : ph === 3 ? POSES.ready : POSES.idle;
+      // ときどき身振り（手を振る・のびをする）。手を振るのは何も持っていないほうの手（持ち物が顔に刺さらないように）
+      //   腕が短く頭が大きいので、高く上げると手がほっぺに埋まる。腕は肩の高さで斜め前・外へのばし、手を上下に小さく振る
+      const ph = Math.floor(t / 5) % 4, m = this.model, freeL = m.armL && m.armL.grip && !m.armL.grip.children.length;
+      const s = freeL ? 1 : -1, A = freeL ? 'L' : 'R', wave = { ...POSES.idle, ['arm' + A + 'x']: -1.55 + Math.sin(t * 10) * 0.25, ['arm' + A + 'z']: s * 1.15, ['elbow' + A]: -0.6 };
+      const pose = ph === 1 ? wave : ph === 3 ? POSES.ready : POSES.idle;
       for (const k of POSE_KEYS) this.model.pose[k] += ((pose[k] || 0) - this.model.pose[k]) * (1 - Math.exp(-5 * rdt));
       if (ph === 1 && this.model.face) this.model.face.set('joy'); else if (this.model.face && this.model.face.expr === 'joy') this.model.face.set('smile');
     }
