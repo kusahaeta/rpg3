@@ -273,10 +273,19 @@ function buildCat(key, opt = {}) {
   const face = new CatFace(key, L, false, null, featMat);
   // ひげ
   const whM = new THREE.MeshBasicMaterial({ color: L.whisker || (new THREE.Color(L.fur).getHSL({}).l < 0.4 ? '#e8e8f0' : '#8a8490') });
+  // 根もとから外へ扇形に広がり、ゆるく弧を描いて先が少し垂れる。先へいくほど細く
+  const whLen = sp === 'mouse' ? 0.23 : 0.185;
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
-    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0025, sp === 'mouse' ? 0.24 : 0.19, 4), whM);
-    w.rotation.z = s * (Math.PI / 2 + (i - 1) * 0.2); w.rotation.y = -s * 0.35;
-    w.position.set(s * 0.19, -0.115 - i * 0.02, 0.23); headG.add(w);
+    const k = i - 1;
+    const r0 = new THREE.Vector3(s * 0.1, -0.13 - k * 0.006, 0.2), r1 = new THREE.Vector3(s * (0.1 + whLen), -0.15 - k * 0.045, 0.265);
+    const c = r0.clone().lerp(r1, 0.4).add(new THREE.Vector3(0, 0.048 - k * 0.008, 0.02));
+    const geo = new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(r0, c, r1), 12, 1, 4);
+    const pos = geo.attributes.position, nrm = geo.attributes.normal;
+    for (let v = 0; v < pos.count; v++) {
+      const t = Math.floor(v / 5) / 12, rad = 0.0042 - 0.003 * t;
+      pos.setXYZ(v, pos.getX(v) + nrm.getX(v) * (rad - 1), pos.getY(v) + nrm.getY(v) * (rad - 1), pos.getZ(v) + nrm.getZ(v) * (rad - 1));
+    }
+    headG.add(new THREE.Mesh(geo, whM));
   }
   // 耳
   const ears = [];
