@@ -100,7 +100,7 @@ function drawCatFeatures(g, L, st) {
       g.strokeStyle = lash; g.lineWidth = 4; g.beginPath(); g.moveTo(ex - rx, ey + 5); g.quadraticCurveTo(ex, ey - 16, ex + rx, ey + 5); g.stroke();
     } else if (st.closed || E.squint) {   // まばたき・ぎゅっ
       g.strokeStyle = lash; g.lineWidth = 3.6; g.beginPath();
-      if (E.squint) { g.moveTo(ex - rx, ey - 6); g.lineTo(ex + s * 2, ey); g.lineTo(ex - rx, ey + 6); }
+      if (E.squint) { g.moveTo(ex + s * rx, ey - 6); g.lineTo(ex - s * 2, ey); g.lineTo(ex + s * rx, ey + 6); }   // 外側から目頭へ向かう「> <」
       else { g.moveTo(ex - rx, ey + 1); g.quadraticCurveTo(ex, ey + 9, ex + rx, ey + 1); }
       g.stroke();
     } else {
