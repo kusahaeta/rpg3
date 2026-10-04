@@ -1190,13 +1190,13 @@ class FieldView extends BaseView {
       const all = Save.data.fieldChests || (Save.data.fieldChests = {});
       (all[this.zoneId] = all[this.zoneId] || []).push(c.id);
       const nib = 40 + Math.floor(Math.random() * 7) * 10, exp = 200 + this.ci * 120;
-      Save.data.niboshi += nib; Save.data.expPool += exp; Save.save();
+      Save.data.niboshi += nib; const ups = grantTeamExp(exp); this.team.forEach(m => { m.lv = Save.data.owned[m.key].lv; }); Save.save();
       GFX.tween(0.5, t => { c.lid.rotation.x = -1.9 * t; }, Ease.back);
       c.glow.visible = false;
       this.fx.pillar(c.pos, '#ffd66b', { h: 3, r: 0.4, life: 0.8 });
       this.p.burst(c.pos.clone().add(V3(0, 0.7, 0)), '#ffd66b', 60, { speed: 4, up: 1.2, life: 1.0 });
       Sfx.win();
-      this.toast(`宝箱：にぼし +${nib}　けいけんち +${exp}`);
+      this.toast(`宝箱：にぼし +${nib}　けいけんち +${exp}${ups.length ? '　' + ups.map(r => `${CHARS[r.key].name}がレベルアップ！`).join(' ') : ''}`);
       this.renderHud();
     } else if (it.type === 'anchor') {
       this.team.forEach(m => { m.hpRatio = 1; });
@@ -1996,10 +1996,9 @@ class FieldView extends BaseView {
     res.team.forEach((t, i) => { this.team[i].hpRatio = t.hpRatio; this.team[i].energy = t.energy; });
     if (!res.win) return '<div class="dim">時空アンカーまで撤退する…</div>';
     const d = Save.data, exp = Math.round((60 + g.lv * 28) * g.waves.length);
-    d.expPool += g.lv * 8;
     let html = '';
     const nib = 10 + g.lv * 2 + (g.elite ? 40 : 0); d.niboshi += nib;
-    html += `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}${g.elite ? '（つよい敵）' : ''}　<i class="ic-exp"></i>けいけんち +${g.lv * 8}</div>`;
+    html += `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}${g.elite ? '（つよい敵）' : ''}</div>`;
     html += '<div class="rw-team">' + this.team.map(m => {
       const up = grantExp(m.key, exp);
       m.lv = d.owned[m.key].lv;

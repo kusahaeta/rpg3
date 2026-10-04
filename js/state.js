@@ -8,7 +8,7 @@ const Save = {
   data: null,
   defaults() {
     return {
-      niboshi: 300, expPool: 600, tp: 3,
+      niboshi: 300, tp: 3,
       owned: { mike: { lv: 1, exp: 0, eid: 0 } },
       team: ['mike'],
       cleared: {},
@@ -18,7 +18,7 @@ const Save = {
       bondSeen: {},       // 見た特別イベント
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       gear: {},           // 武器の強化段階
-      auto: false, speed: 1, ver: 4,
+      auto: false, speed: 1, ver: 5,
       eco: null,          // 省エネ（30fps）。null はおまかせ（スマホなら省エネ）
     };
   },
@@ -39,6 +39,13 @@ const Save = {
     if (ver < 4) {
       if (d.story && d.story.ch === 1 && d.story.step >= 12) d.story.step += 1;
       d.ver = 4;
+    }
+    // ver 5：「けいけんち」をためてあとでレベルアップする仕組みをやめた。ためていた分は、いる仲間みんなに配る
+    if (ver < 5) {
+      const pool = d.expPool || 0;
+      if (pool > 0) for (const k of Object.keys(d.owned)) grantExp(k, pool);
+      delete d.expPool;
+      d.ver = 5;
     }
   },
   load() {
@@ -64,6 +71,11 @@ function grantExp(key, amount) {
   while (o.lv < 80 && o.exp >= expToNext(o.lv)) { o.exp -= expToNext(o.lv); o.lv++; }
   if (o.lv >= 80) o.exp = 0;
   return o.lv - before;
+}
+
+// 編成の仲間みんなに経験値を配る。レベルが上がった仲間（key と上がった数）を返す
+function grantTeamExp(amount) {
+  return Save.data.team.map(k => ({ key: k, up: grantExp(k, amount) })).filter(r => r.up > 0);
 }
 
 // 物語の都合で、いまは一行を離れている子（STORY の段階の away）
