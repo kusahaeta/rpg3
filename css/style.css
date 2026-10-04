@@ -778,7 +778,8 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .ic-jade { background: none; width: 16px; height: 16px; clip-path: none; }
 .ic-jade::before { content: '🐟'; font-size: 14px; line-height: 16px; }
 .ic-exp { background: none; } .ic-exp::before { content: '⭐'; font-size: 12px; line-height: 14px; }
-.ic-tp { background: none; } .ic-tp::before { content: '🌷'; font-size: 12px; line-height: 14px; }
+/* 初手技ポイント：爪とぎの丸太の上で光る肉球と同じピンク。暗い茶色の枠でも見えるよう、ふちに明るい線 */
+.ic-tp { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='%23ff9ad8' stroke='%23ffe0f0' stroke-width='1'%3E%3Cellipse cx='12' cy='16.2' rx='6' ry='5'/%3E%3Ccircle cx='5' cy='10' r='2.35'/%3E%3Ccircle cx='9.4' cy='5.4' r='2.35'/%3E%3Ccircle cx='14.6' cy='5.4' r='2.35'/%3E%3Ccircle cx='19' cy='10' r='2.35'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat; }
 .c-item { background: rgba(62, 40, 34, .7); border: 2px solid var(--line); }
 .topbar { background: linear-gradient(180deg, rgba(62, 40, 34, .7), transparent); }
 .back { border: 2px solid var(--line); background: rgba(62, 40, 34, .7); }
