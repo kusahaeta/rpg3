@@ -1683,7 +1683,7 @@ const FIELD_ZONES = {
       '###############000000000###############',
       '##################sss##################',
     ],
-    anchor: [6, 40], exits: [{ key: 's', to: 'ruins_in' }, { key: 'n', to: 'ruins_seal' }],
+    anchor: [6, 40], exits: [{ key: 's', to: 'ruins_in' }, { key: 'n', to: 'ruins_seal', sealed: true }],
     // 回廊は 4x4 の小部屋。部屋どうしの口は、R（今は瓦礫・昔は通れる）、A（昔は石の門・今は通れる）、D（いつも通れる）
     // crystals：[x, z, 向き]。'W' 白（今と昔を行き来できる。入口の間）、'P' 金（昔へだけ）、'N' 青（今へだけ）
     // ghosts：昔のあいだだけ見える、昔の猫たちの面影 [x, z, 向き, 台詞]。昔のあいだは、F で話しかけられる
@@ -2215,7 +2215,7 @@ const FIELD_ZONES = {
       '##################0,,0##################',
       '###################bb###################',
     ],
-    anchor: [16, -32], spawn: [0, -36], exits: [{ key: 'a', to: 'forest_deep' }, { key: 'b', to: 'tree_under' }, { key: 'e', to: 'world_end' }],
+    anchor: [16, -32], spawn: [0, -36], exits: [{ key: 'a', to: 'forest_deep' }, { key: 'b', to: 'tree_under', sealed: true }, { key: 'e', to: 'world_end' }],
     notes: [{ at: [-10, 10], mark: 1.0, title: '落ちた葉', text: '灰色に色あせた葉。持ち上げると、さらさらと崩れた。' }],
     map2d: [470, 522] },
 
