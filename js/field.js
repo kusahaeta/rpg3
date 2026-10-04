@@ -1116,6 +1116,7 @@ class FieldView extends BaseView {
     for (const o of this.fluffObjs || []) if (o.ready && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < 1.8 && Math.abs(o.pos.y - p.y) < 1) return { type: 'fluff', o, text: '綿毛につかまる' };
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
     for (const c of this.crystals) if (c.pos.distanceTo(p) < 1.8) return { type: 'post', c, text: c.broken ? '調べる：爪とぎの丸太' : '爪を研ぐ：爪とぎの丸太' };
+    if (!Z.noAnchor && Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && Math.abs(this.gy(Z.anchor[0], Z.anchor[1]) - p.y) < 1.5) return { type: 'anchor', text: '調べる：ねこ地蔵' };
     if (this.T) {
       const i = this.T.at(p.x, p.z);
       // 区画間エレベーターの籠の中
@@ -1196,6 +1197,8 @@ class FieldView extends BaseView {
       Sfx.win();
       this.toast(`宝箱：にぼし +${nib}　けいけんち +${exp}`);
       this.renderHud();
+    } else if (it.type === 'anchor') {
+      this.startTalk('ねこ地蔵', ['赤いよだれかけの、ねこ地蔵だ。そばにいると、みんなのHPが回復する。', 'MAP（M）を開くと、行ったことのある場所のねこ地蔵へ、いつでもひとっとびできる。'], null, true);
     } else if (it.type === 'lift') this.rideLift(it.L);
     else if (it.type === 'call') { this.moveLift(it.L, it.lv); this.toast('エレベーターを呼んだ'); }
     else if (it.type === 'cabin') this.cabinMenu(it.g);
