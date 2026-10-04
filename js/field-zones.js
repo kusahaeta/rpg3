@@ -1197,7 +1197,8 @@ const FIELD_ZONES = {
       '###################################',
     ],
     anchor: [4, 26], exits: [{ key: 'w', to: 'nyahaha' }, { key: 'c', to: 'cave' }, { key: 'r', to: 'ruins_out' }, { key: 's', to: 'valley_village' }],
-    notes: [{ at: [-15.25, -16], mark: 1.9, title: '三つの墓標', text: '「ハヤテ」「リン」「ゴロウ」——そして、名前の刻まれていない四つ目の石。' },
+    notes: [{ at: [-15.25, -16], mark: 1.9, until: 'scene:c4_05', title: '三つの墓標', text: '「ハヤテ」「リン」「ゴロウ」——そして、名前の刻まれていない四つ目の石。' },
+      { at: [-16.5, -16], mark: 1.9, when: 'scene:c4_05', title: '三つの墓標', text: '「ハヤテ」「リン」「ゴロウ」。墓の前に、黒影洞窟から連れて帰った三本の剣が並んでいる。……名前のない四つ目の石は、もうない。' },
       { at: [18, -9], mark: 2.8, reach: 2.9, title: '古いテント', text: '雨ざらしのテント。中に、誰かの荷物が残されている。', until: 'scene:c4_02c' },
       { at: [18, -9], mark: 2.8, reach: 2.9, title: '古いテント', text: '影の四剣が、最後に野営したテント。色あせた毛布と、四つの荷物が残っている。', when: 'scene:c4_02c' }],
     map2d: [620, 95] },
@@ -1444,7 +1445,7 @@ const FIELD_ZONES = {
       ] }],
     notes: [{ at: [-3, 37], mark: 1.4, title: '誓いの石', text: '「われら影の四剣、集まった順に剣を並べて、ここに誓う。一の剣は、青き風。四の剣は、いちばんあとから来た黒き子。……二の剣と三の剣の順は、ともに歩んだ日々が知っている」' },
       { at: [15, -15], mark: 1.0, title: 'ハヤテの手帳の切れはし', text: '「かぶとのゴロウのやつ、光る杖の新入りができたって、大よろこびしてやがる。……自分だって、ついこないだ仲間になったばかりのくせに。——ハヤテ」' },
-      { at: [0, -37.4], mark: 1.8, reach: 2.4, when: 'scene:c4_05', title: '三本の剣', text: 'ハヤテ、リン、ゴロウの剣。……もう、さびしそうには見えない。' }],
+      { at: [0, -37.4], mark: 1.0, reach: 2.4, when: 'scene:c4_05', title: '三本の剣のあと', text: '三本の剣が立っていた、がれきの塚。……剣は、クロたちが谷の墓へ連れて帰った。' }],
     map2d: [620, 30] },
 
   // ---------------- 第五章 古代遺跡 ----------------
@@ -2432,6 +2433,35 @@ function storyCond(cond) {
   if (k === 'flag') return !!(Save.data.flags || {})[v];
   if (k === 'done') return typeof Story !== 'undefined' && Story.done();
   return false;
+}
+
+// 墓石に彫った名前（縦書き）と、上の肉球の紋。彫りの影（暗い色）と、ふちの光（明るい色）を少しずらして重ねる
+function graveTex(name) {
+  const k = 'grave' + name; if (TexCache[k]) return TexCache[k];
+  const c = document.createElement('canvas'); c.width = 256; c.height = 420;
+  const g = c.getContext('2d'), carve = (dx, dy, col) => {
+    g.fillStyle = g.strokeStyle = col;
+    // 肉球の紋
+    const px = 128 + dx, py = 62 + dy;
+    g.beginPath(); g.ellipse(px, py + 8, 20, 16, 0, 0, Math.PI * 2); g.fill();
+    for (const [tx, ty] of [[-22, -14], [-8, -24], [8, -24], [22, -14]]) { g.beginPath(); g.ellipse(px + tx, py + ty, 7, 9, tx * 0.02, 0, Math.PI * 2); g.fill(); }
+    // 名前（一字ずつ縦に）
+    g.font = '700 74px "Hiragino Mincho ProN","Yu Mincho","Hiragino Sans",serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const chars = [...name], step = Math.min(92, 300 / chars.length);
+    chars.forEach((ch, i) => g.fillText(ch, 128 + dx, 140 + dy + step * (i + 0.5)));
+  };
+  carve(2, 2, 'rgba(255,255,255,.35)'); carve(0, 0, 'rgba(58,52,74,.85)');
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (TexCache[k] = t);
+}
+
+// 物語の中でのシーンの順番（章・段階・段階の中の scene → after の順）。物語にないシーン（友情イベントなど）は最後
+function sceneOrder(id) {
+  for (let ci = 0; ci < STORY.length; ci++) {
+    const steps = STORY[ci].steps;
+    for (let i = 0; i < steps.length; i++) { const k = [steps[i].id, steps[i].scene, steps[i].after].indexOf(id); if (k >= 0) return (ci * 1000 + i) * 3 + k; }
+  }
+  return Infinity;
 }
 
 // ---------------- まどろみの林の小物（探索・会話シーンで共用） ----------------
@@ -4495,11 +4525,90 @@ class ZoneKit {
     if (eye) for (const sd of [-1, 1]) this.mesh(new THREE.SphereGeometry(0.05 * s, 8, 6), this.glow(eye, 3), x + Math.cos(ry) * sd * 0.14 * s + Math.sin(ry) * 0.36 * s, 1.68 * s, z - Math.sin(ry) * sd * 0.14 * s + Math.cos(ry) * 0.36 * s, { noShadow: true });
   }
   // お地蔵さまならぬ、ねこ地蔵（ここで休める）
+  // 墓：二段の石の台座に、上の丸いアーチ形の墓石。名前は縦書きで彫り、上に肉球の紋（name がなければ何も彫らない）
+  //   台座の前の両側に石の花立てと花、足もとに苔。ry = 正面の向き
   grave(x, z, ry = 0, name, flowerCol = '#ffffff') {
-    this.box(x, z, 0.8, 1.1, 0.3, 'stone', { ry, round: true });
-    this.mesh(new THREE.SphereGeometry(0.4, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), 'stone', x, 1.1, z, { ry }).scale.z = 0.38;
-    if (name) this.sign(x + Math.sin(ry) * 0.17, z + Math.cos(ry) * 0.17, ry, name, null, '#c8a8ff', 0.7, 0.72);
-    this.flowers(x + Math.sin(ry) * 0.5, z + Math.cos(ry) * 0.5, 4, 0.3, [flowerCol]);
+    const stone = this.mc.graveStone || (this.mc.graveStone = new THREE.MeshStandardMaterial({ color: '#b4aebe', roughness: 0.92 }));
+    const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry;
+    const at = (geo, mat, px, py, pz, opt = {}) => this.mesh(geo, mat, px, py, pz, { ...opt, parent: g });
+    // 台座（二段）
+    at(new THREEX.RoundedBoxGeometry(1.0, 0.16, 0.72, 2, 0.03), stone, 0, 0.08, 0.06);
+    at(new THREEX.RoundedBoxGeometry(0.8, 0.12, 0.42, 2, 0.025), stone, 0, 0.22, 0);
+    // 墓石：上がアーチの板（面取りでふちをやわらかく）
+    const W = 0.62, H = 0.72, sh = new THREE.Shape();
+    sh.moveTo(-W / 2, 0); sh.lineTo(-W / 2, H); sh.absarc(0, H, W / 2, Math.PI, 0, true); sh.lineTo(W / 2, 0); sh.lineTo(-W / 2, 0);
+    const hg = new THREE.ExtrudeGeometry(sh, { depth: 0.14, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 2, curveSegments: 16 }); hg.translate(0, 0, -0.07);
+    at(hg, stone, 0, 0.28, 0);
+    if (name) {
+      const face = new THREE.MeshStandardMaterial({ map: graveTex(name), transparent: true, roughness: 0.95, depthWrite: false });
+      at(new THREE.PlaneGeometry(0.5, 0.82), face, 0, 0.28 + 0.5, 0.0915, { noShadow: true });
+    }
+    // 花立てと花
+    for (const sd of [-1, 1]) {
+      at(new THREE.CylinderGeometry(0.052, 0.04, 0.16, 10), stone, sd * 0.37, 0.24, 0.27);
+      for (let k = 0; k < 3; k++) {
+        const a = (k - 1) * 0.35 + sd * 0.15, h = 0.2 + k * 0.03;
+        const st = at(new THREE.CylinderGeometry(0.006, 0.006, h, 4), '#5a8a4a', sd * 0.37 + Math.sin(a) * h / 2, 0.32 + h / 2, 0.27, { noShadow: true }); st.rotation.z = -a;
+        at(new THREE.IcosahedronGeometry(0.034, 0), [flowerCol, '#c8a8ff', '#ffe8f0'][k], sd * 0.37 + Math.sin(a) * h, 0.32 + Math.cos(a) * h, 0.27, { noShadow: true });
+      }
+    }
+    // 足もとの苔
+    for (const [mx, mz, r] of [[-0.46, -0.22, 0.12], [0.44, -0.26, 0.1], [-0.3, 0.38, 0.08]]) at(new THREE.SphereGeometry(r, 8, 6), '#6a8a58', mx, 0.02, mz, { noShadow: true }).scale.y = 0.35;
+    this.add(g);
+    this.col(x, z, 0.55, 1.4);
+  }
+  // 物語でそのシーンを見たあとか。会話シーンの舞台（StageView）では、そのシーンの時点で考える（あらすじで見直しても、その場面のときの姿で出す）
+  seenAt(id) {
+    if (!storyCond('scene:' + id)) return false;
+    const now = this.v.st && this.v.id;
+    return !now || sceneOrder(now) > sceneOrder(id);
+  }
+  // 影の四剣の剣（i：0 リン・1 ハヤテ・2 ゴロウ）。がれきの塚に突き立ち、両面の血溝が持ち主の色にほのかに光る
+  //   リン：細身の剣、柄頭に光の水晶。ハヤテ：まっすぐな片手剣、柄の根もとに青い布（青き風）。ゴロウ：幅広の大剣、厚い鉄の鍔
+  //   o.ry / o.rx / o.rz：向きと傾き、o.mound：がれきの塚、o.blade === false で塚だけ
+  shadowSword(i, x, z, o = {}) {
+    const y0 = this.gy(x, z);
+    if (o.mound) {
+      this.mesh(new THREE.DodecahedronGeometry(0.32, 0), 'rockDark', x, y0 + 0.02, z, { abs: true, ry: i * 1.3 }).scale.set(1.2, 0.42, 1);
+      for (let k = 0; k < 3; k++) { const a = i * 2 + k * 2.1; this.mesh(new THREE.DodecahedronGeometry(0.07 + 0.03 * (k % 2), 0), 'darkStone', x + Math.cos(a) * 0.38, y0 + 0.04, z + Math.sin(a) * 0.32, { abs: true, ry: a }); }
+    }
+    if (o.blade === false) return;
+    const steel = this.mc.swordSteel || (this.mc.swordSteel = new THREE.MeshStandardMaterial({ color: '#d8dce8', metalness: 0.7, roughness: 0.3, emissive: new THREE.Color('#3a3a5a'), emissiveIntensity: 0.5 }));
+    const S = [
+      { w: 0.075, len: 1.0, tip: 0.16, glow: '#fff2b0', guard: 'gold', gw: 0.3, gh: 0.035, grip: '#f0e6d0', gripLen: 0.22 },
+      { w: 0.1, len: 1.05, tip: 0.14, glow: '#6ab0ff', guard: 'metal', gw: 0.36, gh: 0.05, grip: '#2a3a6a', gripLen: 0.22 },
+      { w: 0.17, len: 1.02, tip: 0.12, glow: '#ffb070', guard: 'iron', gw: 0.46, gh: 0.08, grip: '#6a4a30', gripLen: 0.3 },
+    ][i], sink = 0.18;
+    const g = new THREE.Group(); g.position.set(x, y0 + S.len - sink, z); g.rotation.set(o.rx || 0, o.ry || 0, o.rz || 0);
+    const at = (geo, mat, px, py, pz, opt = {}) => this.mesh(geo, mat, px, py, pz, { ...opt, parent: g });
+    // 刃：鍔の位置を原点に、下向きに伸びて先がとがる（面取りで刃のふちを出す）。両面に血溝
+    const sh = new THREE.Shape(); sh.moveTo(-S.w / 2, 0); sh.lineTo(-S.w / 2, -(S.len - S.tip)); sh.lineTo(0, -S.len); sh.lineTo(S.w / 2, -(S.len - S.tip)); sh.lineTo(S.w / 2, 0); sh.lineTo(-S.w / 2, 0);
+    const bg = new THREE.ExtrudeGeometry(sh, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.01, bevelSegments: 1 }); bg.translate(0, 0, -0.006);
+    at(bg, steel, 0, 0, 0);
+    for (const sd of [-1, 1]) at(new THREE.BoxGeometry(S.w * 0.18, S.len - S.tip - 0.12, 0.004), this.glow(S.glow, 1.4), 0, -(S.len - S.tip) / 2 - 0.02, sd * 0.0125, { noShadow: true });
+    // 鍔
+    at(new THREEX.RoundedBoxGeometry(S.gw, S.gh, 0.07, 2, Math.min(S.gh, 0.07) * 0.4), S.guard, 0, S.gh / 2, 0);
+    if (i === 0) for (const sd of [-1, 1]) at(new THREE.SphereGeometry(0.03, 10, 8), 'gold', sd * S.gw / 2, S.gh / 2, 0);
+    if (i === 2) at(new THREE.BoxGeometry(S.w * 0.9, 0.05, 0.08), 'iron', 0, -0.02, 0);
+    // 柄（巻き紐）と柄頭
+    const gr = 0.026 + i * 0.006;
+    at(new THREE.CylinderGeometry(gr, gr, S.gripLen, 10), S.grip, 0, S.gh + S.gripLen / 2, 0);
+    for (let k = 0; k < 4; k++) at(new THREE.TorusGeometry(gr + 0.004, 0.006, 5, 12), S.grip, 0, S.gh + (k + 0.5) * S.gripLen / 4, 0, { rx: Math.PI / 2 + 0.3 });
+    const py = S.gh + S.gripLen + 0.03;
+    if (i === 0) at(new THREE.OctahedronGeometry(0.05, 0), this.glow('#fff2b0', 2.6), 0, py + 0.02, 0, { noShadow: true }).scale.set(0.8, 1.4, 0.8);
+    else at(new THREE.SphereGeometry(i === 2 ? 0.055 : 0.04, 12, 10), i === 2 ? 'iron' : this.glow('#3a6ad8', 1.2), 0, py, 0);
+    // ハヤテの青い布：柄の根もとに結んで、刃にそって垂れ、風にゆれる
+    if (i === 1) {
+      at(new THREE.TorusGeometry(gr + 0.008, 0.014, 6, 14), 'cloth', 0, S.gh + 0.035, 0, { rx: Math.PI / 2 });
+      const cg = new THREE.PlaneGeometry(0.075, 0.5, 1, 8); cg.translate(0, -0.25, 0);
+      const cp = cg.attributes.position; for (let v = 0; v < cp.count; v++) { const y = cp.getY(v); cp.setZ(v, Math.sin(-y * 6) * 0.03 + y * y * 0.15); }
+      cg.computeVertexNormals();
+      const scarf = new THREE.Mesh(cg, new THREE.MeshStandardMaterial({ color: '#3a6ad8', roughness: 0.9, side: THREE.DoubleSide }));
+      scarf.position.set(0.035, S.gh + 0.03, 0.03); g.add(scarf);
+      let t = 0;
+      this.tick(dt => { t += dt; scarf.rotation.set(0.25 + Math.sin(t * 2.1) * 0.1, 0.5 + Math.sin(t * 1.3) * 0.35, 0.2 + Math.sin(t * 1.7) * 0.08); });
+    }
+    this.add(g);
   }
   // クレーター：地面のくぼみ（zone.dents）の上に、焦げた土の色を外へ向かって薄く重ね、まわりに岩を飛び散らせる
   crater(x, z, r = 5) {
@@ -5583,10 +5692,14 @@ const ZONE_BUILD = {
   // くろねこ谷：墓標の丘、古いテント、谷の集落、川と二つの橋
   valley(K) {
     K.cragTop({ trees: [['dead', 2], ['round', 1]], leaf: ['#6a6a7a', '#7a6a8a'], density: 0.3, rock: '#6a6070' });
-    // 墓標：ハヤテ・リン・ゴロウ、名のない四つ目
-    K.mesh(new THREE.SphereGeometry(5, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), 'grass', -15, -0.8, -16.5, { noShadow: true }).scale.y = 0.25;
-    [['ハヤテ', -19], ['リン', -16.5], ['ゴロウ', -14], [null, -11.5]].forEach(([n, x]) => K.grave(x, -16, 0, n, '#ffffff'));
-    K.deadTree(-22, -19, 1.2); K.flowers(-15, -13, 12, 2, ['#c8a8ff', '#ffffff']);
+    // 墓標：ハヤテ・リン・ゴロウ、名のない四つ目（クロ自身の分）
+    //   c4_05 のあと：クロたちが黒影洞窟から連れて帰った三本の剣が、それぞれの墓の前に立つ。四つ目の石は、もういらない
+    const swordsHome = K.seenAt('c4_05');
+    [['ハヤテ', -19], ['リン', -16.5], ['ゴロウ', -14], [null, -11.5]].forEach(([n, x]) => { if (n || !swordsHome) K.grave(x, -16, 0, n, '#ffffff'); });
+    if (swordsHome) {
+      [[1, -19, 0.1], [0, -16.5, -0.06], [2, -14, 0.08]].forEach(([i, x, rz]) => K.shadowSword(i, x, -14.9, { ry: 0.15 * (i - 1), rz, mound: true }));
+    }
+    K.deadTree(-22, -19, 1.2); K.flowers(-15.25, -11.6, 12, 1.6, ['#c8a8ff', '#ffffff']);
     // 影の四剣の古いテント（川の北の野営あと）
     K.tent(18, -9, 0.3, 'clothPurple'); K.campfire(15, -7);
     // 谷の集落への道（東の出入口）
@@ -5643,51 +5756,9 @@ const ZONE_BUILD = {
     for (const [x, z, n] of [[-43, -15, 4], [-43, 25, 3], [-9, -15, 3], [43, -15, 4], [43, 29, 3], [45, 39, 3], [-25, -39, 5], [25, -39, 5], [-25, -27, 3], [25, -27, 3], [-35, 39, 3], [15, 39, 3]]) K.ore(x, z, n, '#a07bff', 1);
     for (const [x, z] of [[-40, 21], [-40, -9], [-24, -13], [30, -13], [41, 1], [41, 21], [-20, 37]]) K.stalag(x, z, 1.8 + K.r() * 1.6);
     for (const sd of [-1, 1]) for (const z of [-38, -32, -27]) K.column(sd * 15, z, 7, 0.6, 'darkStone');
-    // 三本の剣（左からリン・ハヤテ・ゴロウ。c4_05 の三匹の立ち位置と同じ並び）：がれきの塚に突き立ち、血溝が持ち主の色にほのかに光る
-    //   リン：細身の剣、柄頭に光の水晶。ハヤテ：まっすぐな片手剣、柄の根もとに青い布（青き風）。ゴロウ：幅広の大剣、厚い鉄の鍔
-    const steel = new THREE.MeshStandardMaterial({ color: '#d8dce8', metalness: 0.7, roughness: 0.3, emissive: new THREE.Color('#3a3a5a'), emissiveIntensity: 0.5 });
-    // 刃：鍔の位置を原点に、下向きに伸びて先がとがる（面取りで刃のふちを出す）
-    const bladeGeo = (w, len, tip) => {
-      const sh = new THREE.Shape(); sh.moveTo(-w / 2, 0); sh.lineTo(-w / 2, -(len - tip)); sh.lineTo(0, -len); sh.lineTo(w / 2, -(len - tip)); sh.lineTo(w / 2, 0); sh.lineTo(-w / 2, 0);
-      const g = new THREE.ExtrudeGeometry(sh, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.01, bevelSegments: 1 }); g.translate(0, 0, -0.006); return g;
-    };
-    let scarf = null;
-    for (const [i, o] of [
-      { w: 0.075, len: 1.0, tip: 0.16, glow: '#fff2b0', guard: 'gold', gw: 0.3, gh: 0.035, grip: '#f0e6d0', gripLen: 0.22, tilt: [0.06, 0.25, 0.12] },
-      { w: 0.1, len: 1.05, tip: 0.14, glow: '#6ab0ff', guard: 'metal', gw: 0.36, gh: 0.05, grip: '#2a3a6a', gripLen: 0.22, tilt: [-0.05, 0, 0.02] },
-      { w: 0.17, len: 1.02, tip: 0.12, glow: '#ffb070', guard: 'iron', gw: 0.46, gh: 0.08, grip: '#6a4a30', gripLen: 0.3, tilt: [0.04, -0.3, -0.14] },
-    ].entries()) {
-      const x = -1.2 + i * 1.2, z = -39.2 - (i === 1 ? 0.4 : 0), sink = 0.18;
-      // がれきの塚
-      K.mesh(new THREE.DodecahedronGeometry(0.32, 0), 'rockDark', x, 0.02, z, { ry: i * 1.3 }).scale.set(1.2, 0.42, 1);
-      for (let k = 0; k < 3; k++) { const a = i * 2 + k * 2.1; K.mesh(new THREE.DodecahedronGeometry(0.07 + 0.03 * (k % 2), 0), 'darkStone', x + Math.cos(a) * 0.38, 0.04, z + Math.sin(a) * 0.32, { ry: a }); }
-      const g = new THREE.Group(); g.position.set(x, K.gy(x, z) + o.len - sink, z); g.rotation.set(...o.tilt);
-      const at = (geo, mat, px, py, pz, opt = {}) => K.mesh(geo, mat, px, py, pz, { ...opt, parent: g });
-      // 刃と、両面の血溝
-      at(bladeGeo(o.w, o.len, o.tip), steel, 0, 0, 0);
-      for (const sd of [-1, 1]) at(new THREE.BoxGeometry(o.w * 0.18, o.len - o.tip - 0.12, 0.004), K.glow(o.glow, 1.4), 0, -(o.len - o.tip) / 2 - 0.02, sd * 0.0125, { noShadow: true });
-      // 鍔
-      at(new THREEX.RoundedBoxGeometry(o.gw, o.gh, 0.07, 2, Math.min(o.gh, 0.07) * 0.4), o.guard, 0, o.gh / 2, 0);
-      if (i === 0) for (const sd of [-1, 1]) at(new THREE.SphereGeometry(0.03, 10, 8), 'gold', sd * o.gw / 2, o.gh / 2, 0);
-      if (i === 2) at(new THREE.BoxGeometry(o.w * 0.9, 0.05, 0.08), 'iron', 0, -0.02, 0);
-      // 柄（巻き紐）と柄頭
-      const gr = 0.026 + i * 0.006, gc = o.gh + o.gripLen / 2;
-      at(new THREE.CylinderGeometry(gr, gr, o.gripLen, 10), o.grip, 0, gc, 0);
-      for (let k = 0; k < 4; k++) at(new THREE.TorusGeometry(gr + 0.004, 0.006, 5, 12), o.grip, 0, o.gh + (k + 0.5) * o.gripLen / 4, 0, { rx: Math.PI / 2 + 0.3 });
-      const py = o.gh + o.gripLen + 0.03;
-      if (i === 0) at(new THREE.OctahedronGeometry(0.05, 0), K.glow('#fff2b0', 2.6), 0, py + 0.02, 0, { noShadow: true }).scale.set(0.8, 1.4, 0.8);
-      else at(new THREE.SphereGeometry(i === 2 ? 0.055 : 0.04, 12, 10), i === 2 ? 'iron' : K.glow('#3a6ad8', 1.2), 0, py, 0);
-      // ハヤテの青い布：柄の根もとに結んで、刃にそって垂れ、風にゆれる
-      if (i === 1) {
-        at(new THREE.TorusGeometry(gr + 0.008, 0.014, 6, 14), 'cloth', 0, o.gh + 0.035, 0, { rx: Math.PI / 2 });
-        const cg = new THREE.PlaneGeometry(0.075, 0.5, 1, 8); cg.translate(0, -0.25, 0);
-        const cp = cg.attributes.position; for (let v = 0; v < cp.count; v++) { const y = cp.getY(v); cp.setZ(v, Math.sin(-y * 6) * 0.03 + y * y * 0.15); }
-        cg.computeVertexNormals();
-        scarf = new THREE.Mesh(cg, new THREE.MeshStandardMaterial({ color: '#3a6ad8', roughness: 0.9, side: THREE.DoubleSide }));
-        scarf.position.set(0.035, o.gh + 0.03, 0.03); g.add(scarf);
-      }
-      K.add(g);
-    }
+    // 三本の剣（左からリン・ハヤテ・ゴロウ。c4_05 の三匹の立ち位置と同じ並び）。c4_05 のあとは、クロたちが谷の墓へ連れて帰り、がれきの塚だけが残る
+    const swordsHome = K.seenAt('c4_05');
+    [[-1.2, -39.2, 0.25, 0.06, 0.12], [0, -39.6, 0, -0.05, 0.02], [1.2, -39.2, -0.3, 0.04, -0.14]].forEach(([x, z, ry, rx, rz], i) => K.shadowSword(i, x, z, { ry, rx, rz, mound: true, blade: !swordsHome }));
     // 剣のまわりの光だまり：ふちへ向かってやわらかく消える（加算で床に重ねる）
     const poolTex = (() => {
       const S = 256, R = S / 2, c = document.createElement('canvas'); c.width = c.height = S;
@@ -5702,7 +5773,6 @@ const ZONE_BUILD = {
     K.v.emitters.push(dt => {
       swT += dt;
       poolM.material.opacity = 0.8 + Math.sin(swT * 1.1) * 0.2;
-      if (scarf) { scarf.rotation.set(0.25 + Math.sin(swT * 2.1) * 0.1, 0.5 + Math.sin(swT * 1.3) * 0.35, 0.2 + Math.sin(swT * 1.7) * 0.08); }
       if (Math.random() < dt * 6) K.v.p.emit(V3((Math.random() - 0.5) * 4, 0.2, -39.4 + (Math.random() - 0.5) * 2), V3(0, 0.8, 0), hdr('#b89aff', 2), { life: 2.4, size: 0.07, drag: 0 });
       // 闇の淵の底から立ちのぼる、闇のもやと小さな光
       if (Math.random() < dt * 22) K.v.p.emit(V3((Math.random() - 0.5) * 50, -6 - Math.random() * 6, 12 + (Math.random() - 0.5) * 34), V3(0, 2.2 + Math.random(), 0), hdr(Math.random() < 0.7 ? '#3a1a6a' : '#b89aff', 1.6), { life: 4, size: 0.18, drag: 0.1 });
