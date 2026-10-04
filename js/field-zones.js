@@ -2435,6 +2435,29 @@ function storyCond(cond) {
   return false;
 }
 
+// 花の絵：五枚の花びら（花の色、中心へ向かって明るく）と黄色いしべ。'leaf' なら葉の形。透けるところは透明のまま
+function flowerTex(col) {
+  const k = 'flower' + col; if (TexCache[k]) return TexCache[k];
+  const S = 128, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), R = S / 2;
+  if (col === 'leaf') {
+    g.fillStyle = '#5a9a48'; g.beginPath(); g.moveTo(R, 6); g.quadraticCurveTo(S - 10, R, R, S - 6); g.quadraticCurveTo(10, R, R, 6); g.fill();
+    g.strokeStyle = '#3e7a34'; g.lineWidth = 3; g.beginPath(); g.moveTo(R, 12); g.lineTo(R, S - 12); g.stroke();
+  } else {
+    const base = new THREE.Color(col), hi = base.clone().lerp(new THREE.Color('#ffffff'), 0.55), lo = base.clone().multiplyScalar(0.82);
+    for (let p = 0; p < 5; p++) {
+      g.save(); g.translate(R, R); g.rotate(p / 5 * Math.PI * 2);
+      const gr = g.createLinearGradient(0, 0, 0, -R); gr.addColorStop(0, '#' + hi.getHexString()); gr.addColorStop(1, '#' + base.getHexString());
+      g.fillStyle = gr; g.strokeStyle = '#' + lo.getHexString(); g.lineWidth = 2.5;
+      g.beginPath(); g.ellipse(0, -R * 0.5, R * 0.3, R * 0.46, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.restore();
+    }
+    g.fillStyle = '#ffd24a'; g.beginPath(); g.arc(R, R, R * 0.2, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#e8a83a'; for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; g.beginPath(); g.arc(R + Math.cos(a) * R * 0.1, R + Math.sin(a) * R * 0.1, 2.5, 0, Math.PI * 2); g.fill(); }
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (TexCache[k] = t);
+}
+
 // 墓石に彫った名前（縦書き）と、上の肉球の紋。彫りの影（暗い色）と、ふちの光（明るい色）を少しずらして重ねる
 function graveTex(name) {
   const k = 'grave' + name; if (TexCache[k]) return TexCache[k];
@@ -3728,13 +3751,30 @@ class ZoneKit {
     if (flower) for (let i = 0; i < 4; i++) this.mesh(new THREE.SphereGeometry(0.09 * s, 6, 4), flower, x + (this.r() - 0.5) * 1.2 * s, 0.62 * s, z + (this.r() - 0.5) * 0.6 * s, { noShadow: true });
     this.col(x, z, 0.8 * s, 0.8 * s);
   }
-  // y0：地面からの高さ（花壇や鉢の土の上に植えるとき）
+  // 花：細い茎に葉を一、二枚、花は花びらの絵を貼った板（透けるところは抜く）。花の向きと傾きは一本ずつばらばら
+  //   花びらは裏を向いても沈まないよう、絵の色で少しだけ光らせる
+  //   花・葉・茎は材質ごとにまとめて描く（batch）。y0：地面からの高さ（花壇や鉢の土の上に植えるとき）
   flowers(x, z, n = 10, r = 2, cols = ['#ffffff', '#ffe07a', '#ffb8d8', '#b8d8ff'], y0 = 0) {
-    const stem = this.batch('leaf2');
+    const stem = this.batch('leaf2'), leaf = this.batch(this.mc.flowerLeaf || (this.mc.flowerLeaf = new THREE.MeshStandardMaterial({ map: flowerTex('leaf'), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.9 })));
+    const heads = cols.map(c => this.batch(this.mc['flower' + c] || (this.mc['flower' + c] = new THREE.MeshStandardMaterial({ map: flowerTex(c), emissiveMap: flowerTex(c), emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0.3, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.8 }))));
+    const UV = [[0, 0], [1, 0], [1, 1], [0, 1]];
+    // 中心 c、法線 nrm の向きに置く一辺 2s の板（u の向きを ang だけまわす）
+    const plate = (acc, c, nrm, s, ang) => {
+      const ref = Math.abs(nrm.y) < 0.9 ? V3(0, 1, 0) : V3(1, 0, 0), u = V3().crossVectors(ref, nrm).normalize().applyAxisAngle(nrm, ang), v = V3().crossVectors(nrm, u);
+      const P = (a, b) => [c.x + u.x * a * s + v.x * b * s, c.y + u.y * a * s + v.y * b * s, c.z + u.z * a * s + v.z * b * s];
+      acc.quad(P(-1, -1), P(1, -1), P(1, 1), P(-1, 1), UV);
+    };
     for (let i = 0; i < n; i++) {
-      const a = this.r() * Math.PI * 2, d = Math.sqrt(this.r()) * r, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d, y = this.gy(px, pz) + y0, h = 0.25 + this.r() * 0.2;
-      stem.box(px - 0.015, y, pz - 0.015, px + 0.015, y + h, pz + 0.015);
-      this.batch(cols[i % cols.length]).box(px - 0.08, y + h, pz - 0.08, px + 0.08, y + h + 0.06, pz + 0.08, '');
+      const a = this.r() * Math.PI * 2, d = Math.sqrt(this.r()) * r, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d, y = this.gy(px, pz) + y0, h = 0.22 + this.r() * 0.18;
+      stem.box(px - 0.008, y, pz - 0.008, px + 0.008, y + h, pz + 0.008);
+      // 葉：茎の根もとから斜め上へ
+      for (let k = 0; k < 1 + (i % 2); k++) {
+        const la = this.r() * Math.PI * 2, ly = y + 0.04 + k * 0.07;
+        plate(leaf, V3(px + Math.cos(la) * 0.045, ly + 0.03, pz + Math.sin(la) * 0.045), V3(Math.cos(la) * 0.6, 0.8, Math.sin(la) * 0.6).normalize(), 0.05, la);
+      }
+      // 花：上から見ても横から見ても形がわかるよう、斜め上を向ける（向きは一本ずつばらばら）
+      const tilt = 0.35 + this.r() * 0.45, ta = this.r() * Math.PI * 2, nrm = V3(Math.sin(tilt) * Math.cos(ta), Math.cos(tilt), Math.sin(tilt) * Math.sin(ta));
+      plate(heads[i % cols.length], V3(px, y + h, pz), nrm, 0.08 + this.r() * 0.03, this.r() * Math.PI * 2);
     }
   }
   rock(x, z, s = 1, mat = 'rock') { const m = this.mesh(new THREE.DodecahedronGeometry(s, 0), mat, x, s * 0.45, z, { ry: this.r() * 3 }); m.scale.y = 0.7; this.col(x, z, s * 0.9, s); return m; }
@@ -5699,7 +5739,7 @@ const ZONE_BUILD = {
     if (swordsHome) {
       [[1, -19, 0.1], [0, -16.5, -0.06], [2, -14, 0.08]].forEach(([i, x, rz]) => K.shadowSword(i, x, -14.9, { ry: 0.15 * (i - 1), rz, mound: true }));
     }
-    K.deadTree(-22, -19, 1.2); K.flowers(-15.25, -11.6, 12, 1.6, ['#c8a8ff', '#ffffff']);
+    K.deadTree(-22, -19, 1.2); K.flowers(-15.25, -11.6, 26, 1.8, ['#c8a8ff', '#ffffff']);
     // 影の四剣の古いテント（川の北の野営あと）
     K.tent(18, -9, 0.3, 'clothPurple'); K.campfire(15, -7);
     // 谷の集落への道（東の出入口）
