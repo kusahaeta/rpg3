@@ -18,8 +18,6 @@
 //   mark: 目印の高さ、または [dx, 高さ, dz]（区画の小物が実物。at はその小物の位置）
 //   reach: 調べられる距離（大きな小物のとき。既定 2m）。どれも書かないと石碑を立てる
 // bg: 空と光（js/gfx/env.js の THEMES。省略時は章の bg）
-// ニャハハ王国に笑顔が戻ったか（第三章の最後の戦いのあと）：城下町と城の空・床・家の色
-function kingdomJoy() { return typeof Save !== 'undefined' && !!(Save.data && Save.data.cleared && Save.data.cleared['3-3']); }
 const FIELD_ZONES = {
   // ---------------- 第一章 ぽかぽか村・ほしふる森 ----------------
   pokapoka: { ci: 0, name: 'ぽかぽか村', w: 72, d: 64, stage: '1-1', arenas: [[0, 12, 0]], build: 'village', town: true, groups: 0, chests: 3, crystals: 0,
@@ -651,7 +649,6 @@ const FIELD_ZONES = {
   // ---------------- 第三章 ニャハハ王国 ----------------
   nyahaha: { ci: 2, name: 'ニャハハ王国・城下町', mapName: 'ニャハハ王国', stage: '3-1', arenas: [[0, 14, 0]], build: 'kingdom', town: true, groups: 0, chests: 3, crystals: 0,
     world: true, arch: 'kingdom', chestAt: [[-20, 30], [22, -30], [28, 30]],
-    get bg() { return kingdomJoy() ? 'kingdomJoy' : undefined; }, get th() { return kingdomJoy() ? THEMES.kingdomJoy : null; },
     // 南門から大通りを北へ、噴水の大広場。北の大階段を上ると高台の大通り（北西に城の門、北東に塔の門）。
     // 西は一段高い宿屋の街区（広場と大通りから階段）、東は運河ぞいの市場通り（橋を渡ると、くろねこ谷への東門）
     map: [
@@ -706,8 +703,7 @@ const FIELD_ZONES = {
 
   castle: { ci: 2, name: 'ニャハハ城・前庭', parent: 'nyahaha', stage: '3-1', arenas: [[0, 6, 0]], build: 'castle', town: true, groups: 0, chests: 1, crystals: 0, skyTree: true,
     world: true, arch: 'nyacastle', chestAt: [[-14, -10]], noAnchor: true,   // 敵が出ないので休む場所はいらない。ミャオニアの地図では城下町にまとめる
-    get bg() { return kingdomJoy() ? 'kingdomJoy' : undefined; },
-    get th() { return { ...(kingdomJoy() ? THEMES.kingdomJoy : {}), pattern: 'checker', floor: kingdomJoy() ? '#f6eee2' : '#cfcbc6', floor2: kingdomJoy() ? '#e4d4bc' : '#bdb8b2', floorGlow: 0 }; },
+    th: { pattern: 'checker', floor: '#f6eee2', floor2: '#e4d4bc', floorGlow: 0 },
     // 城門をくぐると、回廊に囲まれた前庭（城の建物に入る前の広場）。北の石段を上った先の、城の玄関から城内（玉座の間）へ
     map: [
       '#######W#bbbb#W#######',
@@ -744,8 +740,7 @@ const FIELD_ZONES = {
   // ニャハハ城の中（areas の部屋ごとに場所の名前が変わる）：入口の大広間から北の扉を抜けると玉座の間。玉座の間の西に図書室、東に宝物庫。大広間の西に食堂、東に厨房
   castle_in: { ci: 2, name: 'ニャハハ城・城内', floor: '城内', parent: 'nyahaha', stage: '3-1', arenas: [[0, -4, 0]], build: 'castleIn', town: true, groups: 0, chests: 1, crystals: 0, skyTree: false,
     world: true, arch: 'nyapalace', chestAt: [[22.5, -13]], noAnchor: true,   // 敵が出ないので休む場所はいらない。ミャオニアの地図では城下町にまとめる
-    get bg() { return kingdomJoy() ? 'kingdomJoy' : undefined; },
-    get th() { const j = kingdomJoy(); return { pattern: 'checker', floor: j ? '#f6eee2' : '#d4d0cb', floor2: j ? '#e4d2b8' : '#c2bdb6', line: '#ffd27a', floorGlow: 0, fog: j ? '#f4e6d8' : '#d8d4d0', fogD: 0.01, sky: j ? '#fff4e8' : '#eae6e2', ground: '#8a7a6a', light: j ? 1.15 : 1.0 }; },
+    th: { pattern: 'checker', floor: '#f6eee2', floor2: '#e4d2b8', line: '#ffd27a', floorGlow: 0, fog: '#f4e6d8', fogD: 0.01, sky: '#fff4e8', ground: '#8a7a6a', light: 1.15 },
     map: [
       '##########################',
       '#######W#W######W#W#######',
@@ -2709,7 +2704,7 @@ class ZoneKit {
   mgFace(mat, geo, f, u, y, out, rz = 0) {
     this.mg(mat, geo, f.x + f.ax * u + f.nx * out, y, f.z + f.az * u + f.nz * out, [0, f.ry, rz]);
   }
-  // 地図の敷地（#）を長方形に分け、一棟ずつ家を建てる。o.happy：色が戻った街、o.skip(c, r)：建てないマス
+  // 地図の敷地（#）を長方形に分け、一棟ずつ家を建てる。o.skip(c, r)：建てないマス
   townBlocks(o = {}) {
     const T = this.T; if (!T) return [];
     const used = new Uint8Array(T.kind.length), r = this.r, rects = [];
@@ -2726,12 +2721,12 @@ class ZoneKit {
     const owner = new Int32Array(T.kind.length).fill(-1);
     rects.forEach((R, k) => { R.id = k; for (let y = 0; y < R.d; y++) for (let x = 0; x < R.w; x++) owner[T.idx(R.c + x, R.r + y)] = k; });
     this.houseOwner = owner;
-    rects.forEach(R => this.townHouse(R, o));
+    rects.forEach(R => this.townHouse(R));
     return rects;
   }
   // 一棟の家：石の土台、漆喰の壁と木組み、窓（鎧戸・花の箱）、表の扉と日よけ、猫耳のついた切妻屋根と煙突。1マスの敷地は塔
-  townHouse(R, o = {}) {
-    const T = this.T, r = this.r, happy = !!o.happy;
+  townHouse(R) {
+    const T = this.T, r = this.r;
     const x0 = T.cx(R.c) - CELL / 2, x1 = T.cx(R.c + R.w - 1) + CELL / 2, z0 = T.cz(R.r) - CELL / 2, z1 = T.cz(R.r + R.d - 1) + CELL / 2;
     const W = x1 - x0, D = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, y0 = R.base;
     // 四方のとなり：歩ける床のマス数といちばん高い床（見える面にだけ窓や扉をつける）
@@ -2758,9 +2753,9 @@ class ZoneKit {
     T.viewTop = T.viewTop || Float32Array.from(T.top);
     for (let y = 0; y < R.d; y++) for (let x = 0; x < R.w; x++) { const i = T.idx(R.c + x, R.r + y); T.viewTop[i] = Math.max(T.viewTop[i], roofTop); }
     const pick2 = a => a[Math.floor(r() * a.length)];
-    const wallC = happy ? pick2(['#fff4e2', '#ffe8d4', '#fde2e8', '#e8f0ff', '#fff2c8', '#e8f4e0', '#f4e8ff']) : pick2(['#d8d4d0', '#cfcac6', '#c6c2be', '#e0dcd8']);
-    const roofC = happy ? pick2(['#e05a4a', '#5a8ad8', '#5aa860', '#f09a4a', '#8a6ad8', '#e87aa8', '#3aa8a8']) : pick2(['#8a8a96', '#7a7a86', '#9a9aa4', '#6e6e7a']);
-    const wood = happy ? '#7a4a30' : '#5e5652', stone = happy ? 'stone' : 'stone2';
+    const wallC = pick2(['#fff4e2', '#ffe8d4', '#fde2e8', '#e8f0ff', '#fff2c8', '#e8f4e0', '#f4e8ff']);
+    const roofC = pick2(['#e05a4a', '#5a8ad8', '#5aa860', '#f09a4a', '#8a6ad8', '#e87aa8', '#3aa8a8']);
+    const wood = '#7a4a30', stone = 'stone';
     const glass = this.glassM || (this.glassM = new THREE.MeshStandardMaterial({ color: '#7aa8d0', roughness: 0.15, metalness: 0.35, emissive: '#2a4a6a', emissiveIntensity: 0.35 }));
     const lit = this.litM || (this.litM = glowMat('#ffd8a0', 1.3));
     const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
@@ -2788,11 +2783,11 @@ class ZoneKit {
             // 扉：石の枠、木の扉、踏み石。店なら日よけ
             const dy = floorY;
             this.mgFace(stone, B(1.5, 2.45, 0.14), f, u, dy + 1.22, 0.03);
-            this.mgFace(happy ? '#6a4028' : '#4a4240', B(1.12, 2.1, 0.12), f, u, dy + 1.05, 0.08);
+            this.mgFace('#6a4028', B(1.12, 2.1, 0.12), f, u, dy + 1.05, 0.08);
             this.mgFace('gold', new THREE.SphereGeometry(0.06, 8, 6), f, u + 0.35, dy + 1.0, 0.18);
             this.mgFace(stone, B(1.7, 0.16, 0.5), f, u, dy + 0.08, 0.26);
             if (shop) {
-              const c1 = happy ? pick2(['#e05a4a', '#5a8ad8', '#5aa860', '#f09a4a', '#e87aa8']) : '#9a9aa4', c2 = happy ? '#fff8f0' : '#c8c8cc';
+              const c1 = pick2(['#e05a4a', '#5a8ad8', '#5aa860', '#f09a4a', '#e87aa8']), c2 = '#fff8f0';
               for (let t = 0; t < 4; t++) this.mgFace(t % 2 ? c2 : c1, B(0.52, 0.06, 1.1), f, u - 0.78 + t * 0.52, dy + 2.62, 0.5, 0);
             }
             this.mgFace(lit, B(0.22, 0.3, 0.22), f, u + 1.0, dy + 2.1, 0.22);
@@ -2801,14 +2796,14 @@ class ZoneKit {
           }
           const wy = yb + 1.45;
           this.mgFace(wood, B(1.02, 1.32, 0.1), f, u, wy, 0.03);
-          this.mgFace(happy && (s === 0 || r() < 0.25) ? lit : glass, B(0.8, 1.1, 0.06), f, u, wy, 0.07);
+          this.mgFace((s === 0 || r() < 0.25) ? lit : glass, B(0.8, 1.1, 0.06), f, u, wy, 0.07);
           this.mgFace(wood, B(0.06, 1.1, 0.08), f, u, wy, 0.1);
           this.mgFace(wood, B(0.8, 0.06, 0.08), f, u, wy + 0.1, 0.1);
           this.mgFace(stone, B(1.12, 0.1, 0.26), f, u, wy - 0.68, 0.12);
           if (shutters) for (const sd of [-1, 1]) this.mgFace(shutterC, B(0.36, 1.22, 0.05), f, u + sd * 0.72, wy, 0.05);
           if (flowers && s > 0) {
             this.mgFace(wood, B(0.9, 0.22, 0.26), f, u, wy - 0.82, 0.2);
-            for (let t = 0; t < 4; t++) this.mgFace(happy ? pick2(['#ff8ab8', '#ffd24a', '#ffffff', '#ff6a5a', '#b88aff']) : '#8a8478', new THREE.SphereGeometry(0.12, 6, 5), f, u - 0.3 + t * 0.2, wy - 0.62, 0.22);
+            for (let t = 0; t < 4; t++) this.mgFace(pick2(['#ff8ab8', '#ffd24a', '#ffffff', '#ff6a5a', '#b88aff']), new THREE.SphereGeometry(0.12, 6, 5), f, u - 0.3 + t * 0.2, wy - 0.62, 0.22);
           }
         }
         // 木組み（斜めの筋交い）
@@ -2831,7 +2826,7 @@ class ZoneKit {
       const cone = new THREE.ConeGeometry(1.75, 3.2, 4); cone.rotateY(Math.PI / 4);
       this.mg(roofC, cone, cx, top + 1.6, cz);
       this.mg('iron', new THREE.CylinderGeometry(0.03, 0.03, 1.4, 5), cx, top + 3.8, cz);
-      this.mg(happy ? pick2(['#ff6a8a', '#ffd27a', '#6ad8ff']) : '#b0b0b8', B(0.02, 0.4, 0.6), cx, top + 4.2, cz + 0.3);
+      this.mg(pick2(['#ff6a8a', '#ffd27a', '#6ad8ff']), B(0.02, 0.4, 0.6), cx, top + 4.2, cz + 0.3);
       return;
     }
     const alongX = W >= D, L = alongX ? W : D, S = alongX ? D : W, RH = Math.min(3.2, S * 0.42), ov = 0.35;
@@ -2861,14 +2856,14 @@ class ZoneKit {
   }
   // ---------------- 町の小物 ----------------
   // 街灯：鉄の柱と腕、灯り（光のにじみつき）
-  streetLamp(x, z, happy = true, h = 3.8) {
-    const y = this.gy(x, z), col = happy ? '#ffd8a0' : '#dcdce4';
+  streetLamp(x, z, h = 3.8) {
+    const y = this.gy(x, z), col = '#ffd8a0';
     this.mg('iron', new THREE.CylinderGeometry(0.07, 0.11, h, 8), x, y + h / 2, z);
     this.mg('iron', new THREE.CylinderGeometry(0.2, 0.26, 0.4, 8), x, y + 0.2, z);
     this.mg('iron', new THREE.BoxGeometry(0.9, 0.06, 0.06), x + 0.4, y + h - 0.1, z);
-    this.mg(this.glow(col, happy ? 2.2 : 1.1), new THREE.BoxGeometry(0.3, 0.42, 0.3), x + 0.8, y + h - 0.45, z);
+    this.mg(this.glow(col, 2.2), new THREE.BoxGeometry(0.3, 0.42, 0.3), x + 0.8, y + h - 0.45, z);
     this.mg('iron', new THREE.ConeGeometry(0.28, 0.24, 4), x + 0.8, y + h - 0.12, z, [0, Math.PI / 4, 0]);
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, happy ? 0.55 : 0.25), blending: THREE.AdditiveBlending, depthWrite: false }));
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 0.55), blending: THREE.AdditiveBlending, depthWrite: false }));
     sp.scale.setScalar(1.8); sp.position.set(x + 0.8, y + h - 0.45, z); this.scene.add(sp);
     this.col(x, z, 0.2, h);
   }
@@ -2890,8 +2885,7 @@ class ZoneKit {
     this.mg(this.stdM(col, 0.9, { side: THREE.DoubleSide }), tip, x, y0 - h - 0.2, z, [0, ry, 0], [1, 1, 0.05]);
   }
   // 丸い植え込みと木：石の鉢（ふちに笠石）に土。根もとの張った幹から枝が分かれ、葉の茂った玉（玉仕立てと同じ葉）をいくつも重ねた樹冠。
-  //   happy（王国に笑顔が戻った）：緑の葉と桃色の花。そうでなければ灰緑の葉
-  planterTree(x, z, s = 1, happy = true) {
+  planterTree(x, z, s = 1) {
     const y = this.gy(x, z), V2 = (a, b) => new THREE.Vector2(a, b), R = 0.9 * s;
     this.mesh(new THREE.LatheGeometry([[0, 0], [R * 0.94, 0], [R, 0.06], [R, 0.44], [R + 0.06, 0.46], [R + 0.06, 0.56], [R - 0.1, 0.56], [R - 0.1, 0.5], [0, 0.5]].map(([a, b]) => V2(a, b)), 28), 'stone', x, 0, z);
     { const g = new THREE.TorusGeometry(R + 0.03, 0.035, 6, 28); g.rotateX(Math.PI / 2); this.mg('stone2', g, x, y + 0.56, z); }
@@ -2909,9 +2903,9 @@ class ZoneKit {
       const g = new THREE.CylinderGeometry(0.04 * s, 0.07 * s, L, 6); g.translate(0, L / 2, 0); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), V3(dx / L, dy / L, dz / L)));
       this.mg('bark', g, fx, fy, z);
     }
-    // 樹冠：葉の玉（花は、王国に笑顔が戻ったあとの半分の木に）
-    const bloom = happy && this.r() < 0.5;
-    for (const [bx, by, bz, br] of balls) this.topiary(tx + bx * s, z + bz * s, br * s, { y: by * s + 0.0, green: happy, seg: 5, flowers: bloom && ['#ff9ab8', '#ffc8dc'], nFlowers: 4 });
+    // 樹冠：葉の玉（半分の木には花）
+    const bloom = this.r() < 0.5;
+    for (const [bx, by, bz, br] of balls) this.topiary(tx + bx * s, z + bz * s, br * s, { y: by * s + 0.0, seg: 5, flowers: bloom && ['#ff9ab8', '#ffc8dc'], nFlowers: 4 });
   }
   // 運河の小舟
   boat(x, z, ry, col = '#8a5a3a') {
@@ -2932,8 +2926,8 @@ class ZoneKit {
   // 地図の外の家並み（区画の外周の帯に並べる）。skip(x, z)：建てない場所（遠景の城など）
   townBackdrop(o = {}) {
     const Z = this.zone, hw = Z.w / 2, hd = Z.d / 2, r = this.r, band = o.band || 24;
-    const walls = o.happy ? ['#fff4e2', '#ffe8d4', '#fde2e8', '#e8f0ff', '#fff2c8'] : ['#c8c4c0', '#bcb8b4', '#d0ccc8'];
-    const roofs = o.happy ? ['#e05a4a', '#5a8ad8', '#5aa860', '#f09a4a', '#e87aa8'] : ['#7a7a86', '#8a8a96', '#6e6e7a'];
+    const walls = ['#fff4e2', '#ffe8d4', '#fde2e8', '#e8f0ff', '#fff2c8'];
+    const roofs = ['#e05a4a', '#5a8ad8', '#5aa860', '#f09a4a', '#e87aa8'];
     for (let x = -hw - band; x <= hw + band; x += 7) for (let z = -hd - band; z <= hd + band; z += 7) {
       const px = x + (r() - 0.5) * 3, pz = z + (r() - 0.5) * 3;
       if (Math.abs(px) < hw + 5 && Math.abs(pz) < hd + 5) continue;
@@ -2945,7 +2939,7 @@ class ZoneKit {
   }
   // 遠景の城：城壁と、円い塔（とんがり屋根）、まん中の天守
   castleKeep(x, z, o = {}) {
-    const y = -1.3, wall = o.happy ? '#f4ece0' : '#c8c4c8', roofs = o.happy ? ['#e87aa8', '#5a8ad8', '#ffd27a'] : ['#8a8a96', '#7a7a86'];
+    const y = -1.3, wall = '#f4ece0', roofs = ['#e87aa8', '#5a8ad8', '#ffd27a'];
     const s = o.s || 1, W = 34 * s, D = 22 * s;
     this.mg(wall, new THREE.BoxGeometry(W, 12 * s, D), x, y + 6 * s, z);
     for (let i = 0; i < Math.floor(W / 2.4); i++) this.mg(wall, new THREE.BoxGeometry(1.2, 1.2, 1.2), x - W / 2 + 1.2 + i * 2.4, y + 12.6 * s, z + D / 2);
@@ -2953,7 +2947,7 @@ class ZoneKit {
     const tw = (tx, tz, r0, h, k) => {
       this.mg(wall, new THREE.CylinderGeometry(r0, r0 * 1.08, h, 16), tx, y + h / 2, tz);
       this.mg(roofs[k % roofs.length], new THREE.ConeGeometry(r0 * 1.35, r0 * 2.8, 16), tx, y + h + r0 * 1.4, tz);
-      this.mg(o.happy ? this.glow('#ffd8a0', 1.2) : '#6a6a78', new THREE.BoxGeometry(0.8, 1.4, r0 * 2 + 0.1), tx, y + h - 2.5, tz);
+      this.mg(this.glow('#ffd8a0', 1.2), new THREE.BoxGeometry(0.8, 1.4, r0 * 2 + 0.1), tx, y + h - 2.5, tz);
     };
     tw(x - W / 2, z + D / 2, 3.2 * s, 20 * s, 0); tw(x + W / 2, z + D / 2, 3.2 * s, 20 * s, 1);
     tw(x - W / 2, z - D / 2, 3 * s, 22 * s, 2); tw(x + W / 2, z - D / 2, 3 * s, 22 * s, 0);
@@ -2961,11 +2955,11 @@ class ZoneKit {
     tw(x, z - 4 * s, 3.6 * s, 38 * s, 0);
   }
   // 遠景の笑顔の塔：桃色の円塔に金の帯、てっぺんに星
-  smileTower(x, z, o = {}) {
-    const y = -1.3, pink = o.happy ? '#f6c6de' : '#b8b0b8', gold = o.happy ? 'gold' : '#8a8a90';
+  smileTower(x, z) {
+    const y = -1.3, pink = '#f6c6de', gold = 'gold';
     for (let i = 0; i < 5; i++) { const r0 = 6 - i * 0.7, h = 9; this.mg(pink, new THREE.CylinderGeometry(r0 - 0.3, r0, h, 20), x, y + i * h + h / 2, z); this.mg(gold, new THREE.CylinderGeometry(r0 + 0.1, r0 + 0.1, 0.6, 20), x, y + (i + 1) * h, z); }
-    this.mg(o.happy ? '#e87aa8' : '#8a8a96', new THREE.ConeGeometry(3.4, 8, 20), x, y + 49, z);
-    this.mg(o.happy ? this.glow('#ffd27a', 2.4) : '#a0a0a8', new THREE.OctahedronGeometry(1.2), x, y + 54, z);
+    this.mg('#e87aa8', new THREE.ConeGeometry(3.4, 8, 20), x, y + 49, z);
+    this.mg(this.glow('#ffd27a', 2.4), new THREE.OctahedronGeometry(1.2), x, y + 54, z);
   }
   // ---------------- 仕掛け：影の壁と光の水晶、落石の岩山 ----------------
   // zone.seals：[{ id, wall: [x0, z0, x1, z1], lamps: [[x, z], ...], after, openAfter }]
@@ -3931,10 +3925,10 @@ class ZoneKit {
   }
 
   // 噴水の水まわりの道具（城下町の大広間と、城の前庭の噴水で共用）。x, z：噴水の中心。y はどれも地面からの高さ
-  //   floor：底のモザイクタイル（水ごしに透けて見える）、water：水面（澄んだ水。wet = false ならにごってよどんだ水）、
+  //   floor：底のモザイクタイル（水ごしに透けて見える）、water：水面（澄んだ水）、
   //   light：底にゆれる光の網目（caus）や水面のきらめき（glint）。二枚目からは逆向きに流して、ゆらぐように見せる
   //   arc：噴き口から着水点までの放物線、sheet：流れる水の筋の模様の材質（幕やアーチに。offset を動かして流す）
-  fountainKit(x, z, wet) {
+  fountainKit(x, z) {
     const tex = this.fountainTexs || (this.fountainTexs = (() => {
       const canvas = (w, h, draw, srgb) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'));
         const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
@@ -3952,10 +3946,10 @@ class ZoneKit {
     const rep = (t, a, b = a) => { const c = t.clone(); c.repeat.set(a, b); c.needsUpdate = true; return c; };
     const disc = (r, y, m) => this.mesh(new THREE.CircleGeometry(r, 40), m, x, y, z, { rx: -Math.PI / 2, noShadow: true });
     const layers = [];
-    if (wet) this.tick(dt => { for (const L of layers) { L.t.offset.x += L.sp * dt; L.t.offset.y += L.sp * 0.7 * dt; } });
+    this.tick(dt => { for (const L of layers) { L.t.offset.x += L.sp * dt; L.t.offset.y += L.sp * 0.7 * dt; } });
     return {
       floor: (r, y, n) => disc(r, y, new THREE.MeshStandardMaterial({ map: rep(tex.tile, n), roughness: 0.4 })),
-      water: (r, y) => disc(r, y, new THREE.MeshStandardMaterial({ color: wet ? '#c8eeff' : '#8a9098', transparent: true, opacity: wet ? 0.3 : 0.7, roughness: 0.02, metalness: 0, emissive: wet ? '#5ab8e8' : '#2a3038', emissiveIntensity: wet ? 0.06 : 0.15, depthWrite: false })),
+      water: (r, y) => disc(r, y, new THREE.MeshStandardMaterial({ color: '#c8eeff', transparent: true, opacity: 0.3, roughness: 0.02, metalness: 0, emissive: '#5ab8e8', emissiveIntensity: 0.06, depthWrite: false })),
       light: (kind, r, y, n, op, col = '#ffffff') => { const t = rep(tex[kind], n);
         disc(r, y, new THREE.MeshBasicMaterial({ map: t, color: hdr(col, 1), transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false }));
         layers.push({ t, sp: (layers.length % 2 ? -1 : 1) * (0.02 + layers.length * 0.006) }); },
@@ -3967,15 +3961,14 @@ class ZoneKit {
   }
   // 城下町の大広間の噴水：ふちに金の噴き口が並ぶ低い水盤、飾りの柱に二段の鉢、てっぺんの金の飾りから噴き上がる水。
   //   上の鉢からあふれた水が幕になって下の鉢へ、下の鉢から水盤へ流れ落ち、ふちの噴き口からは水のアーチが中へ飛ぶ。
-  //   wet = false（色を失った街）：灰色の石で、水は止まり、水盤によどんだ水が残るだけ
-  plazaFountain(x, z, wet = true) {
+  plazaFountain(x, z) {
     const y0 = this.gy(x, z), V2 = (a, b) => new THREE.Vector2(a, b), lathe = (pts, seg = 40) => new THREE.LatheGeometry(pts.map(([a, b]) => V2(a, b)), seg);
-    const rim = wet ? 'marble' : 'stone2', trim = wet ? 'gold' : '#9a9aa4', R = 4.6, wy = 0.72, W = this.fountainKit(x, z, wet);
+    const rim = 'marble', trim = 'gold', R = 4.6, wy = 0.72, W = this.fountainKit(x, z);
     // 水盤：台座、ふち（外へ張り出した縁石）、底のタイル、ふちの金の帯
     this.mg('stone2', new THREE.CylinderGeometry(R + 0.2, R + 0.3, 0.2, 48), x, y0 + 0.1, z);
     this.mg(rim, lathe([[R - 0.55, 0.2], [R - 0.05, 0.2], [R, 0.35], [R - 0.12, 0.55], [R - 0.02, 0.76], [R + 0.1, 0.84], [R + 0.1, 0.96], [R - 0.62, 0.96], [R - 0.62, 0.84], [R - 0.55, 0.3]], 56), x, y0, z);
     this.mg(trim, new THREE.TorusGeometry(R - 0.02, 0.05, 6, 56), x, y0 + 0.6, z, [Math.PI / 2, 0, 0]);
-    if (wet) W.floor(R - 0.55, 0.3, 6); else this.mg('#7a7a80', new THREE.CircleGeometry(R - 0.55, 48), x, y0 + 0.3, z, [-Math.PI / 2, 0, 0]);
+    W.floor(R - 0.55, 0.3, 6);
     // 柱と二段の鉢（ふちに金の輪）、てっぺんの金の飾り
     this.mg(rim, lathe([[0, 0.3], [1.3, 0.3], [1.3, 0.55], [1.0, 0.68], [0.78, 0.9], [0.62, 1.2], [0.58, 1.6], [0.72, 1.74], [0.9, 1.9], [0, 1.9]]), x, y0, z);
     this.mg(rim, lathe([[0, 1.85], [0.7, 1.88], [1.6, 2.08], [2.2, 2.32], [2.32, 2.5], [2.18, 2.52], [2.06, 2.42], [0, 2.42]], 48), x, y0, z);
@@ -3993,7 +3986,6 @@ class ZoneKit {
       jets.push({ c, sn, nx, nz });
     }
     this.col(x, z, R + 0.25, 1);
-    if (!wet) { W.water(R - 0.6, 0.5); return; }
     // 水面、二段の鉢の底のタイル、底の光の網目と水面のきらめき
     W.water(R - 0.6, wy); W.water(2.08, 2.47); W.water(1.0, 3.82);
     W.floor(2.04, 2.425, 2.6); W.floor(0.98, 3.745, 1.3);
@@ -4026,11 +4018,11 @@ class ZoneKit {
     return t => { for (const r of rings) { const k = (t * 0.7 + r.ph) % 1; r.m.scale.setScalar(1 + k * 3); r.m.material.opacity = 0.5 * (1 - k); } };
   }
   // 刈りこんだ植木の葉の材質（生け垣と玉仕立てで共用）。body：葉がびっしり茂った模様（すき間なく並ぶ）、fringe：ふちが葉の形に透ける帯、
-  //   rim：玉の輪郭の板。どれも頂点の色で明るさをつける。green = false（色を失った城）：くすんだ灰緑
-  leafMats(green = true) {
-    const k = 'hedgeLeaf' + green;
+  //   rim：玉の輪郭の板。どれも頂点の色で明るさをつける
+  leafMats() {
+    const k = 'hedgeLeaf';
     if (TexCache[k]) return TexCache[k];
-    const cols = green ? ['#2c5e1c', '#3a7424', '#4b8c2c', '#5fa636', '#7cc043', '#a6dc5c'] : ['#565e50', '#646e5c', '#727c68', '#828c76', '#96a088', '#b4bca4'];
+    const cols = ['#2c5e1c', '#3a7424', '#4b8c2c', '#5fa636', '#7cc043', '#a6dc5c'];
     // ぎざぎざの葉（とがった先が五つ）と、まん中の葉脈
     const leaf = (g, x0, y0, r, a, col) => {
       g.fillStyle = col; g.beginPath();
@@ -4066,10 +4058,9 @@ class ZoneKit {
   }
   // 刈りこんだ生け垣：角の丸い四角い箱に、ぎざぎざの小さな葉がびっしり茂った模様を貼る（下ほど暗く、上ほど明るい）。
   //   上のふちと四すみには、葉の帯（ふちが葉の形に透ける板）を斜めに立てて、輪郭を葉のぎざぎざにする。
-  //   幅 w（x 方向）・高さ h・奥行き d、o.y = 置く高さ（花壇の土の上など）。green = false（色を失った城）：くすんだ灰緑
+  //   幅 w（x 方向）・高さ h・奥行き d、o.y = 置く高さ（花壇の土の上など）
   hedge(x, z, w, h, d, o = {}) {
-    const green = o.green !== false;
-    const M = this.leafMats(green), y0 = this.gy(x, z) + (o.y || 0), T = 1.0, B = 0.25;   // 模様 1 枚 = 1m 四方、帯の幅 = 0.25m
+    const M = this.leafMats(), y0 = this.gy(x, z) + (o.y || 0), T = 1.0, B = 0.25;   // 模様 1 枚 = 1m 四方、帯の幅 = 0.25m
     const shade = yy => 0.55 + 0.45 * THREE.MathUtils.clamp(yy / h, 0, 1);       // 下ほど暗い
     const tint = (geo, f) => { const pa = geo.attributes.position, cc = new Float32Array(pa.count * 3); for (let i = 0; i < pa.count; i++) cc.fill(f(pa.getY(i)), i * 3, i * 3 + 3); geo.setAttribute('color', new THREE.BufferAttribute(cc, 3)); return geo; };
     // 本体：角の丸い箱。UV は面の向きで投影
@@ -4092,9 +4083,9 @@ class ZoneKit {
     if (o.col !== false) this.colBox(x, z, w / 2, d / 2, (o.y || 0) + h);
   }
   // 玉仕立ての植木：葉の模様の球と、輪郭をぎざぎざにする葉の板（カメラのほうを向く。球の後ろのふちだけが見える）。
-  //   (x, z)、球の半径 r、o.y = 球の中心の高さ、o.green、o.flowers：花の色（小さな五弁の花を上半分に咲かせる）、o.nFlowers：花の数（既定 9）、o.seg：球の細かさ（既定 8）
+  //   (x, z)、球の半径 r、o.y = 球の中心の高さ、o.flowers：花の色（小さな五弁の花を上半分に咲かせる）、o.nFlowers：花の数（既定 9）、o.seg：球の細かさ（既定 8）
   topiary(x, z, r, o = {}) {
-    const M = this.leafMats(o.green !== false), cy = this.gy(x, z) + (o.y ?? r), T = 1.0;
+    const M = this.leafMats(), cy = this.gy(x, z) + (o.y ?? r), T = 1.0;
     // 球：分割した箱をふくらませた球（面ごとの UV がそのまま使えて、模様がのびない）
     const n = o.seg || 8, geo = new THREE.BoxGeometry(1, 1, 1, n, n, n), pa = geo.attributes.position, na = geo.attributes.normal, uv = geo.attributes.uv, cc = new Float32Array(pa.count * 3), P = new THREE.Vector3(), q = 2.2 * r / T;
     for (let i = 0; i < pa.count; i++) {
@@ -4128,14 +4119,14 @@ class ZoneKit {
     this.col(x, z, 0.6, 0.82);
   }
   // 城の前庭の噴水（左右に一つずつ）：金の帯の丸い水盤、中央の台の上に金の首輪の大理石の猫の像（ry = 猫の向き）。
-  //   台の四方の金の猫の頭の噴き口から、水のアーチが水盤へ落ちる。wet = false（色を失った城）：灰色の石で、水は止まっている
-  gardenFountain(x, z, ry = 0, wet = true) {
+  //   台の四方の金の猫の頭の噴き口から、水のアーチが水盤へ落ちる
+  gardenFountain(x, z, ry = 0) {
     const y0 = this.gy(x, z), V2 = (a, b) => new THREE.Vector2(a, b), lathe = (pts, seg = 40) => new THREE.LatheGeometry(pts.map(([a, b]) => V2(a, b)), seg);
-    const rim = wet ? 'marble' : 'stone2', trim = wet ? 'gold' : '#9a9aa4', R = 2.6, wy = 0.6, W = this.fountainKit(x, z, wet);
+    const rim = 'marble', trim = 'gold', R = 2.6, wy = 0.6, W = this.fountainKit(x, z);
     // 水盤：ふちの縁石と金の帯、底
     this.mg(rim, lathe([[R - 0.4, 0.05], [R, 0.05], [R + 0.05, 0.2], [R - 0.05, 0.42], [R + 0.08, 0.68], [R + 0.08, 0.78], [R - 0.42, 0.78], [R - 0.42, 0.68], [R - 0.4, 0.2]], 40), x, y0, z);
     this.mg(trim, new THREE.TorusGeometry(R - 0.03, 0.04, 6, 40), x, y0 + 0.48, z, [Math.PI / 2, 0, 0]);
-    if (wet) W.floor(R - 0.4, 0.22, 3.2); else this.mg('#7a7a80', new THREE.CircleGeometry(R - 0.4, 40), x, y0 + 0.22, z, [-Math.PI / 2, 0, 0]);
+    W.floor(R - 0.4, 0.22, 3.2);
     // 中央の台（飾りの段と金の輪）と、四方の噴き口
     this.mg(rim, lathe([[0, 0.2], [0.75, 0.2], [0.75, 0.42], [0.55, 0.55], [0.45, 0.75], [0.45, 1.25], [0.6, 1.35], [0.62, 1.48], [0, 1.48]], 24), x, y0, z);
     this.mg(trim, new THREE.TorusGeometry(0.47, 0.035, 6, 24), x, y0 + 1.0, z, [Math.PI / 2, 0, 0]);
@@ -4147,7 +4138,7 @@ class ZoneKit {
       jets.push({ c, sn });
     }
     // 猫の像：おすわりした大理石の猫（金の首輪と鈴、しっぽ）
-    { const m = wet ? 'marble' : 'stone', s = 0.9, cy = y0 + 1.48, fx = Math.sin(ry), fz = Math.cos(ry), sx = Math.cos(ry), sz = -Math.sin(ry);
+    { const m = 'marble', s = 0.9, cy = y0 + 1.48, fx = Math.sin(ry), fz = Math.cos(ry), sx = Math.cos(ry), sz = -Math.sin(ry);
       this.mg(m, new THREE.SphereGeometry(0.42 * s, 16, 12), x, cy + 0.42 * s, z, [0, ry, 0], [1, 1.15, 0.9]);
       this.mg(m, new THREE.SphereGeometry(0.36 * s, 16, 12), x + fx * 0.06, cy + 1.05 * s, z + fz * 0.06, [0, ry, 0], [1.12, 0.95, 1]);
       for (const sd of [-1, 1]) { const eg = new THREE.ConeGeometry(0.15 * s, 0.34 * s, 4); eg.rotateY(Math.PI / 4); this.mg(m, eg, x + sx * sd * 0.21 * s + fx * 0.05, cy + 1.42 * s, z + sz * sd * 0.21 * s + fz * 0.05, [0, ry, -sd * 0.3], [1, 1, 0.55]);
@@ -4155,9 +4146,8 @@ class ZoneKit {
       this.mg(trim, new THREE.TorusGeometry(0.27 * s, 0.035, 6, 20), x + fx * 0.04, cy + 0.82 * s, z + fz * 0.04, [Math.PI / 2 - 0.15, 0, 0]);
       this.mg(trim, new THREE.SphereGeometry(0.06, 8, 6), x + fx * 0.3 * s, cy + 0.76 * s, z + fz * 0.3 * s);
       this.mg(m, new THREE.TorusGeometry(0.32 * s, 0.06 * s, 6, 16, Math.PI * 1.2), x - fx * 0.3 * s, cy + 0.12 * s, z - fz * 0.3 * s, [Math.PI / 2, 0, ry + Math.PI * 0.4]);
-      if (wet) for (const sd of [-1, 1]) this.mg(this.glow('#6ad8ff', 1.6), new THREE.SphereGeometry(0.04, 8, 6), x + sx * sd * 0.12 * s + fx * 0.36 * s, cy + 1.08 * s, z + sz * sd * 0.12 * s + fz * 0.36 * s); }
+      for (const sd of [-1, 1]) this.mg(this.glow('#6ad8ff', 1.6), new THREE.SphereGeometry(0.04, 8, 6), x + sx * sd * 0.12 * s + fx * 0.36 * s, cy + 1.08 * s, z + sz * sd * 0.12 * s + fz * 0.36 * s); }
     this.col(x, z, R + 0.15, 1);
-    if (!wet) { W.water(R - 0.45, 0.42); return; }
     W.water(R - 0.42, wy);
     W.light('caus', R - 0.45, 0.24, 1.8, 0.35, '#e8fbff'); W.light('caus', R - 0.45, 0.25, 2.5, 0.25, '#c8f0ff');
     W.light('glint', R - 0.42, wy + 0.01, 1.8, 0.55); W.light('glint', R - 0.42, wy + 0.015, 2.4, 0.4);
@@ -4943,9 +4933,9 @@ const ZONE_BUILD = {
     for (const [x, z] of [[-6, 28], [6, 30], [-8, -2], [8, -4]]) K.rock(x, z, 0.6 + K.r() * 0.4);
   },
 
-  // なかよし関所：石の砦。外庭の番小屋、からくりの門（K.plates・K.seals）、櫓ののろし台、番犬の庭の犬小屋と木箱、色あせた王国の旗
+  // なかよし関所：石の砦。外庭の番小屋、からくりの門（K.plates・K.seals）、櫓ののろし台、番犬の庭の犬小屋と木箱、王国の旗
   sekisho(K) {
-    const happy = kingdomJoy(), flagCols = happy ? ['#ff6a8a', '#ffd27a', '#6ad8ff'] : ['#8a8a90', '#a0a0a8', '#b4b4ba'];
+    const flagCols = ['#ff6a8a', '#ffd27a', '#6ad8ff'];
     K.plates(); K.seals();
     // 外庭：番小屋（戸口の前に長いすと槍立て）、旅猫の名を彫った石、たいまつ、荷の樽と木箱
     K.catHouse(22.5, 25, 6, 5, 3.4, 'w', { wall: 'wood' });
@@ -4954,11 +4944,11 @@ const ZONE_BUILD = {
     for (const [x, z] of [[-6, 31], [6, 31], [-6, 16], [6, 16]]) K.brazier(x, z, '#ff9a3a', 1.2);
     for (const [x, z] of [[-26, 24], [-24.5, 25.2], [26, 34]]) K.barrel(x, z);
     K.crate(-26, 33); K.crate(-24.6, 34.2, 0.9); K.crate(27, 20);
-    // 門の両脇の旗（ニャハハ王国の笑う猫の旗。第三章を終えるまでは色あせている）
+    // 門の両脇の旗（ニャハハ王国の笑う猫の旗）
     for (const [x, z] of [[-6.5, 13.4], [6.5, 13.4], [-6.5, -23], [6.5, -23]]) { K.cyl(x, z, 0.1, 6.2, 'metal', { col: false }); K.banner(x + 0.7, z, 0, 5.8, 2.6, pick(flagCols)); }
     // 中庭：古い井戸、からくりの札の立つ石畳、積み荷
     K.well(-3, -6); K.crate(18.5, -14); K.crate(18.5, -12.6, 0.9); K.barrel(-11, -14); K.barrel(-12, 5.5);
-    K.catStatue(4, -6, Math.PI, 1.1, happy ? 'marble' : 'stone');
+    K.catStatue(4, -6, Math.PI, 1.1, 'marble');
     // 力の門の蔵：武具の箱と槍立て
     K.crate(-28, -8); K.crate(-26.6, -8, 0.9); K.crate(-28, -6.6, 0.8); K.barrel(-20, 3); K.box(-29, 0, 0.6, 1.6, 3, 'wood2');
     // 番犬の庭：犬小屋とわらの寝床、骨
@@ -4972,118 +4962,116 @@ const ZONE_BUILD = {
   },
 
   // ---------------- 第三章 ----------------
-  // ニャハハ王国：色を失った街（第三章を終えると色が戻る）。家並みは地図の敷地から建てる
+  // ニャハハ王国：笑いの都。家並みは地図の敷地から建てる
   kingdom(K) {
-    const happy = kingdomJoy();
-    const flagCols = happy ? ['#ff6a8a', '#ffd27a', '#6ad8ff', '#8aff9a', '#b88aff'] : ['#8a8a90', '#a0a0a8', '#b4b4ba'];
-    const bannerCols = happy ? ['#e87aa8', '#5a8ad8', '#e87aa8', '#5a8ad8'] : ['#8a8a96', '#9a9aa4'];
-    K.townBlocks({ happy });
+    const flagCols = ['#ff6a8a', '#ffd27a', '#6ad8ff', '#8aff9a', '#b88aff'];
+    const bannerCols = ['#e87aa8', '#5a8ad8', '#e87aa8', '#5a8ad8'];
+    K.townBlocks();
     // 地図の外：家並み、北に城、北東に笑顔の塔
-    K.castleKeep(-12, -72, { happy, s: 1.1 }); K.smileTower(30, -62, { happy });
-    K.townBackdrop({ happy, skip: (x, z) => (z < -40 && x > -40 && x < 18) || Math.hypot(x - 30, z + 62) < 12 });
+    K.castleKeep(-12, -72, { s: 1.1 }); K.smileTower(30, -62);
+    K.townBackdrop({ skip: (x, z) => (z < -40 && x > -40 && x < 18) || Math.hypot(x - 30, z + 62) < 12 });
 
     // ---- 大広場：二段の噴水、ベンチ、植え込み、街灯 ----
-    K.plazaFountain(0, -8, happy);
+    K.plazaFountain(0, -8);
     for (const a of [0.8, 2.35, 3.9, 5.5]) K.bench(Math.sin(a) * 6.6, -8 + Math.cos(a) * 6.6, a);
-    for (const [x, z] of [[-14, -12], [14, -12], [-14, 2], [14, 2]]) K.planterTree(x, z, 1.1, happy);
-    for (const [x, z] of [[-13.8, -13.4], [13.8, -13.4], [-20, -13.5], [20, -13.5], [-20, 7.5], [20, 7.5], [-8, 7.5], [8, 7.5]]) K.streetLamp(x, z, happy);
+    for (const [x, z] of [[-14, -12], [14, -12], [-14, 2], [14, 2]]) K.planterTree(x, z, 1.1);
+    for (const [x, z] of [[-13.8, -13.4], [13.8, -13.4], [-20, -13.5], [20, -13.5], [-20, 7.5], [20, 7.5], [-8, 7.5], [8, 7.5]]) K.streetLamp(x, z);
     K.bunting(-22, -13, 22, -13, flagCols, 5.2); K.bunting(-22, 7, 22, 7, flagCols, 5.2);
     // 大階段の両脇の猫の像と、高台の擁壁から下がる垂れ幕
-    K.catStatue(-11.5, -13.6, 0, 1.4, happy ? 'marble' : 'stone', happy ? '#ffd27a' : null);
-    K.catStatue(11.5, -13.6, 0, 1.4, happy ? 'marble' : 'stone', happy ? '#ffd27a' : null);
+    K.catStatue(-11.5, -13.6, 0, 1.4, 'marble', '#ffd27a');
+    K.catStatue(11.5, -13.6, 0, 1.4, 'marble', '#ffd27a');
     [-21, -16, 16, 21].forEach((x, i) => K.banner(x, -14.95, 0, 2.9, 2.2, bannerCols[i % bannerCols.length]));
     // 店の看板（広場の西と東の家並み）
-    const signCol = happy ? '#ffd27a' : '#c8c8d0';
+    const signCol = '#ffd27a';
     for (const [x, z, ry, t, sub] of [[-23.9, -10, Math.PI / 2, 'パン屋 こむぎ', '焼きたて'], [-23.9, 2, Math.PI / 2, '花屋', 'ねこじゃらしあります'],
-      [23.9, -11, -Math.PI / 2, '雑貨屋', 'なんでもあるにゃ'], [23.9, -1, -Math.PI / 2, 'ミルク屋', happy ? '本日も新鮮' : '休業中'], [9.9, 16, -Math.PI / 2, 'カフェ にゃんぷー', null], [9.9, 31, -Math.PI / 2, 'おみやげ', null]])
+      [23.9, -11, -Math.PI / 2, '雑貨屋', 'なんでもあるにゃ'], [23.9, -1, -Math.PI / 2, 'ミルク屋', '本日も新鮮'], [9.9, 16, -Math.PI / 2, 'カフェ にゃんぷー', null], [9.9, 31, -Math.PI / 2, 'おみやげ', null]])
       K.sign(x, z, ry, t, sub, signCol, 3.2, 2.4);
 
     // ---- 南の大通り：「ようこそ」のアーチ、並木、街灯、旗飾り ----
-    for (const x of [-7.5, 7.5]) { K.box(x, 31.5, 1.2, 6.2, 1.2, 'stone', { round: true }); K.mesh(new THREE.ConeGeometry(0.9, 1.2, 4), happy ? 'roofRed' : 'roofGray', x, 6.8, 31.5, { ry: Math.PI / 4 }); }
+    for (const x of [-7.5, 7.5]) { K.box(x, 31.5, 1.2, 6.2, 1.2, 'stone', { round: true }); K.mesh(new THREE.ConeGeometry(0.9, 1.2, 4), 'roofRed', x, 6.8, 31.5, { ry: Math.PI / 4 }); }
     K.mesh(new THREE.BoxGeometry(16, 0.7, 1.0), 'stone', 0, 5.6, 31.5);
     K.sign(0, 32.05, 0, 'ようこそ ニャハハ王国へ', 'わらいの都', signCol, 5.0, 6.4);
     K.sign(0, 30.95, Math.PI, 'ニャハハ王国', 'またきてね', signCol, 5.0, 5.0);
-    for (const [x, z] of [[-8.5, 18], [8.5, 20], [-8.5, 26], [8.5, 26]]) K.planterTree(x, z, 1, happy);
-    for (const [x, z] of [[-8.8, 13], [-8.8, 22], [8.8, 23], [-8.8, 29], [8.8, 29]]) K.streetLamp(x, z, happy);
+    for (const [x, z] of [[-8.5, 18], [8.5, 20], [-8.5, 26], [8.5, 26]]) K.planterTree(x, z, 1);
+    for (const [x, z] of [[-8.8, 13], [-8.8, 22], [8.8, 23], [-8.8, 29], [8.8, 29]]) K.streetLamp(x, z);
     for (const z of [16, 24]) K.bunting(-9.6, z, 9.6, z + 1, flagCols, 5.4);
 
     // ---- 北の高台：城への坂と塔への小道、植え込みの木と街灯 ----
     K.signpost(-12, -21, 0, '↑ ニャハハ城', '王さまのお城', signCol);
     K.signpost(20, -21, 0, '↑ 笑顔の塔', 'この先', signCol);
-    for (const x of [-28, -20, -2, 6, 26]) K.planterTree(x, -21, 0.9, happy);
-    for (const x of [-24, -6, 2, 10, 30]) K.streetLamp(x, -19.5, happy);
-    for (const x of [-15, -5]) K.streetLamp(x, -30, happy);
+    for (const x of [-28, -20, -2, 6, 26]) K.planterTree(x, -21, 0.9);
+    for (const x of [-24, -6, 2, 10, 30]) K.streetLamp(x, -19.5);
+    for (const x of [-15, -5]) K.streetLamp(x, -30);
     K.bunting(-15, -27, -5, -27, flagCols, 4.6);
 
     // ---- 西の宿屋の街区（一段高い） ----
-    K.sign(-23.9, 14, Math.PI / 2, '宿 わらいねこ亭', happy ? 'ようこそ！' : null, signCol, 3.3, 2.6);
-    for (const [x, z] of [[-18, 24], [-18, 31]]) K.streetLamp(x, z, happy);
-    K.planterTree(-12.5, 20, 0.8, happy); K.barrel(-23, 22); K.barrel(-22.2, 23.2); K.crate(-23, 30);
+    K.sign(-23.9, 14, Math.PI / 2, '宿 わらいねこ亭', 'ようこそ！', signCol, 3.3, 2.6);
+    for (const [x, z] of [[-18, 24], [-18, 31]]) K.streetLamp(x, z);
+    K.planterTree(-12.5, 20, 0.8); K.barrel(-23, 22); K.barrel(-22.2, 23.2); K.crate(-23, 30);
 
     // ---- 東の市場通り：運河ぞいの屋台、小舟、橋の灯り ----
-    K.stall(25.5, 14, -Math.PI / 2, happy ? 'clothYellow' : 'stone2', ['#ffd27a', '#8ad8ff', '#ff9a7a']);
+    K.stall(25.5, 14, -Math.PI / 2, 'clothYellow', ['#ffd27a', '#8ad8ff', '#ff9a7a']);
     K.sign(24.4, 14, -Math.PI / 2, '道具屋', null, signCol, 3.0, 2.2);
-    K.stall(25.5, 22, -Math.PI / 2, happy ? 'clothRed' : 'stone2', ['#8ab8d8', '#b8c8d8', '#ff9a7a']);
-    K.stall(25.5, 29, -Math.PI / 2, happy ? 'clothPink' : 'stone2', ['#ffd24a', '#ff8ab8', '#8aff9a']);
-    K.stall(16, 12, Math.PI / 2, happy ? 'clothPurple' : 'stone2', ['#ff8ab8', '#ffffff', '#b88aff']);
-    K.stall(16, 31, Math.PI / 2, happy ? 'cloth' : 'stone2', ['#ffd27a', '#e8c060', '#ff9a7a']);
+    K.stall(25.5, 22, -Math.PI / 2, 'clothRed', ['#8ab8d8', '#b8c8d8', '#ff9a7a']);
+    K.stall(25.5, 29, -Math.PI / 2, 'clothPink', ['#ffd24a', '#ff8ab8', '#8aff9a']);
+    K.stall(16, 12, Math.PI / 2, 'clothPurple', ['#ff8ab8', '#ffffff', '#b88aff']);
+    K.stall(16, 31, Math.PI / 2, 'cloth', ['#ffd27a', '#e8c060', '#ff9a7a']);
     for (const [x, z] of [[18, 17], [22.5, 25.5], [17, 27]]) K.barrel(x, z);
     for (const [x, z] of [[23, 18], [16.5, 16]]) K.crate(x, z);
-    for (const z of [11, 26, 32]) K.streetLamp(29.2, z, happy);
-    K.boat(32, 14, 0.1, happy ? '#c86a4a' : '#6a6260'); K.boat(32.2, 29, -0.15, happy ? '#4a8ac8' : '#6a6260');
-    for (const [x, z] of [[29.4, 3.4], [29.4, 8.6], [34.6, 3.4], [34.6, 8.6]]) K.streetLamp(x, z, happy, 3.2);
+    for (const z of [11, 26, 32]) K.streetLamp(29.2, z);
+    K.boat(32, 14, 0.1, '#c86a4a'); K.boat(32.2, 29, -0.15, '#4a8ac8');
+    for (const [x, z] of [[29.4, 3.4], [29.4, 8.6], [34.6, 3.4], [34.6, 8.6]]) K.streetLamp(x, z, 3.2);
     K.bunting(29.4, 3.4, 34.6, 3.4, flagCols, 3.6, false); K.bunting(29.4, 8.6, 34.6, 8.6, flagCols, 3.6, false);
     K.bunting(24.5, 20.5, 29, 20.5, flagCols, 5);
 
-    if (happy) K.light(0, 7, -8, '#fff0c8', 8, 34);
+    K.light(0, 7, -8, '#fff0c8', 8, 34);
   },
   // ニャハハ城・前庭：回廊に囲まれた前庭、北の石段の上の玄関と城内への扉、生け垣と噴水、城壁の垂れ幕と塔
   castle(K) {
-    const happy = kingdomJoy();
-    const clothC = happy ? '#e87aa8' : '#9a8a98';
+    const clothC = '#e87aa8';
     // 赤いじゅうたん：門から石段まで、石段の上は城内への扉まで
     K.mesh(new THREE.PlaneGeometry(3.6, 29.5), 'clothRed', 0, 0.03, 6.25, { rx: -Math.PI / 2, noShadow: true });
     K.mesh(new THREE.PlaneGeometry(3.6, 7.6), 'clothRed', 0, 0.03, -16.8, { rx: -Math.PI / 2, noShadow: true });
     for (const x of [-1.9, 1.9]) K.mesh(new THREE.BoxGeometry(0.12, 0.04, 29.5), 'gold', x, 0.04, 6.25, { noShadow: true });
     // 城内への扉（幅 8m・高さ 8m の城の玄関）の両脇：柱と金の猫の像、花の鉢
     for (const x of [-5.6, 5.6]) { K.column(x, -20, 9.5, 0.55, 'marble'); K.mesh(new THREE.SphereGeometry(0.34, 12, 10), 'gold', x, 9.85, -20); }
-    K.catStatue(-11, -18, 0.4, 1.3, 'marble', happy ? '#ffd27a' : null); K.catStatue(11, -18, -0.4, 1.3, 'marble', happy ? '#ffd27a' : null);
-    for (const x of [-7, 7]) { K.urnPot(x, -19.4); K.topiary(x, -19.4, 0.6, { y: 1.28, green: happy, flowers: happy && ['#ff8ab8', '#ffd24a'] }); }
+    K.catStatue(-11, -18, 0.4, 1.3, 'marble', '#ffd27a'); K.catStatue(11, -18, -0.4, 1.3, 'marble', '#ffd27a');
+    for (const x of [-7, 7]) { K.urnPot(x, -19.4); K.topiary(x, -19.4, 0.6, { y: 1.28, flowers: ['#ff8ab8', '#ffd24a'] }); }
     // 回廊：左右の列柱と屋根（金の縁）
     for (const sd of [-1, 1]) {
       for (let z = -5; z <= 19; z += 6) K.column(sd * 12.6, z, 5.2, 0.42, 'marble');
       K.mesh(new THREE.BoxGeometry(4.2, 0.4, 27.4), 'marble', sd * 14.2, 5.35, 7);
       K.mesh(new THREE.BoxGeometry(0.2, 0.3, 27.4), 'gold', sd * 12.15, 5.3, 7);
-      const rf = new THREE.BoxGeometry(4.8, 0.2, 27.8); K.mesh(rf, happy ? 'roofRed' : 'roofGray', sd * 14.1, 5.8, 7, { rz: sd * 0.25 });
+      const rf = new THREE.BoxGeometry(4.8, 0.2, 27.8); K.mesh(rf, 'roofRed', sd * 14.1, 5.8, 7, { rz: sd * 0.25 });
     }
     // 生け垣と花の花壇（大理石のふちで囲んだ土。ふちにはぶつかる）と、左右の噴水
     for (const sd of [-1, 1]) {
       const bx = sd * 8.5, bz = 0.3, bw = 5.2, bd = 5.2, bh = 0.4;
       for (const s2 of [-1, 1]) { K.box(bx + s2 * (bw / 2 - 0.2), bz, 0.4, bh, bd, 'marble'); K.box(bx, bz + s2 * (bd / 2 - 0.2), bw, bh, 0.4, 'marble'); }
       K.mesh(new THREE.PlaneGeometry(bw - 0.8, bd - 0.8), 'dirt', bx, bh - 0.05, bz, { rx: -Math.PI / 2, noShadow: true }); K.colBox(bx, bz, bw / 2, bd / 2, bh);
-      K.hedge(bx, -1, 3.4, 0.9, 1.1, { y: bh - 0.05, green: happy });
-      K.flowers(bx, 1.2, 12, 1.2, happy ? ['#ff8ab8', '#ffd24a', '#ffffff'] : ['#a8a8a0'], bh - 0.05);
-      K.gardenFountain(bx, 17, -sd * Math.PI / 2, happy);   // 猫の像は、まん中のじゅうたんのほうを向く
+      K.hedge(bx, -1, 3.4, 0.9, 1.1, { y: bh - 0.05 });
+      K.flowers(bx, 1.2, 12, 1.2, ['#ff8ab8', '#ffd24a', '#ffffff'], bh - 0.05);
+      K.gardenFountain(bx, 17, -sd * Math.PI / 2);   // 猫の像は、まん中のじゅうたんのほうを向く
     }
     // 城壁の垂れ幕（回廊の屋根の上）と、北の壁の紋章の旗
     for (const sd of [-1, 1]) for (const z of [-3, 3, 9, 15]) K.banner(sd * 15.95, z, sd > 0 ? -Math.PI / 2 : Math.PI / 2, 9.4, 3, clothC);
     for (const x of [-7, 7]) K.banner(x, -20.95, 0, 11.4, 3.6, clothC, '#ffd27a', 1.6);
     // 城壁の角の塔と、門の両脇の塔（とんがり屋根）
-    const roofs = happy ? ['roofRed', 'roofBlue', 'roofPurple'] : ['roofGray'];
+    const roofs = ['roofRed', 'roofBlue', 'roofPurple'];
     for (const [x, z, h, r0] of [[-18, -21, 17, 2.6], [18, -21, 17, 2.6], [-18, 21, 15, 2.4], [18, 21, 15, 2.4], [-4.5, 22.5, 13.5, 1.8], [4.5, 22.5, 13.5, 1.8]]) {
       K.mesh(new THREE.CylinderGeometry(r0, r0 * 1.06, h, 16), 'marble', x, h / 2 - 1, z);
       K.mesh(new THREE.ConeGeometry(r0 * 1.3, r0 * 2.4, 16), roofs[Math.abs(Math.round(x + z)) % roofs.length], x, h - 1 + r0 * 1.2, z);
-      K.mesh(new THREE.BoxGeometry(0.6, 1.1, r0 * 2 + 0.05), happy ? K.glow('#ffd8a0', 1.2) : '#6a6a78', x, h - 3.2, z);
+      K.mesh(new THREE.BoxGeometry(0.6, 1.1, r0 * 2 + 0.05), K.glow('#ffd8a0', 1.2), x, h - 3.2, z);
     }
-    K.castleKeep(0, -40, { happy, s: 0.9 });
+    K.castleKeep(0, -40, { s: 0.9 });
     // 灯り
-    for (const [x, z] of [[-4, 19], [4, 19], [-4, -7], [4, -7], [-5, -14], [5, -14]]) K.brazier(x, z, happy ? '#ffb04a' : '#c8b8a0', 1.2);
+    for (const [x, z] of [[-4, 19], [4, 19], [-4, -7], [4, -7], [-5, -14], [5, -14]]) K.brazier(x, z, '#ffb04a', 1.2);
     K.light(0, 6, -14, '#fff0d8', 7, 22);
   },
   // ニャハハ城の中：玉座の間（列柱・壇・天蓋つきの玉座・シャンデリア）、宝物庫、図書室、大広間（肖像画）、食堂、厨房
   castleIn(K) {
-    const happy = kingdomJoy(), T = K.T;
-    const clothC = happy ? '#e87aa8' : '#9a8a98', lit = happy ? '#ffd8a0' : '#e8e0d0';
+    const T = K.T;
+    const clothC = '#e87aa8', lit = '#ffd8a0';
     const ceil = (x, z) => T.ceilOf(T.at(x, z));
     // シャンデリア：天井から金の鎖、二段の輪に灯り
     const chandelier = (x, z, s = 1) => {
@@ -5104,7 +5092,7 @@ const ZONE_BUILD = {
     const portrait = (x, z, ry, face, y = 3.2) => {
       K.mg('gold', new THREE.BoxGeometry(1.5, 1.9, 0.12), x, K.gy(x, z) + y, z, [0, ry, 0]);
       K.mg(face, new THREE.BoxGeometry(1.2, 1.6, 0.14), x, K.gy(x, z) + y, z, [0, ry, 0]);
-      K.mg(happy ? '#ffe0b0' : '#d8d0c8', new THREE.SphereGeometry(0.34, 12, 10), x + Math.sin(ry) * 0.12, K.gy(x, z) + y + 0.1, z + Math.cos(ry) * 0.12, [0, ry, 0], [1, 1, 0.35]);
+      K.mg('#ffe0b0', new THREE.SphereGeometry(0.34, 12, 10), x + Math.sin(ry) * 0.12, K.gy(x, z) + y + 0.1, z + Math.cos(ry) * 0.12, [0, ry, 0], [1, 1, 0.35]);
       K.mg('gold', new THREE.ConeGeometry(0.22, 0.28, 5), x + Math.sin(ry) * 0.1, K.gy(x, z) + y + 0.55, z + Math.cos(ry) * 0.1);
     };
     // 本棚（ry = 正面）：棚板と色とりどりの背表紙
@@ -5124,7 +5112,7 @@ const ZONE_BUILD = {
     K.box(0, -19.3, 2.6, 3.0, 1.2, 'gold', { round: true }); K.box(0, -18.8, 2.3, 0.55, 1.7, 'clothRed', { y: 0.25, col: false });
     K.mesh(new THREE.SphereGeometry(0.34, 12, 10), K.glow('#ffd27a', 2), 0, 3.3, -19.7);
     for (const [x, z] of [[-2.2, -17.4], [2.2, -17.4]]) K.cyl(x, z, 0.1, 5, 'gold', { seg: 8 });
-    K.box(0, -18.7, 4.8, 0.3, 2.9, happy ? 'clothRed' : 'clothPurple', { y: 5, col: false });
+    K.box(0, -18.7, 4.8, 0.3, 2.9, 'clothRed', { y: 5, col: false });
     for (const x of [-2.4, 2.4]) K.mesh(new THREE.PlaneGeometry(1.1, 4.6), K.stdM(clothC, 0.9, { side: THREE.DoubleSide }), x, 2.7, -19.2, { ry: x > 0 ? -0.35 : 0.35, noShadow: true });
     K.banner(0, -19.95, 0, 8.8, 2.2, clothC, '#ffd27a', 1.8);
     K.catStatue(-8.2, -11, 0.3, 1.2, 'gold', '#ffffff'); K.catStatue(8.2, -11, -0.3, 1.2, 'gold', '#ffffff');
@@ -5144,18 +5132,18 @@ const ZONE_BUILD = {
     shelf(-23.6, -10.4, Math.PI / 2, 3.4); shelf(-23.6, -4.6, Math.PI / 2, 2); shelf(-20, -14.6, 0, 4);
     K.box(-20, -8, 1.4, 0.8, 0.9, 'wood', { round: true });
     K.mesh(new THREE.BoxGeometry(0.5, 0.06, 0.36), '#f4ecd8', -20, 0.84, -8, { ry: 0.3 });
-    K.mesh(new THREE.SphereGeometry(0.3, 16, 12), happy ? '#6ab0e8' : '#9aa8b4', -21.6, 1.3, -6); K.cyl(-21.6, -6, 0.1, 1.0, 'wood2', { seg: 6 });
+    K.mesh(new THREE.SphereGeometry(0.3, 16, 12), '#6ab0e8', -21.6, 1.3, -6); K.cyl(-21.6, -6, 0.1, 1.0, 'wood2', { seg: 6 });
     chandelier(-20, -9, 0.6);
     // ---- 入口の大広間：じゅうたん、歴代の王の肖像画、玉仕立ての植木、大シャンデリア ----
     K.mesh(new THREE.PlaneGeometry(3.6, 15.6), 'clothRed', 0, 0.03, 14.2, { rx: -Math.PI / 2, noShadow: true });
-    for (const [x, z, ry, col] of [[-13.9, 10, Math.PI / 2, '#7a3a4a'], [-13.9, 20, Math.PI / 2, '#3a4a7a'], [13.9, 10, -Math.PI / 2, '#3a6a4a'], [13.9, 20, -Math.PI / 2, '#6a4a2a']]) portrait(x, z, ry, happy ? col : '#6a6670');
-    for (const [x, z] of [[-12.5, 7], [12.5, 7], [-12.5, 21], [12.5, 21]]) { K.urnPot(x, z); K.topiary(x, z, 0.6, { y: 1.28, green: happy, flowers: happy && ['#ff8ab8', '#ffd24a'] }); }
+    for (const [x, z, ry, col] of [[-13.9, 10, Math.PI / 2, '#7a3a4a'], [-13.9, 20, Math.PI / 2, '#3a4a7a'], [13.9, 10, -Math.PI / 2, '#3a6a4a'], [13.9, 20, -Math.PI / 2, '#6a4a2a']]) portrait(x, z, ry, col);
+    for (const [x, z] of [[-12.5, 7], [12.5, 7], [-12.5, 21], [12.5, 21]]) { K.urnPot(x, z); K.topiary(x, z, 0.6, { y: 1.28, flowers: ['#ff8ab8', '#ffd24a'] }); }
     chandelier(0, 12, 1.2);
     for (const sd of [-1, 1]) for (const z of [11.5, 18.5]) sconce(sd * 13.9, z, -sd * Math.PI / 2);
     K.bench(-8, 13, Math.PI / 2); K.bench(8, 13, -Math.PI / 2);
     // ---- 食堂：長い食卓といす、燭台と皿 ----
     K.box(-20, 12, 1.6, 0.8, 8, 'wood', { round: true });
-    K.mesh(new THREE.BoxGeometry(1.2, 0.02, 7.6), happy ? 'clothWhite' : '#d8d4d0', -20, 0.82, 12, { noShadow: true });
+    K.mesh(new THREE.BoxGeometry(1.2, 0.02, 7.6), 'clothWhite', -20, 0.82, 12, { noShadow: true });
     for (let z = 9; z <= 15; z += 1.5) for (const sd of [-1, 1]) { K.box(-20 + sd * 1.25, z, 0.55, 0.45, 0.55, 'wood2', { col: false }); K.mesh(new THREE.BoxGeometry(0.55, 0.9, 0.1), 'wood2', -20 + sd * 1.5, 0.9, z, { ry: Math.PI / 2 }); K.mg('white', new THREE.CylinderGeometry(0.2, 0.16, 0.03, 12), -20 + sd * 0.45, K.gy(-20, z) + 0.85, z); }
     for (const z of [10, 14]) { K.mg('gold', new THREE.CylinderGeometry(0.08, 0.12, 0.4, 8), -20, K.gy(-20, z) + 1.02, z); K.mg(K.glow(lit, 2.4), new THREE.SphereGeometry(0.07, 8, 6), -20, K.gy(-20, z) + 1.3, z); }
     chandelier(-20, 12, 0.6);
@@ -5165,7 +5153,7 @@ const ZONE_BUILD = {
     K.barrel(23, 16.2); K.barrel(23, 17.5); K.crate(21.5, 19.2); K.crate(20.3, 19.3, 0.8);
     K.box(19, 12, 1, 0.85, 2.4, 'wood', { round: true });
     for (let i = 0; i < 3; i++) K.mesh(new THREE.SphereGeometry(0.18, 8, 6), pick(['#ff8a5a', '#8ad85a', '#ffd24a']), 19 + (K.r() - 0.5) * 0.5, 1.0, 11.2 + i * 0.8);
-    K.light(0, 6, -8, happy ? '#fff0d8' : '#f0ece8', 8, 24); K.light(0, 5, 14, happy ? '#fff0d8' : '#f0ece8', 7, 20);
+    K.light(0, 6, -8, '#fff0d8', 8, 24); K.light(0, 5, 14, '#fff0d8', 7, 20);
   },
   // 笑顔の塔 1F：大ロビーの玉のりのリングと太鼓、びっくり鏡の回廊、風船の間、きっぷ売り場、楽団の控え室、むすっと幕
   tower(K) {
