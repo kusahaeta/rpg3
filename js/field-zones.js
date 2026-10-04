@@ -59,8 +59,8 @@ const FIELD_ZONES = {
     map: [
       '##########################',
       '##########################',
-      '###000000#########0000####',
-      'a,0000000,###,,,,,000000##',
+      '###000000,,,,,,,,,0000####',
+      'a,0000000,,,,,,,,,000000##',
       'a,00000000,,,,,,,0000000##',
       '###000000#,,,######00000##',
       '####0000###vv########00###',
@@ -4661,7 +4661,8 @@ const ZONE_BUILD = {
   hill(K) {
     K.flora({ trees: [['round', 4], ['pine', 1]], leaf: ['#6abf52', '#5ab04a', '#7ac85a'], fruit: '#ff9a9a', bush: 0.7, flower: ['#ffffff', '#ffe07a', '#ffb8d8'] });
     K.crater(0, -2, 4);
-    if (storyCond('scene:c1_02') && !storyCond('scene:c1_03')) K.starRock(0, -4, 1.1); else if (storyCond('scene:c1_03')) K.starRock(-2.5, -3.5, 0.4);
+    // 友情の実：流れ星の夜のあとから。翌朝の場面でクロのそばに倒れていても邪魔にならないよう、はじめから小さく
+    if (storyCond('scene:c1_02') && !storyCond('scene:c1_03')) K.starRock(0, -4, 0.4); else if (storyCond('scene:c1_03')) K.starRock(-2.5, -3.5, 0.4);
     K.roundTree(-14, 8, 1.7, 'leaf', { lush: true, fruit: '#ff9a9a' }); K.bench(-11, 10, 0.5);
     K.flowers(-8, 14, 16, 2.5); K.flowers(12, 6, 12, 2, ['#ffe07a', '#ffffff']); K.flowers(-16, -16, 16, 3); K.flowers(14, -16, 12, 2.5, ['#ffe07a', '#ffffff']);
     for (const [x, z, sz] of [[16, -18, 1.2], [-17, -18, 0.9], [22, 3, 0.8]]) K.rock(x, z, sz);
