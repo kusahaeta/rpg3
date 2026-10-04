@@ -4863,7 +4863,7 @@ class ZoneKit {
     const seamB = seam.clone(); seamB.position.z = -(D / 2 + 0.11); seamB.rotation.y = Math.PI; g.add(seamB);
 
     // 苔
-    const mossM = o.moss || 'leaf2';
+    const mossM = this.M(o.moss || 'leaf2');
     for (let i = 0; i < 9; i++) { const m = put(new THREE.IcosahedronGeometry(0.28 + rnd() * 0.16, 0), mossM, (rnd() * 2 - 1) * (WW - 0.2), HW + 0.42, (rnd() - 0.5) * 1.1); m.scale.set(1.2, 0.4, 0.9); m.castShadow = false; }
     for (const sd of [-1, 1]) for (let i = 0; i < 3; i++) { const m = put(new THREE.IcosahedronGeometry(0.22 + rnd() * 0.12, 0), mossM, sd * (3 + rnd() * 1.4), 0.4, 0.7 + rnd() * 0.6); m.scale.set(1.2, 0.5, 1); m.castShadow = false; }
     // 樹の根：柱にまきつき、壁のてっぺんからたれる。ところどころで樹液が光る
