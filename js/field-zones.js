@@ -1683,7 +1683,7 @@ const FIELD_ZONES = {
       '###############000000000###############',
       '##################sss##################',
     ],
-    anchor: [6, 40], exits: [{ key: 's', to: 'ruins_in' }, { key: 'n', to: 'ruins_seal' }],
+    anchor: [6, 40], exits: [{ key: 's', to: 'ruins_in' }, { key: 'n', to: 'ruins_seal', sealed: true }],
     // 回廊は 4x4 の小部屋。部屋どうしの口は、R（今は瓦礫・昔は通れる）、A（昔は石の門・今は通れる）、D（いつも通れる）
     // crystals：[x, z, 向き]。'W' 白（今と昔を行き来できる。入口の間）、'P' 金（昔へだけ）、'N' 青（今へだけ）
     // ghosts：昔のあいだだけ見える、昔の猫たちの面影 [x, z, 向き, 台詞]。昔のあいだは、F で話しかけられる
@@ -1719,7 +1719,7 @@ const FIELD_ZONES = {
       '######00######',
       '######ss######',
     ],
-    anchor: [0, 8], exits: [{ key: 's', to: 'ruins_maze' }],
+    anchor: [-7, 5], exits: [{ key: 's', to: 'ruins_maze' }],   // ねこ地蔵は入口の正面からはずして、広間の西のすみに
     notes: [{ at: [0, -9], mark: 3.0, reach: 2.4, title: '樹の根の祭壇', text: '樹の根をかたどった祭壇。根は床いっぱいに広がり、その先は闇に消えている。……根のいちばん先に、小さく「世界の果て」と刻まれている。' }],
     map2d: [770, 30] },
 
@@ -2215,7 +2215,7 @@ const FIELD_ZONES = {
       '##################0,,0##################',
       '###################bb###################',
     ],
-    anchor: [16, -32], spawn: [0, -36], exits: [{ key: 'a', to: 'forest_deep' }, { key: 'b', to: 'tree_under' }, { key: 'e', to: 'world_end' }],
+    anchor: [16, -32], spawn: [0, -36], exits: [{ key: 'a', to: 'forest_deep' }, { key: 'b', to: 'tree_under', sealed: true }, { key: 'e', to: 'world_end' }],
     notes: [{ at: [-10, 10], mark: 1.0, title: '落ちた葉', text: '灰色に色あせた葉。持ち上げると、さらさらと崩れた。' }],
     map2d: [470, 522] },
 
@@ -4771,33 +4771,138 @@ class ZoneKit {
     this.mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }), x + Math.sin(ry) * 0.17, y, z + Math.cos(ry) * 0.17, { ry, noShadow: true });
   }
   // 封印の扉
-  // 封印の扉：柱とまぐさ石の枠に、左右二枚の石の扉（ry の正面が手前）。扉の面には、二枚にまたがる封印の円と光る輪。
-  //   open なら扉は奥へ開いたまま（くぐれる）。閉じていれば当たり判定。openUp() で、封印の模様が消えて扉が奥へ開く（会話シーンの演出 seal）
-  sealDoor(x, z, ry = 0, open = false) {
-    const c = Math.cos(ry), s = Math.sin(ry), W = 2.6, H = 5.6;
-    for (const sd of [-1, 1]) this.box(x + c * sd * 3.3, z - s * sd * 3.3, 1.4, 7, 1.2, 'stone2', { ry });
-    this.box(x, z, 8, 1.4, 1.2, 'stone2', { ry, y: H });
-    const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry; this.scene.add(g);
-    const stone = this.mat('stone2'), face = new THREE.MeshStandardMaterial({ color: '#8a846a', roughness: 0.8, side: THREE.DoubleSide });
-    // 扉：ちょうつがいは両はしの柱の内側。左（sd = -1）は +角度、右は -角度で、奥（-Z）へ開く
+  // 封印の扉：アーチ形に抜いた石の門（アーチの縁飾り・かなめ石・猫の耳のついた柱）に、左右二枚の石の扉（ry の正面が手前）。
+  //   扉の面には、肉球をかたどった封印の紋章が光る。紋章は二枚にまたがり、扉が開くときに先に消える。
+  //   open なら扉は奥へ開いたまま（くぐれる）。閉じていれば当たり判定。openUp() で、紋章が消えて扉が奥へ開く（会話シーンの演出 seal）
+  //   sc：大きさ（1 ＝ 幅 9m × 高さ 7m の遺跡の扉。根のトンネルのような狭いところでは小さくする）
+  //   o.roots：樹の根が門にからみつき、樹液が光る（にゃんだーの樹の根もと）／ o.moss：苔の色（ZMAT のキーか色）
+  sealDoor(x, z, ry = 0, open = false, sc = 1, o = {}) {
+    const c = Math.cos(ry), s = Math.sin(ry), TEAL = '#8affe0';
+    const W = 2.6, Hr = 3, WW = 4.5, HW = 6.9, D = 0.5, Wl = W - 0.015;   // W：扉の片側の幅、Hr：アーチが始まる高さ、WW：門の半幅、HW：門の高さ、D：扉の厚み
+    const rnd = seeded(hashStr('sealDoor') + Math.round(x * 7 + z * 13));
+    const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry; g.scale.setScalar(sc); this.scene.add(g);
+    const wall = this.mat('stone2'), trim = this.mat('stone'), dark = this.mat('darkStone'), iron = this.mat('iron'), gold = this.mat('gold');
+    // 扉は封印の光でほんのり照らされる（逆光の区画でも黒くつぶれない）
+    const leafMat = new THREE.MeshStandardMaterial({ color: '#8a94a4', emissive: '#2c4a54', emissiveIntensity: 0.6, roughness: 0.9, flatShading: true });
+    const panelMat = new THREE.MeshStandardMaterial({ color: '#5c6676', emissive: '#2c4a54', emissiveIntensity: 0.5, roughness: 0.95, flatShading: true });
+    const put = (geo, mat, px, py, pz, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(px, py, pz); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+    const extrude = (shape, depth, bevel = 0) => {
+      const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: bevel > 0, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 1, curveSegments: 18 });
+      geo.translate(0, 0, -depth / 2); return geo;
+    };
+    // 封印の光（紋章・かなめ石・柱のルーン）。開くときにまとめて消す
+    const sigMats = [];
+    const lit = (k = 1.6) => { const m = this.glow(TEAL, k).clone(); m.transparent = true; sigMats.push(m); return m; };
+
+    // 門の壁：アーチ形に抜く
+    const wallS = new THREE.Shape();
+    wallS.moveTo(-WW, 0); wallS.lineTo(-W, 0); wallS.lineTo(-W, Hr); wallS.absarc(0, Hr, W, Math.PI, 0, true); wallS.lineTo(W, 0);
+    wallS.lineTo(WW, 0); wallS.lineTo(WW, HW); wallS.lineTo(-WW, HW); wallS.closePath();
+    put(extrude(wallS, 1.2), wall, 0, 0, 0);
+    put(new THREE.BoxGeometry(WW * 2 + 0.5, 0.4, 1.6), trim, 0, HW + 0.2, 0);          // 軒
+    for (const sd of [-1, 1]) put(new THREE.BoxGeometry(2, 0.35, 1.7), trim, sd * 3.55, 0.175, 0);   // 壁の足もと
+    put(new THREE.BoxGeometry(W * 2, 0.05, 1.4), trim, 0, 0.025, 0);                  // 敷居
+    // アーチの縁飾り
+    const R2 = W + 0.55;
+    const ringS = new THREE.Shape();
+    ringS.moveTo(-R2, 0); ringS.lineTo(-W, 0); ringS.lineTo(-W, Hr); ringS.absarc(0, Hr, W, Math.PI, 0, true); ringS.lineTo(W, 0); ringS.lineTo(R2, 0); ringS.lineTo(R2, Hr);
+    ringS.absarc(0, Hr, R2, 0, Math.PI, false); ringS.closePath();
+    put(extrude(ringS, 1.4), trim, 0, 0, 0);
+    for (let i = 1; i < 8; i++) {   // 石の継ぎ目
+      const a = Math.PI - i / 8 * Math.PI, rr = W + 0.275;
+      for (const zz of [0.71, -0.71]) { const m = put(new THREE.BoxGeometry(0.06, 0.6, 0.04), dark, Math.cos(a) * rr, Hr + Math.sin(a) * rr, zz); m.rotation.z = a - Math.PI / 2; }
+    }
+    // かなめ石と、封印の宝石
+    put(new THREE.BoxGeometry(0.85, 1, 1.55), trim, 0, Hr + W + 0.28, 0);
+    const gem = put(new THREE.OctahedronGeometry(0.24, 0), lit(2.2), 0, Hr + W + 0.28, 0.8); gem.scale.y = 1.4; gem.castShadow = false;
+    for (const zz of [0.78, -0.78]) { const m = put(new THREE.CylinderGeometry(0.34, 0.34, 0.06, 16), gold, 0, Hr + W + 0.28, zz); m.rotation.x = Math.PI / 2; }
+    gem.position.z = 0.82; const gemB = gem.clone(); gemB.position.z = -0.82; g.add(gemB);
+
+    // 柱（手前と奥）：猫の耳のついた柱頭。ルーンが光る
+    const sh = HW - 0.85;
+    for (const sd of [-1, 1]) for (const zs of [1, -1]) {
+      const cx = sd * 3.9, cz = zs * 0.95;
+      put(new THREE.BoxGeometry(1.3, 0.45, 1.3), trim, cx, 0.225, cz);
+      put(new THREE.CylinderGeometry(0.4, 0.46, sh, 8), trim, cx, 0.45 + sh / 2, cz);
+      put(new THREE.BoxGeometry(1.15, 0.4, 1.15), trim, cx, 0.45 + sh + 0.2, cz);
+      for (const e of [-1, 1]) { const m = put(new THREE.ConeGeometry(0.21, 0.58, 4), trim, cx + e * 0.3, HW + 0.29, cz); m.rotation.y = Math.PI / 4; m.rotation.z = -e * 0.14; }
+      for (let i = 0; i < 3; i++) { const m = put(new THREE.BoxGeometry(0.09, 0.4, 0.03), lit(1.3), cx, 1.7 + i * 1.2, cz + zs * 0.42); m.castShadow = false; }
+    }
+
+    // 扉：片側ずつアーチ形。ちょうつがいは両はしの柱の内側（左は +角度、右は -角度で、奥（-Z）へ開く）
+    const leafS = new THREE.Shape();
+    leafS.moveTo(0, 0); leafS.lineTo(Wl, 0); leafS.lineTo(Wl, Hr + Wl); leafS.absarc(Wl, Hr, Wl, Math.PI / 2, Math.PI, false); leafS.lineTo(0, 0);
+    const pu0 = 0.45, pu1 = Wl - 0.12, pr = pu1 - pu0, panelS = new THREE.Shape();
+    panelS.moveTo(pu0, 0.5); panelS.lineTo(pu1, 0.5); panelS.lineTo(pu1, Hr + pr); panelS.absarc(pu1, Hr, pr, Math.PI / 2, Math.PI, false); panelS.lineTo(pu0, 0.5);
+    const leafGeo = extrude(leafS, D, 0.03), panelGeo = extrude(panelS, 0.06);
     const leaves = [-1, 1].map(sd => {
       const hinge = new THREE.Group(); hinge.position.set(sd * W, 0, 0); g.add(hinge);
-      const m = new THREE.Mesh(new THREE.BoxGeometry(W, H, 0.5), stone); m.position.set(-sd * W / 2, H / 2, 0); m.castShadow = true; m.receiveShadow = true; hinge.add(m);
-      // 封印の円の半分（扉の手前の面）
-      const half = new THREE.Mesh(new THREE.CircleGeometry(2.4, 40, sd < 0 ? Math.PI / 2 : -Math.PI / 2, Math.PI), face); half.position.set(-sd * W, 3.2, 0.26); hinge.add(half);
-      return { hinge, sd, half };
+      const L = new THREE.Group(); L.scale.x = -sd; hinge.add(L);
+      put(leafGeo, leafMat, 0, 0, 0, L);
+      for (const zs of [1, -1]) {
+        put(panelGeo, panelMat, 0, 0, zs * (D / 2 + 0.01), L);
+        for (const yy of [0.9, 2.5]) {   // 鉄の帯と金のびょう
+          put(new THREE.BoxGeometry(Wl - 0.2, 0.2, 0.08), iron, Wl / 2 + 0.05, yy, zs * (D / 2 + 0.05), L);
+          for (let i = 0; i < 3; i++) put(new THREE.CylinderGeometry(0.065, 0.065, 0.06, 8), gold, 0.4 + i * (Wl - 0.8) / 2, yy, zs * (D / 2 + 0.1), L).rotation.x = Math.PI / 2;
+        }
+      }
+      for (const yy of [0.5, 2.5]) put(new THREE.CylinderGeometry(0.12, 0.12, 0.5, 8), iron, 0, yy, 0, hinge);
+      return { hinge, sd };
     });
-    const ring = new THREE.Mesh(new THREE.RingGeometry(2.1, 2.3, 48), this.glow('#8affe0', open ? 3 : 1.4).clone()); ring.material.side = THREE.DoubleSide; ring.material.transparent = true;
-    ring.position.set(0, 3.2, 0.32); g.add(ring);
-    let k = open ? 1 : 0;
-    const pose = () => { leaves.forEach(L => { L.hinge.rotation.y = -L.sd * Ease.inOut(k) * 1.45; }); ring.material.opacity = 1 - k; ring.visible = k < 1; };
-    pose();
-    const col = !open && { box: true, x, z, hw: Math.abs(c) * W + Math.abs(s) * 0.4, hd: Math.abs(s) * W + Math.abs(c) * 0.4, top: H, y: this.gy(x, z) };
+
+    // 封印の紋章：二枚の扉にまたがる、肉球の紋章（ふたつの輪とルーン）。と、合わせ目の光
+    const sig = new THREE.Group(); sig.position.set(0, 3.0, D / 2 + 0.1); g.add(sig);
+    const ringA = new THREE.Group(), ringB = new THREE.Group(); sig.add(ringA, ringB);
+    ringA.add(new THREE.Mesh(new THREE.RingGeometry(1.95, 2.05, 64), lit()));
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2, m = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.3), lit(1.3)); m.position.set(Math.cos(a) * 1.72, Math.sin(a) * 1.72, 0); m.rotation.z = a - Math.PI / 2; ringA.add(m); }
+    ringB.add(new THREE.Mesh(new THREE.RingGeometry(1.4, 1.46, 64), lit()));
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, m = new THREE.Mesh(new THREE.CircleGeometry(0.07, 8), lit(2)); m.position.set(Math.cos(a) * 1.43, Math.sin(a) * 1.43, 0); ringB.add(m); }
+    const pad = new THREE.Mesh(new THREE.CircleGeometry(0.45, 28), lit(1.8)); pad.position.set(0, -0.28, 0); pad.scale.y = 0.82; sig.add(pad);
+    for (const [tx, ty, tr] of [[-0.68, 0.28, 0.17], [-0.24, 0.7, 0.19], [0.24, 0.7, 0.19], [0.68, 0.28, 0.17]]) { const m = new THREE.Mesh(new THREE.CircleGeometry(tr, 16), lit(1.8)); m.position.set(tx, ty, 0); m.scale.y = 1.15; sig.add(m); }
+    const seam = new THREE.Mesh(new THREE.PlaneGeometry(0.05, Hr + W - 0.5), lit(1.4)); seam.position.set(0, 0.25 + (Hr + W - 0.5) / 2, D / 2 + 0.11); g.add(seam);
+    const seamB = seam.clone(); seamB.position.z = -(D / 2 + 0.11); seamB.rotation.y = Math.PI; g.add(seamB);
+
+    // 苔
+    const mossM = this.M(o.moss || 'leaf2');
+    for (let i = 0; i < 9; i++) { const m = put(new THREE.IcosahedronGeometry(0.28 + rnd() * 0.16, 0), mossM, (rnd() * 2 - 1) * (WW - 0.2), HW + 0.42, (rnd() - 0.5) * 1.1); m.scale.set(1.2, 0.4, 0.9); m.castShadow = false; }
+    for (const sd of [-1, 1]) for (let i = 0; i < 3; i++) { const m = put(new THREE.IcosahedronGeometry(0.22 + rnd() * 0.12, 0), mossM, sd * (3 + rnd() * 1.4), 0.4, 0.7 + rnd() * 0.6); m.scale.set(1.2, 0.5, 1); m.castShadow = false; }
+    // 樹の根：柱にまきつき、壁のてっぺんからたれる。ところどころで樹液が光る
+    if (o.roots) {
+      const rm = rootMat(0.5), sap = this.glow('#b8ff8a', 1.8);
+      const tube = (pts, r) => put(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, r, 6, false), rm, 0, 0, 0);
+      for (const sd of [-1, 1]) {
+        const pts = []; for (let i = 0; i <= 26; i++) { const t = i / 26, a = t * Math.PI * 4.2 + (sd > 0 ? 0 : 1.3); pts.push(V3(sd * 3.9 + Math.cos(a) * 0.52, 0.2 + t * (HW - 0.6), 0.95 + Math.sin(a) * 0.52)); }
+        tube(pts, 0.1);
+        for (let n = 0; n < 2; n++) {
+          const x0 = sd * (WW - 0.9 - n * 1.5), dx = (rnd() - 0.5) * 0.8;
+          tube([V3(x0, HW + 0.2, 0.55), V3(x0 + dx, HW - 1.1, 0.7), V3(x0 - dx * 0.6, HW - 2.3, 0.66), V3(x0 + dx * 0.4, HW - 3.4 - rnd(), 0.68)], 0.11 - n * 0.02);
+          const m = put(new THREE.SphereGeometry(0.11, 8, 6), sap, x0 + dx * 0.4, HW - 1.4 - n * 0.9, 0.78); m.castShadow = false;
+        }
+      }
+      tube([V3(-WW, HW - 0.3, 0.6), V3(-1.8, HW + 0.1, 0.9), V3(1.4, HW - 0.1, 0.9), V3(WW, HW - 0.5, 0.6)], 0.14);
+    }
+
+    // 灯り（紋章の光が前の地面を照らす）
+    const lamp = this.light(x + s * 2.2 * sc, 3.2 * sc, z + c * 2.2 * sc, TEAL, 7, 11);
+    // 当たり判定：門の壁は左右、閉じている間は扉も
+    for (const sd of [-1, 1]) this.colBox(x + c * sd * 3.55 * sc, z - s * sd * 3.55 * sc, (Math.abs(c) * 0.95 + Math.abs(s) * 1.3) * sc, (Math.abs(s) * 0.95 + Math.abs(c) * 1.3) * sc, HW * sc);
+    const col = !open && { box: true, x, z, hw: (Math.abs(c) * W + Math.abs(s) * 0.4) * sc, hd: (Math.abs(s) * W + Math.abs(c) * 0.4) * sc, top: (Hr + W) * sc, y: this.gy(x, z) };
     if (col) this.v.colliders.push(col);
-    const kit = this, o = { ring, leaves, opening: false, openUp() { o.opening = true; leaves.forEach(L => { L.half.visible = false; }); const i = kit.v.colliders.indexOf(col); if (i >= 0) kit.v.colliders.splice(i, 1); } };
-    this.tick((dt, t) => { ring.rotation.z = t * 0.2; if (o.opening && k < 1) { k = Math.min(1, k + dt * 0.45); pose(); } });
-    if (open) leaves.forEach(L => { L.half.visible = false; });
-    return (this.v.sealDoorObj = o);
+    let k = open ? 1 : 0;
+    const pose = () => {
+      leaves.forEach(L => { L.hinge.rotation.y = -L.sd * Ease.inOut(k) * 1.45; });
+      const a = Math.max(0, 1 - k * 5);   // 紋章は扉が動きだす前に消える
+      sigMats.forEach(m => { m.opacity = a; }); sig.visible = a > 0; seam.visible = seamB.visible = a > 0;
+    };
+    pose();
+    const kit = this, d = { sig, leaves, opening: false, openUp() { d.opening = true; const i = kit.v.colliders.indexOf(col); if (i >= 0) kit.v.colliders.splice(i, 1); } };
+    this.tick((dt, t) => {
+      ringA.rotation.z = t * 0.2; ringB.rotation.z = -t * 0.3;
+      if (d.opening && k < 1) { k = Math.min(1, k + dt * 0.45); pose(); }
+      gem.scale.setScalar(1 + Math.sin(t * 2.2) * 0.08); gem.scale.y *= 1.4; gemB.scale.copy(gem.scale);
+      if (lamp) lamp.intensity = (7 * (1 - k) + 3 * k) * (0.92 + Math.sin(t * 1.7) * 0.08);
+    });
+    return (this.v.sealDoorObj = d);
   }
   // 猫じゃらし（魔王領の野原に生えている）
   // おもちゃの猫じゃらし（屋内の小物）：木の柄の先に、ふさふさの穂。(x, y, z) は柄の根もと、ry は向き、tilt は床からの持ち上がり
@@ -6502,6 +6607,8 @@ const ZONE_BUILD = {
     for (let i = 0; i < 40; i++) K.mesh(new THREE.CircleGeometry(0.4, 6), revived ? 'leaf' : 'leafGray', (K.r() - 0.5) * 50, 0.04, -16 + (K.r() - 0.5) * 30, { rx: -Math.PI / 2, noShadow: true });
     if (revived) for (let i = 0; i < 24; i++) { const a = K.r() * 6; K.mesh(new THREE.SphereGeometry(1, 10, 8), K.glow(pick(['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a']), 2), Math.cos(a) * 26, 64 + K.r() * 20, 50 + Math.sin(a) * 20, { noShadow: true }); }
     K.signpost(-3, -24, 0.2, '↓ にゃんだーの樹', '→ 世界の果て');
+    // 南の根のトンネルの奥の封印の扉：c7_01b でタマがふれると開き、そのあとは開いたまま（トンネルは幅 4m なので小さめ。北向きの面が正面）
+    K.sealDoor(0, 40.5, Math.PI, storyCond('scene:c7_01b'), 0.7, { roots: true, moss: new THREE.MeshStandardMaterial({ color: new THREE.Color('#9a9a88').lerp(new THREE.Color('#5ad06a'), h), roughness: 0.9 }) });
     // 灰色に色あせた葉の吹きだまり（調べられる）
     for (let i = 0; i < 16; i++) { const a = K.r() * Math.PI * 2, d = Math.sqrt(K.r()) * 1.3; K.mesh(new THREE.CircleGeometry(0.35, 6), 'leafGray', -10 + Math.cos(a) * d, 0.05 + i * 0.004, 10 + Math.sin(a) * d, { rx: -Math.PI / 2, rz: K.r() * 3, noShadow: true }); }
     // 世界の果てへのびる、いちばん太い根（東の小道の南の縁を這う）

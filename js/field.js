@@ -525,10 +525,16 @@ class FieldView extends BaseView {
       Object.assign(ph, E.cabin ? this.makeCabin(ph, st) : stair ? this.makeStairGate(ph, st, stair) : st.exit === 'arch' ? this.makeArchGate(ph, list.some(e => e.plain))
         : st.exit === 'bulkhead' ? this.makeBulkhead(ph) : this.makeGate(ph, st));
       if (!ph.apply) ph.apply = o => ph.panels.forEach(q => { q.p.position.x = q.s * o * (ph.width / 2 - 0.3); });
+      if (list.some(e => e.sealed)) this.hideGateDoors(ph);
       if (!E.cabin) ph.camTop = ph.h + Math.max(6.4, this.exitTop(ph) + 0.3);
       this.exitsPhys.push(ph);
       for (const d of dests) this.gates.push({ exit: d.exit, x: ph.x, z: ph.z, nx: ph.nx, nz: ph.nz, locked: d.locked, phys: ph });
     }
+  }
+  // 封印の扉（ZoneKit.sealDoor）がふさぐ出入口（exit.sealed）：門の扉・光のまく・立て札は出さない（封印の扉の中に扉が見えてしまう）。奥の通路と枠は残す
+  hideGateDoors(ph) {
+    (ph.panels || []).forEach(q => { q.p.visible = false; });
+    if (ph.arrows) ph.g.children.forEach(c => { if (!ph.arrows.includes(c)) c.visible = false; });
   }
   // 区画の境の隔壁扉（奥に通路が続く）
   makeBulkhead(ph) {

@@ -733,7 +733,7 @@ function partyAt(sceneId) {
 }
 
 // 探索フィールドの部品（床の高さ・当たり判定・出入口）を借りる
-for (const k of ['gy', 'hitsCol', 'blocked', 'freeSpot', 'safeAt', 'buildMapExits', 'makeBulkhead', 'makeCabin', 'makeGate', 'makeArchGate', 'makeFieldGate', 'makeStairGate', 'exitTop']) StageView.prototype[k] = FieldView.prototype[k];
+for (const k of ['gy', 'hitsCol', 'blocked', 'freeSpot', 'safeAt', 'buildMapExits', 'makeBulkhead', 'makeCabin', 'makeGate', 'makeArchGate', 'makeFieldGate', 'makeStairGate', 'hideGateDoors', 'exitTop']) StageView.prototype[k] = FieldView.prototype[k];
 
 function resolveBattleSet(loc) {
   const s = typeof loc === 'string' ? BATTLE_SETS[loc] : loc;
@@ -761,4 +761,4 @@ function buildBattleSet(view, loc) {
   view.set = { root, pv, lp, hooks: pv.hooks || {}, update(dt, t) { for (const f of pv.zoneTicks) f(dt, t); for (const f of pv.emitters) f(dt); lp.update(dt); } };
   return view.set;
 }
-for (const k of ['gy', 'hitsCol', 'blocked', 'freeSpot', 'safeAt', 'buildMapExits', 'makeBulkhead', 'makeCabin', 'makeGate', 'makeArchGate', 'makeFieldGate', 'makeStairGate', 'exitTop']) if (!BattleView.prototype[k]) BattleView.prototype[k] = FieldView.prototype[k];
+for (const k of ['gy', 'hitsCol', 'blocked', 'freeSpot', 'safeAt', 'buildMapExits', 'makeBulkhead', 'makeCabin', 'makeGate', 'makeArchGate', 'makeFieldGate', 'makeStairGate', 'hideGateDoors', 'exitTop']) if (!BattleView.prototype[k]) BattleView.prototype[k] = FieldView.prototype[k];
