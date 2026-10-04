@@ -23,7 +23,7 @@ function topBar(title, back = true) {
     <div class="currency">
       <span class="c-item" title="にぼし（お金）"><i class="ic-jade"></i>${fmt(d.niboshi)}</span>
       <span class="c-item" title="けいけんち（なかまの画面でレベルアップに使う）"><i class="ic-exp"></i>${fmt(d.expPool)}</span>
-      <span class="c-item" title="秘技ポイント（秘技に使う）"><i class="ic-tp"></i>${d.tp}/5</span>
+      <span class="c-item" title="初手技ポイント（初手技に使う）"><i class="ic-tp"></i>${d.tp}/5</span>
     </div></div>`;
 }
 function wireBack(node, fn = () => App.go(HubScreen)) { const b = node.querySelector('[data-back]'); if (b) b.onclick = () => { Sfx.click(); fn(); }; }
@@ -162,10 +162,10 @@ function StageScreen(ci, sid) {
       ${GFX.ok ? `<div class="sd-stage3d"></div><div class="sd-weakrow">${enemyKeys.map(k => `<span style="--c:${ENEMIES[k].color}"><b>${ENEMIES[k].name}</b>${ENEMIES[k].weak.map(w => elemIcon(w)).join('')}</span>`).join('')}</div>` : ''}
       <div class="sd-sec">ごほうび</div>
       <div class="sd-rew"><span><i class="ic-exp"></i>なかまの経験値 ${fmt((80 + st.lv * 30) * st.waves.length)}</span><span><i class="ic-jade"></i>にぼし ${10 + st.lv * 3}</span></div>
-      <div class="sd-sec">出るメンバー <small>クリックで秘技を使う（秘技ポイント1）</small></div>
+      <div class="sd-sec">出るメンバー <small>クリックで初手技を使う（初手技ポイント1）</small></div>
       <div class="sd-team">${Save.data.team.map(k => `
         <div class="sd-mem" data-k="${k}" title="${CHARS[k].technique.name}：${CHARS[k].technique.desc}">
-          ${charChip(k)}<div class="tech-tag">秘技</div></div>`).join('')}
+          ${charChip(k)}<div class="tech-tag">初手技</div></div>`).join('')}
         <button class="btn small" data-edit>へんせい</button>
       </div>
       <div class="sd-tech"></div>
@@ -177,7 +177,7 @@ function StageScreen(ci, sid) {
   on(s, '[data-sid]', 'click', el => { if (!el.classList.contains('locked')) App.go(StageScreen, ci, el.dataset.sid); });
   const ed = s.querySelector('[data-edit]'); if (ed) ed.onclick = () => { Sfx.click(); App.go(TeamScreen, () => App.go(StageScreen, ci, st.id)); };
   const techInfo = s.querySelector('.sd-tech');
-  const refreshTech = () => { if (techInfo) techInfo.innerHTML = techs.size ? [...techs].map(k => `<div><b>${CHARS[k].name}「${CHARS[k].technique.name}」</b> ${CHARS[k].technique.desc}</div>`).join('') : '<div class="dim">秘技は使わない</div>'; };
+  const refreshTech = () => { if (techInfo) techInfo.innerHTML = techs.size ? [...techs].map(k => `<div><b>${CHARS[k].name}「${CHARS[k].technique.name}」</b> ${CHARS[k].technique.desc}</div>`).join('') : '<div class="dim">初手技は使わない</div>'; };
   refreshTech();
   on(s, '.sd-mem', 'click', el => { const k = el.dataset.k; if (techs.has(k)) techs.delete(k); else if (techs.size < Save.data.tp) techs.add(k); el.classList.toggle('tech', techs.has(k)); refreshTech(); });
   const go = s.querySelector('[data-start]'); if (go) go.onclick = () => { Sfx.select(); startStage(ci, st, [...techs]); };
@@ -205,7 +205,7 @@ function startStage(ci, st, techs, after) {
       const d = Save.data, exp = (80 + st.lv * 30) * st.waves.length, nib = (10 + st.lv * 3) * (first ? 3 : 1);
       d.cleared[st.id] = true;
       d.niboshi += nib; d.expPool += st.lv * 20; d.tp = Math.min(5, d.tp + 1);
-      let html = `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}${first ? '（はじめて）' : ''}　<i class="ic-exp"></i>けいけんち +${st.lv * 20}　<i class="ic-tp"></i>秘技ポイント +1</div>`;
+      let html = `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}${first ? '（はじめて）' : ''}　<i class="ic-exp"></i>けいけんち +${st.lv * 20}　<i class="ic-tp"></i>初手技ポイント +1</div>`;
       html += '<div class="rw-team">' + d.team.map(k => { const up = grantExp(k, exp); return `<div class="rw-mem">${avatarSVG(k)}<span>Lv.${d.owned[k].lv}${up ? `<b> ▲${up}</b>` : ''}</span></div>`; }).join('') + '</div>';
       Save.save();
       return html;
@@ -298,7 +298,7 @@ function CharScreen(sel) {
       </div>
       <div class="ck-abs">
         ${ab('通常攻撃', c.basic)}${ab('戦闘スキル', c.skill)}${ab(`必殺技（EP${c.energyMax}）`, c.ult)}
-        ${ab('とくせい', c.talent)}${ab('秘技', c.technique)}
+        ${ab('とくせい', c.talent)}${ab('初手技', c.technique)}
         ${combos.map(x => ab(`コンボ（${x.pair[1] === '*' ? 'みんなと' : CHARS[x.pair.find(p => p !== sel)].name + 'と'}・友情Lv3）`, x)).join('')}
       </div>
     </div></div>`);
@@ -357,7 +357,7 @@ function renderShop(o, kind, name, close, field) {
       }).join('') + '</div>';
     } else if (kind === 'item') {
       body = `<div class="sh-list">
-        <div class="sh-row"><div class="sh-icon">🌿</div><div class="sh-info"><b>またたびの小袋</b><small>秘技ポイントが満タンになる</small></div><button class="btn small" data-item="tp" ${d.niboshi < 60 || d.tp >= 5 ? 'disabled' : ''}>にぼし 60</button></div>
+        <div class="sh-row"><div class="sh-icon">🌿</div><div class="sh-info"><b>またたびの小袋</b><small>初手技ポイントが満タンになる</small></div><button class="btn small" data-item="tp" ${d.niboshi < 60 || d.tp >= 5 ? 'disabled' : ''}>にぼし 60</button></div>
         <div class="sh-row"><div class="sh-icon">📖</div><div class="sh-info"><b>ねこじゃらしの書</b><small>けいけんち +800（なかまの画面でレベルアップに使う）</small></div><button class="btn small" data-item="exp" ${d.niboshi < 120 ? 'disabled' : ''}>にぼし 120</button></div>
       </div>`;
     } else if (kind === 'fish') {
@@ -380,7 +380,7 @@ function renderShop(o, kind, name, close, field) {
     o.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const k = b.dataset.buy, g = d.gear[k] || 0; d.niboshi -= gearCost(g); d.gear[k] = g + 1; Save.save(); Sfx.brk(); Sfx.meow(k); field && field.toast(`${CHARS[k].name}の武器が「${GEAR_NAMES[k][g + 1]}」になった！`); draw(); });
     o.querySelectorAll('[data-item]').forEach(b => b.onclick = () => {
       const it = b.dataset.item;
-      if (it === 'tp') { d.niboshi -= 60; d.tp = 5; field && field.toast('秘技ポイントが満タンになった'); }
+      if (it === 'tp') { d.niboshi -= 60; d.tp = 5; field && field.toast('初手技ポイントが満タンになった'); }
       if (it === 'exp') { d.niboshi -= 120; d.expPool += 800; field && field.toast('けいけんち +800'); }
       if (it === 'fish') { d.niboshi -= 30; if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.spawnFollowers(); field.toast('焼き魚をみんなで食べた。HPが全回復！'); } }
       if (it === 'bento') { d.niboshi -= 50; d.expPool += 300; field && field.toast('けいけんち +300'); }
