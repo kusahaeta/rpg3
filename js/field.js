@@ -488,7 +488,7 @@ class FieldView extends BaseView {
     const setUsed = ang => { marks.visible = true; marks.rotation.y = ang; gem.visible = false; sp.visible = false; };
     return { g, gem, sp, marks, setUsed };
   }
-  // ねこ地蔵（ここで休める。赤いよだれかけ）
+  // ねこ地蔵（近づくとHPが回復する。赤いよだれかけ）
   makeAnchor() {
     const g = new THREE.Group();
     const stone = toon('#b8b4a8'), red = toon('#e0453a');
@@ -1116,8 +1116,7 @@ class FieldView extends BaseView {
     for (const o of this.fluffObjs || []) if (o.ready && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < 1.8 && Math.abs(o.pos.y - p.y) < 1) return { type: 'fluff', o, text: '綿毛につかまる' };
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
     for (const c of this.crystals) if (c.pos.distanceTo(p) < 1.8) return { type: 'post', c, text: c.broken ? '調べる：爪とぎの丸太' : '爪を研ぐ：爪とぎの丸太' };
-    const same = (x, z) => Math.abs(this.gy(x, z) - p.y) < 1.5;
-    if (!Z.noAnchor && Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && same(Z.anchor[0], Z.anchor[1])) return { type: 'anchor', text: 'ねこ地蔵：ひと休み（HP回復）／ワールドマップ' };
+    if (!Z.noAnchor && Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && Math.abs(this.gy(Z.anchor[0], Z.anchor[1]) - p.y) < 1.5) return { type: 'anchor', text: '調べる：ねこ地蔵' };
     if (this.T) {
       const i = this.T.at(p.x, p.z);
       // 区画間エレベーターの籠の中
@@ -1199,18 +1198,23 @@ class FieldView extends BaseView {
       this.toast(`宝箱：にぼし +${nib}`);
       this.renderHud();
     } else if (it.type === 'anchor') {
-      this.team.forEach(m => { m.hpRatio = 1; });
-      const Z = this.zone;
-      this.fx.ring(V3(Z.anchor[0], this.gy(Z.anchor[0], Z.anchor[1]) + 0.05, Z.anchor[1]), '#6fd6ff', { r: 3, life: 0.8 });
-      this.p.burst(this.player.pos.clone().add(V3(0, 1, 0)), '#6dff9e', 50, { speed: 2, up: 2, life: 1 });
-      Sfx.heal();
-      this.toast('ねこ地蔵に手を合わせた。みんなのHPが回復した');
-      this.spawnFollowers();
-      this.renderTeam();
-      this.mapMenu();
+      this.startTalk('ねこ地蔵', ['赤いよだれかけの、ねこ地蔵だ。そばにいると、みんなのHPが回復する。', 'MAP（M）を開くと、行ったことのある場所のねこ地蔵へ、いつでもひとっとびできる。'], null, true);
     } else if (it.type === 'lift') this.rideLift(it.L);
     else if (it.type === 'call') { this.moveLift(it.L, it.lv); this.toast('エレベーターを呼んだ'); }
     else if (it.type === 'cabin') this.cabinMenu(it.g);
+  }
+  // ねこ地蔵に近づくと、みんなのHPが回復する
+  updateAnchorHeal() {
+    const Z = this.zone, p = this.player.pos;
+    if (Z.noAnchor || !this.team.some(m => m.hpRatio < 1)) return;
+    if (Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) >= 2.6 || Math.abs(this.gy(Z.anchor[0], Z.anchor[1]) - p.y) >= 1.5) return;
+    this.team.forEach(m => { m.hpRatio = 1; });
+    this.fx.ring(V3(Z.anchor[0], this.gy(Z.anchor[0], Z.anchor[1]) + 0.05, Z.anchor[1]), '#6fd6ff', { r: 3, life: 0.8 });
+    this.p.burst(p.clone().add(V3(0, 1, 0)), '#6dff9e', 50, { speed: 2, up: 2, life: 1 });
+    Sfx.heal();
+    this.toast('ねこ地蔵のそばで、みんなのHPが回復した');
+    this.spawnFollowers();
+    this.renderTeam();
   }
   // 光の水晶を灯す。影の壁の水晶をすべて灯すと、壁が消える
   lightLamp(o, L) {
@@ -2458,7 +2462,7 @@ class FieldView extends BaseView {
     else if (!this.busy) { this.updatePlayer(d); if (!this.busy) this.updateGags(d); }
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
     this.updateNemuri(t);
-    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); }
+    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); this.updateAnchorHeal(); }
     this.updateGuards(d, t); this.updateRollers(d, t);
     if (this.followers && !this.flight) this.updateFollowers(d, t);
     this.updateEnemies(d, t);
