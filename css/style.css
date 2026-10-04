@@ -643,6 +643,7 @@ kbd { display: inline-block; font-family: inherit; font-size: 11px; background: 
   clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px); transition: .15s; animation: fadeIn .3s both; }
 .dl-choice:hover { background: linear-gradient(90deg, rgba(232, 199, 122, .35), rgba(20, 24, 50, .8)); transform: translateX(-6px); }
 .dl-choice kbd { background: var(--gold); color: #000; font-weight: 800; }
+.dl-skipbtns { display: flex; gap: 12px; margin-top: 4px; }
 
 .story { background: linear-gradient(90deg, rgba(6, 8, 20, .88) 0, rgba(6, 8, 20, .7) 35%, rgba(6, 8, 20, .25) 60%, rgba(6, 8, 20, .6)); }
 .sy-chapters { position: absolute; left: 24px; top: 76px; width: 300px; display: flex; flex-direction: column; gap: 10px; }

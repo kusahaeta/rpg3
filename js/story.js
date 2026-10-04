@@ -197,9 +197,11 @@ function DialogueScreen(id, done) {
     <div class="dl-choices"></div>
     <div class="dl-card"></div>
     <div class="dl-box"><div class="dl-name"></div><div class="dl-text"></div><div class="dl-next">▼</div></div>
+    <div class="overlay dl-skipask hidden"><div class="ov-box"><h2>スキップ</h2><div class="dim">このシーンをスキップしますか？</div>
+      <div class="dl-skipbtns"><button class="btn gold" data-skip-yes>スキップする</button><button class="btn" data-skip-no>つづきを見る</button></div></div></div>
   </div>`);
   const queue = scene.lines.slice();
-  let typing = null, full = '', auto = false, autoTimer = null, waitingChoice = false, finished = false, currentChoice = null, holding = false;
+  let typing = null, full = '', auto = false, autoTimer = null, waitingChoice = false, finished = false, currentChoice = null, holding = false, asking = false;
   const nameEl = s.querySelector('.dl-name'), textEl = s.querySelector('.dl-text'), box = s.querySelector('.dl-box');
   const choicesEl = s.querySelector('.dl-choices'), portrait = s.querySelector('.dl-portrait');
   // 行の card: n で、ハンコ n 個の面会許可証を出す。card のない行で消える
@@ -247,7 +249,7 @@ function DialogueScreen(id, done) {
     if (speaker !== 'n' && !speaker.startsWith('e:') && Math.random() < 0.25) Sfx.meow(speaker); else Sfx.tone(700 + Math.random() * 200, 0.03, 'sine', 0.02);
   };
   const advance = () => {
-    if (finished || waitingChoice || holding) return;
+    if (finished || waitingChoice || holding || asking) return;
     if (typing) { clearInterval(typing); typing = null; textEl.textContent = full; if (v && v.lineDone) v.lineDone(); scheduleAuto(); return; }
     const l = queue.shift();
     if (!l) { finish(); return; }
@@ -291,12 +293,20 @@ function DialogueScreen(id, done) {
     queue.unshift([HERO, text, dir || {}], ...replies);
     advance();
   };
-  s.addEventListener('click', e => { if (e.target.closest('button')) return; Sfx.init(); advance(); });
+  s.addEventListener('click', e => { if (e.target.closest('button, .dl-skipask')) return; Sfx.init(); advance(); });
   s.querySelector('[data-auto]').onclick = e => { auto = !auto; e.currentTarget.classList.toggle('on', auto); if (auto && !typing) scheduleAuto(); else clearTimeout(autoTimer); };
-  s.querySelector('[data-skip]').onclick = () => { if (confirm('このシーンをスキップしますか？')) finish(); };
+  // スキップの確認はゲーム画面の中に出す（ブラウザの confirm はダイアログを止めている環境だと何も出ずに「いいえ」になる）
+  const ask = s.querySelector('.dl-skipask');
+  const openAsk = () => { if (finished || asking) return; Sfx.click(); asking = true; clearTimeout(autoTimer); ask.classList.remove('hidden'); };
+  const closeAsk = () => { if (!asking) return; asking = false; ask.classList.add('hidden'); if (!typing) scheduleAuto(); };
+  s.querySelector('[data-skip]').onclick = openAsk;
+  s.querySelector('[data-skip-yes]').onclick = () => { Sfx.click(); finish(); };
+  s.querySelector('[data-skip-no]').onclick = () => { Sfx.click(); closeAsk(); };
+  ask.addEventListener('click', e => { if (e.target === ask) closeAsk(); });
   Game.activeDialog = {
     key(e) {
       const k = e.key;
+      if (asking) { if (k === 'Escape') closeAsk(); return; }
       if (k === ' ' || k === 'Enter') { e.preventDefault(); advance(); }
       else if (waitingChoice && '123'.includes(k)) choose(+k - 1);
     },
