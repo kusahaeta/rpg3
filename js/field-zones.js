@@ -3018,7 +3018,7 @@ class ZoneKit {
 
   // ---------------- まとめて描く部品（町の建物） ----------------
   // 色から標準の材質（色ごとに共有）
-  stdM(color, rough = 0.85, o = {}) { const k = 'std' + color + rough + (o.emissive || '') + (o.side || ''); return this.mc[k] || (this.mc[k] = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0.02, ...o })); }
+  stdM(color, rough = 0.85, o = {}) { const k = 'std' + color + rough + (o.emissive || '') + (o.side || '') + (o.fog === false ? 'nofog' : ''); return this.mc[k] || (this.mc[k] = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0.02, ...o })); }
   // ジオメトリを置いて（位置・回転・拡大）、材質ごとの束に加える。mat は ZMAT の名前・色・材質
   mg(mat, geo, x, y, z, rot = null, sc = null) {
     const M = typeof mat === 'string' && !ZMAT[mat] ? this.stdM(mat) : this.M(mat), k = M.uuid, b = (this.merged = this.merged || {})[k] || (this.merged[k] = { mat: M, list: [], noShadow: !!M.userData.noShadow });
@@ -4064,6 +4064,80 @@ class ZoneKit {
     }
   }
   // ---------------- 自然 ----------------
+  // にゃんだーの樹（近くで見る大樹。樹の根もと）：すそ広がりで筋の入った幹、地面へもぐる板根、太い大枝と小枝、枝先の葉のかたまり、枝葉の下にぶら下がる光る感情の実。
+  // o.leaf：葉の色（あとから色を変えられるよう、葉のマテリアルを返す）／o.fruit：実をつけるか／o.hidden：実を小さくしておく（あとでふくらませる）／o.clear：霧にかすませない（近くで映す場面）
+  nyanderTree(cx, cz, o = {}) {
+    const y0 = this.gy(cx, cz), C = V3(cx, y0, cz), r = () => this.r();
+    const fog = !o.clear, bark = this.stdM('#7a5838', 0.95, { fog }), barkDark = this.stdM('#5e4430', 0.95, { fog });
+    const leafA = new THREE.MeshStandardMaterial({ color: o.leaf || '#5ad06a', roughness: 0.85, flatShading: true, fog });
+    const leafB = new THREE.MeshStandardMaterial({ color: new THREE.Color(o.leaf || '#5ad06a').multiplyScalar(0.78), roughness: 0.9, flatShading: true, fog });
+    // 先にいくほど細くなる管（根・枝）
+    const tube = (pts, r0, r1, mat, seg = 24) => {
+      const curve = new THREE.CatmullRomCurve3(pts), geo = new THREE.TubeGeometry(curve, seg, 1, 10, false), pos = geo.attributes.position, P = V3(), Q = V3();
+      for (let i = 0; i <= seg; i++) { const t = i / seg, rr = r0 + (r1 - r0) * Math.pow(t, 0.8); curve.getPointAt(t, P); for (let j = 0; j <= 10; j++) { const n = i * 11 + j; Q.fromBufferAttribute(pos, n).sub(P).multiplyScalar(rr).add(P); pos.setXYZ(n, Q.x, Q.y, Q.z); } }
+      geo.computeVertexNormals();
+      const m = new THREE.Mesh(geo, mat); this.add(m); return curve;
+    };
+    // 幹：すそが大きく広がり、縦の筋がうねる
+    const prof = [[26, -3], [22, 1], [18.5, 6], [16.5, 14], [15.2, 26], [14.4, 40], [14.8, 52], [16.4, 60], [15, 68], [10, 74], [0.1, 78]];
+    const tg = new THREE.LatheGeometry(prof.map(([rr, y]) => new THREE.Vector2(rr, y)), 64, 0, Math.PI * 2), tp = tg.attributes.position, V = V3();
+    for (let i = 0; i < tp.count; i++) {
+      V.fromBufferAttribute(tp, i); const th = Math.atan2(V.z, V.x), low = Math.max(0, 1 - V.y / 16);
+      const k = 1 + 0.06 * Math.sin(9 * th + V.y * 0.06) + 0.03 * Math.sin(23 * th - V.y * 0.1) + 0.28 * low * low * Math.pow(Math.abs(Math.sin(4 * th + 0.4)), 3);
+      tp.setXYZ(i, V.x * k, V.y, V.z * k);
+    }
+    tg.computeVertexNormals();
+    const trunk = new THREE.Mesh(tg, bark); trunk.position.copy(C); this.add(trunk);
+    // 板根：幹のすそから、地面へもぐりながら四方へ（北の根のトンネルの上は避ける）
+    for (let i = 0; i < 11; i++) {
+      const a = i / 11 * Math.PI * 2 + 0.2; if (Math.abs(Math.atan2(Math.sin(a + Math.PI / 2), Math.cos(a + Math.PI / 2))) < 0.45) continue;
+      const d = V3(Math.cos(a), 0, Math.sin(a)), L = 34 + r() * 14;
+      tube([C.clone().addScaledVector(d, 16).setY(y0 + 9), C.clone().addScaledVector(d, 26).setY(y0 + 5), C.clone().addScaledVector(d, L * 0.8).setY(y0 + 1.2), C.clone().addScaledVector(d, L).setY(y0 - 2)], 4.2, 0.8, barkDark, 20);
+    }
+    // 大枝と小枝。枝先に葉のかたまり
+    const clusters = [], ends = [];
+    const N = 8;
+    for (let i = 0; i < N; i++) {
+      const a = i / N * Math.PI * 2 + (r() - 0.5) * 0.4, d = V3(Math.cos(a), 0, Math.sin(a)), R = 30 + r() * 10, ye = 84 + r() * 10;
+      const E = C.clone().addScaledVector(d, R).setY(y0 + ye);
+      tube([C.clone().addScaledVector(d, 10).setY(y0 + 58 + r() * 6), C.clone().addScaledVector(d, 20).setY(y0 + 72), E], 5.2, 1.6, bark);
+      ends.push(E);
+      for (let j = 0; j < 2; j++) {
+        const s = (j ? 1 : -1) * (0.5 + r() * 0.3), d2 = d.clone().applyAxisAngle(V3(0, 1, 0), s), F = E.clone().addScaledVector(d2, 10 + r() * 6).add(V3(0, 3 + r() * 6, 0));
+        tube([E.clone(), E.clone().lerp(F, 0.5).add(V3(0, 2, 0)), F], 1.6, 0.5, bark, 12);
+        ends.push(F);
+      }
+    }
+    // 真ん中の芯の枝
+    const top = C.clone().setY(y0 + 104); tube([C.clone().setY(y0 + 72), C.clone().setY(y0 + 88).add(V3(2, 0, -1)), top], 6, 2, bark);
+    // 葉のかたまり：枝先ごとに、大きな玉のまわりに小さな玉を寄せる
+    const blob = (c, rr, mat) => { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(rr, 2), mat); m.position.copy(c); m.scale.y = 0.82; m.rotation.set(r() * 3, r() * 3, 0); this.add(m); clusters.push({ c, r: rr }); };
+    ends.forEach((E, i) => {
+      const big = i % 3 === 0;
+      blob(E.clone().add(V3(0, big ? 5 : 3, 0)), big ? 13 : 9 + r() * 2, leafA);
+      for (let k = 0; k < (big ? 3 : 2); k++) { const a = r() * Math.PI * 2; blob(E.clone().add(V3(Math.cos(a) * 7, (big ? 1 : 0) + r() * 4 - 3, Math.sin(a) * 7)), 6 + r() * 3, k ? leafB : leafA); }
+    });
+    blob(top.clone().add(V3(0, 4, 0)), 16, leafA);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.3; blob(top.clone().add(V3(Math.cos(a) * 17, -5 + r() * 4, Math.sin(a) * 17)), 11 + r() * 2, i % 2 ? leafB : leafA); }
+    // 光る感情の実：葉のかたまりの下側に、軸でぶら下がる。まわりにぼんやり光の輪
+    const fruits = [], cols = ['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a'];
+    if (o.fruit) clusters.forEach((cl, i) => {
+      if (cl.r < 8 || i % 2) return;
+      const out = cl.c.clone().sub(C).setY(0).normalize(), n = cl.r > 12 ? 2 : 1;
+      for (let j = 0; j < n; j++) {
+        const d = out.clone().applyAxisAngle(V3(0, 1, 0), (r() - 0.5) * 1.6).multiplyScalar(0.75).add(V3(0, -0.65, 0)).normalize(), p = cl.c.clone().addScaledVector(d, cl.r * 0.86);
+        const col = cols[(i + j) % 4], g = new THREE.Group(); g.position.copy(p);
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 2.2, 5), bark); stem.position.y = 0.4; g.add(stem);
+        const f = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 12), glowMat(col, 2.6, { fog: false })); f.position.y = -1.4; f.scale.y = 1.12; g.add(f);
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 0.9), blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true }));
+        halo.position.y = -1.4; halo.scale.setScalar(6); g.add(halo);
+        g.userData = { halo, ph: r() * 6, s: o.hidden ? 0.001 : 1 }; g.scale.setScalar(g.userData.s);
+        this.scene.add(g); fruits.push(g);
+      }
+    });
+    if (fruits.length) this.tick((dt, t) => { for (const g of fruits) { const u = g.userData; u.halo.scale.setScalar(6 + Math.sin(t * 1.6 + u.ph) * 1.1); g.rotation.z = Math.sin(t * 0.9 + u.ph) * 0.08; } });
+    return { leafA, leafB, fruits, top };
+  }
   roundTree(x, z, s = 1, leaf = 'leaf', o = {}) {
     this.cyl(x, z, 0.22 * s, 1.8 * s, 'bark', { r2: 0.16 * s, seg: 7, col: o.col });
     const n = o.lush ? 5 : 3;
@@ -6930,28 +7004,19 @@ const ZONE_BUILD = {
     const h = treeHealth(), revived = h >= 1;
     const lc = t => '#' + new THREE.Color('#9a9a88').lerp(new THREE.Color(t), h).getHexString();
     K.flora({ trees: [['round', 3], ['dead', 1.2 - h]], leaf: [lc('#5ad06a'), lc('#6abf52'), lc('#4a9a3e')], bush: 0.7, rocks: 0.4 });
-    // 幹（区画の外の南にそびえる）
-    K.cyl(0, 64, 22, 90, 'bark', { r2: 14, seg: 24, col: false });   // 手前の縁が封印の扉（z=40.5）に突き出さないよう、扉より南に
+    // にゃんだーの樹（区画の外の南にそびえる。手前のすそが封印の扉（z=40.5）に突き出さないよう、扉より南に。すその北の端は z≈43）
     // bloom（第八章の終わりの場面）：葉は灰色、実はまだない状態から始め、hooks.treeBloom／fruitsGrow で、葉にみどりが戻り、実がふくらむ
     const bloom = !!(K.v.flags && K.v.flags.bloom), gray = new THREE.Color('#9a9a88'), green = new THREE.Color('#5ad06a');
-    const leaf = new THREE.MeshStandardMaterial({ color: gray.clone().lerp(green, bloom ? 0 : h), roughness: 0.9 });
-    const fruits = [], mid = V3(0, 85, 62);
-    for (let i = 0; i < 12; i++) {
-      const a = i / 12 * Math.PI * 2, c = V3(Math.cos(a) * 30, 80 + (i % 3) * 8, 62 + Math.sin(a) * 26);
-      K.mesh(new THREE.IcosahedronGeometry(18, 1), leaf, c.x, c.y, c.z, { noShadow: true });
-      // 感情の実：枝葉のかたまりの外側に（中にうもれないように）
-      if (revived || bloom) for (let j = 0; j < 3; j++) {
-        const d = c.clone().sub(mid).normalize().add(V3((K.r() - 0.5) * 1.4, (K.r() - 0.5) * 1.2 - 0.4, (K.r() - 0.5) * 1.4)).normalize(), p = c.clone().addScaledVector(d, 17.4);
-        const f = K.mesh(new THREE.SphereGeometry(1.6, 12, 10), K.glow(['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a'][(i + j) % 4], 2), p.x, p.y, p.z, { noShadow: true });
-        if (bloom) f.scale.setScalar(0.001);
-        fruits.push(f);
-      }
-    }
+    const T = K.nyanderTree(0, 76, { leaf: '#' + gray.clone().lerp(green, bloom ? 0 : h).getHexString(), fruit: revived || bloom, hidden: bloom, clear: bloom });
+    const greenB = green.clone().multiplyScalar(0.78), grayB = gray.clone().multiplyScalar(0.78);
     const anims = [];
     K.tick(dt => { for (let i = anims.length - 1; i >= 0; i--) { const o = anims[i]; o.t += dt; const k = Math.min(1, o.t / o.d); o.f(k); if (k >= 1) anims.splice(i, 1); } });
     if (K.v.hooks) {
-      K.v.hooks.treeBloom = () => anims.push({ t: 0, d: 3, f: k => leaf.color.copy(gray).lerp(green, k * k * (3 - 2 * k)) });
-      K.v.hooks.fruitsGrow = () => fruits.forEach((f, i) => anims.push({ t: -i * 0.09, d: 0.7, f: k => { k = Math.max(0, k); f.scale.setScalar(0.001 + (1 - Math.pow(1 - k, 3)) * 1.1); if (k > 0 && !f.userData.pop) { f.userData.pop = 1; K.v.p.burst(f.position, '#fff0a8', 16, { speed: 2, life: 0.8, size: 0.2 }); } } }));
+      K.v.hooks.treeBloom = () => anims.push({ t: 0, d: 3, f: k => { const e = k * k * (3 - 2 * k); T.leafA.color.copy(gray).lerp(green, e); T.leafB.color.copy(grayB).lerp(greenB, e); } });
+      K.v.hooks.fruitsGrow = () => T.fruits.forEach((g, i) => anims.push({ t: -i * 0.12, d: 0.8, f: k => {
+        k = Math.max(0, k); g.userData.s = 0.001 + (1 - Math.pow(1 - k, 3)); g.scale.setScalar(g.userData.s);
+        if (k > 0 && !g.userData.pop) { g.userData.pop = 1; K.v.p.burst(g.position.clone().add(V3(0, -1.4, 0)), '#fff0a8', 24, { speed: 3, life: 0.9, size: 0.22 }); }
+      } }));
     }
     // 幹から張り出す根（南の根のトンネルの上をまたぐ）
     for (const sd of [-1, 1]) { K.root(sd * 18, 44, sd * 30, 26, 1.8, 10); K.root(sd * 14, 46, sd * 38, 34, 1.5, 8); }
