@@ -684,8 +684,8 @@ const STAGE_FX = {
   // 遠くのにゃんだーの樹が光る（第八章の終わり。村から見上げる）
   treeShine() {
     const ft = this.env.farTree; if (!ft) return;
-    const h0 = ft.halo.material.color.clone(), e0 = ft.leaf.emissive.clone(), glow = hdr('#fff4c8', 1.6), green = new THREE.Color('#9aff9a').multiplyScalar(1.1);
-    GFX.tween(3, k => { ft.halo.material.color.copy(h0).lerp(glow, k); ft.halo.scale.setScalar(120 + k * 110); ft.leaf.emissive.copy(e0).lerp(green, k); }, Ease.out);
+    const h0 = ft.halo.material.color.clone(), e0 = ft.leaf.emissive.clone(), glow = hdr('#fff4c8', 0.9), green = new THREE.Color('#5ad06a').multiplyScalar(0.45);
+    GFX.tween(3, k => { ft.halo.material.color.copy(h0).lerp(glow, k); ft.halo.scale.setScalar(120 + k * 50); ft.leaf.emissive.copy(e0).lerp(green, k); }, Ease.out);
     ft.fruits.forEach((f, i) => { f.userData.s = 0; GFX.delay(0.6 + i * 0.12).then(() => GFX.tween(0.8, k => { f.userData.s = k * 1.8; }, Ease.out)); });
     Sfx.tone(660, 0.6, 'sine', 0.05); Sfx.tone(990, 0.8, 'sine', 0.04, 0, 0.3); Sfx.win();
   },

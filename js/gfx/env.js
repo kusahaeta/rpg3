@@ -242,7 +242,7 @@ function worldTree(health = 0.8, s = 1) {
     const m = new THREE.Mesh(new THREE.SphereGeometry(9 + (i % 3) * 3, 14, 10), leaf); m.position.set(Math.cos(a) * r, y, Math.sin(a) * r * 0.8); m.scale.y = 0.72; g.add(m);
   }
   // 感情の実（光る）
-  const fruitCols = ['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a'];
+  const fruitCols = ['#ffd24a', '#ff4f9a', '#5ac8ff', '#9aff6a'];
   const fruits = [];
   for (let i = 0; i < Math.round(health * 16); i++) {
     const a = i * 1.7, r = 10 + (i % 4) * 5;

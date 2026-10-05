@@ -4128,14 +4128,15 @@ class ZoneKit {
         ends.push([F, 0]);
       }
     }
-    const top = C.clone().setY(y0 + 100); tube([C.clone().setY(y0 + 70), C.clone().setY(y0 + 86).add(V3(2, 0, -1)), top], 6.5, 2.2, 0.8);
+    const top = C.clone().setY(y0 + 112); tube([C.clone().setY(y0 + 70), C.clone().setY(y0 + 92).add(V3(2, 0, -1)), top], 6.5, 2.2, 0.8);
     ends.forEach(([E, big]) => {
       blob(E.clone().add(V3(0, big ? 5 : 3, 0)), big ? 14 + r() * 2 : 9 + r() * 3, big ? 0 : 1 + (r() * 2 | 0));
       for (let k = 0; k < (big ? 4 : 2); k++) { const a = r() * Math.PI * 2; blob(E.clone().add(V3(Math.cos(a) * 9, r() * 6 - 3, Math.sin(a) * 9)), 7 + r() * 3, (k + 1) % 4); }
     });
     // 上の丸屋根：外へいくほど低く
-    blob(top.clone().add(V3(0, 8, 0)), 20, 2);
-    for (const [rad, y, n, sz] of [[22, 4, 8, 16], [46, -4, 14, 15], [70, -13, 20, 13], [88, -22, 22, 11]]) for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + r() * 0.4; blob(top.clone().add(V3(Math.cos(a) * rad, y + r() * 4, Math.sin(a) * rad)), sz + r() * 3, i % 4); }
+    // 上の丸屋根：てっぺんから外へ、段ごとに低く（横に長くならないよう、上の二段で厚みをもたせる）
+    blob(top.clone().add(V3(0, 14, 0)), 24, 2);
+    for (const [rad, y, n, sz] of [[14, 22, 6, 17], [32, 12, 10, 16], [22, -8, 8, 16], [46, -16, 14, 15], [70, -25, 20, 13], [88, -34, 22, 11]]) for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + r() * 0.4; blob(top.clone().add(V3(Math.cos(a) * rad, y + r() * 4, Math.sin(a) * rad)), sz + r() * 3, i % 4); }
     // 根もとをおおう苔の丘と茂み（区画の中には入れない）
     const ground = ['#5f9a44', '#4a8238'].map(g => { const target = new THREE.Color(g), m = new THREE.MeshStandardMaterial({ color: dullC.clone().lerp(target, h), roughness: 0.95, flatShading: true, fog }); leaves.push({ m, target }); return m; });
     const [mossM, mossM2] = ground;
@@ -4146,7 +4147,7 @@ class ZoneKit {
       if (i % 3 === 0) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(sz * 0.6, 1), leaves[(i / 3 | 0) % 4].m); b.position.set(x + 2, y0 + sz * 0.25, z - 1); this.add(b); }
     }
     // 光る感情の実：葉のかたまりの下側に、軸でぶら下がる。まわりにぼんやり光の輪
-    const fruits = [], cols = ['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a'], stemM = this.stdM('#6a4a30', 0.95, { fog });
+    const fruits = [], cols = ['#ffd24a', '#ff4f9a', '#5ac8ff', '#9aff6a'], stemM = this.stdM('#6a4a30', 0.95, { fog });
     if (o.fruit) clusters.forEach((cl, i) => {
       if (cl.r < 7 || i % 3 === 2 || cl.c.y > y0 + 104) return;
       const out = cl.c.clone().sub(C).setY(0).normalize(), n = cl.r > 11 ? 2 : 1;
@@ -4154,8 +4155,8 @@ class ZoneKit {
         const d = out.clone().applyAxisAngle(V3(0, 1, 0), (r() - 0.5) * 1.6).multiplyScalar(0.75).add(V3(0, -0.65, 0)).normalize(), p = cl.c.clone().addScaledVector(d, cl.r * 0.84);
         const col = cols[(i + j) % 4], g = new THREE.Group(); g.position.copy(p);
         const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 2.2, 5), stemM); stem.position.y = 0.4; g.add(stem);
-        const f = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 12), glowMat(col, 2.6, { fog: false })); f.position.y = -1.4; f.scale.y = 1.12; g.add(f);
-        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 0.9), blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true }));
+        const f = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 12), glowMat(col, 3, { fog: false })); f.position.y = -1.4; f.scale.y = 1.12; g.add(f);
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 1.3), blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true }));
         halo.position.y = -1.4; halo.scale.setScalar(6); g.add(halo);
         g.userData = { halo, ph: r() * 6, s: o.hidden ? 0.001 : 1 }; g.scale.setScalar(g.userData.s);
         this.scene.add(g); fruits.push(g);
