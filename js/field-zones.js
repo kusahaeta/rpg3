@@ -2413,8 +2413,7 @@ const FIELD_ZONES = {
 
   // ---------------- 第八章 世界の果て ----------------
   world_end: { ci: 7, name: '世界の果て', w: 70, d: 92, stage: '8-2', arenas: [[0, -26, 0], [0, 16, 0]], build: 'worldEnd', bg: 'end', groups: 6, chests: 3, crystals: 3,
-    world: true, arch: 'abyss', chestAt: [[-18, -6], [18, -6], [-28, 24]],
-    treeAt: [Math.PI, 200],
+    world: true, arch: 'abyss', chestAt: [[-18, -6], [18, -6], [-28, 24]], skyTree: false,
     // 奈落に浮かぶ石の道。中ほどの広い島（戦い）から、左右の小島へ渡る橋。細い道を北へ進むと、果ての闘技場
     map: [
       '                                   ',
