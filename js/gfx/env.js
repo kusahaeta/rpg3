@@ -246,7 +246,7 @@ function worldTree(health = 0.8, s = 1) {
   const fruits = [];
   for (let i = 0; i < Math.round(health * 16); i++) {
     const a = i * 1.7, r = 10 + (i % 4) * 5;
-    const f = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 8), glowMat(fruitCols[i % 4], 4, { fog: false })); f.position.set(Math.cos(a) * r, 36 + (i % 5) * 4, Math.sin(a) * r * 0.8 + 6); g.add(f); fruits.push(f);
+    const f = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 8), glowMat(fruitCols[i % 4], 4 * lumaBoost(fruitCols[i % 4]), { fog: false })); f.position.set(Math.cos(a) * r, 36 + (i % 5) * 4, Math.sin(a) * r * 0.8 + 6); g.add(f); fruits.push(f);
   }
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#fff4c8', 0.35 * health + 0.08), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   halo.scale.setScalar(120); halo.position.y = 44; g.add(halo);

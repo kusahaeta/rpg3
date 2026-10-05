@@ -4155,8 +4155,8 @@ class ZoneKit {
         const d = out.clone().applyAxisAngle(V3(0, 1, 0), (r() - 0.5) * 1.6).multiplyScalar(0.75).add(V3(0, -0.65, 0)).normalize(), p = cl.c.clone().addScaledVector(d, cl.r * 0.84);
         const col = cols[(i + j) % 4], g = new THREE.Group(); g.position.copy(p);
         const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 2.2, 5), stemM); stem.position.y = 0.4; g.add(stem);
-        const f = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 12), glowMat(col, 3, { fog: false })); f.position.y = -1.4; f.scale.y = 1.12; g.add(f);
-        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 1.3), blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true }));
+        const f = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 12), glowMat(col, 3 * lumaBoost(col), { fog: false })); f.position.y = -1.4; f.scale.y = 1.12; g.add(f);
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 1.3 * lumaBoost(col)), blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true }));
         halo.position.y = -1.4; halo.scale.setScalar(6); g.add(halo);
         g.userData = { halo, ph: r() * 6, s: o.hidden ? 0.001 : 1 }; g.scale.setScalar(g.userData.s);
         this.scene.add(g); fruits.push(g);
