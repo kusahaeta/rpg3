@@ -678,6 +678,14 @@ const STAGE_FX = {
   light(arg) { const c = this.point(arg) || this.O.clone().add(V3(0, 1, 0)); this.fx.pillar(c, '#fff0a8', { h: 30, r: 1.4, life: 2, k: 2 }); this.fx.ring(c, '#fff0a8', { r: 10, life: 1.6, width: 0.3 }); this.p.burst(c, '#fff0a8', 160, { speed: 8, life: 2, size: 0.12 }); GFX.flash('#fff8e0', 0.6, 1); Sfx.win(); },
   // 世界中の猫の光（第八章）
   voices() { const cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a']; for (let i = 0; i < 60; i++) GFX.delay(i * 0.03).then(() => this.p.emit(this.O.clone().add(V3((Math.random() - 0.5) * 20, 10 + Math.random() * 6, (Math.random() - 0.5) * 20)), V3(0, -3, 0), hdr(pick(cols), 2.6), { life: 3, size: 0.16, drag: 0.3 })); Sfx.tone(880, 0.4, 'sine', 0.05); Sfx.tone(1320, 0.5, 'sine', 0.04, 0, 0.15); },
+  // 遠くのにゃんだーの樹が光る（第八章の終わり。村から見上げる）
+  treeShine() {
+    const ft = this.env.farTree; if (!ft) return;
+    const h0 = ft.halo.material.color.clone(), e0 = ft.leaf.emissive.clone(), glow = hdr('#fff4c8', 1.6), green = new THREE.Color('#9aff9a').multiplyScalar(1.1);
+    GFX.tween(3, k => { ft.halo.material.color.copy(h0).lerp(glow, k); ft.halo.scale.setScalar(120 + k * 110); ft.leaf.emissive.copy(e0).lerp(green, k); }, Ease.out);
+    ft.fruits.forEach((f, i) => { f.userData.s = 0; GFX.delay(0.6 + i * 0.12).then(() => GFX.tween(0.8, k => { f.userData.s = k * 1.8; }, Ease.out)); });
+    Sfx.tone(660, 0.6, 'sine', 0.05); Sfx.tone(990, 0.8, 'sine', 0.04, 0, 0.3); Sfx.win();
+  },
   // 呼び声が根を伝って、世界じゅうへ広がる（第七章の終わり。タマの呼びかけ）
   rootcall(arg) {
     const c = this.point(arg || 'tama') || this.O.clone(), g = V3(c.x, this.O.y + 0.1, c.z), cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a'];

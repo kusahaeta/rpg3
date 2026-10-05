@@ -217,7 +217,7 @@ function buildEnvironment(scene, theme, renderer, opts = {}) {
   if (!T.indoor && !T.noTree && opts.skyTree !== false && !(opts.zone && opts.zone.skyTree === false)) farTree(T);
 
   return {
-    particles, key, colliders: T.colliders, root, focus: T.focus, floor,
+    particles, key, colliders: T.colliders, root, focus: T.focus, floor, farTree: T.farTree || null,
     update(dt, t) {
       sky.material.uniforms.time.value = t;
       for (const f of updaters) f(dt, t);
@@ -251,7 +251,7 @@ function worldTree(health = 0.8, s = 1) {
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#fff4c8', 0.35 * health + 0.08), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   halo.scale.setScalar(120); halo.position.y = 44; g.add(halo);
   g.scale.setScalar(s);
-  return { g, fruits };
+  return { g, fruits, halo, leaf };
 }
 // にゃんだーの樹の方角：区画の地図上の位置（map2d）から見た、樹の根もとの向き（北が 0、東が π/2）
 function treeAngle(Z) {
@@ -261,12 +261,13 @@ function treeAngle(Z) {
 }
 function farTree(T) {
   const h = treeHealth(), zt = T.zone && T.zone.treeAt;
-  const { g, fruits } = worldTree(h, 1.6);
+  const { g, fruits, halo, leaf } = worldTree(h, 1.6);
+  T.farTree = { g, fruits, halo, leaf };
   // turn：戦場のように区画を回して置くときは、その分だけ樹も回す
   const a = (zt ? zt[0] : treeAngle(T.zone)) - T.turn, d = zt ? zt[1] : 230;
   g.position.set(Math.sin(a) * d, -6, -Math.cos(a) * d);
   T.root.add(g);
-  T.updaters.push((dt, t) => fruits.forEach((f, i) => { f.scale.setScalar(1 + Math.sin(t * 2 + i) * 0.15); }));
+  T.updaters.push((dt, t) => fruits.forEach((f, i) => { f.scale.setScalar((f.userData.s ?? 1) * (1 + Math.sin(t * 2 + i) * 0.15)); }));
 }
 // なだらかな丘の遠景
 function hills(T, col, r = 140, n = 16, hgt = 18, y0 = -4) {

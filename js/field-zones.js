@@ -6932,13 +6932,31 @@ const ZONE_BUILD = {
     K.flora({ trees: [['round', 3], ['dead', 1.2 - h]], leaf: [lc('#5ad06a'), lc('#6abf52'), lc('#4a9a3e')], bush: 0.7, rocks: 0.4 });
     // 幹（区画の外の南にそびえる）
     K.cyl(0, 64, 22, 90, 'bark', { r2: 14, seg: 24, col: false });   // 手前の縁が封印の扉（z=40.5）に突き出さないよう、扉より南に
-    const leaf = new THREE.MeshStandardMaterial({ color: new THREE.Color('#9a9a88').lerp(new THREE.Color('#5ad06a'), h), roughness: 0.9 });
-    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; K.mesh(new THREE.IcosahedronGeometry(18, 1), leaf, Math.cos(a) * 30, 80 + (i % 3) * 8, 62 + Math.sin(a) * 26, { noShadow: true }); }
+    // bloom（第八章の終わりの場面）：葉は灰色、実はまだない状態から始め、hooks.treeBloom／fruitsGrow で、葉にみどりが戻り、実がふくらむ
+    const bloom = !!(K.v.flags && K.v.flags.bloom), gray = new THREE.Color('#9a9a88'), green = new THREE.Color('#5ad06a');
+    const leaf = new THREE.MeshStandardMaterial({ color: gray.clone().lerp(green, bloom ? 0 : h), roughness: 0.9 });
+    const fruits = [], mid = V3(0, 85, 62);
+    for (let i = 0; i < 12; i++) {
+      const a = i / 12 * Math.PI * 2, c = V3(Math.cos(a) * 30, 80 + (i % 3) * 8, 62 + Math.sin(a) * 26);
+      K.mesh(new THREE.IcosahedronGeometry(18, 1), leaf, c.x, c.y, c.z, { noShadow: true });
+      // 感情の実：枝葉のかたまりの外側に（中にうもれないように）
+      if (revived || bloom) for (let j = 0; j < 3; j++) {
+        const d = c.clone().sub(mid).normalize().add(V3((K.r() - 0.5) * 1.4, (K.r() - 0.5) * 1.2 - 0.4, (K.r() - 0.5) * 1.4)).normalize(), p = c.clone().addScaledVector(d, 17.4);
+        const f = K.mesh(new THREE.SphereGeometry(1.6, 12, 10), K.glow(['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a'][(i + j) % 4], 2), p.x, p.y, p.z, { noShadow: true });
+        if (bloom) f.scale.setScalar(0.001);
+        fruits.push(f);
+      }
+    }
+    const anims = [];
+    K.tick(dt => { for (let i = anims.length - 1; i >= 0; i--) { const o = anims[i]; o.t += dt; const k = Math.min(1, o.t / o.d); o.f(k); if (k >= 1) anims.splice(i, 1); } });
+    if (K.v.hooks) {
+      K.v.hooks.treeBloom = () => anims.push({ t: 0, d: 3, f: k => leaf.color.copy(gray).lerp(green, k * k * (3 - 2 * k)) });
+      K.v.hooks.fruitsGrow = () => fruits.forEach((f, i) => anims.push({ t: -i * 0.09, d: 0.7, f: k => { k = Math.max(0, k); f.scale.setScalar(0.001 + (1 - Math.pow(1 - k, 3)) * 1.1); if (k > 0 && !f.userData.pop) { f.userData.pop = 1; K.v.p.burst(f.position, '#fff0a8', 16, { speed: 2, life: 0.8, size: 0.2 }); } } }));
+    }
     // 幹から張り出す根（南の根のトンネルの上をまたぐ）
     for (const sd of [-1, 1]) { K.root(sd * 18, 44, sd * 30, 26, 1.8, 10); K.root(sd * 14, 46, sd * 38, 34, 1.5, 8); }
     K.root(-8, 36, 8, 40, 1.4, 7); K.root(-30, 20, -10, 28, 1.2, 4); K.root(30, 22, 12, 34, 1.1, 4);
     for (let i = 0; i < 40; i++) K.mesh(new THREE.CircleGeometry(0.4, 6), revived ? 'leaf' : 'leafGray', (K.r() - 0.5) * 50, 0.04, -16 + (K.r() - 0.5) * 30, { rx: -Math.PI / 2, noShadow: true });
-    if (revived) for (let i = 0; i < 24; i++) { const a = K.r() * 6; K.mesh(new THREE.SphereGeometry(1, 10, 8), K.glow(pick(['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a']), 2), Math.cos(a) * 26, 64 + K.r() * 20, 50 + Math.sin(a) * 20, { noShadow: true }); }
     K.signpost(-3, -24, 0.2, '↓ にゃんだーの樹', '→ 世界の果て');
     // 南の根のトンネルの奥の封印の扉：c7_01b でタマがふれると開き、そのあとは開いたまま（トンネルは幅 4m なので小さめ。北向きの面が正面）
     K.sealDoor(0, 40.5, Math.PI, storyCond('scene:c7_01b'), 0.7, { roots: true, moss: new THREE.MeshStandardMaterial({ color: new THREE.Color('#9a9a88').lerp(new THREE.Color('#5ad06a'), h), roughness: 0.9 }) });
