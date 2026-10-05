@@ -1009,6 +1009,7 @@ class FieldView extends BaseView {
   attack() {
     const p = this.player;
     if (this.busy || p.atk > 0) return;
+    if (this.rootObj && this.rootObj.carry >= 0) { this.toast('実を持っているあいだは、こうげきできない（根のゆりかごに置こう）'); return; }
     p.atk = 0.45; p.hitDone = false;
     let best = null, bd = 3.5;
     for (const g of this.groups) { if (!g.alive) continue; const dd = g.pos.distanceTo(p.pos); if (dd < bd) { bd = dd; best = g; } }
@@ -1084,6 +1085,25 @@ class FieldView extends BaseView {
     for (const n of this.notes) {
       const m = n.markAt, nearMark = m && Math.hypot(m.x - p.x, m.z - p.z) < (n.reach || 2.0) + 0.4 && Math.abs(m.y - p.y) < 1.6;
       if (n.pos.distanceTo(p) < (n.reach || 2.0) || nearMark) return { type: 'note', n, text: `調べる：${n.title}` };
+    }
+    // 樹の地下：根のゆりかごの実を持ち上げる・置く。根の扉を調べる
+    const ro = this.rootObj;
+    if (ro) {
+      for (const c of ro.cradles) {
+        if (Math.hypot(c.pos.x - p.x, c.pos.z - p.z) > 1.9 || Math.abs(c.pos.y - p.y) > 1.2) continue;
+        const f = ro.fruits.find(q => q.at === c.i && q.i !== ro.carry);
+        if (ro.carry < 0 && f) return { type: 'fruitTake', f, text: `${f.lit ? f.K.name : '灰色の実'}を持ち上げる` };
+        if (ro.carry >= 0 && !f) return { type: 'fruitPut', c, text: `${ro.fruits[ro.carry].K.name}を、根のゆりかごに置く` };
+      }
+      for (const kn of ro.knots) if (!kn.open && Math.hypot(kn.col.x - p.x, kn.col.z - p.z) < 2.4) return { type: 'knot', kn, text: '調べる：根の扉' };
+    }
+    // 年輪の取っ手：押す側（年輪の中心から見て、取っ手のどちら側に立っているか）で、右回り・左回りが変わる
+    const rg = this.ringObj;
+    if (rg) for (const h of rg.handles) {
+      const dx = p.x - h.pos.x, dz = p.z - h.pos.z;
+      if (Math.hypot(dx, dz) > 1.9) continue;
+      const a = h.H.a * Math.PI / 180, side = dx * -Math.sin(a) + dz * Math.cos(a), sg = side < 0 ? 1 : -1;
+      return { type: 'ring', h, sg, text: `取っ手を押す：${h.names}を${sg > 0 ? '右回り' : '左回り'}に回す` };
     }
     // 玉のりのリング：やりなおしのベルと、大玉（前後・左右にまっすぐ並んだとき、向こう側へ押せる）
     const bo = this.ballObj;
@@ -1164,6 +1184,15 @@ class FieldView extends BaseView {
         this.startTalk('巨大びっくり箱', [`「${R.act || '？'}」と書かれた札の、大きなびっくり箱。横に、ねじまきハンドルがついている。`, ...(R.hint ? [R.hint] : []),
           '……ねじを巻いて（F）、ふたをたたけば（攻撃）、開きそうだ。でも、何回巻けばいいんだろう？'], null, true);
       }
+    } else if (it.type === 'ring') {
+      this.turnRing(it.h, it.sg);
+    } else if (it.type === 'fruitTake') {
+      this.takeFruit(it.f);
+    } else if (it.type === 'fruitPut') {
+      this.putFruit(it.c);
+    } else if (it.type === 'knot') {
+      const n = it.kn.K.cradles.length, done = it.kn.K.cradles.filter(c => this.rootObj.fruits.some(f => f.lit && f.at === c && f.i !== this.rootObj.carry)).length;
+      this.startTalk('根の扉', [`かたくからまった根が、道をふさいでいる。……そばの根のゆりかご${n > 1 ? `（${n}つ）` : ''}に光る実をそなえれば、ほどけそうだ。${n > 1 ? `（いま ${done}/${n}）` : ''}`], null, true);
     } else if (it.type === 'ball') {
       this.pushBall(it.b, it.dx, it.dz);
     } else if (it.type === 'ballReset') {
@@ -1221,6 +1250,284 @@ class FieldView extends BaseView {
     this.toast('ねこ地蔵のそばで、みんなのHPが回復した');
     this.spawnFollowers();
     this.renderTeam();
+  }
+  // ============================================================
+  //  樹の地下：光る実と、しおれた根（zone.roots。部品は ZoneKit.roots）
+  //   光る実が根元の輪の中にある根は元気（rootsLive）。持っている実は、先頭の子の頭の上にある
+  // ============================================================
+  rootPts() {
+    const o = this.rootObj, p = this.player.pos;
+    return o.fruits.filter(f => f.lit).map(f => (f.i === o.carry ? [p.x, p.z] : [o.cradles[f.at].pos.x, o.cradles[f.at].pos.z]));
+  }
+  updateRoots(d, t) {
+    const o = this.rootObj; if (!o) return;
+    const T = this.T, p = this.player, pts = this.rootPts(), L = rootsLive(o.R, pts), tips = o.tips || (o.tips = {});
+    // 根の橋：元気になると根元の側からのび、しおれると垂れさがる（歩けるかどうかは、すぐに切りかわる）
+    o.bridges.forEach((b, k) => {
+      const on = L.bridges[k];
+      if (on !== b.on) {
+        b.on = on; b.cells.forEach(i => T.setRootBridge(i, on));
+        if (on) { Sfx.tone(392, 0.35, 'triangle', 0.05, 200); Sfx.tone(588, 0.4, 'sine', 0.03, 0, 0.08); if (!tips.bridge) { tips.bridge = true; this.toast('しおれた根が目をさまして、谷に根の橋がかかった！'); } }
+        else {
+          Sfx.tone(300, 0.4, 'sine', 0.04, -150);
+          // しおれた橋の上の敵は、元の場所へ
+          for (const g of this.groups) if (g.alive && b.cells.includes(T.at(g.pos.x, g.pos.z))) { g.pos.copy(g.home); g.state = 'idle'; }
+        }
+      }
+      b.k = clamp(b.k + (on ? 3 : -3) * d, 0, 1);
+      const e = Ease.out ? Ease.out(b.k) : b.k;
+      b.live.visible = b.k > 0.002; b.live.scale.set(0.6 + 0.4 * e, 1, Math.max(0.002, e));
+      b.dead.visible = b.k < 0.98; b.dead.position.y = b.live.position.y - b.k * 3;
+    });
+    // 根元の輪：中に光る実があると明るい緑
+    for (const n of o.nodes) {
+      const on = pts.some(q => Math.hypot(q[0] - n.x, q[1] - n.z) < o.R.r);
+      n.k += ((on ? 1 : 0) - n.k) * (1 - Math.exp(-8 * d));
+      n.rm.opacity = 0.16 + n.k * 0.42 + (on ? Math.sin(t * 3) * 0.05 : 0);
+      n.rm.color.copy(hdr('#8a8a70', 1)).lerp(hdr('#9aff6a', 1.5), n.k);
+    }
+    o.bark.emissiveIntensity = 0.25 + Math.sin(t * 2) * 0.08;
+    // 足もとの根の橋がしおれたら、落ちる前に岸へはいあがる
+    const pi = T.at(p.pos.x, p.pos.z);
+    if (!this.busy && !this.flight && pi >= 0) {
+      if (T.rootBridge[pi] && T.kind[pi] === TK.VOID) this.rootFall();
+      else if (!T.rootBridge[pi]) o.safe = [p.pos.x, p.pos.z];
+    }
+    // 根の茂み：元気になると、とげとげの根が道をふさぐ。上にいたら、外へ押しもどす
+    const over = b => Math.abs(p.pos.x - b.x) < b.w / 2 + 0.4 && Math.abs(p.pos.z - b.z) < b.d / 2 + 0.4;
+    let outside = true;
+    o.thickets.forEach((h, k) => {
+      const on = L.thickets[k], inside = over(h.b);
+      if (inside) outside = false;
+      if (on && !h.on) {
+        h.on = true; this.colliders.push(h.col); Sfx.tone(140, 0.4, 'sawtooth', 0.04, 60);
+        if (inside && o.out) { p.pos.x = o.out[0]; p.pos.z = o.out[1]; this.placePlayer(0); GFX.shake(0.15); this.toast('にょきにょき……！　目をさました根の茂みに、押しもどされた'); }
+        else if (!tips.thicket) { tips.thicket = true; this.toast('実の光で、茂みの根も目をさまして、道をふさいだ！'); }
+      } else if (!on && h.on) { h.on = false; const i = this.colliders.indexOf(h.col); if (i >= 0) this.colliders.splice(i, 1); }
+      h.k = clamp(h.k + (h.on ? 4 : -2.5) * d, 0, 1);
+      h.g.scale.set(1, 0.14 + 0.86 * h.k, 1);
+      h.mat.color.copy(new THREE.Color('#7a7468')).lerp(new THREE.Color('#6a4a2c'), h.k); h.mat.emissiveIntensity = h.k * 0.12;
+    });
+    if (outside) o.out = [p.pos.x, p.pos.z];
+    // 実：置いてある実はゆりかごの上、持っている実は先頭の子の頭の上
+    const carry = o.carry >= 0 ? o.fruits[o.carry] : null;
+    for (const f of o.fruits) {
+      const bob = Math.sin(t * 2.4 + f.bob) * 0.05;
+      if (f === carry) { f.g.position.set(p.pos.x, (p.vis ?? p.pos.y) + p.y + 1.55 + bob, p.pos.z); f.halo.material.opacity = 0; if (f.lit) f.mat.emissiveIntensity = 0.55; }
+      else {
+        const c = o.cradles[f.at].pos; f.g.position.set(c.x, c.y + 0.8 + bob * 0.4, c.z); f.halo.position.set(c.x, c.y + 0.04, c.z);
+        f.halo.material.opacity = f.lit ? 0.3 + Math.sin(t * 2 + f.bob) * 0.06 : 0; if (f.lit) f.mat.emissiveIntensity = 0.9;
+      }
+      f.g.rotation.y = t * 0.6 + f.bob;
+    }
+    // 持っている実の光
+    if (carry) {
+      if (!o.light) { o.light = new THREE.PointLight('#ffffff', 2.4, 8, 1.6); this.scene.add(o.light); }
+      o.light.visible = true; o.light.color.set(carry.K.col); o.light.position.copy(carry.g.position);
+    } else if (o.light) o.light.visible = false;
+    // 空のゆりかごは、実を持っているときに縁が光る
+    for (const c of o.cradles) { const empty = !o.fruits.some(f => f.at === c.i && f !== carry); c.gm.opacity = carry && empty ? 0.45 + Math.sin(t * 4 + c.i) * 0.25 : 0; }
+    // 根の扉：そばのゆりかごすべてに光る実がそろうと、ほどける
+    for (const kn of o.knots) {
+      if (kn.open) { if (kn.k < 1) { kn.k = Math.min(1, kn.k + d * 0.7); kn.g.scale.setScalar(Math.max(0.001, 1 - Ease.inOut(kn.k))); kn.g.rotation.y += d * 4; } continue; }
+      const inC = kn.K.cradles.map(c => o.fruits.find(f => f.lit && f.at === c && f !== carry));
+      kn.sockets.forEach((m, j) => m.material.color.copy(inC[j] ? hdr(inC[j].K.col, 1.6) : new THREE.Color('#2a2a22')));
+      if (inC.every(Boolean) && !this.busy) this.openKnot(kn);
+    }
+  }
+  // 足もとの根の橋がしおれた：ずるっとすべって、さっきまでいた岸へもどる（持っている実は持ったまま）
+  rootFall() {
+    const o = this.rootObj, p = this.player, sp = o.safe || this.zone.anchor;
+    Sfx.tone(260, 0.5, 'sawtooth', 0.05, -180); GFX.shake(0.2);
+    this.p.burst(p.pos.clone().add(V3(0, 0.3, 0)), '#a89a80', 24, { speed: 3, up: 0.5, life: 0.6, size: 0.1 });
+    const first = !o.tips.fall; o.tips.fall = true;
+    this.sendBack(sp, p.pos.clone(), first ? '根がしおれて、ずるっ……！　あわてて岸へはいあがった（実が根元の輪から出ると、その根はしおれてしまう）' : '根がしおれて、ずるっ……！　岸へはいあがった', 700);
+  }
+  // 根のゆりかごの実を持ち上げる。灰色の実は、はじめて持ち上げたときに光る（みんなといっしょだから）
+  takeFruit(f) {
+    const o = this.rootObj, flags = Save.data.flags || (Save.data.flags = {}), first = !f.lit;
+    o.carry = f.i;
+    Sfx.select();
+    if (!first) return;
+    f.lit = true; flags[this.zoneId + '_lit'] = (flags[this.zoneId + '_lit'] || 0) | (1 << f.i); Save.save();
+    f.mat.color.set(f.K.col); f.mat.emissiveIntensity = 1.1;
+    this.fx.pillar(this.player.pos, f.K.col, { h: 4, r: 0.5, life: 0.8 });
+    this.p.burst(this.player.pos.clone().add(V3(0, 1.5, 0)), f.K.col, 50, { speed: 3, up: 1.2, life: 1 });
+    Sfx.heal();
+    const say = (FRUIT_LINES[f.F.kind] || []).filter(([k]) => k === 'n' || this.team.some(m => m.key === k));
+    if (say.length) this.startTalk('', say);
+  }
+  // 持っている実を、空の根のゆりかごに置く
+  putFruit(c) {
+    const o = this.rootObj, f = o.fruits[o.carry], flags = Save.data.flags || (Save.data.flags = {});
+    f.at = c.i; o.carry = -1;
+    flags[this.zoneId + '_fruit'] = o.fruits.map(x => x.at); Save.save();
+    Sfx.tone(523, 0.18, 'triangle', 0.05); Sfx.tone(784, 0.22, 'sine', 0.03, 0, 0.07);
+    this.p.burst(c.pos.clone().add(V3(0, 0.8, 0)), f.K.col, 24, { speed: 2, up: 0.8, life: 0.7, size: 0.08 });
+  }
+  // 根の扉がほどける（開いたまま。そなえた実は、あとで持っていってもいい）
+  openKnot(kn) {
+    kn.open = true; (Save.data.flags || (Save.data.flags = {}))[kn.K.id] = true; Save.save();
+    const i = this.colliders.indexOf(kn.col); if (i >= 0) this.colliders.splice(i, 1);
+    this.p.burst(kn.g.position.clone().add(V3(0, 1.8, 0)), '#b8ff8a', 80, { speed: 4, up: 1.5, life: 1.2 });
+    this.fx.pillar(kn.g.position, '#b8ff8a', { h: 6, r: 1.2, life: 1 });
+    Sfx.door(); GFX.shake(0.25);
+    setTimeout(() => { Sfx.win(); this.toast(kn.K.openToast || '光る実のぬくもりで、根の扉が、するするとほどけた！'); }, 500);
+  }
+  // ============================================================
+  //  樹の地下：影の回廊（zone.shadows。部品は ZoneKit.shadowRooms）
+  //   部屋に入ると、先頭の子の影が足もとからはなれ、同じ部屋の中を、プレイヤーの動きを鏡うつしにして動く（壁や柱にぶつかると止まる）。
+  //   影は光をきらい、ひだまりに入ると消えて、プレイヤーの鏡の位置にあらわれなおす。自分が金の輪、影が紫の輪に同時に入ると、影がもどってくる
+  // ============================================================
+  updateShadows(d, t) {
+    const list = this.shadowObjs; if (!list) return;
+    const p = this.player.pos, prev = this.shPrev || (this.shPrev = p.clone());
+    let dx = p.x - prev.x, dz = p.z - prev.z; prev.copy(p);
+    const jump = Math.hypot(dx, dz) > 1.5;   // ひとっとび・追い返しなど：動いた分は鏡うつしにしない
+    for (const o of list) {
+      const S = o.S, A = S.area, both = S.mirror === 'xz';
+      // 光の輪：入っているときは明るく
+      const GR = 1.15;   // 輪の判定（検査は半径 1 で、少しきびしめに調べる）
+      for (const [ring, on] of [[o.goal, o.active && Math.hypot(p.x - S.goal[0], p.z - S.goal[1]) < GR], [o.sgoal, o.active && o.sh && Math.hypot(o.sh.pos.x - S.sgoal[0], o.sh.pos.z - S.sgoal[1]) < GR]]) {
+        ring.rm.opacity = o.solved ? 0.12 : ring.base * (on ? 1.6 : 1) + Math.sin(t * 3 + o.idx) * 0.08; ring.fm.opacity = ring.rm.opacity * (on ? 0.6 : 0.3);
+      }
+      if (o.gate.k < 1 && o.solved) { o.gate.k = Math.min(1, o.gate.k + d * 0.8); o.gate.g.scale.setScalar(Math.max(0.001, 1 - Ease.inOut(o.gate.k))); }
+      if (o.solved && !o.merging) continue;
+      if (o.merging) { this.animateShadow(o, d, t, 0); continue; }
+      // 部屋に入りきったら（鏡の位置に影が立てるところまで来たら）、影があらわれる
+      const inside = p.x > A[0] - 0.5 && p.x < A[2] + 0.5 && p.z > A[1] - 0.5 && p.z < A[3] + 0.5;
+      if (!inside) { if (o.active) this.hideShadow(o); continue; }
+      const mirror = (x, z) => [2 * S.at[0] - x, both ? 2 * S.at[1] - z : z];
+      const lit = q => o.lights.some(L => Math.hypot(q.x - L.x, q.z - L.z) < L.r);
+      // 影は部屋（area を折り返した範囲）の外の通路へは出ない
+      const [b0x, b0z] = mirror(A[0], A[1]), [b1x, b1z] = mirror(A[2], A[3]);
+      const keepIn = q => { q.x = clamp(q.x, Math.min(b0x, b1x) - 0.6, Math.max(b0x, b1x) + 0.6); q.z = clamp(q.z, Math.min(b0z, b1z) - 0.6, Math.max(b0z, b1z) + 0.6); };
+      const key = this.team[this.leader].key;
+      if (!o.active || o.sh.key !== key) {
+        // あらわれる（先頭の子が入れかわったときも、その子の影に）
+        const at = o.active ? o.sh.pos.clone() : null;
+        if (o.sh) { this.scene.remove(o.sh.m.group); disposeTree(o.sh.m.group); }
+        o.sh = this.makeShadowCat(key); this.scene.add(o.sh.m.group);
+        const [mx, mz] = mirror(p.x, p.z), sp = at || V3(mx, 0, mz);
+        if (!at && (!this.T.fitsCircle(sp.x, sp.z, 0.4) || lit(sp))) { const q = this.T.nearestStandable(...mirror(...S.enter), 0.4); sp.set(q.x, 0, q.z); }
+        o.sh.pos.copy(sp); o.sh.yaw = this.player.yaw;
+        if (!o.active) {
+          o.active = true; o.hold = 0;
+          this.p.burst(o.sh.pos.clone().add(V3(0, 0.6, 0)), '#7a3aff', 40, { speed: 2, up: 1.5, life: 1 });
+          Sfx.tone(196, 0.8, 'sine', 0.05, -40);
+          const name = CHARS[key].name, tips = this.shTips || (this.shTips = {});
+          const look = () => { const vx = o.sh.pos.x - p.x, vz = o.sh.pos.z - p.z; this.camYaw = Math.atan2(-vx, -vz); };
+          if (o.idx === 0 && !tips.first && !Save.data.flags[S.id]) { tips.first = true; this.startTalk('', [['n', `……ひとりで、いいよ。（どこからか、ささやき声がする）`], ['n', `${name}の影が、足もとからはなれた！　${name}が動くと、影は、鏡にうつしたように左右が逆さまに動く（壁や柱にぶつかると止まる）。`], ['n', '自分は金色の輪へ、影は紫の輪へ。影は光がきらいで、ひだまりに入ると消えて、鏡の位置にあらわれなおす。部屋を出ると、影は足もとにもどる。']]); }
+          else if (S.mirror === 'xz' && !tips.xz) { tips.xz = true; look(); this.startTalk('', [['n', `${name}の影が、部屋の向こうがわにあらわれた。……この部屋の影は、左右だけでなく、前とうしろも逆さまに動く！`]]); }
+          else this.toast(`……ひとりで、いいよ。（${name}の影が、足もとからはなれた）`);
+        }
+      } else if (!this.busy && (dx || dz)) {
+        if (jump) { const [mx, mz] = mirror(p.x, p.z); if (this.T.fitsCircle(mx, mz, 0.4)) o.sh.pos.set(mx, 0, mz); }
+        else { this.T.moveCircle(o.sh.pos, -dx, both ? -dz : dz, 0.4); keepIn(o.sh.pos); }
+        if (lit(o.sh.pos)) {
+          // ひだまり：影は光にとけて、鏡の位置にあらわれなおす
+          this.p.burst(o.sh.pos.clone().add(V3(0, 0.6, 0)), '#fff2c8', 30, { speed: 3, up: 1, life: 0.6 });
+          const [mx, mz] = mirror(p.x, p.z);
+          const q = this.T.fitsCircle(mx, mz, 0.4) && !lit({ x: mx, z: mz }) ? { x: mx, z: mz } : this.T.nearestStandable(...mirror(...S.enter), 0.4);
+          o.sh.pos.set(q.x, 0, q.z); Sfx.tone(880, 0.25, 'sine', 0.04, 400);
+          if (!(this.shTips || {}).lit) { (this.shTips || (this.shTips = {})).lit = true; this.toast('影がひだまりにとけて……鏡の位置に、あらわれなおした'); }
+        }
+      }
+      const moved = Math.hypot(o.sh.pos.x - (o.sh.last ? o.sh.last.x : o.sh.pos.x), o.sh.pos.z - (o.sh.last ? o.sh.last.z : o.sh.pos.z));
+      this.animateShadow(o, d, t, moved / Math.max(d, 1e-3));
+      // 自分と影が、同時に光の輪の中
+      const both2 = Math.hypot(p.x - S.goal[0], p.z - S.goal[1]) < GR && Math.hypot(o.sh.pos.x - S.sgoal[0], o.sh.pos.z - S.sgoal[1]) < GR;
+      o.hold = both2 && !this.busy ? o.hold + d : 0;
+      if (o.hold > 0.35) this.mergeShadow(o);
+    }
+  }
+  // 先頭の子の、黒い影の姿（顔のない、黒紫のからだに、紫に光る目）
+  makeShadowCat(key) {
+    const m = buildCharacter(key), mat = new THREE.MeshStandardMaterial({ color: '#120a22', emissive: '#5a2aaa', emissiveIntensity: 0.8, roughness: 1, transparent: true, opacity: 0.92 });
+    m.group.traverse(x => { if (x.isMesh) { x.material = mat; x.castShadow = false; } });
+    for (const sx of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), new THREE.MeshBasicMaterial({ color: hdr('#e0b8ff', 3) })); e.position.set(sx * 0.12, 0.31, 0.3); m.headPivot.add(e); }
+    // 足もとの紫の光（遠くからでも、影の居場所がわかるように）
+    const foot = new THREE.Mesh(new THREE.CircleGeometry(0.75, 24), new THREE.MeshBasicMaterial({ color: hdr('#9a5aff', 1.4), transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
+    foot.rotation.x = -Math.PI / 2; foot.position.y = 0.04; m.group.add(foot);
+    m.setPose(POSES.idle);
+    return { key, m, mat, pos: V3(), yaw: 0, speed: 0, phase: 0, last: null };
+  }
+  animateShadow(o, d, t, spd) {
+    const sh = o.sh; if (!sh) return;
+    if (!o.merging) {
+      if (sh.last && spd > 0.3) sh.yaw = lerpAngle(sh.yaw, Math.atan2(sh.pos.x - sh.last.x, sh.pos.z - sh.last.z), 1 - Math.exp(-14 * d));
+      sh.speed += (Math.min(spd, 8) - sh.speed) * (1 - Math.exp(-10 * d));
+      sh.last = sh.pos.clone();
+      this.walkPose(sh, d, sh.speed > 5.5);
+      sh.pos.y = this.gy(sh.pos.x, sh.pos.z);
+    }
+    sh.m.group.position.copy(sh.pos); sh.m.group.rotation.y = sh.yaw;
+    sh.m.update(d, t);
+    if (Math.random() < d * 6) this.p.emit(sh.pos.clone().add(V3((Math.random() - 0.5) * 0.5, 0.2, (Math.random() - 0.5) * 0.5)), V3(0, 0.6, 0), hdr('#5a2aa0', 1.2), { life: 1.2, size: 0.1, drag: 0.3 });
+  }
+  hideShadow(o) {
+    o.active = false; o.hold = 0;
+    if (o.sh) { this.p.burst(o.sh.pos.clone().add(V3(0, 0.6, 0)), '#5a2aa0', 24, { speed: 2, up: 1, life: 0.7 }); this.scene.remove(o.sh.m.group); disposeTree(o.sh.m.group); o.sh = null; }
+  }
+  // 影がもどってくる：影の言葉と、先頭の子の返事。影は先頭の子のところまでただよって、足もとにとける。出口の影のいばらが消える
+  mergeShadow(o) {
+    const key = this.team[this.leader].key, name = CHARS[key].name, L = (SHADOW_LINES[key] || [])[o.idx] || ['……ひとりで、いいよ。', '……ひとりじゃないよ。いっしょに行こう。'];
+    o.solved = true; (Save.data.flags || (Save.data.flags = {}))[o.S.id] = true; Save.save();
+    const i = this.colliders.indexOf(o.gate.col); if (i >= 0) this.colliders.splice(i, 1);
+    o.sh.yaw = Math.atan2(this.player.pos.x - o.sh.pos.x, this.player.pos.z - o.sh.pos.z); o.sh.m.setPose(POSES.idle);
+    // 影が見えるように、カメラを影のほうへ向ける。先頭の子も影のほうを向く
+    const vx = o.sh.pos.x - this.player.pos.x, vz = o.sh.pos.z - this.player.pos.z;
+    this.camYaw = Math.atan2(-vx, -vz); this.player.yaw = Math.atan2(vx, vz); this.placePlayer(0);
+    Sfx.tone(392, 0.6, 'sine', 0.05); Sfx.tone(523, 0.7, 'sine', 0.04, 0, 0.12);
+    this.startTalk('', [[key, L[0], `${name}の影`], [key, L[1]]]);
+    this.talk.after = () => {
+      o.merging = true; this.busy = true;
+      const from = o.sh.pos.clone(), to = this.player.pos.clone();
+      GFX.tween(1.1, k => {
+        if (!o.sh) return;
+        o.sh.pos.lerpVectors(from, to, Ease.inOut(k)); o.sh.pos.y = lerp(from.y, to.y, k) + Math.sin(k * Math.PI) * 0.8;
+        o.sh.mat.opacity = 0.92 * (1 - k * k); o.sh.m.group.scale.setScalar(1 - k * 0.4);
+        if (Math.random() < 0.5) this.p.emit(o.sh.pos.clone().add(V3(0, 0.6, 0)), V3(0, 0.3, 0), hdr('#c08aff', 1.6), { life: 0.8, size: 0.1 });
+      }, Ease.linear).then(() => {
+        this.p.burst(this.player.pos.clone().add(V3(0, 0.8, 0)), '#ffe8a8', 60, { speed: 3, up: 1.5, life: 1 });
+        this.fx.pillar(this.player.pos, '#ffe8a8', { h: 4, r: 0.6, life: 0.9 }); Sfx.heal();
+        if (o.sh) { this.scene.remove(o.sh.m.group); disposeTree(o.sh.m.group); o.sh = null; }
+        o.merging = false; o.active = false; this.busy = false;
+        this.startTalk('', [['n', `影は、すうっと${name}のそばへただよって、足もとに、とけるようにもどった。`]]);
+        this.talk.after = () => { Sfx.win(); this.toast('出口をふさいでいた影のいばらが、ほどけて消えた！'); };
+      });
+    };
+  }
+  // ============================================================
+  //  樹の地下：年輪の間（zone.rings。部品は ZoneKit.rings）
+  //   取っ手を押すと、取っ手につながった年輪が step 度ずつ回る（当たり判定もいっしょに回る）
+  // ============================================================
+  updateRings(d, t) {
+    const o = this.ringObj; if (!o) return;
+    const RG = o.RG, st = RG.step;
+    for (const R of o.rings) {
+      if (R.vis !== R.rot) {
+        const M = 360 / st; let diff = ((R.rot - R.vis) % M + M * 1.5) % M - M / 2;
+        const sp = d * 1.6, mv = Math.abs(diff) <= sp ? diff : Math.sign(diff) * sp;
+        R.vis += mv; if (Math.abs(R.rot - R.vis) < 1e-3 || Math.abs(diff) <= sp) R.vis = R.rot;
+        if (Math.random() < d * 20) GFX.shake(0.04);
+      }
+      const base = R.vis * st;
+      R.g.rotation.y = -base * Math.PI / 180;
+      for (const q of R.cols) { const a = (q.a + base) * Math.PI / 180; q.c.x = o.cx + Math.cos(a) * R.L.r; q.c.z = o.cz + Math.sin(a) * R.L.r; }
+    }
+    for (const h of o.handles) { if (h.spin) { const k = Math.min(1, h.spin), e = Ease.inOut(1 - k); h.bars.rotation.y = h.dir * e * Math.PI / 2; h.spin = Math.max(0, h.spin - d * 1.6); } }
+  }
+  // 取っ手を押して、年輪を回す（回っているあいだは押せない）
+  turnRing(h, sg) {
+    const o = this.ringObj, M = 360 / o.RG.step;
+    if (o.rings.some(R => R.vis !== R.rot)) return;
+    h.H.turns.forEach(([k, dd]) => { const R = o.rings[k]; R.rot = ((R.rot + dd * sg) % M + M) % M; });
+    const flags = Save.data.flags || (Save.data.flags = {}); flags[o.RG.id] = o.rings.map(R => R.rot); Save.save();
+    h.spin = 1; h.dir = -sg;
+    Sfx.slam(); Sfx.tone(110, 0.7, 'sawtooth', 0.04, -20);
+    this.p.burst(h.pos.clone().add(V3(0, 1.1, 0)), '#c8a070', 20, { speed: 2, up: 0.6, life: 0.6, size: 0.08 });
+    if (!this.ringTip) { this.ringTip = true; this.toast(`ゴゴゴ……${h.names}が、${sg > 0 ? '右' : '左'}へ回った`); }
   }
   // 光の水晶を灯す。影の壁の水晶をすべて灯すと、壁が消える
   lightLamp(o, L) {
@@ -1843,10 +2150,10 @@ class FieldView extends BaseView {
     this.showTalkLine();
     Sfx.select();
   }
-  // 台詞は文字列か、[話し手, 台詞]（掛け合い。話し手ごとに名前を出す）
+  // 台詞は文字列か、[話し手, 台詞]（掛け合い。話し手ごとに名前を出す）。[話し手, 台詞, 名前] なら、その名前を出す（影など）
   showTalkLine() {
     const el = this.root.querySelector('.fd-talk'), t = this.talk, L = t.lines[t.i], text = Array.isArray(L) ? L[1] : L;
-    if (Array.isArray(L)) { el.querySelector('.fd-talk-name').textContent = speakerName(L[0]); el.classList.toggle('note', L[0] === 'n'); if (L[0] !== 'n') Sfx.meow(L[0]); }
+    if (Array.isArray(L)) { el.querySelector('.fd-talk-name').textContent = L[2] || speakerName(L[0]); el.classList.toggle('note', L[0] === 'n'); if (L[0] !== 'n') Sfx.meow(L[0]); }
     el.querySelector('.fd-talk-text').textContent = text;
     if (t.npc && t.npc.m.face) { t.npc.m.face.talking = true; clearTimeout(this.talkT); this.talkT = setTimeout(() => { if (t.npc.m.face) t.npc.m.face.talking = false; }, 300 + text.length * 45); }
     el.querySelector('.fd-talk-next').textContent = t.i < t.lines.length - 1 ? '▼ F' : '× F';
@@ -2407,6 +2714,44 @@ class FieldView extends BaseView {
     this.groups.forEach(gr => { if (gr.alive) dot(gr.pos.x, gr.pos.y, gr.pos.z, gr.state === 'chase' ? '#ff3040' : gr.elite ? '#ff9a4d' : '#ff6b81', gr.elite ? 4 : 3); });
     (this.sealObjs || []).forEach(o => { if (!o.open && o.ready()) o.lamps.forEach(L => { if (!L.lit) dot(L.pos.x, L.pos.y, L.pos.z, { memory: '#ffe2a8', laugh: '#ffe07a', beacon: '#ff9a3a', bar: '#e8c080' }[o.S.look] || '#cfefff', 3.5); }); });
     (this.bounceObjs || []).forEach(b => dot(b.pos.x, b.pos.y, b.pos.z, '#ff9ad8', 2.5));
+    // 影の回廊：光の輪（自分は金、影は紫。ゲームの中と同じ輪の形）と、影の印（脈打つ光の輪と、黒紫の猫の顔）。自分から影へ点線をひく
+    (this.shadowObjs || []).forEach(o => {
+      if (o.solved) return;
+      for (const [q, col] of [[o.S.goal, '#ffd66b'], [o.S.sgoal, '#d8a8ff']]) {
+        const [x, y] = P(q[0], q[1]);
+        g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); g.arc(x, y, Math.max(4, sc * 1.15), 0, Math.PI * 2); g.stroke();
+      }
+      if (!o.sh) return;
+      const [sx, sy] = P(o.sh.pos.x, o.sh.pos.z), [px, py] = P(pp.x, pp.z), pul = 0.5 + 0.5 * Math.sin(performance.now() / 160);
+      g.save(); g.setLineDash([4, 4]); g.strokeStyle = 'rgba(226,190,255,.9)'; g.lineWidth = 2; g.beginPath(); g.moveTo(px, py); g.lineTo(sx, sy); g.stroke(); g.restore();
+      g.fillStyle = `rgba(190,120,255,${0.25 + pul * 0.35})`; g.beginPath(); g.arc(sx, sy, 12 + pul * 5, 0, Math.PI * 2); g.fill();
+      const k = 1.35;   // 猫の顔の大きさ
+      g.fillStyle = '#7a3ad0'; g.strokeStyle = '#ffffff'; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(sx - 5.5 * k, sy - 1 * k); g.lineTo(sx - 5 * k, sy - 8 * k); g.lineTo(sx - 1.5 * k, sy - 4.6 * k); g.lineTo(sx + 1.5 * k, sy - 4.6 * k); g.lineTo(sx + 5 * k, sy - 8 * k); g.lineTo(sx + 5.5 * k, sy - 1 * k);
+      g.arc(sx, sy, 5.5 * k, 0, Math.PI); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = '#ffe8ff'; for (const ex of [-2.2, 2.2]) { g.beginPath(); g.arc(sx + ex * k, sy - 0.8 * k, 1.3 * k, 0, Math.PI * 2); g.fill(); }
+    });
+    // 年輪の間：年輪の壁（すき間あり）・取っ手
+    const rgo = this.ringObj;
+    if (rgo) {
+      const [cxp, cyp] = P(rgo.cx, rgo.cz), gwd = r => rgo.RG.gapW / r;
+      rgo.rings.forEach(R => {
+        g.strokeStyle = R.L.col; g.lineWidth = Math.max(1.5, sc * 0.9);
+        const gaps = R.L.gaps.map(a => (a + R.vis * rgo.RG.step) * Math.PI / 180).sort((a, b) => a - b), w = gwd(R.L.r) / 2;
+        gaps.forEach((a, i) => { const nx = i + 1 < gaps.length ? gaps[i + 1] : gaps[0] + Math.PI * 2; g.beginPath(); g.arc(cxp, cyp, R.L.r * sc, a + w, nx - w); g.stroke(); });
+      });
+      rgo.handles.forEach(h => dot(h.pos.x, h.pos.y, h.pos.z, '#e8c080', 3.5, true));
+    }
+    // 樹の地下：根の橋（元気は緑、しおれは灰色）・根の茂み・根の扉・ゆりかご・光る実
+    const ro = this.rootObj;
+    if (ro) {
+      const cellRect = (i, col, k = 1) => { const [x, y] = P(T.cx(T.colOf(i)) - CELL / 2 * k, T.cz(T.rowOf(i)) - CELL / 2 * k); g.fillStyle = col; g.fillRect(x, y, CELL * k * sc, CELL * k * sc); };
+      ro.bridges.forEach(b => b.cells.forEach(i => cellRect(i, b.on ? 'rgba(150,255,120,.8)' : 'rgba(150,140,120,.3)', 0.7)));
+      ro.thickets.forEach(h => { if (h.on) h.cells.forEach(i => cellRect(i, 'rgba(200,120,60,.85)')); });
+      ro.knots.forEach(kn => { if (!kn.open) kn.cells.forEach(i => cellRect(i, 'rgba(140,90,50,.95)')); });
+      ro.cradles.forEach(cr => dot(cr.pos.x, cr.pos.y, cr.pos.z, '#a8845a', 2.5, true));
+      ro.fruits.forEach(f => { const q = f.i === ro.carry ? pp : ro.cradles[f.at].pos; dot(q.x, q.y, q.z, f.lit ? f.K.col : '#8a8a80', 3.5); });
+    }
     // つながりの石畳：始まりの石（青緑の四角）。時の水晶（今は青緑・昔は琥珀色）
     (this.strokeObjs || []).forEach(o => { if (!o.solved) o.tiles.forEach(q => { if (q.isS) dot(q.x, q.y, q.z, '#8affe0', 3, true); }); });
     if (this.timeObj) this.timeObj.crystals.forEach(q => dot(q.pos.x, q.pos.y, q.pos.z, this.timeObj.can(q) ? q.col : '#5a5a5a', 3.5));
@@ -2467,6 +2812,7 @@ class FieldView extends BaseView {
     if (this.flight) { this.updateFlight(d); this.animatePlayer(d, false); }
     else if (!this.busy) { this.updatePlayer(d); if (!this.busy) this.updateGags(d); }
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
+    this.updateRoots(d, t); this.updateShadows(d, t); this.updateRings(d, t);
     this.updateNemuri(t);
     if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); this.updateAnchorHeal(); }
     this.updateGuards(d, t); this.updateRollers(d, t);

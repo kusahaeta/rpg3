@@ -63,6 +63,14 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   if (Z.w !== T.cols * 2 || Z.d !== T.rows * 2) bad.push(`size ${Z.w}x${Z.d} != map ${T.cols * 2}x${T.rows * 2}`);
   T.computeReach(Z.anchor[0], Z.anchor[1]);
   if (Z.map.some(r => r.length !== T.cols)) bad.push('rows have different lengths');
+  // 樹の地下の光る実：実を運んで置き、根の扉をすべて開いて、下の階の出口まで行けるか。行ける場所は、たどった状態のどれかで行けるマス
+  if (Z.roots) {
+    const r = solveRoots(T, Z, bad);
+    if (r.n < 0) bad.push('roots: no solution');
+    else if (r.n === 0) bad.push('roots: already solved at start');
+    T.reach = r.reach;
+    if (verbose) { console.log(`   roots: solved in ${r.n} move(s)（実を持つ・置く）, ${r.states} state(s)`); r.path.forEach(s => console.log('     ' + s)); }
+  }
   const ok = (x, z, r, h0) => { const i = T.at(x, z); return i >= 0 && T.reach[i] && T.fits(x, z, r, h0 ?? T.groundAt(x, z)); };
   const mark = {};
   for (const s of spots[id] || []) {
@@ -82,6 +90,26 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   }
   for (const e of Z.exits) { const E = T.exits[e.key]; if (!E) bad.push(`exit key ${e.key} missing in map`); else if (!E.cells.some(i => T.reach[i])) bad.push(`exit ${e.key} (${e.to}) unreachable`); }
   for (const key of Object.keys(T.exits)) if (!Z.exits.some(e => e.key === key)) bad.push(`map exit ${key} not in exits`);
+  // 影の回廊：自分と影を、同時にそれぞれの光の輪へ入れられるか（いちばん少ない歩数。0.5m ずつ）
+  for (const S of Z.shadows || []) {
+    const r = solveShadow(T, S);
+    if (r.err) bad.push(`shadow ${S.id}: ${r.err}`);
+    else if (r.n < 0) bad.push(`shadow ${S.id} has no solution`);
+    if (verbose && !r.err) console.log(`   shadow ${S.id}: ${r.n} step(s) of 0.5m, ${r.states} state(s)  ${r.route || ''}`);
+    if (r.direct && !S.teach) bad.push(`shadow ${S.id} is solved just by walking to the goal（影が鏡の位置のまま着く）`);
+  }
+  // 影の部屋（影の動く範囲）は、行ける場所として数える（同じ部屋なら、もともと行ける）
+  for (const S of Z.shadows || []) {
+    const both = S.mirror === 'xz', tf = (x, z) => [2 * S.at[0] - x, both ? 2 * S.at[1] - z : z], [a0, b0] = tf(S.area[0], S.area[1]), [a1, b1] = tf(S.area[2], S.area[3]);
+    for (let x = Math.min(a0, a1); x <= Math.max(a0, a1) + 0.01; x += CELL) for (let z = Math.min(b0, b1); z <= Math.max(b0, b1) + 0.01; z += CELL) { const i = T.at(x, z); if (i >= 0 && T.isWalkKind(T.kind[i])) T.reach[i] = 1; }
+  }
+  // 年輪の間：年輪を回して、心臓の間（いちばん内側）まで行けるか（いちばん少ない回す回数）。最初から開いていないか
+  if (Z.rings) {
+    const r = solveRings(Z.rings);
+    if (r.n < 0) bad.push(`rings ${Z.rings.id} has no solution`);
+    else if (r.n === 0) bad.push(`rings ${Z.rings.id} is already open at start`);
+    if (verbose) console.log(`   rings ${Z.rings.id}: ${r.n} turn(s), ${r.states} state(s)  ${(r.path || []).join(' ')}`);
+  }
   // 光の鏡：どこかの向きの組み合わせで光が届くか（解けるか）。最初の向きのままでは届かないか
   for (const S of Z.seals || []) {
     if (!S.beam) continue;
@@ -130,6 +158,169 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
     }
     for (const s of spots[id] || []) console.log(`   ${s.k[0].toUpperCase()} ${s.k} [${s.p.map(v => v.toFixed(1))}] cell ${Math.floor((s.p[0] + T.hw) / 2)},${Math.floor((s.p[1] + T.hd) / 2)}`);
   }
+}
+// 樹の地下の光る実（zone.roots）を、実を持つ・置く回数の少ない順に調べる。実は一つずつしか持てず、ゆりかごにだけ置ける。はじめは灰色で、一度持つと光る。
+//   歩くときは、持っている実はプレイヤーといっしょに動く：となりのマスへの一歩は、境目と行き先のマスの中心の両方で、根の状態が通れること。
+//   根の扉（knots）は、ゆりかごすべてに光る実がそろうと開いたまま。出口（下の階への階段）まで行ければ解けた
+function solveRoots(T, Z, bad) {
+  const R = Z.roots, live = G('rootsLive'), cellsOf = G('rectCells'), STEP = G('STEP'), n = T.kind.length;
+  const bOf = new Int16Array(n).fill(-1), tOf = new Int16Array(n).fill(-1), kOf = new Int16Array(n).fill(-1);
+  R.bridges.forEach((b, k) => cellsOf(T, b.cells).forEach(i => { if (!T.rootBridge[i]) bad.push(`roots: bridge ${b.id} cell ${T.colOf(i)},${T.rowOf(i)} is not %`); bOf[i] = k; }));
+  R.thickets.forEach((t, k) => cellsOf(T, t.cells).forEach(i => { tOf[i] = k; }));
+  R.knots.forEach((o, k) => cellsOf(T, o.cells).forEach(i => { kOf[i] = k; }));
+  for (let i = 0; i < n; i++) if (T.rootBridge[i]) { if (bOf[i] < 0) bad.push(`roots: % at ${T.colOf(i)},${T.rowOf(i)} belongs to no bridge`); T.setRootBridge(i, true); }
+  // ゆりかごと根元の距離が、輪の半径に近すぎないか（遊ぶときに、ゆりかごの実が根元に届くかが見た目とずれる）
+  const nodes = [...R.bridges.flatMap(b => b.nodes), ...R.thickets.map(t => t.node)];
+  R.cradles.forEach((c, k) => nodes.forEach(nd => { const d = Math.hypot(c[0] - nd[0], c[1] - nd[1]); if (Math.abs(d - R.r) < 0.5) bad.push(`roots: cradle${k} is ${d.toFixed(2)}m from node ${nd}（輪の半径 ${R.r}m に近い）`); }));
+  const cpt = i => [T.cx(T.colOf(i)), T.cz(T.rowOf(i))];
+  const ok = (i, pts, km) => {
+    if (i < 0) return false;
+    if (bOf[i] >= 0) return live(R, pts).bridges[bOf[i]];
+    if (!T.isWalkKind(T.kind[i])) return false;
+    if (tOf[i] >= 0 && live(R, pts).thickets[tOf[i]]) return false;
+    return !(kOf[i] >= 0 && !((km >> kOf[i]) & 1));
+  };
+  const edgeH = (i, j) => { const [ax, az] = cpt(i), [bx, bz] = cpt(j), mx = (ax + bx) / 2, mz = (az + bz) / 2; return T.groundOf(i, mx + (ax - mx) * 0.02, mz + (az - mz) * 0.02); };
+  const region = (s, P, carry, km) => {
+    const seen = new Uint8Array(n), q = [s]; seen[s] = 1;
+    for (let qi = 0; qi < q.length; qi++) {
+      const i = q[qi], c = T.colOf(i), r = T.rowOf(i);
+      for (const [dc, dr] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+        const j = T.idx(c + dc, r + dr);
+        if (j < 0 || seen[j] || !T.isWalkKind(T.kind[j]) || Math.abs(edgeH(i, j) - edgeH(j, i)) > STEP) continue;
+        if (carry) { const [ax, az] = cpt(i), [bx, bz] = cpt(j), pm = [...P, [(ax + bx) / 2, (az + bz) / 2]]; if (!ok(i, pm, km) || !ok(j, pm, km) || !ok(j, [...P, [bx, bz]], km)) continue; }
+        else if (!ok(j, P, km)) continue;
+        seen[j] = 1; q.push(j);
+      }
+    }
+    return q;
+  };
+  const placed = (fr, lit) => fr.map((c, f) => (c >= 0 && (lit >> f) & 1 ? R.cradles[c] : null)).filter(Boolean);
+  const goal = new Set(T.exits.d ? T.exits.d.cells : []);
+  const near = R.cradles.map(([x, z]) => Array.from(T.kind, (_, i) => i).filter(i => T.isWalkKind(T.kind[i]) && Math.hypot(cpt(i)[0] - x, cpt(i)[1] - z) < 2.1));
+  const start = { fr: R.fruits.map(f => f.at), lit: 0, km: 0, s: T.at(Z.anchor[0], Z.anchor[1]), n: 0, prev: null, act: '' };
+  const reachAll = new Uint8Array(n), seen = new Set(), q = [start];
+  const key = st => { const reg = region(st.s, placed(st.fr, st.lit), st.fr.includes(-1), st.km); st.reg = reg; return `${st.fr.join(',')}|${st.lit}|${st.km}|${Math.min(...reg)}`; };
+  seen.add(key(start));
+  const name = c => `cradle${c}(${R.cradles[c].join(',')})`;
+  for (let qi = 0; qi < q.length && qi < 200000; qi++) {
+    const st = q[qi];
+    st.reg.forEach(i => { reachAll[i] = 1; });
+    if (st.reg.some(i => goal.has(i))) {
+      const path = []; for (let x = st; x.prev; x = x.prev) path.unshift(x.act);
+      return { n: st.n, path, reach: reachAll, states: seen.size };
+    }
+    const inReg = new Set(st.reg), carrying = st.fr.indexOf(-1);
+    R.cradles.forEach((_, c) => {
+      const f = st.fr.indexOf(c);
+      if ((carrying >= 0) === (f >= 0)) return;   // 持っていれば空のゆりかごへ置く、持っていなければ実のあるゆりかごから取る
+      for (const sCell of near[c].filter(i => inReg.has(i))) {
+        const fr = st.fr.slice(); let lit = st.lit, km = st.km;
+        if (carrying >= 0) fr[carrying] = c; else { fr[f] = -1; lit |= 1 << f; }
+        R.knots.forEach((o, k) => { if (o.cradles.every(cc => fr.some((x, ff) => x === cc && (lit >> ff) & 1))) km |= 1 << k; });
+        const P = placed(fr, lit), carry = fr.includes(-1);
+        if (!ok(sCell, carry ? [...P, cpt(sCell)] : P, km)) continue;   // 足もとの根がしおれる手は使わない
+        const nx = { fr, lit, km, s: sCell, n: st.n + 1, prev: st, act: carrying >= 0 ? `put ${R.fruits[carrying].kind} on ${name(c)}` : `take ${R.fruits[f].kind} from ${name(c)}` };
+        const k = key(nx); if (seen.has(k)) continue; seen.add(k); q.push(nx);
+      }
+    });
+  }
+  return { n: -1, path: [], reach: reachAll, states: seen.size };
+}
+// 影の回廊（zone.shadows）：プレイヤーが area に入ると、影が鏡の位置（mirror 'x' は x = at[0] の線、'xz' は at の点で折り返す）にあらわれ、
+//   プレイヤーが動くと、鏡うつしに動く（壁にぶつかると止まる。影は area を折り返した範囲の外へは出ない）。ひだまり（lights）に入ると、影は消えて、プレイヤーの鏡の位置にあらわれなおす。
+//   プレイヤーが goal、影が sgoal の輪（半径 1）に同時に入れば解けた。0.5m ずつの格子で、すべての状態をたどる。
+//   direct：影がずっと鏡の位置のまま（壁にもひだまりにもかからず）解けるなら、ただ歩くだけで解けてしまう
+function solveShadow(T, S) {
+  const [ax, az] = S.at, both = S.mirror === 'xz', tf = (x, z) => [2 * ax - x, both ? 2 * az - z : z];
+  // プレイヤーは遊ぶときと同じ当たり判定（体のまわりの 9 点）、影は円がかかるマスをすべて調べる（FieldView.updateShadows と同じ）
+  const fit = (x, z) => { const i = T.at(x, z); return i >= 0 && T.isWalkKind(T.kind[i]) && T.fits(x, z, 0.4); };
+  const sfit = (x, z) => T.fitsCircle(x, z, 0.4);
+  const lit = (x, z) => (S.lights || []).some(([lx, lz, r]) => Math.hypot(x - lx, z - lz) < r);
+  // 0.5m の格子。プレイヤーは area の中、影は area を折り返した長方形の中
+  const A = S.area, nx = Math.round((A[2] - A[0]) * 2) + 1, nz = Math.round((A[3] - A[1]) * 2) + 1, NP = nx * nz;
+  const [bx0, bz0] = tf(A[0], A[1]), [bx1, bz1] = tf(A[2], A[3]), B = [Math.min(bx0, bx1), Math.min(bz0, bz1)];
+  const P = k => [A[0] + Math.floor(k / nz) / 2, A[1] + (k % nz) / 2], Q = k => [B[0] + Math.floor(k / nz) / 2, B[1] + (k % nz) / 2];
+  const pk = (x, z) => Math.round((x - A[0]) * 2) * nz + Math.round((z - A[1]) * 2), qk = (x, z) => Math.round((x - B[0]) * 2) * nz + Math.round((z - B[1]) * 2);
+  const pf = new Uint8Array(NP), qf = new Uint8Array(NP), ql = new Uint8Array(NP), pg = new Uint8Array(NP), qg = new Uint8Array(NP), mir = new Int32Array(NP).fill(-1);
+  for (let k = 0; k < NP; k++) {
+    const [x, z] = P(k), [u, w] = Q(k);
+    pf[k] = fit(x, z); qf[k] = sfit(u, w); ql[k] = lit(u, w);
+    pg[k] = Math.hypot(x - S.goal[0], z - S.goal[1]) < 1; qg[k] = Math.hypot(u - S.sgoal[0], w - S.sgoal[1]) < 1;
+  }
+  for (let k = 0; k < NP; k++) { const [mx, mz] = tf(...P(k)), m = qk(mx, mz); if (Math.abs(Q(m)[0] - mx) < 0.01 && Math.abs(Q(m)[1] - mz) < 0.01 && qf[m] && !ql[m]) mir[k] = m; }
+  const p0 = pk(...S.enter);
+  if (!pf[p0]) return { err: 'enter is blocked' };
+  if (mir[p0] < 0) return { err: 'shadow start is blocked or lit' };
+  // 一歩：プレイヤーの格子の番号の差（x が nz、z が 1）。影は x が逆向き、'xz' なら z も逆向き
+  const step = [[nz, 1, 0], [-nz, -1, 0], [1, 0, 1], [-1, 0, -1]], col = k => Math.floor(k / nz), row = k => k % nz;
+  // ただ歩くだけで解けるか：影がずっと鏡の位置のまま goal へ歩いて行けるか
+  let direct = false;
+  { const sn = new Uint8Array(NP), st = [p0]; sn[p0] = 1;
+    while (st.length) { const k = st.pop(); if (pg[k] && qg[mir[k]]) { direct = true; break; }
+      for (const [d, sx, sz] of step) { const c = col(k) + sx, r = row(k) + sz, j = k + d; if (c < 0 || c >= nx || r < 0 || r >= nz || sn[j] || !pf[j] || mir[j] < 0) continue; sn[j] = 1; st.push(j); } } }
+  const seen = new Uint8Array(NP * NP), from = new Int32Array(NP * NP).fill(-1), how = new Uint8Array(NP * NP);
+  // 答えの歩き方（東西南北に何歩ずつ。0.5m で 1 歩）
+  const route = key => { const ds = []; for (let x = key; from[x] >= 0; x = from[x]) ds.unshift('EWSN'[how[x]]); return ds.join('').replace(/(.)\1*/g, m => m[0] + m.length).replace(/(\D)1(?=\D|$)/g, '$1'); };
+  let q = [p0 * NP + mir[p0]], n = 0, states = 1; seen[q[0]] = 1;
+  for (; q.length; n++) {
+    const nq = [];
+    for (const key of q) {
+      const k = Math.floor(key / NP), m = key % NP;
+      if (pg[k] && qg[m]) return { n, states, direct, route: route(key) };
+      for (const [di, [d, sx, sz]] of step.entries()) {
+        const c = col(k) + sx, r = row(k) + sz;
+        if (c < 0 || c >= nx || r < 0 || r >= nz || !pf[k + d]) continue;
+        const kk = k + d;
+        // 影：x は逆、z は 'xz' のとき逆
+        const dc = -sx, dr = both ? -sz : sz, mc = col(m) + dc, mr = row(m) + dr;
+        let mm = mc >= 0 && mc < nx && mr >= 0 && mr < nz && qf[mc * nz + mr] ? mc * nz + mr : m;
+        if (ql[mm]) { mm = mir[kk]; if (mm < 0) continue; }
+        const nk = kk * NP + mm; if (seen[nk]) continue; seen[nk] = 1; from[nk] = key; how[nk] = di; states++; nq.push(nk);
+      }
+    }
+    q = nq;
+  }
+  return { n: -1, states, direct };
+}
+// 年輪の間（zone.rings）：年輪 k（0 が内）のすき間は、gaps の角度 + 回した回数 × step。通路 j（0 = 心臓の間、N = 外）は、仕切り（spokes）で弧に分かれ、
+//   根のこぶ（solid）の弧には入れない。年輪 k のすき間は、通路 k と k+1 の、その角度の弧どうしをつなぐ。取っ手は、その弧にいれば ±1 回せる。
+//   入口（entry の角度の外の通路）から、心臓の間に入れれば解けた
+function solveRings(RG) {
+  const N = RG.list.length, M = Math.round(360 / RG.step), norm = a => ((a % 360) + 360) % 360;
+  const C = j => (RG.corridors || {})[j] || {};
+  const arcOf = (j, a) => { const sp = (C(j).spokes || []).map(norm).sort((x, y) => x - y); if (!sp.length) return 0; a = norm(a); for (let i = 0; i < sp.length; i++) if (a < sp[i]) return i; return 0; };
+  const solid = (j, a) => (C(j).solid || []).some(([a0, a1]) => { const d = norm(a - a0), w = norm(a1 - a0); return d > 0 && d < w; });
+  const region = (rot, j0, a0) => {
+    const reg = [[j0, a0]], rs = new Set([j0 + ',' + a0]);
+    for (let ri = 0; ri < reg.length; ri++) {
+      const [j, a] = reg[ri];
+      for (const k of [j - 1, j]) {
+        if (k < 0 || k >= N) continue;
+        for (const g0 of RG.list[k].gaps) {
+          const g = norm(g0 + rot[k] * RG.step), jj = k === j ? j + 1 : j - 1;
+          if (arcOf(j, g) !== a || solid(j, g) || solid(jj, g)) continue;
+          const aa = arcOf(jj, g), key = jj + ',' + aa; if (!rs.has(key)) { rs.add(key); reg.push([jj, aa]); }
+        }
+      }
+    }
+    return rs;
+  };
+  const st0 = { rot: RG.list.map(() => 0), j: N, a: arcOf(N, RG.entry), n: 0, prev: null, act: '' };
+  const key = st => st.rot.join(',') + '|' + st.j + '|' + st.a, seen = new Set([key(st0)]), q = [st0];
+  for (let qi = 0; qi < q.length; qi++) {
+    const st = q[qi], rs = region(st.rot, st.j, st.a);
+    if ([...rs].some(k => k.startsWith('0,'))) { const path = []; for (let x = st; x.prev; x = x.prev) path.unshift(x.act); return { n: st.n, path, states: seen.size }; }
+    RG.handles.forEach((h, hi) => {
+      if (!rs.has(h.j + ',' + arcOf(h.j, h.a)) || solid(h.j, h.a)) return;
+      for (const sg of [1, -1]) {
+        const rot = st.rot.slice(); h.turns.forEach(([k, d]) => { rot[k] = ((rot[k] + d * sg) % M + M) % M; });
+        const nx = { rot, j: h.j, a: arcOf(h.j, h.a), n: st.n + 1, prev: st, act: `handle${hi}${sg > 0 ? '+' : '-'}` };
+        const k = key(nx); if (seen.has(k)) continue; seen.add(k); q.push(nx);
+      }
+    });
+  }
+  return { n: -1, states: seen.size };
 }
 // つながりの石畳の道の数（すべての石を一度ずつ、始まりの石から終わりの石まで）
 function strokePaths(T, P) {

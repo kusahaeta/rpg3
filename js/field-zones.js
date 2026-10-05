@@ -2219,57 +2219,203 @@ const FIELD_ZONES = {
     notes: [{ at: [-10, 10], mark: 1.0, title: '落ちた葉', text: '灰色に色あせた葉。持ち上げると、さらさらと崩れた。' }],
     map2d: [470, 522] },
 
-  tree_under: { ci: 6, name: '樹の地下', w: 48, d: 84, stage: '7-2', arenas: [[0, -10, 180], [0, 20, 180]], build: 'treeUnder', bg: 'root', groups: 6, chests: 3, crystals: 2, skyTree: false,
-    world: true, arch: 'roots', chestAt: [[21, -19], [-19, 15], [-21, -17]],
+  // 樹の地下は三つの階：B1「しおれた根の洞」（光る実で根をよみがえらせる）→ B2「影の回廊」（鏡うつしに動く影）→ B3「年輪の間」（年輪をまわして樹の心臓へ）
+  tree_under: { ci: 6, name: '樹の地下・しおれた根の洞', mapName: '樹の地下', floor: 'B1', w: 60, d: 112, stage: '7-2', arenas: [[0, -45, 180]], build: 'treeUnder', bg: 'root', groups: 6, chests: 3, crystals: 2, calmAfter: '7-3', skyTree: false,
+    world: true, arch: 'roots', voidRail: false, chestAt: [[-27, 29], [21, 5], [13, 45]],
     th: { fog: '#10180e', fogD: 0.03 },
-    // 根の洞窟を下っていく。上の段（高さ4m）の大空洞と西の根の通り道、東の地底の泉。石段を下りると、奥に樹の心臓
+    // 入口の大空洞（高さ4m）から石段を下りると、根の通う洞。しおれた根は、光る実が根元の輪の中にあるあいだだけ元気になって、奈落に橋をかける（茂みは道をふさぐ）。
+    //   ① 二つの谷（短い橋と長い橋）で、実を持ち上げる・ゆりかごに置くことを覚える ② 長い橋を向こう岸から支えて二つ目の実も運び、
+    //   茂み（実を持って近づくと閉じる）をさけて、橋をわたって根の扉に実をそなえる ③ 西の小島の実を取ってきて、二つの実で谷の橋をかわるがわる支え、奥の根の扉に二つそなえる
     map: [
-      '###########aa###########',
-      '#########444444#########',
-      '########44444444########',
-      '#######444444444444#####',
-      '#######444444444444#####',
-      '########4444444444######',
-      '#444#####444444#########',
-      '#4444444444444444#######',
-      '#444##444444444444######',
-      '#444##444444444444#4444#',
-      '#444##44444444444444~~4#',
-      '#444##444444444444#4~~4#',
-      '#444##444444444444##444#',
-      '#444##444444444444###4##',
-      '#444##444444444444######',
-      '#444##444444444444######',
-      '#444##444444444444######',
-      '#4444444444444444#######',
-      '#444#####44444444#######',
-      '#444######444444########',
-      '#444######^^^^##########',
-      '#444######^^^^##########',
-      '#^^^######00000000######',
-      '#^^^####00000000000#####',
-      '#0000000000000000000####',
-      '#000###00000000000000###',
-      '#000###00000000000000###',
-      '##0####00000000000000###',
-      '#000###00000000000000###',
-      '#000####000000000000####',
-      '######00000000000000####',
-      '######00000000000000####',
-      '######00000000000000####',
-      '######00000000000000####',
-      '######00000000000000####',
-      '#######000000000000#####',
-      '########0000000000######',
-      '#########00000000#######',
-      '#########00000000#######',
-      '##########000000########',
-      '########################',
-      '########################',
+      '##############aa##############',
+      '##########4444444444##########',
+      '#######4444444444444444#######',
+      '######444444444444444444######',
+      '#####44444444444444444444#####',
+      '#####44444444444444444444#####',
+      '#####44444444444444444444#####',
+      '#####44444444444444444444#####',
+      '######444444444444444444######',
+      '#######4444444444444444#######',
+      '#########444444444444#########',
+      '#############^^^##############',
+      '#############^^^##############',
+      '#############^^^##############',
+      '###########00000000###########',
+      '##########0000000000##########',
+      '##########0000000000##########',
+      '#########     %      #########',
+      '##########0000000000##########',
+      '##########0000000000##########',
+      '##########0000000000##########',
+      '#########     %      #########',
+      '#########     %      #########',
+      '#########     %      #########',
+      '##########0000000000##########',
+      '##########0000000000##########',
+      '##########0000000000##########',
+      '###########00000000###########',
+      '##############00##############',
+      '##############00##############',
+      '#########0000000000   0000####',
+      '#########0000000000%%%0000####',
+      '#########0000000000   0000####',
+      '#########0000000000   0000####',
+      '##############0#######0000####',
+      '##############&#######0000####',
+      '##############0#######0000####',
+      '###########000000000000000####',
+      '###########000000000000000####',
+      '###########000000000000000####',
+      '##############*###############',
+      '##############0###############',
+      '#0000  0000000000000000#######',
+      '#0000  0000000000000000#######',
+      '#0000%%0000000000000000#######',
+      '#0000  0000000000000000#######',
+      '#0000  0000000000000000#######',
+      '###           %            ###',
+      '###           %            ###',
+      '###           %            ###',
+      '########00000000000000########',
+      '########00000000000000########',
+      '########00000000000000########',
+      '##############**##############',
+      '##############&&##############',
+      '##############dd##############',
     ],
-    anchor: [8, -34], spawn: [0, -38], exits: [{ key: 'a', to: 'tree_root' }],
-    notes: [{ at: [-21, 0], mark: [-0.6, 3.6, 0], title: '光る樹液', text: 'かすかに光る樹液が、根を伝って流れている。……まるで、泣いているみたいに。' }],
+    anchor: [-13, -47], spawn: [0, -51], exits: [{ key: 'a', to: 'tree_root' }, { key: 'd', to: 'tree_under_2', stair: 'down' }],
+    // 光る実と、しおれた根（FieldView.updateRoots。解けるかは tools/check-maps.js が調べる）
+    roots: { r: 3.5,
+      cradles: [[-3, -25], [-3, -15], [1, -7], [5, -3], [5, 5], [3, 23], [-15, 31], [-25, 33], [-3, 37], [-3, 45], [3, 49]],
+      fruits: [{ kind: 'warai', at: 0 }, { kind: 'yujo', at: 3 }, { kind: 'omoide', at: 7 }],
+      bridges: [{ id: 'A', cells: [-1, -21, -1, -21], nodes: [[-1, -23]] }, { id: 'B', cells: [-1, -13, -1, -9], nodes: [[-1, -15], [-1, -7]] },
+        { id: 'E', cells: [9, 7, 13, 7], nodes: [[7, 7]] }, { id: 'W', cells: [-19, 33, -17, 33], nodes: [[-15, 33]] }, { id: 'S', cells: [-1, 39, -1, 43], nodes: [[-1, 37], [-1, 45]] }],
+      thickets: [{ id: 'T1', cells: [-1, 15, -1, 15], node: [-1, 11] }, { id: 'T3', cells: [-1, 53, 1, 53], node: [5, 49] }],
+      knots: [{ id: 'treeKnot1', cells: [-1, 25, -1, 25], cradles: [5] }, { id: 'treeKnot2', cells: [-1, 51, 1, 51], cradles: [9, 10] }],
+    },
+    notes: [{ at: [-19, -41], mark: [-0.6, 3.6, 0], title: '光る樹液', text: 'かすかに光る樹液が、根を伝って流れている。……まるで、泣いているみたいに。' },
+      { at: [7, -25], title: '古い石碑', text: '「実は、樹のぬくもり。根元の輪に光る実があれば、根は目をさます。輪を出れば、根はまた眠る」' }],
     map2d: [330, 540] },
+
+  tree_under_2: { ci: 6, name: '樹の地下・影の回廊', floor: 'B2', parent: 'tree_under', w: 52, d: 92, stage: '7-2', arenas: [[0, -25, 0], [-4, -1, 0], [-2, 15, 0]], build: 'treeUnder2', bg: 'root', groups: 3, chests: 2, crystals: 2, calmAfter: '7-3', skyTree: false,
+    world: true, arch: 'roots', chestAt: [[11, -13], [-11, 29]],
+    th: { fog: '#140f1c', fogD: 0.022 },
+    // 入口の間から南へ、影の部屋が三つ。部屋に入ると、先頭の子の「ひとりぼっちの影」が足もとからはなれ、同じ部屋の中を鏡うつしに動く。
+    //   ① 左右が逆に動く影を、ひだまりをよけて光の輪へ ② 部屋の東がわにだけある柱に影を押しつけて、自分とずらす
+    //   ③ 影が前後も逆に動く（部屋のまんなかで折り返す）部屋で、南西の壁の出っぱりに影を押しつけて、前後にずらす
+    map: [
+      '############uu############',
+      '########0000000000########',
+      '########0000000000########',
+      '########0000000000########',
+      '########0000000000########',
+      '############00############',
+      '############00############',
+      '########0000000000########',
+      '########0000000000########',
+      '########0000000000########',
+      '########0000000000########',
+      '########0000000000########',
+      '########0000000000########',
+      '########0000000000########',
+      '############00############',
+      '############00############',
+      '#######000000000000#######',
+      '#######000000000000#######',
+      '#######000000000000#######',
+      '#######00000000##00#######',
+      '#######00000000##00#######',
+      '#######000000000000#######',
+      '#######000000000000#######',
+      '#######000000000000#######',
+      '#######000000000000#######',
+      '############00############',
+      '############00############',
+      '#######000000000000#######',
+      '#######000000000000#######',
+      '#######00000000##00#######',
+      '#######00000000##00#######',
+      '#######000000000000#######',
+      '#######000000000000#######',
+      '#######000000000000#######',
+      '#######0###00000000#######',
+      '#######000000000000#######',
+      '#######000000000000#######',
+      '#######000000000000#######',
+      '############00############',
+      '############00############',
+      '############00############',
+      '############00############',
+      '############00############',
+      '############dd############',
+      '##########################',
+      '##########################',
+    ],
+    anchor: [-7, -41], spawn: [0, -43], exits: [{ key: 'u', to: 'tree_under', stair: 'up' }, { key: 'd', to: 'tree_under_3', stair: 'down' }],
+    // 影の部屋（FieldView.updateShadows。解けるかは tools/check-maps.js が調べる）。area は部屋のマスの中心の範囲。鏡の線は x = 0（③は部屋のまんなか (0, 19) の点）
+    shadows: [
+      { id: 'treeShadow1', area: [-9, -31, 9, -19], mirror: 'x', at: [0, 0], enter: [0, -31], goal: [-7, -21], sgoal: [7, -21], lights: [[3.5, -26, 1.6]], gate: [-1, -17, 1, -17], teach: true },
+      { id: 'treeShadow2', area: [-11, -13, 11, 3], mirror: 'x', at: [0, 0], enter: [0, -13], goal: [-9, 1], sgoal: [5, 1], lights: [], gate: [-1, 5, 1, 5] },
+      { id: 'treeShadow3', area: [-11, 9, 11, 29], mirror: 'xz', at: [0, 19], enter: [0, 9], goal: [1, 11], sgoal: [-1, 21], lights: [[-6, 13, 1.6], [7, 25, 1.6]], gate: [-1, 31, 1, 31] },
+    ],
+    notes: [{ at: [7, -41], title: '古い石碑', text: '「影は、光をきらう。ひだまりに入った影は、ほどけて、もとの場所にもどる。……影をおいていくなかれ」' }],
+    map2d: [330, 560] },
+
+  tree_under_3: { ci: 6, name: '樹の地下・年輪の間', floor: 'B3', parent: 'tree_under', w: 56, d: 76, stage: '7-3', arenas: [[0, 3, 180]], build: 'treeUnder3', bg: 'root', groups: 0, chests: 1, crystals: 1, calmAfter: '7-3', skyTree: false,
+    world: true, arch: 'roots', chestAt: [[9, 17]],
+    th: { fog: '#10180e', fogD: 0.025 },
+    // 樹の心臓をかこむ、三重の年輪。年輪の壁にはすき間がひとつずつあり、取っ手（押す側で回る向きが変わる）で回せる。
+    //   外の取っ手は外の年輪、真ん中の取っ手は真ん中と外の年輪をいっしょに、内の取っ手は内と真ん中の年輪を逆向きに回す。通路は根の仕切りとこぶで区切られている
+    map: [
+      '#############uu#############',
+      '#########0000000000#########',
+      '#########0000000000#########',
+      '#########0000000000#########',
+      '#########0000000000#########',
+      '#########0000000000#########',
+      '#########0000000000#########',
+      '#########0000000000#########',
+      '############0000############',
+      '############0000############',
+      '###########000000###########',
+      '########000000000000########',
+      '######0000000000000000######',
+      '#####000000000000000000#####',
+      '####00000000000000000000####',
+      '###0000000000000000000000###',
+      '###0000000000000000000000###',
+      '##000000000000000000000000##',
+      '##000000000000000000000000##',
+      '##000000000000000000000000##',
+      '#00000000000000000000000000#',
+      '#00000000000000000000000000#',
+      '#00000000000000000000000000#',
+      '#00000000000000000000000000#',
+      '#00000000000000000000000000#',
+      '#00000000000000000000000000#',
+      '##000000000000000000000000##',
+      '##000000000000000000000000##',
+      '##000000000000000000000000##',
+      '###0000000000000000000000###',
+      '###0000000000000000000000###',
+      '####00000000000000000000####',
+      '#####000000000000000000#####',
+      '######0000000000000000######',
+      '########000000000000########',
+      '###########000000###########',
+      '############################',
+      '############################',
+    ],
+    anchor: [-7, -31], spawn: [1, -35], exits: [{ key: 'u', to: 'tree_under_2', stair: 'up' }],
+    // 年輪（FieldView.updateRings。解けるかは tools/check-maps.js が調べる）。角度は度で、0 が東、90 が南。すき間の位置は step 度きざみ
+    rings: { id: 'treeRings', at: [0, 8], step: 45, h: 1.8, gapW: 3.4, entry: 270,
+      list: [{ r: 11, gaps: [135], col: '#ffd27a' }, { r: 16, gaps: [90], col: '#9aff6a' }, { r: 21, gaps: [45], col: '#8ad8ff' }],
+      // 通路（1 = 内と真ん中の年輪のあいだ、2 = 真ん中と外のあいだ、3 = 外の年輪の外）の仕切りの角度と、根のこぶでふさがった範囲
+      corridors: { 1: { spokes: [22.5, 67.5, 157.5], solid: [[67.5, 157.5]] }, 2: { spokes: [22.5, 112.5, 157.5], solid: [[112.5, 157.5]] } },
+      handles: [{ j: 3, a: 78, turns: [[2, 1]] }, { j: 2, a: 70, turns: [[1, 1], [2, 1]] }, { j: 1, a: 200, turns: [[0, 1], [1, -1]] }] },
+    notes: [{ at: [7, -27], title: '年輪の石碑', text: '「樹は、年ごとに輪をかさね、心臓を守る。輪はたがいに結ばれ、ひとつを回せば、となりも回る」' }],
+    map2d: [330, 580] },
 
   // ---------------- 第八章 世界の果て ----------------
   world_end: { ci: 7, name: '世界の果て', w: 70, d: 92, stage: '8-2', arenas: [[0, -26, 0], [0, 16, 0]], build: 'worldEnd', bg: 'end', groups: 6, chests: 3, crystals: 3,
@@ -2383,7 +2529,7 @@ const CHAPTER_ZONES = [
   ['valley', 'valley_village', 'cave', 'cave_lake', 'cave_deep'],
   ['ruins_out', 'ruins_hill', 'ruins_in', 'ruins_maze', 'ruins_seal'],
   ['demon_land', 'demon_castle', 'demon_clinic', 'demon_barracks', 'demon_court', 'demon_cellar', 'demon_castle_2f', 'demon_throne'],
-  ['tree_root', 'tree_under'],
+  ['tree_root', 'tree_under', 'tree_under_2', 'tree_under_3'],
   ['world_end'],
   ['dream'],
 ];
@@ -2410,6 +2556,18 @@ function zoneOpen(id) {
 function zoneArenas(Z) { return (Z.arenas || []).map(([x, z, f]) => { const [wx, wz] = Z.map ? zonePoint(Z, [x, z]) : [x, z]; return { x: wx, z: wz, face: f || 0 }; }); }
 // その区画に敵が出るか（calmAfter のステージを越えると静かになる）
 function zoneCalm(Z) { return !!(Z.town || Z.calm || (Z.calmAfter && Save.data.cleared[Z.calmAfter])); }
+// 樹の地下の根（zone.roots）：光る実（pts：光っている実の位置 [x, z] の並び）が根元の輪（半径 R.r）の中にある根は元気。
+//   橋は根元のどれかひとつ、茂みは根元に実があれば元気（橋は渡れる、茂みは道をふさぐ）。tools/check-maps.js の検査と共用
+function rootsLive(R, pts) {
+  const near = n => pts.some(p => Math.hypot(p[0] - n[0], p[1] - n[1]) < R.r);
+  return { bridges: R.bridges.map(b => b.nodes.some(near)), thickets: R.thickets.map(t => near(t.node)) };
+}
+// 矩形 [x0, z0, x1, z1]（マスの中心の座標）にふくまれるマスの番号
+function rectCells(T, a) {
+  const out = [];
+  for (let z = Math.min(a[1], a[3]); z <= Math.max(a[1], a[3]) + 0.01; z += CELL) for (let x = Math.min(a[0], a[2]); x <= Math.max(a[0], a[2]) + 0.01; x += CELL) out.push(T.at(x, z));
+  return out;
+}
 function exitPos(zone, e) {
   const hw = zone.w / 2, hd = zone.d / 2;
   switch (e.side) {
@@ -2574,6 +2732,34 @@ function storyStep() {
 }
 
 // 世界の果てへのびる樹の根（暗い奈落でも木の根と分かるよう、少しだけ自らほの明るい）
+// 樹の地下の光る実（感情の実）：名前と光る色
+const FRUIT_KINDS = { warai: { name: '笑いの実', col: '#ffd23c' }, yujo: { name: '友情の実', col: '#ff8ab8' }, omoide: { name: '思い出の実', col: '#8ad8ff' }, yasashi: { name: '優しさの実', col: '#8aff9a' } };
+// 光る実を、はじめて持ち上げたときの掛け合い（一行にいる子だけ）
+const FRUIT_LINES = {
+  warai: [['n', '灰色の実を持ち上げると……ぽうっと、黄色い光がともった！'], ['tama', '……みんなといっしょだから、光ったんだ。……笑いの実だよ。'],
+    ['kuro', '……根が、動いた。……実の光が届くと、しおれた根が目をさますのか。'],
+    ['n', '光る実が、根元の輪の中にあるあいだだけ、その根は元気になる。実は、根のゆりかごに置いておける（F）。持っているあいだは、こうげきできない。']],
+  yujo: [['n', '灰色の実が、桃色に光った。……友情の実だ。'], ['mike', 'クロが守ろうとした実と、おんなじ色だ！'], ['kuro', '……ふん。……今度は、割らずに運ぶ。']],
+  omoide: [['n', '灰色の実が、水色に光った。……思い出の実だ。'], ['shiro', '……あったかい。だれかの大事な思い出が、つまってるみたい。'], ['maou', '……奥の根の扉へ、運んでやろう。']],
+};
+// 影の回廊：先頭の子の影の言葉と、その子の返事（部屋ごと）。影は、その子の「ひとりぼっちの気持ち」
+const SHADOW_LINES = {
+  mike: [['へへ……笑ってれば、だれも心配しない。……ひとりでも、平気なふりをしていればいい。', '……きみ、ぼくの影だね。……平気なふり、しなくていいよ。いっしょに行こう。'],
+    ['……みんな、いつかいなくなっちゃう。……お父さんと、お母さんみたいに。', '……うん。こわいよね。……でも、今はみんながいる。きみも、こっちにおいで。'],
+    ['……ひとりでいれば、もう、なくさなくてすむよ。', '……なくすのがこわいから、ひとりでいるなんて、いやだ。……ぼくは、みんなといたい！']],
+  kuro: [['……俺は、一人でいい。……だれも、まきこまずにすむ。', '……昔の俺だな。……ついてこい。'],
+    ['……仲間は、守れなかった。……また、なくすぞ。', '……ああ。こわい。……だから、今度は、みんなで守る。'],
+    ['……一人なら、傷つかない。', '……傷ついても、いい。……あいつらといるほうが、ずっといい。']],
+  shiro: [['……天才のふりをしていれば、だれも、わたしの失敗を見ない。', '……見られてもいいわよ。……みんな、笑って待っててくれるもの。'],
+    ['……また失敗したら？　また、だれかを救えなかったら？', '……そのときは、何度でもやり直すの。……ひとりじゃないから、できるのよ。'],
+    ['……ひとりで魔法を練習していれば、だれにも迷惑をかけない。', '……迷惑かけてもいいって言ってくれる子たちが、いるの。……さあ、いらっしゃい。']],
+  tama: [['……ねむっていれば、さみしくないよ。……ずっと、ねむっていようよ。', '……ねむるのは、すき。……でも、起きたら、みんながいるほうが、もっとすき。'],
+    ['……ぼくは、さいごのにゃんこ。……ほんとうは、ひとりぼっち。', '……うん。……でも、みんながひろってくれた。……きみも、いっしょだよ。'],
+    ['……ぼくがいなくなっても、だれも困らないよ。', '……そう、思ってた。……ちょっとだけ。……でも、きみをひとりにはしないよ。']],
+  maou: [['……余と遊ぶ者など、どこにもおらぬ。……城でひとり、待っておればよい。', '……ふん。もう待たぬ。……遊び相手なら、ここにおる。'],
+    ['……どうせ、だれも来ぬ。……世界ごと、こわしてしまえばよい。', '……それは、もうやめたのだ。……来い。余の影ならば、余と来るがよい。'],
+    ['……つながりなど、すぐに切れる。', '……切れたら、また結べばよい。……こやつらが、そう教えた。']],
+};
 function rootMat(glow = 0) { return new THREE.MeshStandardMaterial({ color: '#8a6a48', emissive: '#6a4a2a', emissiveIntensity: glow, roughness: 0.9 }); }
 
 // ============================================================
@@ -3358,6 +3544,229 @@ class ZoneKit {
       this.tick(dt => { if (o.open && k < 1) { k = Math.min(1, k + dt * 0.45); pose(); } });
       return o;
     }));
+  }
+  // 樹の地下の光る実と、しおれた根（zone.roots）。根のゆりかご・実・根元の輪・根の橋・根の茂み・根の扉を置く。
+  //   根が元気かどうかは、FieldView.updateRoots が、光る実の位置から毎フレーム決める（rootsLive）。
+  //   実の置き場所は Save.data.flags[区画 + '_fruit']（ゆりかごの番号）、光った実は flags[区画 + '_lit']（ビット）、開いた根の扉は flags[扉の id]
+  roots() {
+    const R = this.zone.roots; if (!R) return;
+    const v = this.v, T = this.T, flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {}, zid = v.zoneId;
+    const saved = flags[zid + '_fruit'], litBits = flags[zid + '_lit'] || 0;
+    const bark = new THREE.MeshStandardMaterial({ color: '#7a5a3a', roughness: 0.95, emissive: '#3a8a2a', emissiveIntensity: 0 });
+    const gray = new THREE.MeshStandardMaterial({ color: '#7a7468', roughness: 1 });
+    const o = { R, fruits: [], cradles: [], nodes: [], bridges: [], thickets: [], knots: [], carry: -1, bark };
+    const tube = (pts, r, mat, seg = 16) => new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), seg, r, 7, false), mat);
+    // 根のゆりかご：切り株の上に、根の指でできた受け皿。光る実を持っているとき、空のゆりかごの縁が光る
+    R.cradles.forEach(([x, z], i) => {
+      const y = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y, z); this.scene.add(g);
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.5, 0.55, 9), this.mat('bark')); st.position.y = 0.27; g.add(st);
+      const cup = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.08, 6, 14), this.mat('bark')); cup.rotation.x = Math.PI / 2; cup.position.y = 0.58; g.add(cup);
+      for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; g.add(tube([V3(Math.cos(a) * 0.3, 0.55, Math.sin(a) * 0.3), V3(Math.cos(a) * 0.42, 0.72, Math.sin(a) * 0.42), V3(Math.cos(a) * 0.36, 0.86, Math.sin(a) * 0.36)], 0.035, this.mat('bark'), 6)); }
+      const gm = new THREE.MeshBasicMaterial({ color: hdr('#b8ff8a', 1.6), transparent: true, opacity: 0, depthWrite: false });
+      const glow = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.035, 6, 24), gm); glow.rotation.x = Math.PI / 2; glow.position.y = 0.66; g.add(glow);
+      g.traverse(m => { if (m.isMesh && m !== glow) m.castShadow = true; });
+      this.col(x, z, 0.45); this.reserve(x, z, 1.6);
+      o.cradles.push({ i, pos: V3(x, y, z), g, gm });
+    });
+    // 光る実：はじめは灰色。一度持ち上げると、その実の色に光る（FRUIT_KINDS）
+    R.fruits.forEach((F, i) => {
+      const K = FRUIT_KINDS[F.kind], at = saved && saved[i] != null ? saved[i] : F.at, lit = !!((litBits >> i) & 1);
+      const g = new THREE.Group(); this.scene.add(g);
+      const mat = new THREE.MeshStandardMaterial({ color: lit ? K.col : '#8a8a80', emissive: K.col, emissiveIntensity: lit ? 1.1 : 0, roughness: 0.45 });
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), mat); body.scale.set(1, 0.92, 1); body.castShadow = true; g.add(body);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.16, 5), this.mat('wood2')); stem.position.y = 0.3; g.add(stem);
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), this.stdM('#5ab84a', 0.7)); leaf.scale.set(1, 0.25, 0.55); leaf.position.set(0.1, 0.34, 0); leaf.rotation.z = -0.5; g.add(leaf);
+      // 足もとの光（置いてある光る実）
+      const halo = new THREE.Mesh(new THREE.CircleGeometry(0.9, 24), new THREE.MeshBasicMaterial({ color: hdr(K.col, 1.2), transparent: true, opacity: lit ? 0.35 : 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+      halo.rotation.x = -Math.PI / 2; this.scene.add(halo);
+      o.fruits.push({ i, F, K, at, lit, g, mat, halo, bob: Math.random() * 6 });
+    });
+    // 根元の節と輪：輪の中に光る実があると、その根は元気になる（節は床にうまった根のこぶ。踏んで通れる）
+    const node = ([x, z]) => {
+      const key = x + ',' + z, had = o.nodes.find(n => n.key === key); if (had) return had;
+      this.reserve(x, z, 1.5);
+      const y = this.gy(x, z), knob = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 8), bark); knob.scale.set(1, 0.28, 1); knob.position.set(x, y + 0.02, z); this.scene.add(knob);
+      const rm = new THREE.MeshBasicMaterial({ color: hdr('#b8ff8a', 1.2), transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(new THREE.RingGeometry(R.r - 0.1, R.r, 72), rm); ring.rotation.x = -Math.PI / 2; ring.position.set(x, y + 0.05, z); this.scene.add(ring);
+      const n = { key, x, z, rm, k: 0 }; o.nodes.push(n); return n;
+    };
+    // 根の橋：元気なときは、根元の側から谷の向こうへ、平たい根の橋がのびる。しおれると、灰色の根が奈落へ垂れさがる
+    R.bridges.forEach(B => {
+      const cells = rectCells(T, B.cells), pts = cells.map(i => [T.cx(T.colOf(i)), T.cz(T.rowOf(i))]), alongX = new Set(cells.map(i => T.rowOf(i))).size === 1;
+      const lo = alongX ? Math.min(...pts.map(p => p[0])) - CELL / 2 : Math.min(...pts.map(p => p[1])) - CELL / 2, hi = alongX ? Math.max(...pts.map(p => p[0])) + CELL / 2 : Math.max(...pts.map(p => p[1])) + CELL / 2;
+      const mid = alongX ? pts[0][1] : pts[0][0], y = T.rbH[cells[0]], len = hi - lo;
+      const n0 = B.nodes[0], fromHi = alongX ? Math.abs(n0[0] - hi) < Math.abs(n0[0] - lo) : Math.abs(n0[1] - hi) < Math.abs(n0[1] - lo);
+      const sx = alongX ? (fromHi ? hi : lo) : mid, sz = alongX ? mid : (fromHi ? hi : lo);
+      // 元気な橋：原点が根元の側の岸。+Z が谷の向こう
+      const live = new THREE.Group(); live.position.set(sx, y, sz); live.rotation.y = alongX ? (fromHi ? -Math.PI / 2 : Math.PI / 2) : (fromHi ? Math.PI : 0); this.scene.add(live);
+      const plank = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, len + 0.6, 12, 1), bark); plank.rotation.x = Math.PI / 2; plank.scale.set(1, 1, 0.4); plank.position.set(0, -0.34, len / 2); plank.castShadow = plank.receiveShadow = true; live.add(plank);
+      for (const sd of [-1, 1]) { const ps = []; for (let k = 0; k <= 6; k++) ps.push(V3(sd * (0.78 + Math.sin(k * 1.7) * 0.08), -0.12 + Math.sin(k * 2.3 + sd) * 0.1, -0.3 + (len + 0.6) * k / 6)); live.add(tube(ps, 0.17, bark, 24)); }
+      const vein = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, len), this.glow('#b8ff8a', 1.4)); vein.position.set(0, 0.0, len / 2); live.add(vein);
+      // しおれた橋：岸から岸へ、奈落に垂れさがる灰色の根
+      const dead = new THREE.Group(); dead.position.copy(live.position); dead.rotation.y = live.rotation.y; this.scene.add(dead);
+      dead.add(tube([V3(0, -0.4, -0.3), V3(0.2, -1.6, len * 0.3), V3(-0.1, -2.6, len * 0.55), V3(0.15, -1.4, len * 0.8), V3(0, -0.4, len + 0.3)], 0.28, gray, 24));
+      dead.add(tube([V3(0.4, -0.3, -0.2), V3(0.6, -2.2, len * 0.25), V3(0.5, -3.4, len * 0.3)], 0.12, gray, 10));
+      const nodes = B.nodes.map(node);
+      const b = { B, cells, live, dead, nodes, on: false, k: 0 };
+      cells.forEach(i => T.setRootBridge(i, false));
+      live.scale.z = 0.001; live.visible = false;
+      o.bridges.push(b);
+    });
+    // 根の茂み：元気なときは、とげとげの根が道をふさぐ（当たり判定）。しおれると、床にぺたりと伏せる
+    R.thickets.forEach(H => {
+      const cells = rectCells(T, H.cells), g = new THREE.Group(), y = this.gy(T.cx(T.colOf(cells[0])), T.cz(T.rowOf(cells[0])));
+      g.position.y = y; this.scene.add(g);
+      const mat = bark.clone(); mat.emissive = new THREE.Color('#3a8a2a');
+      cells.forEach(i => {
+        const cx = T.cx(T.colOf(i)), cz = T.cz(T.rowOf(i));
+        // 床から生えて、たがいにからみあう太い根。ところどころにとげ
+        for (let k = 0; k < 9; k++) {
+          const a = this.r() * Math.PI * 2, d = 0.15 + this.r() * 0.75, x0 = cx + Math.cos(a) * d, z0 = cz + Math.sin(a) * d, h = 1.4 + this.r() * 1.5;
+          const b = a + Math.PI * (0.6 + this.r() * 0.8), pts = [V3(x0, -0.2, z0), V3(x0 + Math.cos(b) * 0.5, h * 0.35, z0 + Math.sin(b) * 0.5), V3(x0 - Math.cos(b) * 0.3, h * 0.7, z0 - Math.sin(b) * 0.3), V3(x0 + Math.cos(a) * 0.4, h, z0 + Math.sin(a) * 0.4)];
+          const curve = new THREE.CatmullRomCurve3(pts), r0 = 0.1 + this.r() * 0.1;
+          g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 12, r0, 6, false), mat));
+          for (let q = 1; q <= 3; q++) { const th = new THREE.Mesh(new THREE.ConeGeometry(r0 * 0.6, 0.35, 4), mat), u = q / 4.2, pp = curve.getPoint(u); th.position.copy(pp); th.rotation.set(this.r() * 3, this.r() * 3, this.r() * 3); g.add(th); }
+        }
+      });
+      g.traverse(m => { if (m.isMesh) m.castShadow = true; });
+      const b = T.bounds(cells), col = { box: true, x: b.x, z: b.z, hw: b.w / 2, hd: b.d / 2, top: 3, y };
+      node(H.node); this.reserve(b.x, b.z, Math.max(b.w, b.d) / 2 + 2);
+      o.thickets.push({ H, cells, g, mat, col, on: false, k: 0, b });
+    });
+    // 根の扉：かたくからまった根の玉。そばのゆりかごすべてに光る実がそろうと、するするとほどける（開いたまま）
+    R.knots.forEach(K => {
+      const cells = rectCells(T, K.cells), b = T.bounds(cells), y = this.gy(b.x, b.z), open = !!flags[K.id];
+      const g = new THREE.Group(); g.position.set(b.x, y, b.z); this.scene.add(g);
+      const s = Math.max(b.w, b.d) / 2;
+      const knot = new THREE.Mesh(new THREE.TorusKnotGeometry(s * 0.62, s * 0.24, 96, 10, 2, 3), this.mat('bark')); knot.position.y = 1.7; knot.scale.set(1, 1.05, b.w > b.d ? 0.55 : 1); if (b.w <= b.d) knot.rotation.y = Math.PI / 2; knot.castShadow = true; g.add(knot);
+      for (let k = 0; k < 6; k++) { const a = (k / 6 - 0.5) * 1.6; g.add(tube([V3(Math.sin(a) * s, 6, Math.cos(a) * 0.2), V3(Math.sin(a) * s * 0.6, 3, 0), V3(Math.sin(a) * s * 0.9, -0.1, Math.cos(a) * 0.25)], 0.14, this.mat('bark'), 12)); }
+      // 実をそなえるたびに灯る、扉の穴（ゆりかごの数だけ）。ゆりかごのある側の面にならべる
+      // 面の向き：となりのマスが床の面のうち、ゆりかごのある向きにいちばん近い面
+      const cx = K.cradles.reduce((a, c) => a + R.cradles[c][0], 0) / K.cradles.length - b.x, cz = K.cradles.reduce((a, c) => a + R.cradles[c][1], 0) / K.cradles.length - b.z;
+      const walkSide = ([dx, dz]) => { const i = T.at(b.x + dx * (b.w / 2 + 1), b.z + dz * (b.d / 2 + 1)); return i >= 0 && T.isWalkKind(T.kind[i]); };
+      const face = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(walkSide).sort((p, q) => (q[0] * cx + q[1] * cz) - (p[0] * cx + p[1] * cz))[0] || [0, -1];
+      const sockets = K.cradles.map((_, k) => {
+        const m = new THREE.Mesh(new THREE.CircleGeometry(0.17, 14), new THREE.MeshBasicMaterial({ color: '#2a2a22', side: THREE.DoubleSide })), off = (k - (K.cradles.length - 1) / 2) * 0.6;
+        m.position.set(face[0] * (b.w / 2 + 0.05) + face[1] * off, 1.9, face[1] * (b.d / 2 + 0.05) + face[0] * off); m.rotation.y = Math.atan2(face[0], face[1]); g.add(m);
+        const rim = new THREE.Mesh(new THREE.RingGeometry(0.19, 0.25, 18), this.glow('#c8e8a0', 1.2)); rim.material = rim.material.clone(); rim.material.side = THREE.DoubleSide; m.add(rim);
+        return m;
+      });
+      const col = { box: true, x: b.x, z: b.z, hw: b.w / 2, hd: b.d / 2, top: 6, y };
+      if (!open) v.colliders.push(col); else g.scale.setScalar(0.001);
+      this.reserve(b.x, b.z, Math.max(b.w, b.d) / 2 + 2.5);
+      o.knots.push({ K, cells, g, sockets, col, open, k: open ? 1 : 0 });
+    });
+    v.rootObj = o;
+  }
+  // 影の回廊（zone.shadows）：プレイヤーの光の輪（金）・影の光の輪（紫）・影の部屋のひだまり・出口をふさぐ影のいばら。
+  //   影そのもの（先頭の子の黒い姿）は、プレイヤーが部屋に入ると FieldView.updateShadows が出す。解いた部屋は Save.data.flags[id]
+  shadowRooms() {
+    const list = this.zone.shadows; if (!list) return;
+    const flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {}, v = this.v, T = this.T;
+    const disc = (x, z, r, col, k, op) => {
+      const y = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y + 0.04, z); this.scene.add(g);
+      const rm = new THREE.MeshBasicMaterial({ color: hdr(col, k), transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(new THREE.RingGeometry(r - 0.12, r, 48), rm); ring.rotation.x = -Math.PI / 2; g.add(ring);
+      const fm = rm.clone(); fm.opacity = op * 0.35; const fill = new THREE.Mesh(new THREE.CircleGeometry(r - 0.12, 40), fm); fill.rotation.x = -Math.PI / 2; g.add(fill);
+      return { g, rm, fm, base: op };
+    };
+    v.shadowObjs = list.map((S, idx) => {
+      const solved = !!flags[S.id];
+      const o = { S, idx, solved, active: false, hold: 0 };
+      this.reserve(S.goal[0], S.goal[1], 2); this.reserve(S.enter[0], S.enter[1], 2.5);
+      o.goal = disc(S.goal[0], S.goal[1], 1, '#ffd66b', 1.6, solved ? 0.15 : 0.55);
+      o.sgoal = disc(S.sgoal[0], S.sgoal[1], 1, '#c08aff', 1.6, solved ? 0.15 : 0.55);
+      // ひだまり：天井の割れ目から差しこむ光の柱と、床の明るい円
+      o.lights = (S.lights || []).map(([x, z, r]) => {
+        const y = this.gy(x, z), ceil = T ? T.ceilOf(T.at(x, z)) : 8;
+        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.7, r, ceil - y, 20, 1, true), new THREE.MeshBasicMaterial({ color: hdr('#fff2c8', 0.9), transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+        shaft.position.set(x, y + (ceil - y) / 2, z); this.scene.add(shaft);
+        const pool = new THREE.Mesh(new THREE.CircleGeometry(r, 32), new THREE.MeshBasicMaterial({ color: hdr('#fff2c8', 1.3), transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }));
+        pool.rotation.x = -Math.PI / 2; pool.position.set(x, y + 0.05, z); this.scene.add(pool);
+        return { x, z, r };
+      });
+      // 影のいばら：黒紫のとげのつるが、出口の通路をふさぐ
+      const cells = rectCells(T, S.gate), b = T.bounds(cells), y = this.gy(b.x, b.z), g = new THREE.Group(); g.position.set(b.x, y, b.z); this.scene.add(g);
+      const vm = new THREE.MeshStandardMaterial({ color: '#2a1838', emissive: '#7a3aff', emissiveIntensity: 0.5, roughness: 0.8 });
+      for (let k = 0; k < 14; k++) {
+        const a = this.r() * Math.PI * 2, x0 = (this.r() - 0.5) * b.w * 0.9, z0 = (this.r() - 0.5) * b.d * 0.9, h = 2 + this.r() * 2.5;
+        const pts = [V3(x0, -0.1, z0), V3(x0 + Math.cos(a) * 0.5, h * 0.5, z0 + Math.sin(a) * 0.5), V3(x0 - Math.cos(a) * 0.4, h, z0 - Math.sin(a) * 0.4)];
+        g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.06 + this.r() * 0.05, 6, false), vm));
+        for (let q = 0; q < 3; q++) { const th = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.3, 4), vm), u = 0.2 + q * 0.3, pp = new THREE.CatmullRomCurve3(pts).getPoint(u); th.position.copy(pp); th.rotation.set(this.r() * 3, 0, this.r() * 3); g.add(th); }
+      }
+      o.gate = { g, col: { box: true, x: b.x, z: b.z, hw: b.w / 2, hd: b.d / 2, top: 5, y }, k: solved ? 1 : 0 };
+      if (solved) g.scale.setScalar(0.001); else v.colliders.push(o.gate.col);
+      return o;
+    });
+  }
+  // 年輪の間（zone.rings）：中心をかこむ年輪の壁（すき間あり。回すと当たり判定もいっしょに回る）、通路の根の仕切り・根のこぶ、取っ手。
+  //   回した回数は Save.data.flags[RG.id]（年輪ごと）。FieldView.updateRings が、回すのと当たり判定を動かす
+  rings() {
+    const RG = this.zone.rings; if (!RG) return;
+    const v = this.v, [cx, cz] = RG.at, y = this.gy(cx, cz), flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {};
+    const saved = flags[RG.id] || RG.list.map(() => 0), rad = a => a * Math.PI / 180, N = RG.list.length, H = RG.h || 1.8, W = 1.0;
+    const o = { RG, cx, cz, y, rings: [], handles: [], N };
+    const barkM = this.mat('bark');
+    // 年輪の扇形の壁（a0〜a1 度、半径 r の中心線、厚さ W）。形は XY 平面に描いて、立てる（形の Y が世界の -Z）
+    const sector = (r, a0, a1, h, mat, w = W) => {
+      const sh = new THREE.Shape(), n = Math.max(4, Math.ceil(Math.abs(a1 - a0) / 6)), P = (rr, a) => [rr * Math.cos(rad(a)), -rr * Math.sin(rad(a))];
+      sh.moveTo(...P(r + w / 2, a0));
+      for (let k = 1; k <= n; k++) sh.lineTo(...P(r + w / 2, a0 + (a1 - a0) * k / n));
+      for (let k = n; k >= 0; k--) sh.lineTo(...P(r - w / 2, a0 + (a1 - a0) * k / n));
+      const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: w > 0.5, bevelThickness: 0.08, bevelSize: 0.08, bevelSegments: 1, curveSegments: 4 }), mat);
+      m.rotation.x = -Math.PI / 2; m.castShadow = m.receiveShadow = true; return m;
+    };
+    const ringNames = ['内', '真ん中', '外'];
+    RG.list.forEach((L, k) => {
+      const g = new THREE.Group(); g.position.set(cx, y, cz); this.scene.add(g);
+      const gw = RG.gapW / L.r * 180 / Math.PI, gaps = L.gaps.slice().sort((a, b) => a - b);
+      const cols = [];
+      gaps.forEach((ga, gi) => {
+        const a0 = ga + gw / 2, a1 = (gi + 1 < gaps.length ? gaps[gi + 1] : gaps[0] + 360) - gw / 2;
+        g.add(sector(L.r, a0, a1, H, barkM));
+        // 年輪の溝（光る線）
+        for (const off of [-0.22, 0.22]) { const line = sector(L.r + off, a0 + 0.5, a1 - 0.5, 0.03, this.glow(L.col, 1.6), 0.1); line.position.y = H + 0.08; g.add(line); }
+        for (let a = a0 + 2; a <= a1 - 2; a += 0.7 / L.r * 180 / Math.PI) cols.push({ a, c: { x: 0, z: 0, r: 0.62, y } });
+        // すき間の両がわの、こぶ
+        for (const ea of [a0, a1]) { const kn = new THREE.Mesh(new THREE.SphereGeometry(0.62, 10, 8), barkM); kn.scale.set(1, H / 1.1, 1); kn.position.set(Math.cos(rad(ea)) * L.r, H * 0.45, Math.sin(rad(ea)) * L.r); g.add(kn); }
+      });
+      cols.forEach(q => v.colliders.push(q.c));
+      o.rings.push({ k, L, g, rot: saved[k] || 0, vis: saved[k] || 0, cols, name: ringNames[N === 3 ? k : Math.min(k, 2)] });
+    });
+    // 通路の根の仕切りと、根のこぶ（動かない）
+    const rIn = j => (j === 0 ? 0 : RG.list[j - 1].r + W / 2), rOut = j => (j < N ? RG.list[j].r - W / 2 : RG.list[N - 1].r + 4.6);
+    for (const [js, Cd] of Object.entries(RG.corridors || {})) {
+      const j = +js, r0 = rIn(j), r1 = rOut(j);
+      for (const a of Cd.spokes || []) {
+        const len = r1 - r0, mr = (r0 + r1) / 2, m = new THREE.Mesh(new THREE.BoxGeometry(len + 0.3, H, 0.9), barkM);
+        m.position.set(cx + Math.cos(rad(a)) * mr, y + H / 2, cz + Math.sin(rad(a)) * mr); m.rotation.y = -rad(a); m.castShadow = true; this.scene.add(m);
+        for (let rr = r0 + 0.3; rr <= r1 - 0.2; rr += 0.7) v.colliders.push({ x: cx + Math.cos(rad(a)) * rr, z: cz + Math.sin(rad(a)) * rr, r: 0.55, y });
+      }
+      for (const [a0, a1] of Cd.solid || []) {
+        for (let rr = r0 + 0.6; rr <= r1 - 0.5; rr += 1.0) for (let a = a0 + 2; a <= a1 - 2; a += 0.9 / rr * 180 / Math.PI) v.colliders.push({ x: cx + Math.cos(rad(a)) * rr, z: cz + Math.sin(rad(a)) * rr, r: 0.62, y });
+        // 大きな根のこぶ：まるい岩のような根のかたまり
+        const n = Math.ceil((a1 - a0) / 12);
+        for (let k = 0; k <= n; k++) {
+          const a = a0 + 3 + (a1 - a0 - 6) * k / n, rr = (r0 + r1) / 2 + (this.r() - 0.5) * 0.8;
+          const m = new THREE.Mesh(new THREE.DodecahedronGeometry(1.4 + this.r() * 0.5, 1), barkM); m.scale.set(1, 0.9 + this.r() * 0.5, 1);
+          m.position.set(cx + Math.cos(rad(a)) * rr, y + 0.8, cz + Math.sin(rad(a)) * rr); m.rotation.y = this.r() * 6; m.castShadow = true; this.scene.add(m);
+        }
+      }
+    }
+    // 取っ手：根の柱に、横木が四本（回す年輪の色の帯）。足もとに、右回り・左回りの矢印
+    RG.handles.forEach((Hd, hi) => {
+      const mr = (rIn(Hd.j) + rOut(Hd.j)) / 2, hx = cx + Math.cos(rad(Hd.a)) * mr, hz = cz + Math.sin(rad(Hd.a)) * mr;
+      const g = new THREE.Group(); g.position.set(hx, y, hz); this.scene.add(g);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.34, 1.5, 10), barkM); post.position.y = 0.75; post.castShadow = true; g.add(post);
+      const bars = new THREE.Group(); bars.position.y = 1.05; g.add(bars);
+      for (let q = 0; q < 4; q++) { const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.7, 6), this.mat('wood')); bar.rotation.z = Math.PI / 2; bar.rotation.y = q * Math.PI / 4; bars.add(bar); }
+      Hd.turns.forEach(([k], q) => { const band = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 6, 16), this.glow(RG.list[k].col, 1.8)); band.rotation.x = Math.PI / 2; band.position.y = 0.45 + q * 0.3; g.add(band); });
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), barkM); cap.position.y = 1.5; g.add(cap);
+      v.colliders.push({ x: hx, z: hz, r: 0.42, y });
+      const names = Hd.turns.map(([k]) => o.rings[k].name).join('と') + 'の輪';
+      o.handles.push({ H: Hd, hi, pos: V3(hx, y, hz), g, bars, spin: 0, names });
+    });
+    v.ringObj = o;
   }
   // zone.rubble：[{ id, at: [x, z], r }]：攻撃で砕ける落石の岩山（砕いたら Save.data.flags[id]）
   //   look: 'jackbox' ＝ 巨大びっくり箱。act の札（出し物の名前）がつき、ねじを turns 回ちょうど巻いてから、たたくと開く
@@ -6614,20 +7023,42 @@ const ZONE_BUILD = {
     // 世界の果てへのびる、いちばん太い根（東の小道の南の縁を這う）
     K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(8, -0.6, 19), V3(16, 0.3, 16.4), V3(28, 0.2, 16.5), V3(42, -0.2, 16.4)]), 32, 0.7, 8, false), rootMat(), 0, 0, 0, { abs: true });
   },
-  // 樹の地下：根の洞窟。天井をはう根、光るきのこ、東の地底の泉、奥に樹の心臓
+  // 樹の地下 B1「しおれた根の洞」：入口の大空洞の天井をはう根、光るきのこ、奈落から立ちのぼる光の粒。光る実と、しおれた根（K.roots）
   treeUnder(K) {
-    const arc = (x0, z0, x1, z1, r, top) => { const y = K.gy((x0 + x1) / 2, (z0 + z1) / 2); const m = K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(x0, y - 0.5, z0), V3((x0 + x1) / 2, y + top, (z0 + z1) / 2), V3(x1, y - 0.5, z1)]), 16, r, 8, false), 'bark', 0, 0, 0, { abs: true }); return m; };
-    for (const z of [-12, -8]) arc(-15, z, 15, z + 2, 0.9 + K.r() * 0.4, 5.5);
-    for (const z of [18, 26]) arc(-17, z, 17, z + 2, 1 + K.r() * 0.4, 5.5);
-    const heart = K.mesh(new THREE.IcosahedronGeometry(2.4, 1), new THREE.MeshStandardMaterial({ color: '#3a4a2a', emissive: '#8aff6a', emissiveIntensity: treeHealth() >= 1 ? 1.4 : 0.35, flatShading: true }), 0, 3.4, 36);
+    const arc = (x0, z0, x1, z1, r, top) => { const y = K.gy((x0 + x1) / 2, (z0 + z1) / 2); return K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(x0, y - 0.5, z0), V3((x0 + x1) / 2, y + top, (z0 + z1) / 2), V3(x1, y - 0.5, z1)]), 16, r, 8, false), 'bark', 0, 0, 0, { abs: true }); };
+    for (const z of [-49, -43, -39]) arc(-18, z, 18, z + 2, 0.9 + K.r() * 0.4, 5.5);
+    for (const [x, z] of [[-15, -47], [15, -45], [-13, -39], [11, -38], [-9, -25], [9, -19], [-9, -5], [9, -1], [-15, 9], [-15, 21], [23, 19], [-27, 43], [19, 43]]) K.mushroom(x, z, 1.1 + K.r() * 0.5, null, '#b8ff8a');
+    // 奈落から立ちのぼる、かすかな光の粒（谷のマスから）
+    const T = K.T, voids = []; for (let i = 0; i < T.kind.length; i++) if (T.kind[i] === TK.VOID) voids.push([T.cx(T.colOf(i)), T.cz(T.rowOf(i))]);
+    K.v.emitters.push(dt => { if (voids.length && Math.random() < dt * 10) { const [x, z] = pick(voids); K.v.p.emit(V3(x + (Math.random() - 0.5) * 2, -3 - Math.random() * 3, z + (Math.random() - 0.5) * 2), V3(0, 1.2, 0), hdr('#8aff8a', 1.6), { life: 3, size: 0.07, drag: 0 }); } });
+    K.light(0, 8, -44, '#b8ff8a', 6, 20); K.light(0, 5, -14, '#d8ffc8', 5, 18); K.light(2, 5, 14, '#d8ffc8', 5, 18); K.light(0, 5, 42, '#b8ff8a', 6, 20);
+    // 大空洞の西の壁を伝う、光る樹液（調べられる）
+    for (const [dz, h] of [[-0.25, 3.0], [0.2, 2.2]]) K.mesh(new THREE.BoxGeometry(0.16, h, 0.6), K.glow('#b8ff8a', 1.6), -19.97, 3.4 - h / 2, -41 + dz, { noShadow: true });
+    K.roots();
+  },
+  // 樹の地下 B2「影の回廊」：天井から垂れる根、壁ぎわの紫のきのこ。影の部屋（K.shadowRooms）
+  treeUnder2(K) {
+    const T = K.T;
+    // 天井から垂れる根（部屋の壁ぎわ）
+    for (let i = 0; i < T.kind.length; i++) {
+      if (T.kind[i] !== TK.FLOOR || K.r() > 0.12) continue;
+      const x = T.cx(T.colOf(i)) + (K.r() - 0.5), z = T.cz(T.rowOf(i)) + (K.r() - 0.5), y = T.ceilOf(i), h = 1.5 + K.r() * 2.5;
+      K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(x, y, z), V3(x + (K.r() - 0.5), y - h * 0.5, z + (K.r() - 0.5)), V3(x + (K.r() - 0.5) * 0.6, y - h, z)]), 8, 0.06 + K.r() * 0.07, 5, false), 'bark', 0, 0, 0, { abs: true, noShadow: true });
+    }
+    for (const [x, z] of [[-9, -43], [9, -43], [-9, -31], [9, -19], [-11, -13], [11, 3], [-11, 29], [11, 9]]) K.mushroom(x, z, 1 + K.r() * 0.4, null, '#c08aff');
+    K.light(0, 6, -40, '#c8a8ff', 5, 18); K.light(0, 5, -25, '#d8c8ff', 5, 18); K.light(0, 5, -5, '#d8c8ff', 5, 20); K.light(0, 5, 19, '#d8c8ff', 5, 22);
+    K.shadowRooms();
+  },
+  // 樹の地下 B3「年輪の間」：三重の年輪（K.rings）にかこまれた、樹の心臓
+  treeUnder3(K) {
+    const heart = K.mesh(new THREE.IcosahedronGeometry(2.4, 1), new THREE.MeshStandardMaterial({ color: '#3a4a2a', emissive: '#8aff6a', emissiveIntensity: treeHealth() >= 1 ? 1.4 : 0.35, flatShading: true }), 0, 3.4, 14);
     K.tick((dt, t) => { heart.rotation.y += dt * 0.2; heart.scale.setScalar(1 + Math.sin(t * 1.2) * 0.04); });
-    K.col(0, 36, 2.6, 6);
-    for (const [x, z] of [[-10, -24], [10, -8], [-8, 8], [9, 22], [-20, -14], [-19, 18]]) K.mushroom(x, z, 1.2, null, '#b8ff8a');
-    K.v.emitters.push(dt => { if (Math.random() < dt * 6) K.v.p.emit(V3(19 + (Math.random() - 0.5) * 3, K.gy(19, -20) - 0.3, -20 + (Math.random() - 0.5) * 3), V3(0, 0.6, 0), hdr('#8aff8a', 2), { life: 2.4, size: 0.07, drag: 0 }); });
-    K.light(0, 4, 32, '#8aff8a', 10, 20); K.light(0, 8, -24, '#b8ff8a', 6, 18);
-    // 西の高台の壁を伝う、光る樹液（調べられる）
-    for (const [dz, h] of [[-0.25, 3.0], [0.2, 2.2]]) K.mesh(new THREE.BoxGeometry(0.6, h, 0.16), K.glow('#b8ff8a', 1.6), -21.97, 3.4 - h / 2, dz, { noShadow: true });
-    K.mesh(new THREE.CircleGeometry(0.6, 16), K.glow('#b8ff8a', 1.2), -21.3, 0.03, 0, { rx: -Math.PI / 2, noShadow: true });
+    K.col(0, 14, 2.6, 6);
+    // 心臓をささえる根：床から心臓へ、何本も集まる
+    for (let k = 0; k < 7; k++) { const a = k / 7 * Math.PI * 2; K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(Math.cos(a) * 4, -0.3, 14 + Math.sin(a) * 4), V3(Math.cos(a) * 2.6, 1.2, 14 + Math.sin(a) * 2.6), V3(Math.cos(a) * 1.2, 2.6, 14 + Math.sin(a) * 1.2)]), 12, 0.35, 7, false), 'bark', 0, 0, 0, { abs: true }); }
+    for (const [x, z] of [[-7, -33], [7, -33], [-7, -25], [7, -23]]) K.mushroom(x, z, 1.2, null, '#ffd27a');
+    K.light(0, 4, 14, '#8aff8a', 10, 22); K.light(0, 7, -28, '#ffe8a8', 5, 16); K.light(0, 7, 8, '#d8ffc8', 4, 40);
+    K.rings();
   },
 
   // ---------------- 第八章 ----------------
