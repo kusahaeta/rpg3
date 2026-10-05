@@ -7004,11 +7004,23 @@ const ZONE_BUILD = {
       K.mg('bark', tube([V3(wx, -0.05, wz), V3(wx + ox * 0.6, 3, wz + oz * 0.6), V3(wx + ox * 0.4, TOP * 0.6, wz + oz * 0.4), V3(wx - ox * 1.5, TOP - 0.6, wz - oz * 1.5),
         V3(lerp(wx, HX, 0.55), TOP - 0.9 + Math.sin(k) * 0.3, lerp(wz, HZ, 0.55)), V3(HX + Math.cos(a) * 1.6, TOP - 1.4, HZ + Math.sin(a) * 1.6)], 0.38, 48), 0, 0, 0);
     }
-    // 鼓動のたびに、床の血管を心臓から外へ流れる光の粒
-    const DOTS = 18, inst = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshBasicMaterial({ color: hdr(glow, 2.2), transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }), N * DOTS);
-    inst.frustumCulled = false; K.scene.add(inst);
-    const dotPts = veins.map(c => [...Array(DOTS)].map((_, i) => c.getPoint(0.03 + 0.94 * i / (DOTS - 1)).setY(0.3)));
-    const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), SC = V3();
+    // 鼓動のたびに、床の血管のまわりをつつむ光（オーラ）が、心臓から外へ流れる。光の筒は、まんなかほど濃く、ふちへいくほど淡い
+    const veinGlow = new THREE.ShaderMaterial({
+      uniforms: { uCol: { value: hdr(glow, 1.6) }, uPhase: { value: 0 }, uPeriod: { value: period }, uAmp: { value: amp }, uBase: { value: 0.16 } },
+      vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+        void main() { vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `uniform vec3 uCol; uniform float uPhase, uPeriod, uAmp, uBase; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+        void main() {
+          float face = pow(abs(dot(normalize(vN), normalize(vV))), 1.4);
+          float d = mod(uPhase - 0.08 - vUv.x * 0.9, uPeriod); if (d > uPeriod * 0.5) d -= uPeriod;
+          float w = exp(-(d / 0.16) * (d / 0.16));
+          float ends = smoothstep(0.0, 0.06, vUv.x) * (1.0 - smoothstep(0.85, 1.0, vUv.x));
+          float k = (uBase + uAmp * w * 0.9) * face * ends;
+          gl_FragColor = vec4(uCol * k, k);
+        }`,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    veins.forEach(c => { const m = new THREE.Mesh(new THREE.TubeGeometry(c, 60, 0.7, 12, false), veinGlow); m.renderOrder = 2; K.scene.add(m); });
 
     // ---- 心臓の根のゆりかご：床から盛り上がった根のこぶと、心臓の下をささえる根
     const mound = new THREE.Mesh(new THREE.SphereGeometry(3.8, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), K.mat('bark')); mound.scale.y = 0.32; mound.position.set(HX, -0.05, HZ); mound.receiveShadow = true; K.add(mound);
@@ -7092,12 +7104,7 @@ const ZONE_BUILD = {
       // 光の輪は、鼓動が心臓から外へ伝わるように、内から順に明るくなる
       const k0 = ((t % period) + period) % period;
       runeM.forEach((m, i) => { m.opacity = 0.18 + amp * 0.55 * Math.exp(-(((k0 - 0.12 - i * 0.12) / 0.12) ** 2)); });
-      dotPts.forEach((pts, v) => pts.forEach((p, i) => {
-        const u = i / (DOTS - 1); let dd = (((k0 - 0.08 - u * 0.9) % period) + period) % period; if (dd > period / 2) dd -= period;
-        const w = Math.exp(-((dd / 0.12) ** 2));
-        SC.setScalar(0.35 + Math.min(1.6, w * amp * 1.8)); M4.compose(p, Q, SC); inst.setMatrixAt(v * DOTS + i, M4);
-      }));
-      inst.instanceMatrix.needsUpdate = true;
+      veinGlow.uniforms.uPhase.value = k0;
       husks.forEach(h => { h.g.rotation.z = Math.sin(t * 0.6 + h.ph) * 0.04; h.g.rotation.x = Math.cos(t * 0.5 + h.ph) * 0.03; });
     });
   },
