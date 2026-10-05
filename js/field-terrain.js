@@ -9,6 +9,7 @@
 //   ^ v < >  階段（矢印の向きへ上る。両端の床の高さを結ぶ）
 //   E  昇降機（となり合う床の高さのあいだを上下する）
 //   D  自動扉（近づくと開く。扉の上は壁）
+//   %  根の橋（樹の地下。根がしおれているあいだは奈落、元気なあいだは岸と同じ高さの床。setRootBridge で切りかえる）
 //   a〜z  区画の出入口（zone.exits の key。門・階段・区画間エレベーターの籠）
 //  部屋（扉で区切られた範囲）ごとに天井があり、高さは部屋の最も高い床 + wallH。
 // ============================================================
@@ -27,7 +28,7 @@ class Terrain {
     this.wallH = zone.wallH || (ARCH_STYLES[zone.arch || 'station'] || {}).wallH || 6;
     const n = this.cols * this.rows;
     this.ch = new Array(n); this.kind = new Uint8Array(n); this.h = new Float32Array(n); this.fixed = new Uint8Array(n);
-    this.water = new Uint8Array(n); this.paint = new Uint8Array(n); this.bridge = new Uint8Array(n);
+    this.water = new Uint8Array(n); this.paint = new Uint8Array(n); this.bridge = new Uint8Array(n); this.rootBridge = new Uint8Array(n); this.rbH = new Float32Array(n);
     this.stairs = new Map();
     this.liftOf = new Int16Array(n).fill(-1); this.doorOf = new Int16Array(n).fill(-1); this.roomOf = new Int16Array(n).fill(-1);
     this.locked = new Set();     // 封鎖中の出入口の key
@@ -41,6 +42,7 @@ class Terrain {
       else if (ch === 'W') this.kind[i] = TK.WINDOW;
       else if (ch === '~') { this.kind[i] = TK.SOLID; this.water[i] = 1; }
       else if (ch === ' ') { this.kind[i] = TK.VOID; this.h[i] = ABYSS; }
+      else if (ch === '%') { this.kind[i] = TK.VOID; this.h[i] = ABYSS; this.rootBridge[i] = 1; }
       else if (ch >= '0' && ch <= '9') { this.kind[i] = TK.FLOOR; this.h[i] = +ch; this.fixed[i] = 1; }
       else if (STAIR_DIR[ch]) this.kind[i] = TK.STAIR;
       else if (ch === 'E') this.kind[i] = TK.LIFT;
@@ -48,7 +50,7 @@ class Terrain {
       else if (ch >= 'a' && ch <= 'z') this.kind[i] = TK.EXIT;
       else { this.kind[i] = TK.FLOOR; this.paint[i] = ch === ',' ? 1 : 0; this.bridge[i] = ch === '=' ? 1 : 0; }   // その他の記号は、となりの床と同じ高さの床
     }
-    this.resolveHeights(); this.buildStairs(); this.buildLifts(); this.buildDoors(); this.buildExits(); this.buildRooms();
+    this.resolveHeights(); this.rootBridgeHeights(); this.buildStairs(); this.buildLifts(); this.buildDoors(); this.buildExits(); this.buildRooms();
     // 屋外の区画（天井なし）：壁の塊ごとに上端の高さを決める（町は建物の並び、崖は岩の起伏、木立は地面の高さ）
     this.style = ARCH_STYLES[zone.arch || 'station'] || ARCH_STYLES.station;
     this.open = this.style.roof === false;
@@ -135,6 +137,22 @@ class Terrain {
         this.h[j] = this.h[i]; this.fixed[j] = 1; q.push(j);
       }
     }
+  }
+  // 根の橋（%）が元気なときの高さ：つながった根の橋のマスの、両岸の床のうち高いほう
+  rootBridgeHeights() {
+    const seen = new Uint8Array(this.kind.length);
+    for (let i = 0; i < this.kind.length; i++) {
+      if (!this.rootBridge[i] || seen[i]) continue;
+      const cells = this.flood(i, k => this.rootBridge[k] && !seen[k], k => { seen[k] = 1; });
+      let h = -1e9;
+      for (const j of cells) for (const [dc, dr] of DIR4) { const k = this.idx(this.colOf(j) + dc, this.rowOf(j) + dr); if (k >= 0 && this.fixed[k]) h = Math.max(h, this.h[k]); }
+      for (const j of cells) this.rbH[j] = h > -1e9 ? h : 0;
+    }
+  }
+  // 根の橋のマスを、元気（床）としおれ（奈落）で切りかえる
+  setRootBridge(i, on) {
+    if (!this.rootBridge[i]) return;
+    this.kind[i] = on ? TK.FLOOR : TK.VOID; this.h[i] = on ? this.rbH[i] : ABYSS;
   }
   buildStairs() {
     for (let i = 0; i < this.kind.length; i++) {
@@ -307,6 +325,28 @@ class Terrain {
     return bad;
   }
   fits(x, z, r, h0 = this.groundAt(x, z), o) { return this.misfits(x, z, r, h0, o) === 0; }
+  // 円（半径 r）が、通れないマス・段差のあるマスに少しもかからないか（9 点だけでなく、かかるマスをすべて調べる。樹の地下の影）
+  fitsCircle(x, z, r) {
+    const h0 = this.groundAt(x, z);
+    if (!Number.isFinite(h0)) return false;
+    const c0 = Math.floor((x - r + this.hw) / CELL), c1 = Math.floor((x + r + this.hw) / CELL), r0 = Math.floor((z - r + this.hd) / CELL), r1 = Math.floor((z + r + this.hd) / CELL);
+    for (let rr = r0; rr <= r1; rr++) for (let cc = c0; cc <= c1; cc++) {
+      const i = this.idx(cc, rr);
+      if (i >= 0 && this.walkable(i) && this.kind[i] !== TK.STAIR && Math.abs(this.h[i] - h0) <= STEP) continue;
+      const x0 = cc * CELL - this.hw, z0 = rr * CELL - this.hd, nx = clamp(x, x0, x0 + CELL), nz = clamp(z, z0, z0 + CELL);
+      if (Math.hypot(x - nx, z - nz) < r - 1e-6) return false;
+    }
+    return true;
+  }
+  // 円を (dx, dz) だけ動かす（fitsCircle で調べる。壁に沿って滑る。0.1m きざみ）
+  moveCircle(pos, dx, dz, r) {
+    const n = Math.max(1, Math.ceil(Math.hypot(dx, dz) / 0.1));
+    for (let s = 0; s < n; s++) for (const ax of ['x', 'z']) {
+      const d = (ax === 'x' ? dx : dz) / n; if (!d) continue;
+      const nx = ax === 'x' ? pos.x + d : pos.x, nz = ax === 'z' ? pos.z + d : pos.z;
+      if (this.fitsCircle(nx, nz, r)) { pos.x = nx; pos.z = nz; }
+    }
+  }
   // 円を (dx, dz) だけ動かす。壁に沿って滑り、段差は越えない
   move(pos, dx, dz, r, o) {
     const n = Math.max(1, Math.ceil(Math.hypot(dx, dz) / 0.2));
@@ -347,6 +387,13 @@ class Terrain {
   // ---------------- 到達できる範囲 ----------------
   // 起点から歩いて（階段・昇降機を使って）行けるマス
   computeReach(x, z) {
+    // 根の橋（%）は、元気なときに通れる道として数える（敵・宝箱は、橋の上には置かない）
+    const rb = [];
+    for (let i = 0; i < this.kind.length; i++) if (this.rootBridge[i] && this.kind[i] === TK.VOID) { this.setRootBridge(i, true); rb.push(i); }
+    this.reachOf(x, z);
+    rb.forEach(i => this.setRootBridge(i, false));
+  }
+  reachOf(x, z) {
     const n = this.kind.length, reach = new Uint8Array(n), start = this.at(x, z);
     this.reach = reach;
     if (start < 0 || !this.isWalkKind(this.kind[start])) return;
@@ -388,7 +435,7 @@ class Terrain {
     // 敵・宝箱を置けるマス（床のみ。扉・昇降機・出入口のとなりは避ける。トランポリンのまわり 2 マスも、小さな島をふさがないよう避ける）
     this.spawnCells = [];
     for (let i = 0; i < n; i++) {
-      if (!reach[i] || this.kind[i] !== TK.FLOOR) continue;
+      if (!reach[i] || this.kind[i] !== TK.FLOOR || this.rootBridge[i]) continue;
       const c = this.colOf(i), r = this.rowOf(i);
       let ok = true;
       for (let dr = -1; dr <= 1 && ok; dr++) for (let dc = -1; dc <= 1; dc++) {
@@ -1013,6 +1060,8 @@ function buildArchitecture(view, T) {
       if (k === K.LIFT || nk === K.LIFT) return;                 // 昇降機のまわりは別に作る
       if (k === K.STAIR && nk !== K.VOID && Math.min(yA2, yB2) >= T.h[i] - 0.01) { railing(pa, pb, yA, yB, nx, nz); return; }
       cliffFace(ex, ez, nx, nz, yA, yB, yA2, yB2);
+      // 根の橋のたもとには柵を立てない。zone.voidRail === false の区画（樹の地下）は、奈落のふちにも立てない
+      if (nk === K.VOID && (T.rootBridge[j] || zone.voidRail === false)) return;
       railing(pa, pb, yA, yB, nx, nz);
     });
   }
