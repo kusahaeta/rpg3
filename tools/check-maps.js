@@ -103,13 +103,6 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
     const both = S.mirror === 'xz', tf = (x, z) => [2 * S.at[0] - x, both ? 2 * S.at[1] - z : z], [a0, b0] = tf(S.area[0], S.area[1]), [a1, b1] = tf(S.area[2], S.area[3]);
     for (let x = Math.min(a0, a1); x <= Math.max(a0, a1) + 0.01; x += CELL) for (let z = Math.min(b0, b1); z <= Math.max(b0, b1) + 0.01; z += CELL) { const i = T.at(x, z); if (i >= 0 && T.isWalkKind(T.kind[i])) T.reach[i] = 1; }
   }
-  // 年輪の間：年輪を回して、心臓の間（いちばん内側）まで行けるか（いちばん少ない回す回数）。最初から開いていないか
-  if (Z.rings) {
-    const r = solveRings(Z.rings);
-    if (r.n < 0) bad.push(`rings ${Z.rings.id} has no solution`);
-    else if (r.n === 0) bad.push(`rings ${Z.rings.id} is already open at start`);
-    if (verbose) console.log(`   rings ${Z.rings.id}: ${r.n} turn(s), ${r.states} state(s)  ${(r.path || []).join(' ')}`);
-  }
   // 光の鏡：どこかの向きの組み合わせで光が届くか（解けるか）。最初の向きのままでは届かないか
   for (const S of Z.seals || []) {
     if (!S.beam) continue;
@@ -282,45 +275,6 @@ function solveShadow(T, S) {
     q = nq;
   }
   return { n: -1, states, direct };
-}
-// 年輪の間（zone.rings）：年輪 k（0 が内）のすき間は、gaps の角度 + 回した回数 × step。通路 j（0 = 心臓の間、N = 外）は、仕切り（spokes）で弧に分かれ、
-//   根のこぶ（solid）の弧には入れない。年輪 k のすき間は、通路 k と k+1 の、その角度の弧どうしをつなぐ。取っ手は、その弧にいれば ±1 回せる。
-//   入口（entry の角度の外の通路）から、心臓の間に入れれば解けた
-function solveRings(RG) {
-  const N = RG.list.length, M = Math.round(360 / RG.step), norm = a => ((a % 360) + 360) % 360;
-  const C = j => (RG.corridors || {})[j] || {};
-  const arcOf = (j, a) => { const sp = (C(j).spokes || []).map(norm).sort((x, y) => x - y); if (!sp.length) return 0; a = norm(a); for (let i = 0; i < sp.length; i++) if (a < sp[i]) return i; return 0; };
-  const solid = (j, a) => (C(j).solid || []).some(([a0, a1]) => { const d = norm(a - a0), w = norm(a1 - a0); return d > 0 && d < w; });
-  const region = (rot, j0, a0) => {
-    const reg = [[j0, a0]], rs = new Set([j0 + ',' + a0]);
-    for (let ri = 0; ri < reg.length; ri++) {
-      const [j, a] = reg[ri];
-      for (const k of [j - 1, j]) {
-        if (k < 0 || k >= N) continue;
-        for (const g0 of RG.list[k].gaps) {
-          const g = norm(g0 + rot[k] * RG.step), jj = k === j ? j + 1 : j - 1;
-          if (arcOf(j, g) !== a || solid(j, g) || solid(jj, g)) continue;
-          const aa = arcOf(jj, g), key = jj + ',' + aa; if (!rs.has(key)) { rs.add(key); reg.push([jj, aa]); }
-        }
-      }
-    }
-    return rs;
-  };
-  const st0 = { rot: RG.list.map(() => 0), j: N, a: arcOf(N, RG.entry), n: 0, prev: null, act: '' };
-  const key = st => st.rot.join(',') + '|' + st.j + '|' + st.a, seen = new Set([key(st0)]), q = [st0];
-  for (let qi = 0; qi < q.length; qi++) {
-    const st = q[qi], rs = region(st.rot, st.j, st.a);
-    if ([...rs].some(k => k.startsWith('0,'))) { const path = []; for (let x = st; x.prev; x = x.prev) path.unshift(x.act); return { n: st.n, path, states: seen.size }; }
-    RG.handles.forEach((h, hi) => {
-      if (!rs.has(h.j + ',' + arcOf(h.j, h.a)) || solid(h.j, h.a)) return;
-      for (const sg of [1, -1]) {
-        const rot = st.rot.slice(); h.turns.forEach(([k, d]) => { rot[k] = ((rot[k] + d * sg) % M + M) % M; });
-        const nx = { rot, j: h.j, a: arcOf(h.j, h.a), n: st.n + 1, prev: st, act: `handle${hi}${sg > 0 ? '+' : '-'}` };
-        const k = key(nx); if (seen.has(k)) continue; seen.add(k); q.push(nx);
-      }
-    });
-  }
-  return { n: -1, states: seen.size };
 }
 // つながりの石畳の道の数（すべての石を一度ずつ、始まりの石から終わりの石まで）
 function strokePaths(T, P) {
