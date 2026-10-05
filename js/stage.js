@@ -433,7 +433,21 @@ class StageView extends BaseView {
         if (ang - size < 0.2) return true;
       }
     }
-    return false;
+    return this.sceneryBlocks(pos, look);
+  }
+  // 景色（鳥居の柱・灯籠・建物・木など）が、カメラと見る点のあいだに入っているか
+  sceneryBlocks(pos, look) {
+    if (!this.blockers) {
+      const mine = new Set(); for (const a of Object.values(this.actors)) a.m.group.traverse(o => mine.add(o));
+      const shown = o => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
+      this.blockers = [];
+      this.scene.traverse(o => { const m = o.material; if (o.isMesh && !mine.has(o) && m && !m.transparent && m.blending !== THREE.AdditiveBlending && shown(o)) this.blockers.push(o); });
+      this.rc = new THREE.Raycaster();
+    }
+    const d = V3().subVectors(look, pos), far = d.length() - 0.35;
+    if (far <= 0) return false;
+    this.rc.set(pos, d.normalize()); this.rc.near = 0.05; this.rc.far = far; this.rc.camera = this.camera;
+    return this.rc.intersectObjects(this.blockers, false).length > 0;
   }
   // 話し手の寄り：顔の正面寄りから、聞き手のいる側に少しずらす
   single(a, o = {}) {
@@ -451,8 +465,8 @@ class StageView extends BaseView {
     };
     // 手前に誰かが立っていたら、反対側から・回りこんで・もう少し寄って撮る
     let pick = null;
-    for (const dist of [dist0, dist0 * 0.72]) {
-      for (const ang of [0.23, -0.23, 0.6, -0.6, 1.0, -1.0]) { const c = make(ang, dist); if (!this.occluded(c[0], c[1], [a])) { pick = c; break; } }
+    for (const dist of [dist0, dist0 * 0.72, dist0 * 0.5]) {
+      for (const ang of [0.23, -0.23, 0.6, -0.6, 1.0, -1.0, 1.4, -1.4]) { const c = make(ang, dist); if (!this.occluded(c[0], c[1], [a])) { pick = c; break; } }
       if (pick) break;
     }
     const [pos, look] = pick || make(-0.5, 1.5 * sc);
