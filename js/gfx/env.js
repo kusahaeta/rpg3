@@ -260,14 +260,13 @@ function treeAngle(Z) {
   return Math.atan2(R.map2d[0] - Z.map2d[0], -(R.map2d[1] - Z.map2d[1]));
 }
 function farTree(T) {
-  // treeLook：[距離, 大きさ, 高さ]。ぽかぽか村は、タイトル画面と同じ見え方に
-  const h = treeHealth(), zt = T.zone && T.zone.treeAt, [dist, sc, y] = (T.zone && T.zone.treeLook) || [230, 1.6, -6];
+  // treeLook：[距離, 大きさ, 高さ, 向き]。ぽかぽか村は、タイトル画面と同じ見え方に（タイトルは樹を南側から、村は北側から見るので、半回転させて同じ面を向ける）
+  const h = treeHealth(), zt = T.zone && T.zone.treeAt, [dist, sc, y, rot = 0] = (T.zone && T.zone.treeLook) || [230, 1.6, -6];
   const { g, fruits, halo, leaf } = worldTree(h, sc);
   T.farTree = { g, fruits, halo, leaf };
   // turn：戦場のように区画を回して置くときは、その分だけ樹も回す
   const a = (zt ? zt[0] : treeAngle(T.zone)) - T.turn, d = zt ? zt[1] : dist;
-  g.position.set(Math.sin(a) * d, y, -Math.cos(a) * d);
-  if (d < 180) T.treeDir = Math.atan2(-Math.cos(a), Math.sin(a));
+  g.position.set(Math.sin(a) * d, y, -Math.cos(a) * d); g.rotation.y = rot;
   T.root.add(g);
   T.updaters.push((dt, t) => fruits.forEach((f, i) => { f.scale.setScalar((f.userData.s ?? 1) * (1 + Math.sin(t * 2 + i) * 0.15)); }));
 }
@@ -299,11 +298,7 @@ function puffClouds(T, n = 10, col = '#ffffff', y0 = 30) {
     g.position.set(Math.cos(a) * r, y0 + Math.random() * 25, Math.sin(a) * r); g.lookAt(0, g.position.y, 0);
     T.root.add(g); list.push([g, a, r, Math.random() * 0.5 + 0.2]);
   }
-  // T.treeDir：雲の通り道まで近い遠景の樹の方角（farTree が決める）。その前を通る雲は消して、樹冠に雲がまざらないように
-  T.updaters.push((dt, t) => list.forEach(([g, a, r, s]) => {
-    const b = a + t * 0.002 * s; g.position.x = Math.cos(b) * r; g.position.z = Math.sin(b) * r;
-    if (T.treeDir != null) g.visible = Math.abs(((b - T.treeDir) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI) > 0.5;
-  }));
+  T.updaters.push((dt, t) => list.forEach(([g, a, r, s]) => { const b = a + t * 0.002 * s; g.position.x = Math.cos(b) * r; g.position.z = Math.sin(b) * r; }));
 }
 // 舞う粒（花びら・星・蛍）
 function motes(T, col, rate = 20, o = {}) {
