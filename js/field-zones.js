@@ -4064,70 +4064,96 @@ class ZoneKit {
     }
   }
   // ---------------- 自然 ----------------
-  // にゃんだーの樹（近くで見る大樹。樹の根もと）：すそ広がりで筋の入った幹、地面へもぐる板根、太い大枝と小枝、枝先の葉のかたまり、枝葉の下にぶら下がる光る感情の実。
-  // o.leaf：葉の色（あとから色を変えられるよう、葉のマテリアルを返す）／o.fruit：実をつけるか／o.hidden：実を小さくしておく（あとでふくらませる）／o.clear：霧にかすませない（近くで映す場面）
+  // にゃんだーの樹（近くで見る大樹。樹の根もと）：すそ広がりで筋の入った苔むした幹、地面をはう板根、横に大きく広がる樹冠、
+  // 枝葉の下にぶら下がる光る感情の実、根もとをおおう苔の丘と茂み。
+  // o.health：葉の色（0 で灰色、1 でみどり。返す leaves の色を、あとから target へ変えられる）／o.fruit：実をつけるか／
+  // o.hidden：実を小さくしておく（あとでふくらませる）／o.clear：霧にかすませない（近くで映す場面）
   nyanderTree(cx, cz, o = {}) {
-    const y0 = this.gy(cx, cz), C = V3(cx, y0, cz), r = () => this.r();
-    const fog = !o.clear, bark = this.stdM('#7a5838', 0.95, { fog }), barkDark = this.stdM('#5e4430', 0.95, { fog });
-    const leafA = new THREE.MeshStandardMaterial({ color: o.leaf || '#5ad06a', roughness: 0.85, flatShading: true, fog });
-    const leafB = new THREE.MeshStandardMaterial({ color: new THREE.Color(o.leaf || '#5ad06a').multiplyScalar(0.78), roughness: 0.9, flatShading: true, fog });
+    const y0 = this.gy(cx, cz), C = V3(cx, y0, cz), r = () => this.r(), fog = !o.clear, h = o.health ?? 1;
+    const barkC = new THREE.Color('#7a5838'), barkD = new THREE.Color('#5e4430'), mossC = new THREE.Color('#5f8f3c'), mossD = new THREE.Color('#41702c'), dullC = new THREE.Color('#7e8270'), dullD = new THREE.Color('#686c5c');
+    const bark = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, fog });
+    // 苔：上を向いた面と、すそ・筋のくぼみほど緑に。樹が弱っているあいだは色あせた灰緑（setMoss で、よみがえると緑に）
+    const mossGeos = [];
+    const moss = (geo, k = 1, low = 0) => {
+      const pos = geo.attributes.position, nor = geo.attributes.normal, a = new Float32Array(pos.count * 3), b = new Float32Array(pos.count * 3), c = new THREE.Color();
+      for (let i = 0; i < pos.count; i++) {
+        const y = pos.getY(i), n = 0.5 + 0.5 * Math.sin(pos.getX(i) * 0.31 + y * 0.17) * Math.sin(pos.getZ(i) * 0.27 - y * 0.11);
+        const f = Math.min(1, Math.max(0, (nor.getY(i) * 0.9 + 0.25 + (low ? Math.max(0, 1 - (y - y0) / low) * 0.7 : 0)) * k * (0.55 + n * 0.8)));
+        const base = n > 0.5 ? barkC : barkD;
+        c.copy(base).lerp(n > 0.4 ? dullC : dullD, f); a.set([c.r, c.g, c.b], i * 3);
+        c.copy(base).lerp(n > 0.4 ? mossC : mossD, f); b.set([c.r, c.g, c.b], i * 3);
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(a), 3)); geo.userData.moss = [a, b]; mossGeos.push(geo);
+    };
+    const setMoss = k => { for (const g of mossGeos) { const [a, b] = g.userData.moss, col = g.attributes.color.array; for (let i = 0; i < col.length; i++) col[i] = a[i] + (b[i] - a[i]) * k; g.attributes.color.needsUpdate = true; } };
     // 先にいくほど細くなる管（根・枝）
-    const tube = (pts, r0, r1, mat, seg = 24) => {
+    const tube = (pts, r0, r1, mk = 1, seg = 24) => {
       const curve = new THREE.CatmullRomCurve3(pts), geo = new THREE.TubeGeometry(curve, seg, 1, 10, false), pos = geo.attributes.position, P = V3(), Q = V3();
       for (let i = 0; i <= seg; i++) { const t = i / seg, rr = r0 + (r1 - r0) * Math.pow(t, 0.8); curve.getPointAt(t, P); for (let j = 0; j <= 10; j++) { const n = i * 11 + j; Q.fromBufferAttribute(pos, n).sub(P).multiplyScalar(rr).add(P); pos.setXYZ(n, Q.x, Q.y, Q.z); } }
-      geo.computeVertexNormals();
-      const m = new THREE.Mesh(geo, mat); this.add(m); return curve;
+      geo.computeVertexNormals(); moss(geo, mk);
+      this.add(new THREE.Mesh(geo, bark)); return curve;
     };
-    // 幹：すそが大きく広がり、縦の筋がうねる
+    // 幹：すそが大きく広がり、縦の筋がうねる（ゆるくねじれる）
     const prof = [[26, -3], [22, 1], [18.5, 6], [16.5, 14], [15.2, 26], [14.4, 40], [14.8, 52], [16.4, 60], [15, 68], [10, 74], [0.1, 78]];
-    const tg = new THREE.LatheGeometry(prof.map(([rr, y]) => new THREE.Vector2(rr, y)), 64, 0, Math.PI * 2), tp = tg.attributes.position, V = V3();
+    const tg = new THREE.LatheGeometry(prof.map(([rr, y]) => new THREE.Vector2(rr, y)), 72, 0, Math.PI * 2), tp = tg.attributes.position, V = V3();
     for (let i = 0; i < tp.count; i++) {
-      V.fromBufferAttribute(tp, i); const th = Math.atan2(V.z, V.x), low = Math.max(0, 1 - V.y / 16);
-      const k = 1 + 0.06 * Math.sin(9 * th + V.y * 0.06) + 0.03 * Math.sin(23 * th - V.y * 0.1) + 0.28 * low * low * Math.pow(Math.abs(Math.sin(4 * th + 0.4)), 3);
-      tp.setXYZ(i, V.x * k, V.y, V.z * k);
+      V.fromBufferAttribute(tp, i); const th = Math.atan2(V.z, V.x) + V.y * 0.012, low = Math.max(0, 1 - V.y / 16), rr = Math.hypot(V.x, V.z);
+      const k = 1 + 0.07 * Math.sin(9 * th + V.y * 0.06) + 0.035 * Math.sin(23 * th - V.y * 0.1) + 0.28 * low * low * Math.pow(Math.abs(Math.sin(4 * th + 0.4)), 3);
+      tp.setXYZ(i, Math.cos(th) * rr * k + C.x, V.y + y0, Math.sin(th) * rr * k + C.z);
     }
-    tg.computeVertexNormals();
-    const trunk = new THREE.Mesh(tg, bark); trunk.position.copy(C); this.add(trunk);
-    // 板根：幹のすそから、地面へもぐりながら四方へ（北の根のトンネルの上は避ける）
-    for (let i = 0; i < 11; i++) {
-      const a = i / 11 * Math.PI * 2 + 0.2; if (Math.abs(Math.atan2(Math.sin(a + Math.PI / 2), Math.cos(a + Math.PI / 2))) < 0.45) continue;
-      const d = V3(Math.cos(a), 0, Math.sin(a)), L = 34 + r() * 14;
-      tube([C.clone().addScaledVector(d, 16).setY(y0 + 9), C.clone().addScaledVector(d, 26).setY(y0 + 5), C.clone().addScaledVector(d, L * 0.8).setY(y0 + 1.2), C.clone().addScaledVector(d, L).setY(y0 - 2)], 4.2, 0.8, barkDark, 20);
+    tg.computeVertexNormals(); moss(tg, 1.15, 48);
+    this.add(new THREE.Mesh(tg, bark));
+    // 板根：幹のすそから、地面をはいながら四方へ。ところどころで枝分かれ（北の根のトンネルの上は避ける）
+    for (let i = 0; i < 14; i++) {
+      const a = i / 14 * Math.PI * 2 + 0.15 + (r() - 0.5) * 0.15; if (Math.abs(Math.atan2(Math.sin(a + Math.PI / 2), Math.cos(a + Math.PI / 2))) < 0.5) continue;
+      const d = V3(Math.cos(a), 0, Math.sin(a)), sd = V3(-d.z, 0, d.x), L = 46 + r() * 26, w = (r() - 0.5) * 10;
+      const at = (t, y) => C.clone().addScaledVector(d, t).addScaledVector(sd, w * (t / L) * (t / L)).setY(y0 + y);
+      tube([at(15, 10), at(26, 5.5), at(L * 0.55, 2.2), at(L * 0.85, 0.6), at(L, -1.5)], 4.6, 0.7, 1.8, 24);
+      if (r() < 0.6) { const b = at(L * 0.5, 2), d2 = d.clone().applyAxisAngle(V3(0, 1, 0), (r() < 0.5 ? 1 : -1) * (0.5 + r() * 0.4)); tube([b, b.clone().addScaledVector(d2, 10).setY(y0 + 1.2), b.clone().addScaledVector(d2, 20 + r() * 8).setY(y0 - 1)], 2.2, 0.5, 1.4, 12); }
     }
-    // 大枝と小枝。枝先に葉のかたまり
+    // 樹冠：大枝が横へ大きく張り出し、枝先がやや垂れる。枝先と、上をおおう丸屋根に葉のかたまり
+    const greens = ['#5ad06a', '#4ab85a', '#72d872', '#3f9f4e'], gray = new THREE.Color('#9a9a88');
+    const leaves = greens.map(g => { const target = new THREE.Color(g), m = new THREE.MeshStandardMaterial({ color: gray.clone().multiplyScalar(0.8 + target.g * 0.25).lerp(target, h), roughness: 0.85, flatShading: true, fog }); return { m, target }; });
     const clusters = [], ends = [];
-    const N = 8;
+    const blob = (c, rr, li) => { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(rr, 2), leaves[li].m); m.position.copy(c); m.scale.y = 0.78; m.rotation.set(r() * 3, r() * 3, 0); this.add(m); clusters.push({ c, r: rr }); };
+    const N = 10;
     for (let i = 0; i < N; i++) {
-      const a = i / N * Math.PI * 2 + (r() - 0.5) * 0.4, d = V3(Math.cos(a), 0, Math.sin(a)), R = 30 + r() * 10, ye = 84 + r() * 10;
+      const a = i / N * Math.PI * 2 + (r() - 0.5) * 0.35, d = V3(Math.cos(a), 0, Math.sin(a)), R = 64 + r() * 14, ye = 74 + r() * 8;
       const E = C.clone().addScaledVector(d, R).setY(y0 + ye);
-      tube([C.clone().addScaledVector(d, 10).setY(y0 + 58 + r() * 6), C.clone().addScaledVector(d, 20).setY(y0 + 72), E], 5.2, 1.6, bark);
-      ends.push(E);
-      for (let j = 0; j < 2; j++) {
-        const s = (j ? 1 : -1) * (0.5 + r() * 0.3), d2 = d.clone().applyAxisAngle(V3(0, 1, 0), s), F = E.clone().addScaledVector(d2, 10 + r() * 6).add(V3(0, 3 + r() * 6, 0));
-        tube([E.clone(), E.clone().lerp(F, 0.5).add(V3(0, 2, 0)), F], 1.6, 0.5, bark, 12);
-        ends.push(F);
+      tube([C.clone().addScaledVector(d, 10).setY(y0 + 56 + r() * 8), C.clone().addScaledVector(d, R * 0.45).setY(y0 + 74 + r() * 4), E], 5.6, 1.8, 0.9);
+      ends.push([E, 1]);
+      for (let j = 0; j < 3; j++) {
+        const sdir = d.clone().applyAxisAngle(V3(0, 1, 0), (j - 1) * (0.55 + r() * 0.25)), F = E.clone().addScaledVector(sdir, 18 + r() * 10).add(V3(0, (j === 1 ? -1 : -7) + r() * 4, 0));
+        tube([E.clone(), E.clone().lerp(F, 0.5).add(V3(0, 2.5, 0)), F], 1.8, 0.5, 0.9, 12);
+        ends.push([F, 0]);
       }
     }
-    // 真ん中の芯の枝
-    const top = C.clone().setY(y0 + 104); tube([C.clone().setY(y0 + 72), C.clone().setY(y0 + 88).add(V3(2, 0, -1)), top], 6, 2, bark);
-    // 葉のかたまり：枝先ごとに、大きな玉のまわりに小さな玉を寄せる
-    const blob = (c, rr, mat) => { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(rr, 2), mat); m.position.copy(c); m.scale.y = 0.82; m.rotation.set(r() * 3, r() * 3, 0); this.add(m); clusters.push({ c, r: rr }); };
-    ends.forEach((E, i) => {
-      const big = i % 3 === 0;
-      blob(E.clone().add(V3(0, big ? 5 : 3, 0)), big ? 13 : 9 + r() * 2, leafA);
-      for (let k = 0; k < (big ? 3 : 2); k++) { const a = r() * Math.PI * 2; blob(E.clone().add(V3(Math.cos(a) * 7, (big ? 1 : 0) + r() * 4 - 3, Math.sin(a) * 7)), 6 + r() * 3, k ? leafB : leafA); }
+    const top = C.clone().setY(y0 + 100); tube([C.clone().setY(y0 + 70), C.clone().setY(y0 + 86).add(V3(2, 0, -1)), top], 6.5, 2.2, 0.8);
+    ends.forEach(([E, big]) => {
+      blob(E.clone().add(V3(0, big ? 5 : 3, 0)), big ? 14 + r() * 2 : 9 + r() * 3, big ? 0 : 1 + (r() * 2 | 0));
+      for (let k = 0; k < (big ? 4 : 2); k++) { const a = r() * Math.PI * 2; blob(E.clone().add(V3(Math.cos(a) * 9, r() * 6 - 3, Math.sin(a) * 9)), 7 + r() * 3, (k + 1) % 4); }
     });
-    blob(top.clone().add(V3(0, 4, 0)), 16, leafA);
-    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.3; blob(top.clone().add(V3(Math.cos(a) * 17, -5 + r() * 4, Math.sin(a) * 17)), 11 + r() * 2, i % 2 ? leafB : leafA); }
+    // 上の丸屋根：外へいくほど低く
+    blob(top.clone().add(V3(0, 8, 0)), 20, 2);
+    for (const [rad, y, n, sz] of [[22, 4, 8, 16], [46, -4, 14, 15], [70, -13, 20, 13], [88, -22, 22, 11]]) for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + r() * 0.4; blob(top.clone().add(V3(Math.cos(a) * rad, y + r() * 4, Math.sin(a) * rad)), sz + r() * 3, i % 4); }
+    // 根もとをおおう苔の丘と茂み（区画の中には入れない）
+    const ground = ['#5f9a44', '#4a8238'].map(g => { const target = new THREE.Color(g), m = new THREE.MeshStandardMaterial({ color: dullC.clone().lerp(target, h), roughness: 0.95, flatShading: true, fog }); leaves.push({ m, target }); return m; });
+    const [mossM, mossM2] = ground;
+    for (let i = 0; i < 90; i++) {
+      const a = r() * Math.PI * 2, rad = 18 + Math.pow(r(), 0.7) * 80, x = C.x + Math.cos(a) * rad, z = C.z + Math.sin(a) * rad;
+      if (z < 46 && Math.abs(x) < 44) continue;
+      const sz = 3 + r() * 7, m = new THREE.Mesh(new THREE.IcosahedronGeometry(sz, 1), i % 3 ? mossM : mossM2); m.position.set(x, y0 - sz * 0.35, z); m.scale.y = 0.45 + r() * 0.3; m.rotation.y = r() * 3; this.add(m);
+      if (i % 3 === 0) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(sz * 0.6, 1), leaves[(i / 3 | 0) % 4].m); b.position.set(x + 2, y0 + sz * 0.25, z - 1); this.add(b); }
+    }
     // 光る感情の実：葉のかたまりの下側に、軸でぶら下がる。まわりにぼんやり光の輪
-    const fruits = [], cols = ['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a'];
+    const fruits = [], cols = ['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a'], stemM = this.stdM('#6a4a30', 0.95, { fog });
     if (o.fruit) clusters.forEach((cl, i) => {
-      if (cl.r < 8 || i % 2) return;
-      const out = cl.c.clone().sub(C).setY(0).normalize(), n = cl.r > 12 ? 2 : 1;
+      if (cl.r < 7 || i % 3 === 2 || cl.c.y > y0 + 104) return;
+      const out = cl.c.clone().sub(C).setY(0).normalize(), n = cl.r > 11 ? 2 : 1;
       for (let j = 0; j < n; j++) {
-        const d = out.clone().applyAxisAngle(V3(0, 1, 0), (r() - 0.5) * 1.6).multiplyScalar(0.75).add(V3(0, -0.65, 0)).normalize(), p = cl.c.clone().addScaledVector(d, cl.r * 0.86);
+        const d = out.clone().applyAxisAngle(V3(0, 1, 0), (r() - 0.5) * 1.6).multiplyScalar(0.75).add(V3(0, -0.65, 0)).normalize(), p = cl.c.clone().addScaledVector(d, cl.r * 0.84);
         const col = cols[(i + j) % 4], g = new THREE.Group(); g.position.copy(p);
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 2.2, 5), bark); stem.position.y = 0.4; g.add(stem);
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 2.2, 5), stemM); stem.position.y = 0.4; g.add(stem);
         const f = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 12), glowMat(col, 2.6, { fog: false })); f.position.y = -1.4; f.scale.y = 1.12; g.add(f);
         const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 0.9), blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true }));
         halo.position.y = -1.4; halo.scale.setScalar(6); g.add(halo);
@@ -4136,7 +4162,8 @@ class ZoneKit {
       }
     });
     if (fruits.length) this.tick((dt, t) => { for (const g of fruits) { const u = g.userData; u.halo.scale.setScalar(6 + Math.sin(t * 1.6 + u.ph) * 1.1); g.rotation.z = Math.sin(t * 0.9 + u.ph) * 0.08; } });
-    return { leafA, leafB, fruits, top };
+    setMoss(h);
+    return { leaves, gray, fruits, top, setMoss };
   }
   roundTree(x, z, s = 1, leaf = 'leaf', o = {}) {
     this.cyl(x, z, 0.22 * s, 1.8 * s, 'bark', { r2: 0.16 * s, seg: 7, col: o.col });
@@ -7006,14 +7033,14 @@ const ZONE_BUILD = {
     K.flora({ trees: [['round', 3], ['dead', 1.2 - h]], leaf: [lc('#5ad06a'), lc('#6abf52'), lc('#4a9a3e')], bush: 0.7, rocks: 0.4 });
     // にゃんだーの樹（区画の外の南にそびえる。手前のすそが封印の扉（z=40.5）に突き出さないよう、扉より南に。すその北の端は z≈43）
     // bloom（第八章の終わりの場面）：葉は灰色、実はまだない状態から始め、hooks.treeBloom／fruitsGrow で、葉にみどりが戻り、実がふくらむ
-    const bloom = !!(K.v.flags && K.v.flags.bloom), gray = new THREE.Color('#9a9a88'), green = new THREE.Color('#5ad06a');
-    const T = K.nyanderTree(0, 76, { leaf: '#' + gray.clone().lerp(green, bloom ? 0 : h).getHexString(), fruit: revived || bloom, hidden: bloom, clear: bloom });
-    const greenB = green.clone().multiplyScalar(0.78), grayB = gray.clone().multiplyScalar(0.78);
+    const bloom = !!(K.v.flags && K.v.flags.bloom);
+    const T = K.nyanderTree(0, 76, { health: bloom ? 0 : h, fruit: revived || bloom, hidden: bloom, clear: bloom });
+    const from = T.leaves.map(l => l.m.color.clone());
     const anims = [];
     K.tick(dt => { for (let i = anims.length - 1; i >= 0; i--) { const o = anims[i]; o.t += dt; const k = Math.min(1, o.t / o.d); o.f(k); if (k >= 1) anims.splice(i, 1); } });
     if (K.v.hooks) {
-      K.v.hooks.treeBloom = () => anims.push({ t: 0, d: 3, f: k => { const e = k * k * (3 - 2 * k); T.leafA.color.copy(gray).lerp(green, e); T.leafB.color.copy(grayB).lerp(greenB, e); } });
-      K.v.hooks.fruitsGrow = () => T.fruits.forEach((g, i) => anims.push({ t: -i * 0.12, d: 0.8, f: k => {
+      K.v.hooks.treeBloom = () => anims.push({ t: 0, d: 3, f: k => { const e = k * k * (3 - 2 * k); T.leaves.forEach((l, i) => l.m.color.copy(from[i]).lerp(l.target, e)); T.setMoss(e); } });
+      K.v.hooks.fruitsGrow = () => T.fruits.forEach((g, i) => anims.push({ t: -i / T.fruits.length * 4 - Math.random() * 0.3, d: 0.8, f: k => {
         k = Math.max(0, k); g.userData.s = 0.001 + (1 - Math.pow(1 - k, 3)); g.scale.setScalar(g.userData.s);
         if (k > 0 && !g.userData.pop) { g.userData.pop = 1; K.v.p.burst(g.position.clone().add(V3(0, -1.4, 0)), '#fff0a8', 24, { speed: 3, life: 0.9, size: 0.22 }); }
       } }));

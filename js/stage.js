@@ -358,12 +358,15 @@ class StageView extends BaseView {
   }
   // ---------- カメラ ----------
   snapCam() { const c = this.cam; this.camera.position.copy(c.p0); this.lookNow = c.l0.clone(); this.camera.lookAt(this.lookNow); }
-  cut(pos, look, { drift = 0.3, dur = 5, snap = true } = {}) {
-    pos = this.unblock(look, pos);
+  cut(pos, look, { drift = 0.3, dur = 5, snap = true, free = false, fov = null } = {}) {
+    if (!free) pos = this.unblock(look, pos);
+    // fov：このカットだけ画角を広げる（大きなものを全体で映す）
+    this.fov0 = this.fov0 || this.camera.fov;
+    const f = fov || this.fov0; if (this.camera.fov !== f) { this.camera.fov = f; this.camera.updateProjectionMatrix(); }
     const dir = V3().subVectors(look, pos).setY(0).normalize(), side = V3(dir.z, 0, -dir.x);
     const s = (this.lineIdx % 2 ? 1 : -1) * drift;
     const p1 = pos.clone().addScaledVector(side, s).addScaledVector(dir, drift * 0.4);
-    this.cam = { p0: pos, p1: this.unblock(look, p1), l0: look, l1: look.clone(), t: 0, dur };
+    this.cam = { p0: pos, p1: free ? p1 : this.unblock(look, p1), l0: look, l1: look.clone(), t: 0, dur };
     if (snap) this.snapCam();
   }
   // 壁・天井に入らないよう、見る点の側へ寄せる
@@ -384,7 +387,7 @@ class StageView extends BaseView {
     const st = this.st;
     let pos, look;
     if (typeof kind === 'object') { pos = this.WP(kind.pos); look = this.WP(kind.look); }
-    else if (st.shots && st.shots[kind]) { pos = this.WP(st.shots[kind].pos); look = this.WP(st.shots[kind].look); }
+    else if (st.shots && st.shots[kind]) { pos = this.WP(st.shots[kind].pos); look = this.WP(st.shots[kind].look); const S = st.shots[kind]; if (S.free || S.fov) o = { ...o, free: !!S.free, fov: S.fov }; }   // free：区画の外までカメラを引く／fov：画角（遠くから全体を映す）
     else if (kind === 'wide') { const w = st.wide || { pos: [-2.6, 1.8, -3.6], look: [0, 0.75, 1.8] }; pos = this.WP(w.pos); look = this.WP(w.look); }
     else if (kind.startsWith('look:')) {   // 一行の後ろから、ある点を見上げる
       // 一行のいちばん後ろの子より、さらに後ろから

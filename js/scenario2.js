@@ -609,7 +609,7 @@ Object.assign(SCENES, {
     ] },
   c8_05t: { title: 'よみがえる樹', bgm: 'hope',
     stage: { zone: 'tree_root', at: [0, 10], face: 180, party: [], flags: { bloom: true },
-      shots: { canopy: { pos: [0, 44, -40], look: [0, 100, 66] }, fruits: { pos: [-10, 66, -26], look: [0, 84, 34] } } },
+      shots: { canopy: { pos: [0, 8, -128], look: [0, 46, 66], free: true, fov: 60 }, fruits: { pos: [-22, 40, -115], look: [0, 64, -30], free: true } } },
     lines: [
       ['n', 'にゃんだーの樹。灰色だった葉に、みどりが戻っていく。', { fx: 'treeBloom', cam: 'canopy', dur: 8 }],
       ['n', '枝という枝に、感情の実がふくらんでいく。笑い、友情、思い出、優しさ——。', { fx: 'fruitsGrow', cam: 'fruits', dur: 9 }],
