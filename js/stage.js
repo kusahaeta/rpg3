@@ -678,6 +678,16 @@ const STAGE_FX = {
   light(arg) { const c = this.point(arg) || this.O.clone().add(V3(0, 1, 0)); this.fx.pillar(c, '#fff0a8', { h: 30, r: 1.4, life: 2, k: 2 }); this.fx.ring(c, '#fff0a8', { r: 10, life: 1.6, width: 0.3 }); this.p.burst(c, '#fff0a8', 160, { speed: 8, life: 2, size: 0.12 }); GFX.flash('#fff8e0', 0.6, 1); Sfx.win(); },
   // 世界中の猫の光（第八章）
   voices() { const cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a']; for (let i = 0; i < 60; i++) GFX.delay(i * 0.03).then(() => this.p.emit(this.O.clone().add(V3((Math.random() - 0.5) * 20, 10 + Math.random() * 6, (Math.random() - 0.5) * 20)), V3(0, -3, 0), hdr(pick(cols), 2.6), { life: 3, size: 0.16, drag: 0.3 })); Sfx.tone(880, 0.4, 'sine', 0.05); Sfx.tone(1320, 0.5, 'sine', 0.04, 0, 0.15); },
+  // 呼び声が根を伝って、世界じゅうへ広がる（第七章の終わり。タマの呼びかけ）
+  rootcall(arg) {
+    const c = this.point(arg || 'tama') || this.O.clone(), g = V3(c.x, this.O.y + 0.1, c.z), cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a'];
+    this.fx.pillar(g, '#fff0a8', { h: 6, r: 0.8, life: 1.2, k: 2 }); GFX.flash('#fff8e0', 0.4, 0.8);
+    for (let w = 0; w < 3; w++) GFX.delay(w * 0.6).then(() => {
+      this.fx.ring(g, '#fff0a8', { r: 26, life: 2.2, width: 0.25 });
+      for (let i = 0; i < 48; i++) { const a = Math.random() * Math.PI * 2, s = 8 + Math.random() * 6; this.p.emit(g.clone().add(V3(0, 0.15, 0)), V3(Math.cos(a) * s, 0.2, Math.sin(a) * s), hdr(pick(cols), 2.6), { life: 2, size: 0.14, drag: 0.2 }); }
+      Sfx.tone(660 + w * 220, 0.5, 'sine', 0.05);
+    });
+  },
   // 封印の扉が開く
   // 時の水晶：遺跡が「今」と「昔」で切りかわる（ZoneKit.timeShift。シーンの中だけで、セーブには残さない）
   timeshift() { const o = this.timeObj; if (!o) return; o.set(!o.past); const c = this.point('crystal') || this.O; GFX.flash(o.past ? '#ffe8c0' : '#d8fff4', 0.5, 0.7); this.fx.ring(c.clone().add(V3(0, 0.1, 0)), o.past ? '#ffc86a' : '#8affe0', { r: 10, life: 1.0, width: 0.3 }); this.p.burst(c.clone().add(V3(0, 1.5, 0)), o.past ? '#ffc86a' : '#8affe0', 80, { speed: 5, up: 1, life: 1.2, size: 0.1 }); Sfx.tone(o.past ? 660 : 880, 0.8, 'sine', 0.06, o.past ? -330 : 440); },
