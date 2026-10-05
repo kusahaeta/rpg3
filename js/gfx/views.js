@@ -807,8 +807,9 @@ class BattleView extends BaseView {
     Sfx.slam(); Sfx.win();
     await GFX.delay(0.9);
   }
-  // 世界中の猫の声が届く（光の粒が空から降りてくる）
-  voiceFx() {
+  // 世界中の猫の声が届く（光の粒が空から降りてくる）。tip：声が伝ってくる根（世界の果ての hooks.rootVoice）、strong：村で重ねた声
+  voiceFx(tip, strong) {
+    if (tip && this.set && this.set.hooks.rootVoice) this.set.hooks.rootVoice(tip, strong);
     const cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a'];
     for (let i = 0; i < 30; i++) this.p.emit(V3((Math.random() - 0.5) * 16, 8 + Math.random() * 4, (Math.random() - 0.5) * 8 + 1), V3(0, -3 - Math.random() * 2, 0), hdr(pick(cols), 2.4), { life: 2.2, size: 0.14, drag: 0.4 });
     for (const e of this.ents.values()) if (e.ally && e.u.alive) e.model.flash('#fff4c8', 0.6);

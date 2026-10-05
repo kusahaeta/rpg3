@@ -1247,16 +1247,25 @@ class Battle {
     this.renderOrder();
   }
 
-  // 最終決戦：世界中の猫たちの声が届き、友情ゲージが満ちる
+  // 最終決戦：世界中の猫たちの声が根を伝って届き、友情ゲージが満ちる。
+  // voices：各地の根からの声（ひとつずつでは孤独に押しかえされる）→ push：コドク → chorus：村で重ねた声（押し切る）
   async finale() {
     if (this.allstars) return;
     this.allstars = true;
-    for (const [name, line] of this.opts.final.voices || []) {
+    const F = this.opts.final;
+    const voice = async ([name, line, tip], strong, ms) => {
       this.announce(name, line, '#ffcf4a'); Sfx.tone(880, 0.2, 'sine', 0.05); Sfx.tone(1320, 0.3, 'sine', 0.04, 0, 0.1);
-      if (this.v) this.v.voiceFx();
-      await wait(1500);
+      if (this.v) this.v.voiceFx(tip, strong);
+      await wait(ms);
+      return this.over;
+    };
+    for (const v of F.voices || []) if (await voice(v, false, 1200)) return;
+    if (F.push) {
+      this.announce(F.push[0], F.push[1], '#8a5aff'); Sfx.tone(60, 1.2, 'sawtooth', 0.06, 20);
+      await wait(1800);
       if (this.over) return;
     }
+    for (const v of F.chorus || []) if (await voice(v, true, 1100)) return;
     this.bond = 100; this.renderBond();
     this.announce('友情ゲージ MAX', '「にゃんこオールスターズ」が使える！（C キー）', '#ffcf4a');
     this.aliveAllies().forEach(a => { a.flags.isolated = 0; a.buffs = a.buffs.filter(b => b.key !== 'e_iso'); this.say(a, '「一人じゃない！」'); this.updateUnit(a); });
