@@ -217,7 +217,7 @@ function buildEnvironment(scene, theme, renderer, opts = {}) {
   if (!T.indoor && !T.noTree && opts.skyTree !== false && !(opts.zone && opts.zone.skyTree === false)) farTree(T);
 
   return {
-    particles, key, colliders: T.colliders, root, focus: T.focus, floor,
+    particles, key, colliders: T.colliders, root, focus: T.focus, floor, farTree: T.farTree || null,
     update(dt, t) {
       sky.material.uniforms.time.value = t;
       for (const f of updaters) f(dt, t);
@@ -242,16 +242,16 @@ function worldTree(health = 0.8, s = 1) {
     const m = new THREE.Mesh(new THREE.SphereGeometry(9 + (i % 3) * 3, 14, 10), leaf); m.position.set(Math.cos(a) * r, y, Math.sin(a) * r * 0.8); m.scale.y = 0.72; g.add(m);
   }
   // 感情の実（光る）
-  const fruitCols = ['#ffd24a', '#ff8ab8', '#8ad8ff', '#b8ff8a'];
+  const fruitCols = ['#ffd24a', '#ff4f9a', '#5ac8ff', '#9aff6a'];
   const fruits = [];
   for (let i = 0; i < Math.round(health * 16); i++) {
     const a = i * 1.7, r = 10 + (i % 4) * 5;
-    const f = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 8), glowMat(fruitCols[i % 4], 2.2, { fog: false })); f.position.set(Math.cos(a) * r, 36 + (i % 5) * 4, Math.sin(a) * r * 0.8 + 6); g.add(f); fruits.push(f);
+    const f = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 8), glowMat(fruitCols[i % 4], 4 * lumaBoost(fruitCols[i % 4]), { fog: false })); f.position.set(Math.cos(a) * r, 36 + (i % 5) * 4, Math.sin(a) * r * 0.8 + 6); g.add(f); fruits.push(f);
   }
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#fff4c8', 0.35 * health + 0.08), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   halo.scale.setScalar(120); halo.position.y = 44; g.add(halo);
   g.scale.setScalar(s);
-  return { g, fruits };
+  return { g, fruits, halo, leaf };
 }
 // にゃんだーの樹の方角：区画の地図上の位置（map2d）から見た、樹の根もとの向き（北が 0、東が π/2）
 function treeAngle(Z) {
@@ -260,13 +260,15 @@ function treeAngle(Z) {
   return Math.atan2(R.map2d[0] - Z.map2d[0], -(R.map2d[1] - Z.map2d[1]));
 }
 function farTree(T) {
-  const h = treeHealth(), zt = T.zone && T.zone.treeAt;
-  const { g, fruits } = worldTree(h, 1.6);
+  // treeLook：[距離, 大きさ, 高さ, 向き]。ぽかぽか村は、タイトル画面と同じ見え方に（タイトルは樹を南側から、村は北側から見るので、半回転させて同じ面を向ける）
+  const h = treeHealth(), zt = T.zone && T.zone.treeAt, [dist, sc, y, rot = 0] = (T.zone && T.zone.treeLook) || [230, 1.6, -6];
+  const { g, fruits, halo, leaf } = worldTree(h, sc);
+  T.farTree = { g, fruits, halo, leaf };
   // turn：戦場のように区画を回して置くときは、その分だけ樹も回す
-  const a = (zt ? zt[0] : treeAngle(T.zone)) - T.turn, d = zt ? zt[1] : 230;
-  g.position.set(Math.sin(a) * d, -6, -Math.cos(a) * d);
+  const a = (zt ? zt[0] : treeAngle(T.zone)) - T.turn, d = zt ? zt[1] : dist;
+  g.position.set(Math.sin(a) * d, y, -Math.cos(a) * d); g.rotation.y = rot;
   T.root.add(g);
-  T.updaters.push((dt, t) => fruits.forEach((f, i) => { f.scale.setScalar(1 + Math.sin(t * 2 + i) * 0.15); }));
+  T.updaters.push((dt, t) => fruits.forEach((f, i) => { f.scale.setScalar((f.userData.s ?? 1) * (1 + Math.sin(t * 2 + i) * 0.15)); }));
 }
 // なだらかな丘の遠景
 function hills(T, col, r = 140, n = 16, hgt = 18, y0 = -4) {

@@ -358,12 +358,15 @@ class StageView extends BaseView {
   }
   // ---------- カメラ ----------
   snapCam() { const c = this.cam; this.camera.position.copy(c.p0); this.lookNow = c.l0.clone(); this.camera.lookAt(this.lookNow); }
-  cut(pos, look, { drift = 0.3, dur = 5, snap = true } = {}) {
-    pos = this.unblock(look, pos);
+  cut(pos, look, { drift = 0.3, dur = 5, snap = true, free = false, fov = null } = {}) {
+    if (!free) pos = this.unblock(look, pos);
+    // fov：このカットだけ画角を広げる（大きなものを全体で映す）
+    this.fov0 = this.fov0 || this.camera.fov;
+    const f = fov || this.fov0; if (this.camera.fov !== f) { this.camera.fov = f; this.camera.updateProjectionMatrix(); }
     const dir = V3().subVectors(look, pos).setY(0).normalize(), side = V3(dir.z, 0, -dir.x);
     const s = (this.lineIdx % 2 ? 1 : -1) * drift;
     const p1 = pos.clone().addScaledVector(side, s).addScaledVector(dir, drift * 0.4);
-    this.cam = { p0: pos, p1: this.unblock(look, p1), l0: look, l1: look.clone(), t: 0, dur };
+    this.cam = { p0: pos, p1: free ? p1 : this.unblock(look, p1), l0: look, l1: look.clone(), t: 0, dur };
     if (snap) this.snapCam();
   }
   // 壁・天井に入らないよう、見る点の側へ寄せる
@@ -384,7 +387,7 @@ class StageView extends BaseView {
     const st = this.st;
     let pos, look;
     if (typeof kind === 'object') { pos = this.WP(kind.pos); look = this.WP(kind.look); }
-    else if (st.shots && st.shots[kind]) { pos = this.WP(st.shots[kind].pos); look = this.WP(st.shots[kind].look); }
+    else if (st.shots && st.shots[kind]) { pos = this.WP(st.shots[kind].pos); look = this.WP(st.shots[kind].look); const S = st.shots[kind]; if (S.free || S.fov) o = { ...o, free: !!S.free, fov: S.fov }; }   // free：区画の外までカメラを引く／fov：画角（遠くから全体を映す）
     else if (kind === 'wide') { const w = st.wide || { pos: [-2.6, 1.8, -3.6], look: [0, 0.75, 1.8] }; pos = this.WP(w.pos); look = this.WP(w.look); }
     else if (kind.startsWith('look:')) {   // 一行の後ろから、ある点を見上げる
       // 一行のいちばん後ろの子より、さらに後ろから
@@ -430,7 +433,35 @@ class StageView extends BaseView {
         if (ang - size < 0.2) return true;
       }
     }
-    return false;
+    return this.sceneryBlocks(pos, look);
+  }
+  // 話し手の顔が隠れずに映るか：顔の中心・左右・頭の上・あごへの線が、景色やほかの子に当たらないかを調べる
+  // 隠れている点の数を返す（0 なら顔がぜんぶ見える）
+  faceBlocked(pos, a) {
+    const sc = a.m.group.scale.y || 1, h = a.headPos(), up = V3(0, 1, 0), right = V3().subVectors(h, pos).setY(0).normalize().cross(up);
+    const pts = [h, h.clone().addScaledVector(right, 0.28 * sc), h.clone().addScaledVector(right, -0.28 * sc), h.clone().addScaledVector(up, 0.42 * sc), h.clone().addScaledVector(up, -0.18 * sc)];
+    const others = Object.values(this.actors).filter(b => b !== a && !b.comm && b.visible());
+    const hits = (p, c, r) => { const d = V3().subVectors(p, pos), t = clamp(V3().subVectors(c, pos).dot(d) / d.lengthSq(), 0, 1); return t < 0.97 && pos.clone().addScaledVector(d, t).distanceTo(c) < r; };
+    let n = 0;
+    for (const p of pts) if (this.sceneryBlocks(pos, p) || others.some(b => { const bs = b.m.group.scale.y || 1, body = b.pos.clone(); body.y += b.headH * 0.4; return hits(p, b.headPos(), 0.42 * bs) || hits(p, body, 0.36 * bs); })) n++;
+    // ほかの子がカメラのすぐ前にいて、画面を大きくふさぐのも避ける
+    const fd = V3().subVectors(h, pos), dist = fd.length(); fd.normalize();
+    for (const b of others) { const v = V3().subVectors(b.headPos(), pos), d = v.length(); if (d < dist * 0.75 && Math.acos(clamp(v.dot(fd) / d, -1, 1)) < 0.5) n++; }
+    return n;
+  }
+  // 景色（鳥居の柱・灯籠・建物・木など）が、カメラと見る点のあいだに入っているか
+  sceneryBlocks(pos, look) {
+    if (!this.blockers) {
+      const mine = new Set(); for (const a of Object.values(this.actors)) a.m.group.traverse(o => mine.add(o));
+      const shown = o => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
+      this.blockers = [];
+      this.scene.traverse(o => { const m = o.material; if (o.isMesh && !mine.has(o) && m && !m.transparent && m.blending !== THREE.AdditiveBlending && shown(o)) this.blockers.push(o); });
+      this.rc = new THREE.Raycaster();
+    }
+    const d = V3().subVectors(look, pos), far = d.length() - 0.35;
+    if (far <= 0) return false;
+    this.rc.set(pos, d.normalize()); this.rc.near = 0.05; this.rc.far = far; this.rc.camera = this.camera;
+    return this.rc.intersectObjects(this.blockers, false).length > 0;
   }
   // 話し手の寄り：顔の正面寄りから、聞き手のいる側に少しずらす
   single(a, o = {}) {
@@ -446,13 +477,17 @@ class StageView extends BaseView {
       const look = h.clone().addScaledVector(left, -0.16 * s * s0 * sc); look.y -= a.comm ? 0.4 : (o.close ? 0.16 : 0.22) * sc;
       return [pos, look];
     };
-    // 手前に誰かが立っていたら、反対側から・回りこんで・もう少し寄って撮る
-    let pick = null;
-    for (const dist of [dist0, dist0 * 0.72]) {
-      for (const ang of [0.23, -0.23, 0.6, -0.6, 1.0, -1.0]) { const c = make(ang, dist); if (!this.occluded(c[0], c[1], [a])) { pick = c; break; } }
+    // 手前に誰かや何かがあったら、反対側から・回りこんで・もう少し寄って撮る。どこからも隠れるなら、いちばん隠れが少ない所から
+    let pick = null, best = null;
+    for (const dist of [dist0, dist0 * 0.8, dist0 * 0.66]) {
+      for (const ang of [0.23, -0.23, 0.6, -0.6, 1.0, -1.0, 1.4, -1.4]) {
+        const c = make(ang, dist), n = this.faceBlocked(c[0], a) + (this.occluded(c[0], c[1], [a]) ? 0.5 : 0);
+        if (n === 0) { pick = c; break; }
+        if (!best || n < best.n) best = { c, n };
+      }
       if (pick) break;
     }
-    const [pos, look] = pick || make(-0.5, 1.5 * sc);
+    const [pos, look] = pick || best.c;
     this.cut(pos, look, o);
   }
   // 肩越し：聞き手 L の肩の後ろから話し手 S を見る
@@ -678,6 +713,14 @@ const STAGE_FX = {
   light(arg) { const c = this.point(arg) || this.O.clone().add(V3(0, 1, 0)); this.fx.pillar(c, '#fff0a8', { h: 30, r: 1.4, life: 2, k: 2 }); this.fx.ring(c, '#fff0a8', { r: 10, life: 1.6, width: 0.3 }); this.p.burst(c, '#fff0a8', 160, { speed: 8, life: 2, size: 0.12 }); GFX.flash('#fff8e0', 0.6, 1); Sfx.win(); },
   // 世界中の猫の光（第八章）
   voices() { const cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a']; for (let i = 0; i < 60; i++) GFX.delay(i * 0.03).then(() => this.p.emit(this.O.clone().add(V3((Math.random() - 0.5) * 20, 10 + Math.random() * 6, (Math.random() - 0.5) * 20)), V3(0, -3, 0), hdr(pick(cols), 2.6), { life: 3, size: 0.16, drag: 0.3 })); Sfx.tone(880, 0.4, 'sine', 0.05); Sfx.tone(1320, 0.5, 'sine', 0.04, 0, 0.15); },
+  // 遠くのにゃんだーの樹が光る（第八章の終わり。村から見上げる）
+  treeShine() {
+    const ft = this.env.farTree; if (!ft) return;
+    const h0 = ft.halo.material.color.clone(), e0 = ft.leaf.emissive.clone(), glow = hdr('#fff4c8', 0.9), green = new THREE.Color('#5ad06a').multiplyScalar(0.22);
+    GFX.tween(3, k => { ft.halo.material.color.copy(h0).lerp(glow, k); ft.halo.scale.setScalar(120 + k * 50); ft.leaf.emissive.copy(e0).lerp(green, k); }, Ease.out);
+    ft.fruits.forEach((f, i) => { f.userData.s = 0; GFX.delay(0.6 + i * 0.12).then(() => GFX.tween(0.8, k => { f.userData.s = k; }, Ease.out)); });
+    Sfx.tone(660, 0.6, 'sine', 0.05); Sfx.tone(990, 0.8, 'sine', 0.04, 0, 0.3); Sfx.win();
+  },
   // 呼び声が根を伝って、世界じゅうへ広がる（第七章の終わり。タマの呼びかけ）
   rootcall(arg) {
     const c = this.point(arg || 'tama') || this.O.clone(), g = V3(c.x, this.O.y + 0.1, c.z), cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a'];

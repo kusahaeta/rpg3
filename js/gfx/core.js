@@ -361,6 +361,8 @@ function toon(color, extra = {}, faceBoost = 0) {
   m.customProgramCacheKey = () => 'toonrim' + faceBoost;
   return m;
 }
+// 色の明るさをそろえる倍率：ピンクや青のように暗い色ほど強く光らせて、黄や緑と同じくらいにじませる（最大 2.4 倍）
+function lumaBoost(color, ref = 0.75) { const c = new THREE.Color(color); return Math.min(2.4, Math.max(1, ref / (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b))); }
 function glowMat(color, k = 3, extra = {}) {
   return new THREE.MeshBasicMaterial({ color: hdr(color, k), toneMapped: true, ...extra });
 }
