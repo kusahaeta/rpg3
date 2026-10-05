@@ -7119,6 +7119,33 @@ const ZONE_BUILD = {
     // 樹の根：南の入口から果ての闘技場まで、石の道の下を這って支えている（細い道ではすぐ脇に見える）
     K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0, -2, 50), V3(-4, -3.5, 40), V3(-4.8, -0.9, 30), V3(-7, -4.5, 20), V3(-6.6, -0.9, 2), V3(-7, -4.5, -8), V3(-4.8, -0.9, -18), V3(-5, -5, -30), V3(0, -9, -46)]), 96, 1.1, 10, false), rootMat(0.6), 0, 0, 0, { abs: true, noShadow: true });
     // 道しるべの石と、奈落から立ちのぼる光
+    // 世界じゅうの根の先：地中深くの果てには、各地からのびた根が、闇の上から何本もたれさがって行きついている。
+    // 最終決戦では、根を伝って届いた声で一本ずつ光る（hooks.rootVoice。strong は村で重ねた声：押しかえされずに光りつづけ、ほかの根も光りなおす）
+    const tips = {}, P = V3(), Q = V3();
+    const hang = (key, from, to, r) => {
+      const curve = new THREE.CatmullRomCurve3([from, from.clone().lerp(to, 0.55).add(V3((K.r() - 0.5) * 8, 0, (K.r() - 0.5) * 8)), to.clone().add(V3(0, 4, 0)), to]);
+      const geo = new THREE.TubeGeometry(curve, 48, r, 8, false), pos = geo.attributes.position;
+      for (let i = 0; i <= 48; i++) { const t = i / 48, k = 1 - 0.85 * t * t; curve.getPointAt(t, P); for (let j = 0; j <= 8; j++) { const n = i * 9 + j; Q.fromBufferAttribute(pos, n).sub(P).multiplyScalar(k).add(P); pos.setXYZ(n, Q.x, Q.y, Q.z); } }
+      geo.computeVertexNormals();
+      const mat = rootMat(0.1); K.scene.add(new THREE.Mesh(geo, mat));
+      tips[key] = { curve, mat, end: to, glow: 0, target: 0 };
+    };
+    hang('rat', V3(-40, 50, -70), V3(-12, 2.5, -40), 0.8);
+    hang('kingdom', V3(-15, 55, -90), V3(-7, 3.5, -52), 0.8);
+    hang('valley', V3(25, 55, -85), V3(8, 3, -50), 0.8);
+    hang('castle', V3(45, 50, -60), V3(12, 2.5, -38), 0.8);
+    hang('village', V3(0, 60, -80), V3(0, 7, -44), 1.1);
+    const dark = new THREE.Color('#6a4a2a'), lit = new THREE.Color('#ffe08a');
+    K.tick(dt => { for (const T of Object.values(tips)) { T.glow += (T.target - T.glow) * Math.min(1, dt * 5); T.mat.emissive.copy(dark).lerp(lit, Math.min(1, T.glow)); T.mat.emissiveIntensity = 0.1 + T.glow * 2.4; } });
+    if (K.v.hooks) K.v.hooks.rootVoice = (key, strong) => {
+      const T = tips[key]; if (!T) return;
+      const cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a'];
+      for (let i = 0; i < 30; i++) GFX.delay(i * 0.03).then(() => K.v.p.emit(T.curve.getPointAt(0.35 + i / 30 * 0.65), V3(0, -1, 0), hdr(pick(cols), 2.6), { life: 1.2, size: 0.18, drag: 0.4 }));
+      GFX.delay(0.9).then(() => K.v.p.burst(T.end, '#fff0a8', strong ? 120 : 40, { speed: strong ? 7 : 3, life: 1.4, size: 0.12 }));
+      if (strong) { T.held = true; T.target = 1.6; for (const o of Object.values(tips)) if (o !== T) GFX.delay(0.9).then(() => { o.held = true; o.target = 1; }); return; }
+      T.target = 1;
+      [[1.1, 0.35], [1.25, 0.9], [1.45, 0.25], [1.7, 0.6], [2.0, 0.15]].forEach(([s, g]) => GFX.delay(s).then(() => { if (!T.held) T.target = g; }));
+    };
     for (const [x, z] of [[-4, 36], [4, 36], [-6, 10], [6, 10]]) K.pillarBroken(x, z, 1.4 + K.r(), false, 'darkStone');
     K.v.emitters.push(dt => { if (Math.random() < dt * 14) K.v.p.emit(V3((Math.random() - 0.5) * 70, -12, (Math.random() - 0.5) * 90), V3(0, 4, 0), hdr(pick(['#b8a8ff', '#ff8ab8']), 1.6), { life: 4, size: 0.12, drag: 0 }); });
   },
