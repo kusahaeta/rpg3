@@ -2219,7 +2219,7 @@ const FIELD_ZONES = {
     notes: [{ at: [-10, 10], mark: 1.0, title: '落ちた葉', text: '灰色に色あせた葉。持ち上げると、さらさらと崩れた。' }],
     map2d: [470, 522] },
 
-  // 樹の地下は三つの階：B1「しおれた根の洞」（光る実で根をよみがえらせる）→ B2「影の回廊」（鏡うつしに動く影）→ B3「年輪の間」（年輪をまわして樹の心臓へ）
+  // 樹の地下は三つの階：B1「しおれた根の洞」（光る実で根をよみがえらせる）→ B2「影の回廊」（鏡うつしに動く影）→ B3「樹の心臓の間」（コドクとの戦い）
   tree_under: { ci: 6, name: '樹の地下・しおれた根の洞', mapName: '樹の地下', floor: 'B1', w: 60, d: 112, stage: '7-2', arenas: [[0, -45, 180]], build: 'treeUnder', bg: 'root', groups: 6, chests: 3, crystals: 2, calmAfter: '7-3', skyTree: false,
     world: true, arch: 'roots', voidRail: false, chestAt: [[-27, 29], [21, 5], [13, 45]],
     th: { fog: '#10180e', fogD: 0.03 },
@@ -2362,11 +2362,11 @@ const FIELD_ZONES = {
     notes: [{ at: [7, -41], title: '古い石碑', text: '「影は、光をきらう。ひだまりに入った影は、ほどけて、もとの場所にもどる。……影をおいていくなかれ」' }],
     map2d: [330, 560] },
 
-  tree_under_3: { ci: 6, name: '樹の地下・年輪の間', floor: 'B3', parent: 'tree_under', w: 56, d: 76, stage: '7-3', arenas: [[0, 3, 180]], build: 'treeUnder3', bg: 'root', groups: 0, chests: 1, crystals: 1, calmAfter: '7-3', skyTree: false,
-    world: true, arch: 'roots', chestAt: [[9, 17]],
-    th: { fog: '#10180e', fogD: 0.025 },
-    // 樹の心臓をかこむ、三重の年輪。年輪の壁にはすき間がひとつずつあり、取っ手（押す側で回る向きが変わる）で回せる。
-    //   外の取っ手は外の年輪、真ん中の取っ手は真ん中と外の年輪をいっしょに、内の取っ手は内と真ん中の年輪を逆向きに回す。通路は根の仕切りとこぶで区切られている
+  tree_under_3: { ci: 6, name: '樹の地下・樹の心臓の間', floor: 'B3', parent: 'tree_under', w: 56, d: 76, wallH: 13, stage: '7-3', arenas: [[0, 3, 180]], build: 'treeUnder3', bg: 'root', groups: 0, chests: 1, crystals: 1, calmAfter: '7-3', skyTree: false,
+    world: true, arch: 'roots', voidRail: false, chestAt: [[-15, 23]],
+    th: { fog: '#0c160c', fogD: 0.016, floorGlow: 0.5 },
+    // 地下のいちばん奥。根のアーチをくぐると、天井の高い丸い広間の中央に、樹の心臓が根にささえられて脈打っている。
+    //   根の血管が、心臓から床をはって壁をのぼり、天井をめぐって心臓の上にもどる。鼓動のたびに、血管を光が流れる（仕掛けはない）
     map: [
       '#############uu#############',
       '#########0000000000#########',
@@ -2408,13 +2408,7 @@ const FIELD_ZONES = {
       '############################',
     ],
     anchor: [-7, -31], spawn: [1, -35], exits: [{ key: 'u', to: 'tree_under_2', stair: 'up' }],
-    // 年輪（FieldView.updateRings。解けるかは tools/check-maps.js が調べる）。角度は度で、0 が東、90 が南。すき間の位置は step 度きざみ
-    rings: { id: 'treeRings', at: [0, 8], step: 45, h: 1.8, gapW: 3.4, entry: 270,
-      list: [{ r: 11, gaps: [135], col: '#ffd27a' }, { r: 16, gaps: [90], col: '#9aff6a' }, { r: 21, gaps: [45], col: '#8ad8ff' }],
-      // 通路（1 = 内と真ん中の年輪のあいだ、2 = 真ん中と外のあいだ、3 = 外の年輪の外）の仕切りの角度と、根のこぶでふさがった範囲
-      corridors: { 1: { spokes: [22.5, 67.5, 157.5], solid: [[67.5, 157.5]] }, 2: { spokes: [22.5, 112.5, 157.5], solid: [[112.5, 157.5]] } },
-      handles: [{ j: 3, a: 78, turns: [[2, 1]] }, { j: 2, a: 70, turns: [[1, 1], [2, 1]] }, { j: 1, a: 200, turns: [[0, 1], [1, -1]] }] },
-    notes: [{ at: [7, -27], title: '年輪の石碑', text: '「樹は、年ごとに輪をかさね、心臓を守る。輪はたがいに結ばれ、ひとつを回せば、となりも回る」' }],
+    notes: [{ at: [7, -27], title: '心臓の間の碑', text: '「ここは、樹の心臓。世界じゅうの猫たちの笑い・友情・思い出・優しさが、根をつたって、ここへ集まる」' }],
     map2d: [330, 580] },
 
   // ---------------- 第八章 世界の果て ----------------
@@ -3698,75 +3692,6 @@ class ZoneKit {
       if (solved) g.scale.setScalar(0.001); else v.colliders.push(o.gate.col);
       return o;
     });
-  }
-  // 年輪の間（zone.rings）：中心をかこむ年輪の壁（すき間あり。回すと当たり判定もいっしょに回る）、通路の根の仕切り・根のこぶ、取っ手。
-  //   回した回数は Save.data.flags[RG.id]（年輪ごと）。FieldView.updateRings が、回すのと当たり判定を動かす
-  rings() {
-    const RG = this.zone.rings; if (!RG) return;
-    const v = this.v, [cx, cz] = RG.at, y = this.gy(cx, cz), flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {};
-    const saved = flags[RG.id] || RG.list.map(() => 0), rad = a => a * Math.PI / 180, N = RG.list.length, H = RG.h || 1.8, W = 1.0;
-    const o = { RG, cx, cz, y, rings: [], handles: [], N };
-    const barkM = this.mat('bark');
-    // 年輪の扇形の壁（a0〜a1 度、半径 r の中心線、厚さ W）。形は XY 平面に描いて、立てる（形の Y が世界の -Z）
-    const sector = (r, a0, a1, h, mat, w = W) => {
-      const sh = new THREE.Shape(), n = Math.max(4, Math.ceil(Math.abs(a1 - a0) / 6)), P = (rr, a) => [rr * Math.cos(rad(a)), -rr * Math.sin(rad(a))];
-      sh.moveTo(...P(r + w / 2, a0));
-      for (let k = 1; k <= n; k++) sh.lineTo(...P(r + w / 2, a0 + (a1 - a0) * k / n));
-      for (let k = n; k >= 0; k--) sh.lineTo(...P(r - w / 2, a0 + (a1 - a0) * k / n));
-      const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: w > 0.5, bevelThickness: 0.08, bevelSize: 0.08, bevelSegments: 1, curveSegments: 4 }), mat);
-      m.rotation.x = -Math.PI / 2; m.castShadow = m.receiveShadow = true; return m;
-    };
-    const ringNames = ['内', '真ん中', '外'];
-    RG.list.forEach((L, k) => {
-      const g = new THREE.Group(); g.position.set(cx, y, cz); this.scene.add(g);
-      const gw = RG.gapW / L.r * 180 / Math.PI, gaps = L.gaps.slice().sort((a, b) => a - b);
-      const cols = [];
-      gaps.forEach((ga, gi) => {
-        const a0 = ga + gw / 2, a1 = (gi + 1 < gaps.length ? gaps[gi + 1] : gaps[0] + 360) - gw / 2;
-        g.add(sector(L.r, a0, a1, H, barkM));
-        // 年輪の溝（光る線）
-        for (const off of [-0.22, 0.22]) { const line = sector(L.r + off, a0 + 0.5, a1 - 0.5, 0.03, this.glow(L.col, 1.6), 0.1); line.position.y = H + 0.08; g.add(line); }
-        for (let a = a0 + 2; a <= a1 - 2; a += 0.7 / L.r * 180 / Math.PI) cols.push({ a, c: { x: 0, z: 0, r: 0.62, y } });
-        // すき間の両がわの、こぶ
-        for (const ea of [a0, a1]) { const kn = new THREE.Mesh(new THREE.SphereGeometry(0.62, 10, 8), barkM); kn.scale.set(1, H / 1.1, 1); kn.position.set(Math.cos(rad(ea)) * L.r, H * 0.45, Math.sin(rad(ea)) * L.r); g.add(kn); }
-      });
-      cols.forEach(q => v.colliders.push(q.c));
-      o.rings.push({ k, L, g, rot: saved[k] || 0, vis: saved[k] || 0, cols, name: ringNames[N === 3 ? k : Math.min(k, 2)] });
-    });
-    // 通路の根の仕切りと、根のこぶ（動かない）
-    const rIn = j => (j === 0 ? 0 : RG.list[j - 1].r + W / 2), rOut = j => (j < N ? RG.list[j].r - W / 2 : RG.list[N - 1].r + 4.6);
-    for (const [js, Cd] of Object.entries(RG.corridors || {})) {
-      const j = +js, r0 = rIn(j), r1 = rOut(j);
-      for (const a of Cd.spokes || []) {
-        const len = r1 - r0, mr = (r0 + r1) / 2, m = new THREE.Mesh(new THREE.BoxGeometry(len + 0.3, H, 0.9), barkM);
-        m.position.set(cx + Math.cos(rad(a)) * mr, y + H / 2, cz + Math.sin(rad(a)) * mr); m.rotation.y = -rad(a); m.castShadow = true; this.scene.add(m);
-        for (let rr = r0 + 0.3; rr <= r1 - 0.2; rr += 0.7) v.colliders.push({ x: cx + Math.cos(rad(a)) * rr, z: cz + Math.sin(rad(a)) * rr, r: 0.55, y });
-      }
-      for (const [a0, a1] of Cd.solid || []) {
-        for (let rr = r0 + 0.6; rr <= r1 - 0.5; rr += 1.0) for (let a = a0 + 2; a <= a1 - 2; a += 0.9 / rr * 180 / Math.PI) v.colliders.push({ x: cx + Math.cos(rad(a)) * rr, z: cz + Math.sin(rad(a)) * rr, r: 0.62, y });
-        // 大きな根のこぶ：まるい岩のような根のかたまり
-        const n = Math.ceil((a1 - a0) / 12);
-        for (let k = 0; k <= n; k++) {
-          const a = a0 + 3 + (a1 - a0 - 6) * k / n, rr = (r0 + r1) / 2 + (this.r() - 0.5) * 0.8;
-          const m = new THREE.Mesh(new THREE.DodecahedronGeometry(1.4 + this.r() * 0.5, 1), barkM); m.scale.set(1, 0.9 + this.r() * 0.5, 1);
-          m.position.set(cx + Math.cos(rad(a)) * rr, y + 0.8, cz + Math.sin(rad(a)) * rr); m.rotation.y = this.r() * 6; m.castShadow = true; this.scene.add(m);
-        }
-      }
-    }
-    // 取っ手：根の柱に、横木が四本（回す年輪の色の帯）。足もとに、右回り・左回りの矢印
-    RG.handles.forEach((Hd, hi) => {
-      const mr = (rIn(Hd.j) + rOut(Hd.j)) / 2, hx = cx + Math.cos(rad(Hd.a)) * mr, hz = cz + Math.sin(rad(Hd.a)) * mr;
-      const g = new THREE.Group(); g.position.set(hx, y, hz); this.scene.add(g);
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.34, 1.5, 10), barkM); post.position.y = 0.75; post.castShadow = true; g.add(post);
-      const bars = new THREE.Group(); bars.position.y = 1.05; g.add(bars);
-      for (let q = 0; q < 4; q++) { const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.7, 6), this.mat('wood')); bar.rotation.z = Math.PI / 2; bar.rotation.y = q * Math.PI / 4; bars.add(bar); }
-      Hd.turns.forEach(([k], q) => { const band = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.06, 6, 16), this.glow(RG.list[k].col, 1.8)); band.rotation.x = Math.PI / 2; band.position.y = 0.45 + q * 0.3; g.add(band); });
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), barkM); cap.position.y = 1.5; g.add(cap);
-      v.colliders.push({ x: hx, z: hz, r: 0.42, y });
-      const names = Hd.turns.map(([k]) => o.rings[k].name).join('と') + 'の輪';
-      o.handles.push({ H: Hd, hi, pos: V3(hx, y, hz), g, bars, spin: 0, names });
-    });
-    v.ringObj = o;
   }
   // zone.rubble：[{ id, at: [x, z], r }]：攻撃で砕ける落石の岩山（砕いたら Save.data.flags[id]）
   //   look: 'jackbox' ＝ 巨大びっくり箱。act の札（出し物の名前）がつき、ねじを turns 回ちょうど巻いてから、たたくと開く
@@ -7049,16 +6974,132 @@ const ZONE_BUILD = {
     K.light(0, 6, -40, '#c8a8ff', 5, 18); K.light(0, 5, -25, '#d8c8ff', 5, 18); K.light(0, 5, -5, '#d8c8ff', 5, 20); K.light(0, 5, 19, '#d8c8ff', 5, 22);
     K.shadowRooms();
   },
-  // 樹の地下 B3「年輪の間」：三重の年輪（K.rings）にかこまれた、樹の心臓
+  // 樹の地下 B3「樹の心臓の間」：天井の高い丸い広間。中央の根のゆりかごに、天井から下がる太い根に吊られた樹の心臓が脈打つ。
+  //   根の血管が、心臓から床をはって壁をのぼり、天井をめぐって心臓の上へもどる。鼓動のたびに、床の血管を光が心臓から外へ流れ、
+  //   床の紋様の輪が明るくなる。天井からは、色のぬけた実の殻が垂れている（樹がよみがえると、四つの感情の色に光る）
   treeUnder3(K) {
-    const heart = K.mesh(new THREE.IcosahedronGeometry(2.4, 1), new THREE.MeshStandardMaterial({ color: '#3a4a2a', emissive: '#8aff6a', emissiveIntensity: treeHealth() >= 1 ? 1.4 : 0.35, flatShading: true }), 0, 3.4, 14);
-    K.tick((dt, t) => { heart.rotation.y += dt * 0.2; heart.scale.setScalar(1 + Math.sin(t * 1.2) * 0.04); });
-    K.col(0, 14, 2.6, 6);
-    // 心臓をささえる根：床から心臓へ、何本も集まる
-    for (let k = 0; k < 7; k++) { const a = k / 7 * Math.PI * 2; K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(Math.cos(a) * 4, -0.3, 14 + Math.sin(a) * 4), V3(Math.cos(a) * 2.6, 1.2, 14 + Math.sin(a) * 2.6), V3(Math.cos(a) * 1.2, 2.6, 14 + Math.sin(a) * 1.2)]), 12, 0.35, 7, false), 'bark', 0, 0, 0, { abs: true }); }
+    const T = K.T, HX = 0, HZ = 14, HY = 4.8, CX = 0, CZ = 8, R = 25.2, TOP = T.ceilOf(T.at(0, 8));
+    const revived = treeHealth() >= 1, glow = revived ? '#c8ff7a' : '#8ad86a';
+    // 鼓動：どくん・どくん（弱っているあいだは、ゆっくりで弱い）
+    const period = revived ? 1.25 : 1.9, amp = revived ? 1 : 0.65;
+    const beat = t => { const k = ((t % period) + period) % period; return amp * (Math.exp(-(((k - 0.06) / 0.07) ** 2)) + 0.55 * Math.exp(-(((k - 0.34) / 0.08) ** 2))); };
+    const C3 = pts => new THREE.CatmullRomCurve3(pts), tube = (pts, r, seg = 24, rs = 7) => new THREE.TubeGeometry(C3(pts), seg, r, rs, false);
+    // 心臓から角度 a の向きへ進んで、広間の壁に着く点
+    const wallAt = a => { const dx = Math.cos(a), dz = Math.sin(a), wd = (HZ - CZ) * dz, t = -wd + Math.sqrt(wd * wd - (HZ - CZ) ** 2 + R * R); return [HX + dx * t, HZ + dz * t]; };
+    const gate = (x, z) => Math.abs(x) < 6 && z < CZ - 15;   // 北の入口（前室への通路）のあたり
+
+    // ---- 根の血管：心臓の根もとから床をはい、壁をのぼって天井をめぐり、心臓の上の太い根にもどる
+    const veins = [], N = 12;
+    for (let k = 0; k < N; k++) {
+      const a = k / N * Math.PI * 2 + 0.13, [wx, wz] = wallAt(a), sx = HX + Math.cos(a) * 3.6, sz = HZ + Math.sin(a) * 3.6;
+      const px = -Math.sin(a), pz = Math.cos(a), wig = (K.r() - 0.5) * 3;
+      const floor = [V3(sx, 0.35, sz)];
+      for (let q = 1; q <= 4; q++) { const u = q / 5; floor.push(V3(lerp(sx, wx, u) + px * Math.sin(u * 5 + k) * wig, -0.12, lerp(sz, wz, u) + pz * Math.sin(u * 5 + k) * wig)); }
+      floor.push(V3(wx, -0.05, wz));
+      K.mg('bark', tube(floor, 0.42, 40), 0, 0, 0);
+      veins.push(C3(floor));
+      if (gate(wx, wz)) continue;
+      // 壁をのぼって天井へ、天井をはって心臓の上へ
+      const ox = (wx - CX) / R, oz = (wz - CZ) / R;
+      K.mg('bark', tube([V3(wx, -0.05, wz), V3(wx + ox * 0.6, 3, wz + oz * 0.6), V3(wx + ox * 0.4, TOP * 0.6, wz + oz * 0.4), V3(wx - ox * 1.5, TOP - 0.6, wz - oz * 1.5),
+        V3(lerp(wx, HX, 0.55), TOP - 0.9 + Math.sin(k) * 0.3, lerp(wz, HZ, 0.55)), V3(HX + Math.cos(a) * 1.6, TOP - 1.4, HZ + Math.sin(a) * 1.6)], 0.38, 48), 0, 0, 0);
+    }
+    // 鼓動のたびに、床の血管を心臓から外へ流れる光の粒
+    const DOTS = 18, inst = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshBasicMaterial({ color: hdr(glow, 2.2), transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }), N * DOTS);
+    inst.frustumCulled = false; K.scene.add(inst);
+    const dotPts = veins.map(c => [...Array(DOTS)].map((_, i) => c.getPoint(0.03 + 0.94 * i / (DOTS - 1)).setY(0.3)));
+    const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), SC = V3();
+
+    // ---- 心臓の根のゆりかご：床から盛り上がった根のこぶと、心臓の下をささえる根
+    const mound = new THREE.Mesh(new THREE.SphereGeometry(3.8, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), K.mat('bark')); mound.scale.y = 0.32; mound.position.set(HX, -0.05, HZ); mound.receiveShadow = true; K.add(mound);
+    K.col(HX, HZ, 3.9, 8);
+    for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2; K.mg('bark', tube([V3(HX + Math.cos(a) * 4.4, -0.3, HZ + Math.sin(a) * 4.4), V3(HX + Math.cos(a) * 3.2, 1.4, HZ + Math.sin(a) * 3.2), V3(HX + Math.cos(a + 0.3) * 2.2, HY - 1.6, HZ + Math.sin(a + 0.3) * 2.2), V3(HX + Math.cos(a + 0.5) * 0.8, HY - 1.9, HZ + Math.sin(a + 0.5) * 0.8)], 0.34, 20), 0, 0, 0); }
+    // 天井から心臓を吊る、いちばん太い根と、それにからむ根
+    K.mg('bark', tube([V3(HX, TOP + 0.5, HZ), V3(HX + 0.6, TOP - 2.5, HZ - 0.4), V3(HX - 0.3, HY + 4, HZ + 0.3), V3(HX, HY + 1.6, HZ)], 1.05, 24, 10), 0, 0, 0);
+    for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; K.mg('bark', tube([V3(HX + Math.cos(a) * 2.6, TOP + 0.3, HZ + Math.sin(a) * 2.6), V3(HX + Math.cos(a + 0.6) * 1.6, TOP - 3, HZ + Math.sin(a + 0.6) * 1.6), V3(HX + Math.cos(a + 1.2) * 1.4, HY + 2.6, HZ + Math.sin(a + 1.2) * 1.4), V3(HX + Math.cos(a + 1.5) * 1.9, HY + 0.6, HZ + Math.sin(a + 1.5) * 1.9)], 0.22, 24), 0, 0, 0); }
+
+    // ---- 樹の心臓：光る芯（角ばった実のかたち）、まわりの光、心臓にまきつく根、表面を走る光の筋
+    const heart = new THREE.Group(); heart.position.set(HX, HY, HZ); K.scene.add(heart);
+    const coreM = new THREE.MeshStandardMaterial({ color: '#2e4a24', emissive: glow, emissiveIntensity: 0.6, roughness: 0.55, flatShading: true });
+    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(2.15, 2), coreM); core.scale.set(1, 1.12, 1); core.castShadow = true; heart.add(core);
+    const auraM = [0.16, 0.06].map(o => new THREE.MeshBasicMaterial({ color: hdr(glow, 1.4), transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.BackSide }));
+    const aura = [2.7, 3.8].map((r, i) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), auraM[i]); heart.add(m); return m; });
+    const wrap = new THREE.Group(); heart.add(wrap);
+    for (let k = 0; k < 4; k++) {
+      const ps = [], tilt = k * 0.8, ph = k * 1.7;
+      for (let q = 0; q <= 20; q++) { const u = q / 20 * Math.PI * 2, r = 2.25 + Math.sin(u * 3 + ph) * 0.12; ps.push(V3(Math.cos(u) * r, Math.sin(u) * r * Math.sin(tilt) + Math.sin(u * 2 + ph) * 0.3, Math.sin(u) * r * Math.cos(tilt))); }
+      const m = new THREE.Mesh(new THREE.TubeGeometry(C3(ps), 60, 0.2, 7, true), K.mat('bark')); m.castShadow = true; wrap.add(m);
+    }
+    const lineM = new THREE.MeshBasicMaterial({ color: hdr(glow, 2.4), transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending });
+    for (let k = 0; k < 7; k++) {
+      const ax = V3(K.r() - 0.5, K.r() - 0.5, K.r() - 0.5).normalize(), b0 = V3(K.r() - 0.5, K.r() - 0.5, K.r() - 0.5).cross(ax).normalize(), ps = [];
+      for (let q = 0; q <= 10; q++) ps.push(b0.clone().applyAxisAngle(ax, q / 10 * 2.2).multiplyScalar(2.24 + Math.sin(q) * 0.04));
+      heart.add(new THREE.Mesh(new THREE.TubeGeometry(C3(ps), 20, 0.035, 4, false), lineM));
+    }
+
+    // ---- 床の紋様：心臓をかこむ、光る点線の輪（ゆっくり回り、鼓動で明るくなる）
+    const runeM = [], runes = [6, 9.5, 13].map((r, i) => {
+      const g = new THREE.Group(); g.position.set(HX, 0.04, HZ); K.scene.add(g);
+      const m = new THREE.MeshBasicMaterial({ color: hdr(glow, 1.3), transparent: true, opacity: 0.25, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }); runeM.push(m);
+      const seg = 10 + i * 6;
+      for (let q = 0; q < seg; q++) { const arc = new THREE.Mesh(new THREE.RingGeometry(r - 0.09, r + 0.09, 10, 1, q / seg * Math.PI * 2, Math.PI * 2 / seg * 0.62), m); arc.rotation.x = -Math.PI / 2; g.add(arc); }
+      return g;
+    });
+
+    // ---- 天井から垂れる実の殻（よみがえると、笑い・友情・思い出・優しさの色に光る）
+    const husks = [], fruitCols = ['#ffd23c', '#ff8ab8', '#8ad8ff', '#8aff9a'];
+    for (let k = 0; k < 22; k++) {
+      const a = K.r() * Math.PI * 2, d = 6 + K.r() * 14, x = HX + Math.cos(a) * d, z = HZ + Math.sin(a) * d * 0.9;
+      if (Math.hypot(x - CX, z - CZ) > R - 3 || gate(x, z)) continue;
+      const len = 2 + K.r() * 4.5, g = new THREE.Group(); g.position.set(x, TOP, z); K.scene.add(g);
+      const th = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, len, 4), K.mat('wood2')); th.position.y = -len / 2; g.add(th);
+      const col = fruitCols[k % 4], hm = new THREE.MeshStandardMaterial({ color: revived ? col : '#8a8678', emissive: col, emissiveIntensity: revived ? 1.2 : 0, roughness: 0.7, transparent: !revived, opacity: revived ? 1 : 0.85 });
+      const hk = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 9), hm); hk.scale.set(1, revived ? 0.95 : 1.15, revived ? 1 : 0.7); hk.position.y = -len - 0.3; g.add(hk);
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), K.stdM(revived ? '#5ab84a' : '#7a7a68', 0.8)); leaf.scale.set(1, 0.25, 0.55); leaf.position.set(0.12, -len + 0.02, 0); g.add(leaf);
+      husks.push({ g, ph: K.r() * 6 });
+    }
+
+    // ---- 壁をおおう根（床から天井まで）と、壁ぎわの光るきのこ
+    for (let k = 0; k < 46; k++) {
+      const a = k / 46 * Math.PI * 2 + K.r() * 0.05, r = R + 0.4 + K.r() * 0.5, x = CX + Math.cos(a) * r, z = CZ + Math.sin(a) * r;
+      if (gate(x, z)) continue;
+      const w = (K.r() - 0.5) * 2.4;
+      K.mg('bark', tube([V3(x, -0.2, z), V3(x + Math.sin(a) * w * 0.3, TOP * 0.35, z - Math.cos(a) * w * 0.3), V3(x + Math.sin(a) * w, TOP * 0.7, z - Math.cos(a) * w), V3(x + Math.sin(a) * w * 0.4, TOP + 0.3, z - Math.cos(a) * w * 0.4)], 0.2 + K.r() * 0.3, 16, 6), 0, 0, 0);
+    }
+    for (let k = 0; k < 14; k++) { const a = K.r() * Math.PI * 2, [x, z] = [CX + Math.cos(a) * (R - 1.4), CZ + Math.sin(a) * (R - 1.4)]; if (!gate(x, z)) K.mushroom(x, z, 0.8 + K.r() * 0.7, null, pick(['#b8ff8a', '#8affd8', '#ffd27a'])); }
+
+    // ---- 前室：広間への入口に、交差する二本の根のアーチと、光るきのこ
+    // （通路の出口。根の脚は両わきの岩にうまる）
+    for (const sd of [-1, 1]) K.mg('bark', tube([V3(sd * 5.6, -0.3, -16.8), V3(sd * 5.3, 4, -17.2), V3(sd * 2, 7.4, -17), V3(-sd * 2.6, 6.6, -16.6), V3(-sd * 5.5, 3.4, -16.3)], 0.55, 30, 8), 0, 0, 0);
     for (const [x, z] of [[-7, -33], [7, -33], [-7, -25], [7, -23]]) K.mushroom(x, z, 1.2, null, '#ffd27a');
-    K.light(0, 4, 14, '#8aff8a', 10, 22); K.light(0, 7, -28, '#ffe8a8', 5, 16); K.light(0, 7, 8, '#d8ffc8', 4, 40);
-    K.rings();
+
+    // ---- 光と、ただよう光の粒（心臓のまわりから立ちのぼる感情の色・天井の根から垂れる樹液）
+    const hl = K.light(HX, HY, HZ, glow, 10, 34); K.light(0, 7, -28, '#ffe8a8', 5, 16); K.light(-14, 9, 8, '#a8ffd8', 3, 30); K.light(14, 9, 8, '#d8ffa8', 3, 30);
+    K.v.emitters.push(dt => {
+      if (Math.random() < dt * 12) { const a = Math.random() * Math.PI * 2, d = 4 + Math.random() * 12; K.v.p.emit(V3(HX + Math.cos(a) * d, 0.2, HZ + Math.sin(a) * d), V3(0, 0.5 + Math.random() * 0.5, 0), hdr(revived ? pick(fruitCols) : pick([glow, '#d8ffc8']), 1.6), { life: 4, size: 0.08, drag: 0 }); }
+      if (Math.random() < dt * 4) { const a = Math.random() * Math.PI * 2, d = 2 + Math.random() * 18; K.v.p.emit(V3(HX + Math.cos(a) * d, TOP - 1, HZ + Math.sin(a) * d * 0.9), V3(0, -3, 0), hdr(glow, 1.4), { life: 2.2, size: 0.06, drag: 0 }); }
+    });
+
+    // ---- 鼓動にあわせて動かす
+    K.tick((dt, t) => {
+      const b = beat(t);
+      heart.scale.setScalar(1 + b * 0.07); wrap.rotation.y += dt * 0.12; core.rotation.y -= dt * 0.05;
+      coreM.emissiveIntensity = (revived ? 1.1 : 0.55) + b * 1.1;
+      auraM[0].opacity = 0.12 + b * 0.18; auraM[1].opacity = 0.04 + b * 0.07; aura[1].scale.setScalar(1 + b * 0.12);
+      lineM.opacity = 0.5 + b * 0.5;
+      if (hl) hl.intensity = 6 + b * 9;
+      runes.forEach((g, i) => { g.rotation.y = t * (i % 2 ? -0.05 : 0.04) * (1 + i * 0.4); });
+      // 光の輪は、鼓動が心臓から外へ伝わるように、内から順に明るくなる
+      const k0 = ((t % period) + period) % period;
+      runeM.forEach((m, i) => { m.opacity = 0.18 + amp * 0.55 * Math.exp(-(((k0 - 0.12 - i * 0.12) / 0.12) ** 2)); });
+      dotPts.forEach((pts, v) => pts.forEach((p, i) => {
+        const u = i / (DOTS - 1); let dd = (((k0 - 0.08 - u * 0.9) % period) + period) % period; if (dd > period / 2) dd -= period;
+        const w = Math.exp(-((dd / 0.12) ** 2));
+        SC.setScalar(0.35 + Math.min(1.6, w * amp * 1.8)); M4.compose(p, Q, SC); inst.setMatrixAt(v * DOTS + i, M4);
+      }));
+      inst.instanceMatrix.needsUpdate = true;
+      husks.forEach(h => { h.g.rotation.z = Math.sin(t * 0.6 + h.ph) * 0.04; h.g.rotation.x = Math.cos(t * 0.5 + h.ph) * 0.03; });
+    });
   },
 
   // ---------------- 第八章 ----------------
