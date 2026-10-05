@@ -605,6 +605,7 @@ Object.assign(SCENES, {
       ['e:kodoku', '……ふ……。……ありがとう。', { defeat: 'e:kodoku' }],
       ['n', '孤独は、光の粒になって、空へ昇っていった。', { fx: 'voices', cam: 'wide', dur: 6 }],
       ['n', 'そして——', { fx: 'revive', cam: 'look:sky', dur: 8, look: { all: 'sky' } }],
+      { flag: 'treeRevived' },   // revive の演出と同じフラグ。シーンを読み飛ばしたときや、デバッグのジャンプでも、樹がよみがえった状態になる
       ['tama', '……樹が……！', { f: 'joy', g: 'cheer' }],
     ] },
   c8_05t: { title: 'よみがえる樹', bgm: 'hope',

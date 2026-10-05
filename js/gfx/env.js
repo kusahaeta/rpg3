@@ -226,30 +226,42 @@ function buildEnvironment(scene, theme, renderer, opts = {}) {
 }
 
 // ---------- 遠景の部品 ----------
-// にゃんだーの樹（遠くの地平線に。health で葉の色と実の数が変わる）
-function worldTree(health = 0.8, s = 1) {
+// にゃんだーの樹（遠くの地平線に。health で葉の色と実の数が変わる。fruit：感情の実の大きさ（0 で実をつけない））
+function worldTree(health = 0.8, s = 1, fruit = 1) {
   const g = new THREE.Group();
   const bark = new THREE.MeshStandardMaterial({ color: '#8a7a6a', roughness: 0.95, fog: false });
   const trunk = new THREE.Mesh(lathe([[9, 0], [6, 6], [4.5, 20], [4, 34], [5.5, 42], [0.1, 46]], 16), bark); g.add(trunk);
   // 根
   for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, r = new THREE.Mesh(new THREE.ConeGeometry(2.4, 16, 8), bark); r.position.set(Math.cos(a) * 8, 1.5, Math.sin(a) * 8); r.rotation.set(Math.sin(a) * 1.2, 0, -Math.cos(a) * 1.2); g.add(r); }
-  // 枝葉（元気がないほど灰色で、すき間が多い）
+  // 大枝：幹の上から斜め上へ、樹冠のふちを支える
+  for (let i = 0; i < 6; i++) {
+    const a = i / 6 * Math.PI * 2 + 0.3, from = V3(0, 34, 0), to = V3(Math.cos(a) * 22, 47, Math.sin(a) * 22);
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.6, from.distanceTo(to), 8), bark); b.position.copy(from).lerp(to, 0.5);
+    b.quaternion.setFromUnitVectors(V3(0, 1, 0), to.clone().sub(from).normalize()); g.add(b);
+  }
+  // 枝葉：まるい傘の形に、上の大玉・内の輪・外のふちの輪・下の輪を重ねる（どの向きから見ても同じ形）。元気がないほど灰色で、外のふちが欠ける
   const leafCol = new THREE.Color('#9a9a88').lerp(new THREE.Color('#5ad06a'), health);
   const leaf = new THREE.MeshStandardMaterial({ color: leafCol.clone().lerp(new THREE.Color('#c8dcf0'), 0.25), roughness: 0.9, emissive: leafCol.clone().multiplyScalar(0.15), fog: false });
-  const n = Math.round(10 + health * 18);
-  for (let i = 0; i < n; i++) {
-    const a = i * 2.4, r = 8 + (i % 5) * 4, y = 40 + (i % 4) * 5 + Math.sin(i) * 3;
-    const m = new THREE.Mesh(new THREE.SphereGeometry(9 + (i % 3) * 3, 14, 10), leaf); m.position.set(Math.cos(a) * r, y, Math.sin(a) * r * 0.8); m.scale.y = 0.72; g.add(m);
-  }
-  // 感情の実（光る）
+  const clumps = [[0, 0, 61, 17]];   // [向き, 中心からの距離, 高さ, 半径]
+  for (let i = 0; i < 6; i++) clumps.push([i / 6 * Math.PI * 2, 17, 56, 13]);
+  for (let i = 0; i < 10; i++) clumps.push([(i + 0.5) / 10 * Math.PI * 2, 27, 46 + (i % 2) * 2, 11 - (i % 2)]);
+  for (let i = 0; i < 5; i++) clumps.push([(i + 0.5) / 5 * Math.PI * 2, 13, 42, 11]);
+  const outer = [];   // 実をつける玉（内の輪と外のふち）
+  clumps.forEach(([a, r, y, rad], i) => {
+    if (i >= 7 && i < 17 && (i * 0.618) % 1 > 0.35 + health * 0.65) return;
+    const m = new THREE.Mesh(new THREE.SphereGeometry(rad, 16, 12), leaf); m.position.set(Math.cos(a) * r, y, Math.sin(a) * r); m.scale.y = i ? 0.75 : 0.85; g.add(m);
+    if (i >= 1 && i < 17) outer.push([a, rad, m.position]);
+  });
+  // 感情の実（光る）：玉の外がわの面に、ぐるりと
   const fruitCols = ['#ffd24a', '#ff4f9a', '#5ac8ff', '#9aff6a'];
   const fruits = [];
-  for (let i = 0; i < Math.round(health * 16); i++) {
-    const a = i * 1.7, r = 10 + (i % 4) * 5;
-    const f = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 8), glowMat(fruitCols[i % 4], 4 * lumaBoost(fruitCols[i % 4]), { fog: false })); f.position.set(Math.cos(a) * r, 36 + (i % 5) * 4, Math.sin(a) * r * 0.8 + 6); g.add(f); fruits.push(f);
+  for (let i = 0; i < (fruit ? Math.round(health * 16) : 0); i++) {
+    const [a, rad, c] = outer[(i * 7) % outer.length], b = a + Math.sin(i * 2.1) * 0.5, up = 0.35 * Math.sin(i * 1.3);
+    const f = new THREE.Mesh(new THREE.SphereGeometry(1.1 * fruit, 10, 8), glowMat(fruitCols[i % 4], 4 * lumaBoost(fruitCols[i % 4]), { fog: false }));
+    f.position.set(c.x + Math.cos(b) * rad * 0.95, c.y + up * rad * 0.75, c.z + Math.sin(b) * rad * 0.95); g.add(f); fruits.push(f);
   }
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#fff4c8', 0.35 * health + 0.08), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
-  halo.scale.setScalar(120); halo.position.y = 44; g.add(halo);
+  halo.scale.setScalar(120); halo.position.y = 50; g.add(halo);
   g.scale.setScalar(s);
   return { g, fruits, halo, leaf };
 }
@@ -259,14 +271,23 @@ function treeAngle(Z) {
   if (!Z || !Z.map2d || !R || Z === R) return -0.6;
   return Math.atan2(R.map2d[0] - Z.map2d[0], -(R.map2d[1] - Z.map2d[1]));
 }
+// にゃんだーの樹の大きさ（距離230に置くとき）：区画の地図上で根もとから遠いほど小さく。ぽかぽか村（treeLook）の見え方を基準に、
+// 近い森では大きすぎず、遠い魔族の地でも見えなくならないよう、距離の 0.7 乗で小さくする
+function treeSize(Z) {
+  const R = typeof FIELD_ZONES !== 'undefined' && FIELD_ZONES.tree_root, P = R && FIELD_ZONES.pokapoka;
+  if (!Z || !Z.map2d || !R || Z === R) return 1.6;
+  const md = p => Math.hypot(R.map2d[0] - p[0], R.map2d[1] - p[1]), [d0, s0] = P.treeLook;
+  return s0 * 230 / d0 * Math.min(1.3, Math.max(0.3, (md(P.map2d) / md(Z.map2d)) ** 0.7));
+}
 function farTree(T) {
-  // treeLook：[距離, 大きさ, 高さ, 向き]。ぽかぽか村は、タイトル画面と同じ見え方に（タイトルは樹を南側から、村は北側から見るので、半回転させて同じ面を向ける）
-  const h = treeHealth(), zt = T.zone && T.zone.treeAt, [dist, sc, y, rot = 0] = (T.zone && T.zone.treeLook) || [230, 1.6, -6];
-  const { g, fruits, halo, leaf } = worldTree(h, sc);
+  // treeLook：[距離, 大きさ, 高さ]。ぽかぽか村は、タイトル画面と同じ見え方に。ほかの区画は、樹から遠いほど小さく（treeSize）
+  const h = treeHealth(), zt = T.zone && T.zone.treeAt, [dist, sc, y] = (T.zone && T.zone.treeLook) || [230, treeSize(T.zone), -6];
+  // 感情の実は、第八章で樹がよみがえってから（それまで実は実らない。根もとの樹と同じ）。遠景では光がにじんで大きく見えるので、タイトル画面より小さく
+  const { g, fruits, halo, leaf } = worldTree(h, sc, h >= 1 ? 0.55 : 0);
   T.farTree = { g, fruits, halo, leaf };
   // turn：戦場のように区画を回して置くときは、その分だけ樹も回す
   const a = (zt ? zt[0] : treeAngle(T.zone)) - T.turn, d = zt ? zt[1] : dist;
-  g.position.set(Math.sin(a) * d, y, -Math.cos(a) * d); g.rotation.y = rot;
+  g.position.set(Math.sin(a) * d, y, -Math.cos(a) * d);
   T.root.add(g);
   T.updaters.push((dt, t) => fruits.forEach((f, i) => { f.scale.setScalar((f.userData.s ?? 1) * (1 + Math.sin(t * 2 + i) * 0.15)); }));
 }
