@@ -7136,6 +7136,8 @@ const ZONE_BUILD = {
     hang('village', V3(0, 60, -80), V3(0, 7, -44), 1.1);
     const dark = new THREE.Color('#6a4a2a'), lit = new THREE.Color('#ffe08a');
     K.tick(dt => { for (const T of Object.values(tips)) { T.glow += (T.target - T.glow) * Math.min(1, dt * 5); T.mat.emissive.copy(dark).lerp(lit, Math.min(1, T.glow)); T.mat.emissiveIntensity = 0.1 + T.glow * 2.4; } });
+    // 樹がよみがえったあと（第八章の終わり）：すべての根が光る
+    if (K.v.hooks) K.v.hooks.rootsLit = () => { for (const T of Object.values(tips)) { T.held = true; T.target = 1.2; } };
     if (K.v.hooks) K.v.hooks.rootVoice = (key, strong) => {
       const T = tips[key]; if (!T) return;
       const cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a'];
