@@ -1097,14 +1097,6 @@ class FieldView extends BaseView {
       }
       for (const kn of ro.knots) if (!kn.open && Math.hypot(kn.col.x - p.x, kn.col.z - p.z) < 2.4) return { type: 'knot', kn, text: '調べる：根の扉' };
     }
-    // 年輪の取っ手：押す側（年輪の中心から見て、取っ手のどちら側に立っているか）で、右回り・左回りが変わる
-    const rg = this.ringObj;
-    if (rg) for (const h of rg.handles) {
-      const dx = p.x - h.pos.x, dz = p.z - h.pos.z;
-      if (Math.hypot(dx, dz) > 1.9) continue;
-      const a = h.H.a * Math.PI / 180, side = dx * -Math.sin(a) + dz * Math.cos(a), sg = side < 0 ? 1 : -1;
-      return { type: 'ring', h, sg, text: `取っ手を押す：${h.names}を${sg > 0 ? '右回り' : '左回り'}に回す` };
-    }
     // 玉のりのリング：やりなおしのベルと、大玉（前後・左右にまっすぐ並んだとき、向こう側へ押せる）
     const bo = this.ballObj;
     if (bo && !bo.open) {
@@ -1184,8 +1176,6 @@ class FieldView extends BaseView {
         this.startTalk('巨大びっくり箱', [`「${R.act || '？'}」と書かれた札の、大きなびっくり箱。横に、ねじまきハンドルがついている。`, ...(R.hint ? [R.hint] : []),
           '……ねじを巻いて（F）、ふたをたたけば（攻撃）、開きそうだ。でも、何回巻けばいいんだろう？'], null, true);
       }
-    } else if (it.type === 'ring') {
-      this.turnRing(it.h, it.sg);
     } else if (it.type === 'fruitTake') {
       this.takeFruit(it.f);
     } else if (it.type === 'fruitPut') {
@@ -1497,37 +1487,6 @@ class FieldView extends BaseView {
         this.talk.after = () => { Sfx.win(); this.toast('出口をふさいでいた影のいばらが、ほどけて消えた！'); };
       });
     };
-  }
-  // ============================================================
-  //  樹の地下：年輪の間（zone.rings。部品は ZoneKit.rings）
-  //   取っ手を押すと、取っ手につながった年輪が step 度ずつ回る（当たり判定もいっしょに回る）
-  // ============================================================
-  updateRings(d, t) {
-    const o = this.ringObj; if (!o) return;
-    const RG = o.RG, st = RG.step;
-    for (const R of o.rings) {
-      if (R.vis !== R.rot) {
-        const M = 360 / st; let diff = ((R.rot - R.vis) % M + M * 1.5) % M - M / 2;
-        const sp = d * 1.6, mv = Math.abs(diff) <= sp ? diff : Math.sign(diff) * sp;
-        R.vis += mv; if (Math.abs(R.rot - R.vis) < 1e-3 || Math.abs(diff) <= sp) R.vis = R.rot;
-        if (Math.random() < d * 20) GFX.shake(0.04);
-      }
-      const base = R.vis * st;
-      R.g.rotation.y = -base * Math.PI / 180;
-      for (const q of R.cols) { const a = (q.a + base) * Math.PI / 180; q.c.x = o.cx + Math.cos(a) * R.L.r; q.c.z = o.cz + Math.sin(a) * R.L.r; }
-    }
-    for (const h of o.handles) { if (h.spin) { const k = Math.min(1, h.spin), e = Ease.inOut(1 - k); h.bars.rotation.y = h.dir * e * Math.PI / 2; h.spin = Math.max(0, h.spin - d * 1.6); } }
-  }
-  // 取っ手を押して、年輪を回す（回っているあいだは押せない）
-  turnRing(h, sg) {
-    const o = this.ringObj, M = 360 / o.RG.step;
-    if (o.rings.some(R => R.vis !== R.rot)) return;
-    h.H.turns.forEach(([k, dd]) => { const R = o.rings[k]; R.rot = ((R.rot + dd * sg) % M + M) % M; });
-    const flags = Save.data.flags || (Save.data.flags = {}); flags[o.RG.id] = o.rings.map(R => R.rot); Save.save();
-    h.spin = 1; h.dir = -sg;
-    Sfx.slam(); Sfx.tone(110, 0.7, 'sawtooth', 0.04, -20);
-    this.p.burst(h.pos.clone().add(V3(0, 1.1, 0)), '#c8a070', 20, { speed: 2, up: 0.6, life: 0.6, size: 0.08 });
-    if (!this.ringTip) { this.ringTip = true; this.toast(`ゴゴゴ……${h.names}が、${sg > 0 ? '右' : '左'}へ回った`); }
   }
   // 光の水晶を灯す。影の壁の水晶をすべて灯すと、壁が消える
   lightLamp(o, L) {
@@ -2731,17 +2690,6 @@ class FieldView extends BaseView {
       g.arc(sx, sy, 5.5 * k, 0, Math.PI); g.closePath(); g.fill(); g.stroke();
       g.fillStyle = '#ffe8ff'; for (const ex of [-2.2, 2.2]) { g.beginPath(); g.arc(sx + ex * k, sy - 0.8 * k, 1.3 * k, 0, Math.PI * 2); g.fill(); }
     });
-    // 年輪の間：年輪の壁（すき間あり）・取っ手
-    const rgo = this.ringObj;
-    if (rgo) {
-      const [cxp, cyp] = P(rgo.cx, rgo.cz), gwd = r => rgo.RG.gapW / r;
-      rgo.rings.forEach(R => {
-        g.strokeStyle = R.L.col; g.lineWidth = Math.max(1.5, sc * 0.9);
-        const gaps = R.L.gaps.map(a => (a + R.vis * rgo.RG.step) * Math.PI / 180).sort((a, b) => a - b), w = gwd(R.L.r) / 2;
-        gaps.forEach((a, i) => { const nx = i + 1 < gaps.length ? gaps[i + 1] : gaps[0] + Math.PI * 2; g.beginPath(); g.arc(cxp, cyp, R.L.r * sc, a + w, nx - w); g.stroke(); });
-      });
-      rgo.handles.forEach(h => dot(h.pos.x, h.pos.y, h.pos.z, '#e8c080', 3.5, true));
-    }
     // 樹の地下：根の橋（元気は緑、しおれは灰色）・根の茂み・根の扉・ゆりかご・光る実
     const ro = this.rootObj;
     if (ro) {
@@ -2812,7 +2760,7 @@ class FieldView extends BaseView {
     if (this.flight) { this.updateFlight(d); this.animatePlayer(d, false); }
     else if (!this.busy) { this.updatePlayer(d); if (!this.busy) this.updateGags(d); }
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
-    this.updateRoots(d, t); this.updateShadows(d, t); this.updateRings(d, t);
+    this.updateRoots(d, t); this.updateShadows(d, t);
     this.updateNemuri(t);
     if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); this.updateAnchorHeal(); }
     this.updateGuards(d, t); this.updateRollers(d, t);
