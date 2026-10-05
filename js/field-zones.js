@@ -20,7 +20,7 @@
 // bg: 空と光（js/gfx/env.js の THEMES。省略時は章の bg）
 const FIELD_ZONES = {
   // ---------------- 第一章 ぽかぽか村・ほしふる森 ----------------
-  pokapoka: { ci: 0, name: 'ぽかぽか村', w: 72, d: 64, stage: '1-1', arenas: [[0, 12, 0]], build: 'village', town: true, groups: 0, chests: 3, crystals: 0,
+  pokapoka: { ci: 0, name: 'ぽかぽか村', w: 72, d: 64, stage: '1-1', arenas: [[0, 12, 0]], build: 'village', town: true, groups: 0, chests: 3, crystals: 0, treeLook: [150, 1.4, -8],
     world: true, arch: 'woods', chestAt: [[-30, -20], [29, -25], [-27, 25]],
     // 木立に囲まれた村。井戸の広場を中心に、北の街道へ出る道の東は村長の家の高台（石段）、北東は鳥居から長い石段を上った猫神社の丘（社の奥の道から夢の世界へ）。
     // 西は一段高い住宅地（ミケの家・畑）、南西に武器屋、南に道具屋と宿屋、東に魚屋の屋台。東の道は村はずれの丘へ、南の道はほしふる森へ。南東に池

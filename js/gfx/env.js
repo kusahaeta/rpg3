@@ -260,12 +260,13 @@ function treeAngle(Z) {
   return Math.atan2(R.map2d[0] - Z.map2d[0], -(R.map2d[1] - Z.map2d[1]));
 }
 function farTree(T) {
-  const h = treeHealth(), zt = T.zone && T.zone.treeAt;
-  const { g, fruits, halo, leaf } = worldTree(h, 1.6);
+  // treeLook：[距離, 大きさ, 高さ]。ぽかぽか村は、タイトル画面と同じ見え方に
+  const h = treeHealth(), zt = T.zone && T.zone.treeAt, [dist, sc, y] = (T.zone && T.zone.treeLook) || [230, 1.6, -6];
+  const { g, fruits, halo, leaf } = worldTree(h, sc);
   T.farTree = { g, fruits, halo, leaf };
   // turn：戦場のように区画を回して置くときは、その分だけ樹も回す
-  const a = (zt ? zt[0] : treeAngle(T.zone)) - T.turn, d = zt ? zt[1] : 230;
-  g.position.set(Math.sin(a) * d, -6, -Math.cos(a) * d);
+  const a = (zt ? zt[0] : treeAngle(T.zone)) - T.turn, d = zt ? zt[1] : dist;
+  g.position.set(Math.sin(a) * d, y, -Math.cos(a) * d);
   T.root.add(g);
   T.updaters.push((dt, t) => fruits.forEach((f, i) => { f.scale.setScalar((f.userData.s ?? 1) * (1 + Math.sin(t * 2 + i) * 0.15)); }));
 }

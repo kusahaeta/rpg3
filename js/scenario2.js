@@ -618,7 +618,7 @@ Object.assign(SCENES, {
     stage: { zone: 'pokapoka', at: [24, -17], face: 180, party: [],
       cast: { sonchou: { at: [0, 0], face: 'tree' }, sakanaya: { at: [1.2, 0.4], face: 'tree' }, king_npc: { at: [-1.3, 0.3], face: 'tree' }, nyahaha_ou: { at: [2.7, 1.0], face: 'tree' },
         piero_npc: { at: [-3.1, 1.3], face: 'tree' }, kurone: { at: [-3.8, -1.2], face: 'tree' }, mazoku_yukyu: { at: [3.9, -1.4], face: 'tree' }, chaya: { at: [-4.8, 0.2], face: 'tree' } },
-      points: { tree: [24, 47, 247] }, shots: { tree: { pos: [0, 0.9, 1.2], look: [24, 66, 247], fov: 26 } }, wide: { pos: [0.8, 1.2, -4.4], look: [24, 52, 247] } },
+      points: { tree: [24, 40, 167] }, shots: { tree: { pos: [0, 1.0, 3.2], look: [24, 56, 167], fov: 40 } }, wide: { pos: [0.8, 1.2, -4.4], look: [24, 38, 167] } },
     lines: [
       ['n', 'そのころ、ぽかぽか村。猫神社の丘の上で、笛と太鼓が鳴りやみ、みんなは息をのんで、南の空を見上げていた。', { cam: 'wide', dur: 7, look: { all: 'tree' } }],
       ['n', '森の向こうで、にゃんだーの樹が、光っていた。', { cam: 'tree', dur: 9, fx: ['treeShine', 'voices'], look: { all: 'tree' } }],
