@@ -435,6 +435,20 @@ class StageView extends BaseView {
     }
     return this.sceneryBlocks(pos, look);
   }
+  // 話し手の顔が隠れずに映るか：顔の中心・左右・頭の上・あごへの線が、景色やほかの子に当たらないかを調べる
+  // 隠れている点の数を返す（0 なら顔がぜんぶ見える）
+  faceBlocked(pos, a) {
+    const sc = a.m.group.scale.y || 1, h = a.headPos(), up = V3(0, 1, 0), right = V3().subVectors(h, pos).setY(0).normalize().cross(up);
+    const pts = [h, h.clone().addScaledVector(right, 0.28 * sc), h.clone().addScaledVector(right, -0.28 * sc), h.clone().addScaledVector(up, 0.42 * sc), h.clone().addScaledVector(up, -0.18 * sc)];
+    const others = Object.values(this.actors).filter(b => b !== a && !b.comm && b.visible());
+    const hits = (p, c, r) => { const d = V3().subVectors(p, pos), t = clamp(V3().subVectors(c, pos).dot(d) / d.lengthSq(), 0, 1); return t < 0.97 && pos.clone().addScaledVector(d, t).distanceTo(c) < r; };
+    let n = 0;
+    for (const p of pts) if (this.sceneryBlocks(pos, p) || others.some(b => { const bs = b.m.group.scale.y || 1, body = b.pos.clone(); body.y += b.headH * 0.4; return hits(p, b.headPos(), 0.42 * bs) || hits(p, body, 0.36 * bs); })) n++;
+    // ほかの子がカメラのすぐ前にいて、画面を大きくふさぐのも避ける
+    const fd = V3().subVectors(h, pos), dist = fd.length(); fd.normalize();
+    for (const b of others) { const v = V3().subVectors(b.headPos(), pos), d = v.length(); if (d < dist * 0.75 && Math.acos(clamp(v.dot(fd) / d, -1, 1)) < 0.5) n++; }
+    return n;
+  }
   // 景色（鳥居の柱・灯籠・建物・木など）が、カメラと見る点のあいだに入っているか
   sceneryBlocks(pos, look) {
     if (!this.blockers) {
@@ -463,13 +477,17 @@ class StageView extends BaseView {
       const look = h.clone().addScaledVector(left, -0.16 * s * s0 * sc); look.y -= a.comm ? 0.4 : (o.close ? 0.16 : 0.22) * sc;
       return [pos, look];
     };
-    // 手前に誰かが立っていたら、反対側から・回りこんで・もう少し寄って撮る
-    let pick = null;
-    for (const dist of [dist0, dist0 * 0.72, dist0 * 0.5]) {
-      for (const ang of [0.23, -0.23, 0.6, -0.6, 1.0, -1.0, 1.4, -1.4]) { const c = make(ang, dist); if (!this.occluded(c[0], c[1], [a])) { pick = c; break; } }
+    // 手前に誰かや何かがあったら、反対側から・回りこんで・もう少し寄って撮る。どこからも隠れるなら、いちばん隠れが少ない所から
+    let pick = null, best = null;
+    for (const dist of [dist0, dist0 * 0.8, dist0 * 0.66]) {
+      for (const ang of [0.23, -0.23, 0.6, -0.6, 1.0, -1.0, 1.4, -1.4]) {
+        const c = make(ang, dist), n = this.faceBlocked(c[0], a) + (this.occluded(c[0], c[1], [a]) ? 0.5 : 0);
+        if (n === 0) { pick = c; break; }
+        if (!best || n < best.n) best = { c, n };
+      }
       if (pick) break;
     }
-    const [pos, look] = pick || make(-0.5, 1.5 * sc);
+    const [pos, look] = pick || best.c;
     this.cut(pos, look, o);
   }
   // 肩越し：聞き手 L の肩の後ろから話し手 S を見る
