@@ -387,7 +387,9 @@ const ENV_PROPS = {
   },
   tree(T) { hills(T, '#8a9a5a', 140, 14, 18); puffClouds(T, 10, '#fff6dc'); motes(T, '#fff0a8', 24, { size: 0.07, life: 6, k: 2.4, drift: 0.3 }); },
   root(T) { T.noTree = true; motes(T, '#b8ff8a', 22, { size: 0.06, life: 5, k: 2.6 }); },
+  // 世界の果て（地の底）からは、にゃんだーの樹は見えない（区画の world_end も skyTree: false）
   end(T) {
+    T.noTree = true;
     const rm = new THREE.MeshStandardMaterial({ color: '#1a1428', roughness: 1, flatShading: true });
     for (let i = 0; i < 14; i++) { const a = Math.random() * Math.PI * 2, r = 60 + Math.random() * 60; const m = new THREE.Mesh(new THREE.DodecahedronGeometry(6 + Math.random() * 8, 0), rm); m.position.set(Math.cos(a) * r, 4 + Math.random() * 30, Math.sin(a) * r); T.root.add(m); const y0 = m.position.y, ph = Math.random() * 6; T.updaters.push((dt, t) => { m.position.y = y0 + Math.sin(t * 0.3 + ph) * 1.5; m.rotation.y += dt * 0.02; }); }
     motes(T, '#b8a8ff', 20, { size: 0.07, life: 6, k: 2.2 });
