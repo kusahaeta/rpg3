@@ -962,7 +962,7 @@ const STORY = [
     { t: 'scene', id: 'c8_01', g: 'ぽかぽか村の危機' },
     { t: 'battle', stage: '8-1', after: 'c8_02', g: '村を守る' },
     { t: 'field', zone: 'world_end', at: [0, 20], start: ['tree_root', 30, 14], near: ['tree_root', 'world_end'], scene: 'c8_03', battle: '8-2', g: '樹の根もとの東から、太い根をたどって世界の果てへ' },
-    { t: 'field', zone: 'world_end', at: [0, -21], scene: 'c8_04', battle: '8-3', after: 'c8_05', g: 'コドクと決着をつける' },
+    { t: 'field', zone: 'world_end', at: [0, -30], scene: 'c8_04', battle: '8-3', after: 'c8_05', g: 'コドクと決着をつける' },
     { t: 'scene', id: 'c8_05t', g: 'よみがえる樹' },
     { t: 'scene', id: 'c8_05b', g: 'そのころ、ぽかぽか村' },
     { t: 'scene', id: 'c8_05c', g: 'ずっと仲間' },
