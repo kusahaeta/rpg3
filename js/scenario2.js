@@ -545,7 +545,8 @@ Object.assign(SCENES, {
       cast: { sonchou: { at: [0, 3], face: 'mike' }, sakanaya: { at: [-1.6, 3.4], face: 'mike' },
         king_npc: { at: [-3.4, 6.5], hidden: true, face: 'mike' }, piero_npc: { at: [3.3, 6], hidden: true, face: 'mike' }, nyahaha_ou: { at: [1.8, 7.4], hidden: true, face: 'mike' },
         kurone: { at: [-4.8, 4], hidden: true, face: 'mike' }, mazoku_yukyu: { at: [4.8, 4], hidden: true, face: 'maou' }, chaya: { at: [-1.8, 7.2], hidden: true, face: 'mike' } },
-      points: { sky: [-30, 30, 120] }, wide: { pos: [-3.2, 2.2, -3], look: [0, 0.8, 4] } },
+      // valley：クロネ婆は wide の左の外から来るので、右後ろから左前を見る画で、クロのそばへ歩いてくるところを映す
+      points: { sky: [-30, 30, 120] }, wide: { pos: [-3.2, 2.2, -3], look: [0, 0.8, 4] }, shots: { valley: { pos: [1.4, 2.2, -3.4], look: [-2.6, 0.8, 4] } } },
     lines: [
       ['n', '影をはらったあと。根を伝う呼び声を聞きつけて、村の広場に、見覚えのある顔が、次々と集まってきた。', { cam: 'wide', dur: 7, fx: 'dawn' }],
       ['king_npc', 'よう、勇者。……巣穴の根っこが光って、お前らの声がしたんだ。すっとんで来たぞ。', { enter: 'king_npc', move: { king_npc: [-2.4, 4.6] }, f: 'smile', look: { all: 'king_npc' } }],
@@ -555,10 +556,10 @@ Object.assign(SCENES, {
       ['king_npc', '俺にとっては大事なんだ！　……あのとき、お前が分けてくれた魚がな。', { f: 'cry', g: 'fist', cam: 'king_npc', close: true }],
       ['piero_npc', 'ぼくも来たよ！　塔の下の根っこから、声が聞こえたんだ！　世界中に笑いを届けるショーの準備は、ばっちりさ！', { enter: 'piero_npc', f: 'joy', g: 'cheer', move: { piero_npc: [2.6, 4.6] } }],
       ['nyahaha_ou', 'わが国の民も、みな声を聞いた！　みな力を貸すぞ！　……ぶはははは！', { enter: 'nyahaha_ou', f: 'joy', g: 'laugh' }],
-      ['kurone', '谷の根も、ひさしぶりにしゃべったよ。谷のみんなも、クロの仲間なら力になるってさ。', { enter: 'kurone', f: 'gentle', g: 'nod', r: { kuro: 'surprise' } }],
+      ['kurone', '谷の根も、ひさしぶりにしゃべったよ。谷のみんなも、クロの仲間なら力になるってさ。', { enter: 'kurone', move: { kurone: [-3.6, 2.8] }, f: 'gentle', g: 'nod', to: 'kuro', cam: 'valley', dur: 6, r: { kuro: 'surprise' } }],
       ['mazoku_yukyu', '魔王さまー！　城の地下の根が光ったので、魔王軍一同、有給を返上して参りました！', { enter: 'mazoku_yukyu', f: 'joy', g: 'cheer' }],
       ['maou', '……お前たち。', { f: 'surprise', cam: 'maou', close: true, later: [1.5, { r: { maou: 'shy' } }] }],
-      ['chaya', '街道の木の根が「ぽかぽか村へ」って呼んだのさ！　お茶も持ってきた！　ハチとブチの笛と太鼓もいっしょだ！', { enter: 'chaya', f: 'smile', g: 'wave' }],
+      ['chaya', '街道の木の根が「ぽかぽか村へ」って呼んだのさ！　お茶も持ってきた！　ハチとブチの笛と太鼓もいっしょだ！', { enter: 'chaya', move: { chaya: [-0.7, 5.6] }, f: 'smile', g: 'wave' }],
       ['sonchou', 'ミケ。……お前が旅で結んできたつながりが、みんなをここへ連れてきたんじゃよ。', { f: 'gentle', g: 'handChest' }],
       ['mike', '……みんな……！', { f: 'cry' }],
       ['tama', '……よかった。……ちゃんと、とどいてた。', { f: 'smile', g: 'handChest' }],
