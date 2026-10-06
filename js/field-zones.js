@@ -2611,6 +2611,39 @@ function flowerTex(col) {
   return (TexCache[k] = t);
 }
 
+// 枯れかけた葉の絵：先のとがった葉に、軸と葉脈、しみ、ふちの欠け。白っぽい灰色で描き、色はマテリアルや一枚ずつの色でつける
+function witherLeafTex() {
+  const k = 'witherLeaf'; if (TexCache[k]) return TexCache[k];
+  const W = 64, H = 128, R = W / 2, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), r = seeded(7);
+  const shape = () => { g.beginPath(); g.moveTo(R, 4); g.bezierCurveTo(W - 2, 32, W - 4, 82, R, H - 22); g.bezierCurveTo(4, 82, 2, 32, R, 4); g.closePath(); };
+  const gr = g.createLinearGradient(0, 0, W, H); gr.addColorStop(0, '#f2f2e8'); gr.addColorStop(1, '#c4c4b8');
+  shape(); g.fillStyle = gr; g.fill();
+  g.save(); shape(); g.clip();
+  for (let i = 0; i < 14; i++) { g.fillStyle = `rgba(110,104,88,${0.08 + r() * 0.14})`; g.beginPath(); g.ellipse(r() * W, r() * H, 3 + r() * 7, 2 + r() * 5, r() * 3, 0, Math.PI * 2); g.fill(); }
+  g.strokeStyle = 'rgba(112,110,96,.85)'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(R, 8); g.lineTo(R, H - 20); g.stroke();
+  g.lineWidth = 1.4;
+  for (let i = 0; i < 6; i++) { const y = 26 + i * 14; for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(R, y + 8); g.quadraticCurveTo(R + sd * 10, y + 2, R + sd * (21 - i * 1.6), y - 4); g.stroke(); } }
+  g.restore();
+  shape(); g.strokeStyle = 'rgba(96,92,80,.9)'; g.lineWidth = 2; g.stroke();
+  g.strokeStyle = '#86826f'; g.lineWidth = 3; g.beginPath(); g.moveTo(R, H - 24); g.lineTo(R - 2, H - 3); g.stroke();
+  // ふちの欠け（虫くい）
+  g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(W - 5, 60, 7, 0, Math.PI * 2); g.arc(9, 92, 4, 0, Math.PI * 2); g.fill(); g.globalCompositeOperation = 'source-over';
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (TexCache[k] = t);
+}
+// 葉の板：縦長の板を、横に少し反らせ（舟形）、先を少し巻かせる。curl 0 で平ら（地面に落ちた葉）
+function leafGeo(len, curl = 1) {
+  const w = len / 2, geo = new THREE.PlaneGeometry(w, len, 4, 6), P = geo.attributes.position;
+  for (let i = 0; i < P.count; i++) { const x = P.getX(i) / (w / 2), y = P.getY(i) / (len / 2); P.setZ(i, curl * len * (0.1 * x * x - 0.08 * y * y)); }
+  geo.computeVertexNormals();
+  return geo;
+}
+// 葉のマテリアル：絵の明るさで色を出し、少し自分で光らせて逆光でも黒くつぶれないようにする
+function leafMat(color, glow = '#5a5a50') {
+  const map = witherLeafTex();
+  return new THREE.MeshStandardMaterial({ map, color, emissive: glow, emissiveMap: map, alphaTest: 0.5, roughness: 0.9, side: THREE.DoubleSide });
+}
+
 // 墓石に彫った名前（縦書き）と、上の肉球の紋。彫りの影（暗い色）と、ふちの光（明るい色）を少しずらして重ねる
 function graveTex(name) {
   const k = 'grave' + name; if (TexCache[k]) return TexCache[k];
@@ -7048,15 +7081,39 @@ const ZONE_BUILD = {
         if (k > 0 && !g.userData.pop) { g.userData.pop = 1; K.v.p.burst(g.position.clone().add(V3(0, -1.4, 0)), '#fff0a8', 24, { speed: 3, life: 0.9, size: 0.22 }); }
       } }));
     }
+    // 樹が弱っているあいだは、灰色の葉がはらはらと舞い落ちる。葉はカメラの少し前を中心にした円柱の中にだけ出し、地面まで落ちたり、カメラが離れたりしたら、上へもどす
+    if (!revived && !bloom) {
+      const N = 110, R = 14, H = 12, im = new THREE.InstancedMesh(leafGeo(0.55), leafMat('#ffffff', '#6a6a60'), N);
+      im.frustumCulled = false; K.scene.add(im);
+      // 一枚ずつ、灰色の濃さと、すこし茶色がかった色をばらつかせる
+      const tint = new THREE.Color(); for (let i = 0; i < N; i++) im.setColorAt(i, tint.set(pick(['#c8c8bc', '#b4b4a6', '#a8a494', '#bcb4a0', '#9c9c90'])));
+      const cam = V3(), fwd = V3(), d = new THREE.Object3D(), leaves = [];
+      const camAt = () => { const c = K.v.camera; if (!c) return cam.set(0, 0, 0); c.getWorldDirection(fwd); return K.scene.worldToLocal(cam.copy(c.position).addScaledVector(fwd, R * 0.6)); };
+      const drop = (l, y) => { const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * R; l.x = cam.x + Math.cos(a) * r; l.z = cam.z + Math.sin(a) * r; l.y = K.gy(l.x, l.z) + (y ?? H * (0.8 + Math.random() * 0.4)); };
+      camAt();
+      for (let i = 0; i < N; i++) { const l = { v: 0.7 + Math.random() * 0.5, sw: 0.6 + Math.random() * 0.8, f: 1 + Math.random() * 1.5, ph: Math.random() * 6, rx: Math.random() * 6, ry: Math.random() * 6, spin: (Math.random() - 0.5) * 4 }; drop(l, Math.random() * H); leaves.push(l); }
+      K.tick((dt, t) => {
+        camAt();
+        leaves.forEach((l, i) => {
+          l.y -= l.v * dt; l.x += (Math.sin(t * l.f + l.ph) * l.sw + 0.25) * dt; l.z += Math.cos(t * l.f * 0.7 + l.ph) * l.sw * 0.5 * dt;
+          l.rx += l.spin * dt; l.ry += l.spin * 0.6 * dt;
+          if (l.y < K.gy(l.x, l.z) + 0.05 || Math.hypot(l.x - cam.x, l.z - cam.z) > R * 1.3) drop(l);
+          d.position.set(l.x, l.y, l.z); d.rotation.set(l.rx, l.ry, Math.sin(t * l.f + l.ph) * 0.8); d.updateMatrix(); im.setMatrixAt(i, d.matrix);
+        });
+        im.instanceMatrix.needsUpdate = true;
+      });
+    }
     // 幹から張り出す根（南の根のトンネルの上をまたぐ）
     for (const sd of [-1, 1]) { K.root(sd * 18, 44, sd * 30, 26, 1.8, 10); K.root(sd * 14, 46, sd * 38, 34, 1.5, 8); }
     K.root(-8, 36, 8, 40, 1.4, 7); K.root(-30, 20, -10, 28, 1.2, 4); K.root(30, 22, 12, 34, 1.1, 4);
-    for (let i = 0; i < 40; i++) K.mesh(new THREE.CircleGeometry(0.4, 6), revived ? 'leaf' : 'leafGray', (K.r() - 0.5) * 50, 0.04, -16 + (K.r() - 0.5) * 30, { rx: -Math.PI / 2, noShadow: true });
+    const flatLeaf = leafGeo(0.8, 0), groundLeaf = revived ? leafMat('#7ac860', '#1a3a14') : leafMat('#c0c0b2', '#3a3a34');
+    for (let i = 0; i < 40; i++) K.mesh(flatLeaf, groundLeaf, (K.r() - 0.5) * 50, 0.04, -16 + (K.r() - 0.5) * 30, { rx: -Math.PI / 2, rz: K.r() * 6, noShadow: true });
     K.signpost(-3, -24, 0.2, '↓ にゃんだーの樹', '→ 世界の果て');
     // 南の根のトンネルの奥の封印の扉：c7_01b でタマがふれると開き、そのあとは開いたまま（トンネルは幅 4m なので小さめ。北向きの面が正面）
     K.sealDoor(0, 40.5, Math.PI, storyCond('scene:c7_01b'), 0.7, { roots: true, moss: new THREE.MeshStandardMaterial({ color: new THREE.Color('#9a9a88').lerp(new THREE.Color('#5ad06a'), h), roughness: 0.9 }) });
     // 灰色に色あせた葉の吹きだまり（調べられる）
-    for (let i = 0; i < 16; i++) { const a = K.r() * Math.PI * 2, d = Math.sqrt(K.r()) * 1.3; K.mesh(new THREE.CircleGeometry(0.35, 6), 'leafGray', -10 + Math.cos(a) * d, 0.05 + i * 0.004, 10 + Math.sin(a) * d, { rx: -Math.PI / 2, rz: K.r() * 3, noShadow: true }); }
+    const pileLeaf = leafMat('#c0c0b2', '#3a3a34'), pileGeo = leafGeo(0.7, 0);
+    for (let i = 0; i < 16; i++) { const a = K.r() * Math.PI * 2, d = Math.sqrt(K.r()) * 1.3; K.mesh(pileGeo, pileLeaf, -10 + Math.cos(a) * d, 0.05 + i * 0.004, 10 + Math.sin(a) * d, { rx: -Math.PI / 2, rz: K.r() * 6, noShadow: true }); }
     // 世界の果てへのびる、いちばん太い根（東の小道の南の縁を這う）
     K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(8, -0.6, 19), V3(16, 0.3, 16.4), V3(28, 0.2, 16.5), V3(42, -0.2, 16.4)]), 32, 0.7, 8, false), rootMat(), 0, 0, 0, { abs: true });
   },
