@@ -4,7 +4,7 @@
 //  zone.map の1文字が1マス（CELL m 四方）。1行目が北（-Z）。
 //  凡例：
 //   #  壁（屋外の区画では木立・崖）   W  窓            （空白） 奈落
-//   0〜9  床（数字 = 床の高さ m）
+//   0〜9  床（数字 = 床の高さ m。zone.hScale があれば、その倍）
 //   ,  土の道（床。高さはとなりの床と同じ）   =  橋（床。下は川）   ~  川・池（通れない）
 //   ^ v < >  階段（矢印の向きへ上る。両端の床の高さを結ぶ）
 //   E  昇降機（となり合う床の高さのあいだを上下する）
@@ -12,6 +12,8 @@
 //   %  根の橋（樹の地下。根がしおれているあいだは奈落、元気なあいだは岸と同じ高さの床。setRootBridge で切りかえる）
 //   a〜z  区画の出入口（zone.exits の key。門・階段・区画間エレベーターの籠）
 //  部屋（扉で区切られた範囲）ごとに天井があり、高さは部屋の最も高い床 + wallH。
+//  zone.floatBelow：その高さより低い床・階段は、奈落に浮かぶ岩盤（側面は板の厚みだけで、裏は岩肌）。それ以上の床は、奈落の底まで続く地面
+//  zone.rootRamps：階段は段を作らず、区画の組み立てで根をはわせて、根の上を歩いて下る坂にする
 // ============================================================
 const CELL = 2, STEP = 0.6, ABYSS = -40;
 const TK = { SOLID: 0, WINDOW: 1, VOID: 2, FLOOR: 3, STAIR: 4, LIFT: 5, DOOR: 6, EXIT: 7 };
@@ -43,7 +45,7 @@ class Terrain {
       else if (ch === '~') { this.kind[i] = TK.SOLID; this.water[i] = 1; }
       else if (ch === ' ') { this.kind[i] = TK.VOID; this.h[i] = ABYSS; }
       else if (ch === '%') { this.kind[i] = TK.VOID; this.h[i] = ABYSS; this.rootBridge[i] = 1; }
-      else if (ch >= '0' && ch <= '9') { this.kind[i] = TK.FLOOR; this.h[i] = +ch; this.fixed[i] = 1; }
+      else if (ch >= '0' && ch <= '9') { this.kind[i] = TK.FLOOR; this.h[i] = +ch * (zone.hScale || 1); this.fixed[i] = 1; }
       else if (STAIR_DIR[ch]) this.kind[i] = TK.STAIR;
       else if (ch === 'E') this.kind[i] = TK.LIFT;
       else if (ch === 'D') this.kind[i] = TK.DOOR;
@@ -920,6 +922,18 @@ function buildArchitecture(view, T) {
   const hasRoof = i => !open || cabinRoom(i);
   const flora = T.outdoor === 'flora', lots = T.outdoor === 'lots', EDGE = -1.3;   // 屋外の区画の外側の地面（環境の床）の高さ
   const flat = (key, y, x0, z0, x1, z1, s = 4) => acc(key, s).quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]);
+  // 根の坂（zone.rootRamps）：階段（^ v < >）の段を作らない。区画の組み立てで、その上に太い根をはわせて、根の上を歩いて下る
+  const rootRamp = i => zone.rootRamps && kind[i] === K.STAIR;
+  // 浮かぶ岩盤（zone.floatBelow より低い床・階段）：奈落へ下まで続く崖ではなく、厚み FLOAT_D の岩の板。
+  // 裏は、マスごとにまん中が下へとがった岩肌（となりのマスとは辺の高さでつながる）
+  const FLOAT_D = 2.4, floats = i => zone.floatBelow != null && !rootRamp(i) && (kind[i] === K.FLOOR || kind[i] === K.STAIR) && T.h[i] < zone.floatBelow;
+  function underside(i, x0, z0, x1, z1) {
+    const G = acc('rock', 4), cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, e = 0.02;
+    const P = (x, z) => [x, T.groundOf(i, x + Math.sign(cx - x) * e, z + Math.sign(cz - z) * e) - FLOAT_D, z];
+    const ring = [P(x0, z0), P(x1, z0), P(x1, z1), P(x0, z1)];
+    const C = [cx, ring.reduce((s, p) => s + p[1], 0) / 4 - 0.6 - vnoise(cx * 0.7, 3.1, cz * 0.7) * 2.4, cz];
+    for (let n = 0; n < 4; n++) G.quad(ring[n], ring[(n + 1) % 4], C, C);
+  }
 
   // 岩肌：面を細かく割り、ワールド座標のノイズで内側の頂点を凹凸させる（隣の面とつながる）
   function rockFace(key, ex, ez, nx, nz, w, ya, yb, amp = 0.4) {
@@ -946,6 +960,7 @@ function buildArchitecture(view, T) {
     } else if (k === K.FLOOR && dented(c, r)) dentSurf(acc('floor', lots ? 5 : 16), i, x0, z0, x1, z1);
     else if (k === K.FLOOR || k === K.DOOR || k === K.EXIT) acc('floor', lots ? 5 : 16).quad([x0, T.h[i], z1], [x1, T.h[i], z1], [x1, T.h[i], z0], [x0, T.h[i], z0]);
     if (k === K.LIFT) { const y = T.lifts[T.liftOf[i]].levels[0] - 0.45; acc('pit').quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]); }
+    if (floats(i)) underside(i, x0, z0, x1, z1);
     // 水面：底と、壁・地図の端に面した側面（屋内は天井も）
     if (T.water[i]) {
       const y = T.cap[i];
@@ -1018,6 +1033,7 @@ function buildArchitecture(view, T) {
       }
     }
     if (!walk(i) && k !== K.VOID) continue;
+    if (rootRamp(i)) continue;
     // 四方の辺
     DIR4.forEach(([dc, dr]) => {
       const j = T.idx(c + dc, r + dr), nk = j < 0 ? K.SOLID : kind[j];
@@ -1048,7 +1064,8 @@ function buildArchitecture(view, T) {
         return;
       }
       if (nk === K.DOOR || k === K.DOOR) return;
-      const yA2 = hAt(j, pa[0] - nx * 0.02, pa[1] - nz * 0.02), yB2 = hAt(j, pb[0] - nx * 0.02, pb[1] - nz * 0.02);
+      let yA2 = hAt(j, pa[0] - nx * 0.02, pa[1] - nz * 0.02), yB2 = hAt(j, pb[0] - nx * 0.02, pb[1] - nz * 0.02);
+      if (nk === K.VOID && floats(i)) { yA2 = yA - FLOAT_D; yB2 = yB - FLOAT_D; }   // 浮かぶ岩盤の側面は、板の厚みだけ
       // 部屋の境目（天井の高さが違う）：高い部屋の側に下がり壁
       if (hasRoof(i) || hasRoof(j)) {
         const ti = hasRoof(i) ? T.ceilOf(i) : 1e4, tj = hasRoof(j) ? T.ceilOf(j) : 1e4;
@@ -1186,7 +1203,7 @@ function buildArchitecture(view, T) {
   // 階段：段ごとの箱（ステーションと宮殿は光る段鼻）
   const stairSeen = new Uint8Array(kind.length);
   for (let i = 0; i < kind.length; i++) {
-    if (kind[i] !== K.STAIR || stairSeen[i]) continue;
+    if (kind[i] !== K.STAIR || stairSeen[i] || rootRamp(i)) continue;
     const ch = T.ch[i], cells = T.flood(i, k => kind[k] === K.STAIR && T.ch[k] === ch && !stairSeen[k], k => { stairSeen[k] = 1; });
     const b = T.bounds(cells), s = T.stairs.get(i), steps = Math.max(2, Math.round(Math.abs(s.h1 - s.h0) / 0.3));
     const base = Math.min(s.h0, s.h1) - 0.02, nose = style === 'station' || style === 'palace';

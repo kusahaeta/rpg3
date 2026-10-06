@@ -2413,8 +2413,10 @@ const FIELD_ZONES = {
 
   // ---------------- 第八章 世界の果て ----------------
   world_end: { ci: 7, name: '世界の果て', w: 70, d: 92, stage: '8-2', arenas: [[0, -26, 0], [0, 16, 0]], build: 'worldEnd', bg: 'end', groups: 6, chests: 3, crystals: 3,
-    world: true, arch: 'abyss', chestAt: [[-18, -6], [18, -6], [-28, 24]], skyTree: false,
-    // 奈落に浮かぶ石の道。中ほどの広い島（戦い）から、左右の小島へ渡る橋。細い道を北へ進むと、果ての闘技場
+    world: true, arch: 'abyss', chestAt: [[-18, -6], [18, -6], [-28, 24]], skyTree: false, hScale: 2, floatBelow: 18, rootRamps: true,
+    // 根もとからたどってきた太い根が、入口の地面（高さ18。hScale で数字の2倍）を這い、北のふちで地面がとぎれる。その先は、奈落に浮かぶ岩盤がいくつも、下へ下へと続き、
+    // 根は岩盤を伝いながら下りていく。岩盤と岩盤のあいだは、根の上を歩いて下る（地図の v が根の坂）：
+    //   入口の地面（18）→ 根の坂 → 岩盤A・中の島（12・戦い）→ 西のはしから根の坂 → 岩盤B・十字の島（6）の橋を東へ → 東の小島から根の坂 → いちばん底の果ての闘技場（0）
     map: [
       '                                   ',
       '                                   ',
@@ -2425,46 +2427,46 @@ const FIELD_ZONES = {
       '        0000000000000000000        ',
       '        0000000000000000000        ',
       '        0000000000000000000        ',
-      '         00000000000000000         ',
-      '          000000000000000          ',
-      '            00000000000            ',
-      '              0000000              ',
-      '               00000               ',
-      '                000                ',
-      '                000                ',
-      '       000      000      000       ',
-      '       000000000000000000000       ',
-      '       000      000      000       ',
-      '      00000     000     00000      ',
-      '      00000     000     00000      ',
-      '       000      000      000       ',
-      '                000                ',
-      '                000                ',
-      '               00000               ',
-      '            00000000000            ',
-      '          000000000000000          ',
-      '         00000000000000000         ',
-      '         00000000000000000         ',
-      '         00000000000000000         ',
-      '         00000000000000000         ',
-      '         00000000000000000         ',
-      '   00000000000000000000000         ',
-      '   000   00000000000000000         ',
-      '  00000   000000000000000          ',
-      '  00000     00000000000            ',
-      '   000         00000               ',
-      '                000                ',
-      '                000     000        ',
-      '              0000000000000        ',
-      '             000000000000000       ',
-      '             000000000000000       ',
-      '             000000000000000       ',
-      '              0000000000000        ',
-      '               0000000             ',
-      '                sss                ',
+      '         00000000000000000v        ',
+      '          000000000000000 v        ',
+      '            00000000000   v        ',
+      '              0000000     v        ',
+      '               00000      v        ',
+      '                          v        ',
+      '                          v        ',
+      '       333               333       ',
+      '       333333333333333333333       ',
+      '       333               333       ',
+      '      33333             33333      ',
+      '      33333             33333      ',
+      '       333               333       ',
+      '       v                           ',
+      '       v                           ',
+      '       v       66666               ',
+      '       v    66666666666            ',
+      '       v  666666666666666          ',
+      '       v 66666666666666666         ',
+      '       v 66666666666666666         ',
+      '       v 66666666666666666         ',
+      '       v 66666666666666666         ',
+      '       v 66666666666666666         ',
+      '   66666666666666666666666         ',
+      '   666   66666666666666666         ',
+      '  66666         v                  ',
+      '  66666         v                  ',
+      '   666          v                  ',
+      '                v                  ',
+      '                v                  ',
+      '            9999999999999999       ',
+      '         ##99999,999999999999##    ',
+      '        ###99999,999999999999###   ',
+      '        ###99999,999999999999###   ',
+      '        ####999,999999999999####   ',
+      '        #####99,999999999#######   ',
+      '        ########sss#############   ',
     ],
-    anchor: [10, 38], spawn: [0, 42], exits: [{ key: 's', to: 'tree_root' }],
-    notes: [{ at: [-12, 20], face: 0, post: ['↑ 世界の果て', 'ひとりで行ってはならない'], title: '最後の道しるべ', text: '「この先、世界の果て。——ひとりで行ってはならない」' }],
+    anchor: [-8, 40], spawn: [0, 42], exits: [{ key: 's', to: 'tree_root' }],
+    notes: [{ at: [-12, 14], face: 0, post: ['↑ 世界の果て', 'ひとりで行ってはならない'], title: '最後の道しるべ', text: '「この先、世界の果て。——ひとりで行ってはならない」' }],
     map2d: [610, 540] },
 
   // ---------------- クリア後 ねこ神の夢 ----------------
@@ -7225,28 +7227,69 @@ const ZONE_BUILD = {
     K.mesh(new THREE.RingGeometry(8, 8.3, 64), K.glow('#b8a8ff', 2), 0, 0.05, -30, { rx: -Math.PI / 2, noShadow: true });
     K.mesh(new THREE.RingGeometry(5, 5.15, 64), K.glow('#ff8ab8', 2), 0, 0.05, -30, { rx: -Math.PI / 2, noShadow: true });
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + Math.PI / 8; if (Math.sin(a) > 0.8) continue; K.pillarBroken(Math.cos(a) * 12, -30 + Math.sin(a) * 9, 2 + K.r() * 4, false, 'darkStone'); }
-    for (let i = 0; i < 18; i++) K.floatRock((K.r() - 0.5) * 70, (K.r() - 0.5) * 90, -2 + K.r() * 16, 0.8 + K.r() * 2);
-    // 樹の根：根もとの樹から地面を這ってきて、南の入口の門の西わきを通る。そこから島の下へもぐり、果ての闘技場まで、石の道の下を這って支えている（細い道ではすぐ脇に見える）
-    K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-5.4, 0, 66), V3(-5.2, -0.1, 54), V3(-5, -0.3, 45), V3(-6.5, -2.6, 37), V3(-4.8, -0.9, 30), V3(-7, -4.5, 20), V3(-6.6, -0.9, 2), V3(-7, -4.5, -8), V3(-4.8, -0.9, -18), V3(-5, -5, -30), V3(0, -9, -46)]), 96, 1.1, 10, false), rootMat(0.6), 0, 0, 0, { abs: true, noShadow: true });
-    // 道しるべの石と、奈落から立ちのぼる光
-    // 世界じゅうの根の先：地中深くの果てには、各地からのびた根が、闇の上から何本もたれさがって行きついている。
+    // 世界じゅうの根が伝ってくる岩盤（区画の外の奈落に浮かぶ飾り。歩けない）：根の名前ごとに [x, z, 上面の高さ, 半径]
+    const ISLES = {
+      rat: [[-52, -40, 9, 5], [-33, -35, 3.5, 4]],
+      kingdom: [[-20, -82, 10, 5], [-15, -58, 4, 4.4]],
+      village: [[0, -92, 12, 5.6], [1, -66, 5, 4.6]],
+      valley: [[22, -82, 10, 5], [16, -58, 4, 4.4]],
+      castle: [[54, -46, 8.5, 5], [34, -40, 3.2, 4]],
+    };
+    // 岩盤：厚い板（上は石、ふちはすこしゆがむ）と、下へとがった岩肌
+    for (const [x, z, y, r] of Object.values(ISLES).flat()) {
+      const ry = K.r() * Math.PI, sx = 0.85 + K.r() * 0.3, sz = 0.85 + K.r() * 0.3;
+      const slab = K.mesh(new THREE.CylinderGeometry(r, r * 0.9, 2.4, 9), 'purpleStone', x, y - 1.2, z, { abs: true, ry });
+      const cone = K.mesh(new THREE.ConeGeometry(r * 0.9, r * 1.6, 9), 'darkStone', x, y - 2.4 - r * 0.8, z, { abs: true, ry, rx: Math.PI });
+      for (const m of [slab, cone]) { m.scale.x = sx; m.scale.z = sz; }
+    }
+    // 奈落に浮かぶ岩：石の道や地面、岩盤に重ならない、奈落の上だけに
+    const overVoid = (x, z) => [[0, 0], [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]].every(([dx, dz]) => { const j = K.T.at(x + dx, z + dz); return j < 0 || K.T.kind[j] === TK.VOID; })
+      && Object.values(ISLES).flat().every(([ix, iz, , ir]) => Math.hypot(x - ix, z - iz) > ir + 3);
+    for (let i = 0, n = 0; i < 80 && n < 18; i++) {
+      const x = (K.r() - 0.5) * 70, z = (K.r() - 0.5) * 90, y = -6 + K.r() * 26, s = 0.8 + K.r() * 2;
+      if (overVoid(x, z)) { K.floatRock(x, z, y, s); n++; }
+    }
+    // 樹の根：根もとの樹から地面を這ってきて、南の土手から入口の地面（18）に出る。北のふちで地面がとぎれると、根の坂（歩ける）になって
+    // 岩盤A（12）へ下り、岩盤の上を這って西のはしへ。そこから根の坂で岩盤B（6）へ下り、十字の橋を東へ這って、東の小島から根の坂で
+    // いちばん底の闘技場（0）の東のはしへ。そこから闘技場の下の奈落の底へもぐる
+    // 根の坂の上は、根のてっぺんが床の高さ（中心は 1.2 下）。岩盤の上では、半分ほど埋まって這う
+    const ramp = (x, z, h) => V3(x, h - 1.2, z);
+    const rootPath = [V3(-4, 17.3, 50), V3(-3.4, 17.5, 43), V3(-2.4, 17.4, 37), V3(-2, 17.2, 33.4),
+      ramp(-2, 32, 18), ramp(-2, 27, 15), ramp(-2, 22, 12), V3(-2.4, 11.5, 20.6),
+      V3(-8, 11.5, 21.2), V3(-14.5, 11.5, 21), V3(-18.6, 11.4, 19.6),
+      ramp(-20, 18, 12), ramp(-20, 13, 10.5), ramp(-20, 8, 9), ramp(-20, 3, 7.5), ramp(-20, -2, 6),
+      V3(-20.4, 5.3, -4.4), V3(-20.8, 5.3, -7.6), V3(-18.4, 5, -10.6), V3(-12, 4.9, -11), V3(0, 4.9, -11), V3(12, 4.9, -11), V3(17, 5, -11.6), V3(18, 5.1, -13),
+      ramp(18, -14, 6), ramp(18, -21, 3), ramp(18, -28, 0),
+      V3(19.4, -2.4, -29.6), V3(21, -8, -31.5), V3(17, -16, -38), V3(8, -24, -46)];
+    K.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rootPath, false, 'centripetal'), 480, 1.3, 12, false), rootMat(0.6), 0, 0, 0, { abs: true, noShadow: true });
+    // 世界じゅうの根の先：地中深くの果てには、各地からのびた根が行きついている。どの根も、樹の根と同じように、遠くの闇から
+    // 浮かぶ岩盤（ISLES）を一つずつ伝って下り、闘技場のふち（rim）から床に這い上がって、先（tip）は柱の輪の外にとどく。
     // 最終決戦では、根を伝って届いた声で一本ずつ光る（hooks.rootVoice。strong は村で重ねた声：押しかえされずに光りつづけ、ほかの根も光りなおす）
-    const tips = {}, P = V3(), Q = V3();
-    const hang = (key, from, to, r) => {
-      const curve = new THREE.CatmullRomCurve3([from, from.clone().lerp(to, 0.55).add(V3((K.r() - 0.5) * 8, 0, (K.r() - 0.5) * 8)), to.clone().add(V3(0, 4, 0)), to]);
-      const geo = new THREE.TubeGeometry(curve, 48, r, 8, false), pos = geo.attributes.position;
-      for (let i = 0; i <= 48; i++) { const t = i / 48, k = 1 - 0.5 * t * t; curve.getPointAt(t, P); for (let j = 0; j <= 8; j++) { const n = i * 9 + j; Q.fromBufferAttribute(pos, n).sub(P).multiplyScalar(k).add(P); pos.setXYZ(n, Q.x, Q.y, Q.z); } }
+    const tips = {}, P = V3(), Q = V3(), SEG = 160, RAD = 10;
+    const reach = (key, from, rim, tip, r) => {
+      const pts = [from], sag = (a, b) => a.clone().lerp(b, 0.5).add(V3(0, -0.8 - Math.abs(a.y - b.y) * 0.15, 0));
+      let prev = from;
+      ISLES[key].forEach(([x, z, y, ir], n) => {
+        const nx = ISLES[key][n + 1] || [rim.x, rim.z], din = V3(prev.x - x, 0, prev.z - z).normalize(), dout = V3(nx[0] - x, 0, nx[1] - z).normalize();
+        const a = V3(x + din.x * ir * 0.85, y - 0.3, z + din.z * ir * 0.85), b = V3(x + dout.x * ir * 0.85, y - 0.3, z + dout.z * ir * 0.85);
+        pts.push(sag(prev, a), a, V3(x, y - 0.3, z).lerp(a.clone().lerp(b, 0.5), 0.5), b);
+        prev = b;
+      });
+      pts.push(sag(prev, rim), rim, tip);
+      const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+      const geo = new THREE.TubeGeometry(curve, SEG, r, RAD, false), pos = geo.attributes.position;
+      // 先へ向かって、半分の太さまで細くなる
+      for (let i = 0; i <= SEG; i++) { const t = i / SEG, k = 1 - 0.5 * t * t; curve.getPointAt(t, P); for (let j = 0; j <= RAD; j++) { const n = i * (RAD + 1) + j; Q.fromBufferAttribute(pos, n).sub(P).multiplyScalar(k).add(P); pos.setXYZ(n, Q.x, Q.y, Q.z); } }
       geo.computeVertexNormals();
       const mat = rootMat(0.1); K.scene.add(new THREE.Mesh(geo, mat));
-      tips[key] = { curve, mat, end: to, glow: 0, target: 0 };
+      tips[key] = { curve, mat, end: tip, glow: 0, target: 0 };
     };
-    // 太さ：道の下の根（半径1.1）と同じくらい。上は太く、先へ向かって半分まで細くなる
-    // 先は闘技場の島のふち（柱の輪の外）で、床に少しもぐりこませる
-    hang('rat', V3(-40, 50, -70), V3(-15, -0.5, -33), 1.4);
-    hang('kingdom', V3(-15, 55, -90), V3(-8, -0.5, -39), 1.4);
-    hang('valley', V3(25, 55, -85), V3(8, -0.5, -39), 1.4);
-    hang('castle', V3(45, 50, -60), V3(15, -0.5, -32), 1.4);
-    hang('village', V3(0, 60, -80), V3(0, -0.5, -41), 1.7);
+    // 太さ：樹の根（半径1.3）と同じくらい。遠くの闇から、ゆるやかに下りてくる
+    reach('rat', V3(-76, 16, -42), V3(-18.6, -0.4, -33.5), V3(-15, -0.5, -33), 1.4);
+    reach('kingdom', V3(-28, 18, -110), V3(-8.6, -0.4, -42.6), V3(-8, -0.5, -39), 1.4);
+    reach('village', V3(2, 20, -122), V3(0.5, -0.4, -42.8), V3(0, -0.5, -41), 1.7);
+    reach('valley', V3(30, 17, -110), V3(8.6, -0.4, -42.6), V3(8, -0.5, -39), 1.4);
+    reach('castle', V3(80, 15, -50), V3(18.6, -0.4, -35), V3(15, -0.5, -32), 1.4);
     const dark = new THREE.Color('#6a4a2a'), lit = new THREE.Color('#ffe08a');
     K.tick(dt => { for (const T of Object.values(tips)) { T.glow += (T.target - T.glow) * Math.min(1, dt * 5); T.mat.emissive.copy(dark).lerp(lit, Math.min(1, T.glow)); T.mat.emissiveIntensity = 0.1 + T.glow * 2.4; } });
     // 樹がよみがえったあと（第八章の終わり）：すべての根が光る
