@@ -572,9 +572,11 @@ Object.assign(SCENES, {
       ['mike', '行こう、世界の果てへ！　みんなの力で、コドクを止めるんだ！', { f: 'serious', g: 'fist', r: { all: ['joy', 'cheer'] } }],
     ] },
   c8_03: { title: '世界の果て', cast: ['e:kagejuu', 'e:utsuro'], bgm: 'dark',
-    stage: { zone: 'world_end', at: [0, 20], face: 0, cast: { 'e:kagejuu': { at: [-2.6, 6], hidden: true }, 'e:utsuro': { at: [2.4, 6.6], hidden: true } }, points: { edge: [0, 2, 60], roots: [0, 16, 60] } },
+    stage: { zone: 'world_end', at: [0, 20], face: 0, cast: { 'e:kagejuu': { at: [-2.6, 6], hidden: true }, 'e:utsuro': { at: [2.4, 6.6], hidden: true } }, points: { edge: [0, 2, 60], roots: [0, 16, 60] },
+      // descent：岩盤A（中の島）から、来た道をふりかえる。とぎれた地面のふちから、根が坂になって下りてくる
+      shots: { descent: { pos: [7, 3, 8], look: [-2, 3, -8], free: true, fov: 55 } } },
     lines: [
-      ['n', '樹の根もとの東から、地面を這う太い根をたどって、どこまでも歩いた。……やがて地面はとぎれ、根は、下へ、下へと奈落にもぐりながら、浮かぶ石の道を支えていた。', { cam: 'wide', dur: 8 }],
+      ['n', '樹の根もとの東から、地面を這う太い根をたどって、どこまでも歩いた。……やがて地面はとぎれ、根は、下へ、下へと奈落にもぐりながら、浮かぶ石の道を支えていた。', { cam: 'descent', dur: 8 }],
       ['n', '世界の果ては、音も、色もない、しずかな場所だった。', { cam: 'look:edge', dur: 7, look: { all: 'edge' } }],
       ['n', '見上げると、闇の上から、何本もの根がたれさがっていた。世界じゅうの地下をめぐった根の先が、この地の底に行きついているのだ。', { cam: 'look:roots', dur: 8, look: { all: 'roots' } }],
       ['tama', '……あの根、ぜんぶ、どこかの村や森から、のびてきてる。', { f: 'gentle', g: 'lookUp' }],
