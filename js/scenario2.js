@@ -524,10 +524,15 @@ Object.assign(SCENES, {
 
   // ================= 第八章　みんなのにゃん力 =================
   c8_01: { title: 'ぽかぽか村の危機', cast: ['e:kagejuu'], bgm: 'dark',
+    // 一行は広場の南の入口（西の家と東の家のあいだの道）。影の獣は、広場のふちをぐるりと取り囲む
+    // siege：一行の後ろの道の上、屋根より高いところから、獣に囲まれた広場を見わたす。wide も道の上に置く（既定の左後ろは、西の家の中に入ってしまう）
     stage: { zone: 'pokapoka', at: [0, 16], face: 0,
-      cast: { sonchou: { at: [-2, 4], face: 'mike' }, sakanaya: { at: [1.5, 3.4], face: 'mike', item: 'fish' }, 'e:kagejuu': [{ at: [-3, 9] }, { at: [3.2, 9.6] }] } },
+      cast: { sonchou: { at: [-2, 4], face: 'mike' }, sakanaya: { at: [1.5, 3.4], face: 'mike', item: 'fish' },
+        'e:kagejuu': [{ at: [-3, 9] }, { at: [3.2, 9.6] }, { at: [-6.5, 7] }, { at: [6.8, 6.5] }, { at: [-5.5, 13.5] }, { at: [5.8, 13] }, { at: [-2.5, 18.5] }, { at: [2.8, 18] }] },
+      shots: { siege: { pos: [1.8, 7.5, -8], look: [-0.4, 0, 9], fov: 50 } },
+      wide: { pos: [1.4, 2.3, -3.8], look: [0, 0.8, 4] } },
     lines: [
-      ['n', 'ぽかぽか村に戻ると、黒い影の獣たちが、村を取り囲んでいた。', { fx: 'darkness', cam: 'wide', dur: 7, r: { all: 'surprise' } }],
+      ['n', 'ぽかぽか村に戻ると、黒い影の獣たちが、村を取り囲んでいた。', { fx: 'darkness', cam: 'siege', dur: 7, r: { all: 'surprise' } }],
       ['kuro', '……根にのせた声を、コドクも聞きつけたか。', { f: 'serious', stance: { kuro: 'ready' } }],
       ['sonchou', 'ミケ！　戻ってきたのか！', { f: 'surprise', g: 'surprise' }],
       ['sakanaya', 'あんたたち、下がってな！　……ほら、ミケ！', { f: 'angry', g: 'point' }],
