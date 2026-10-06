@@ -101,7 +101,15 @@ class TitleView extends BaseView {
   constructor() {
     super('meadow', 42, { skyTree: false });
     this.bloomStrength = 0.3;
-    const { g, fruits } = worldTree(0.95, 1.4); g.position.set(8, -8, -150); this.scene.add(g); this.fruits = fruits;
+    // 感情の実は、第八章で樹がよみがえってから（ほかの場所の樹と同じ。それまで実は実らない）
+    const { g, fruits } = worldTree(0.95, 1.4, treeHealth() >= 1 ? 0.6 : 0); g.position.set(8, -8, -150); this.scene.add(g); this.fruits = fruits;
+    // タイトルのカメラに映るのは樹冠の下のふちだけなので、実は、外のふちの輪（worldTree の clumps：中心から 27、高さ 46／48、半径 11／10）の
+    // 手前がわ（+z）の五つの玉の、すぐ下にぶら下げる
+    fruits.forEach((f, i) => {
+      const k = i % 5, a = (k + 0.5) / 10 * Math.PI * 2, y = 46 + (k % 2) * 2, rad = 11 - (k % 2), j = Math.floor(i / 5) % 3;
+      const d = [-0.45, 0.05, 0.5][j], out = [0.7, 0.5, 0.75][j], down = [1.0, 1.1, 0.95][j];
+      f.position.set(Math.cos(a) * 27 + Math.cos(a + d) * rad * out, y - rad * 0.75 * down, Math.sin(a) * 27 + Math.sin(a + d) * rad * out);
+    });
     this.cats = ['mike', 'kuro', 'shiro', 'tama', 'maou'].map((k, i) => {
       const m = buildCharacter(k); m.group.position.set((i - 2) * 0.95, 0, 2.5 + Math.abs(i - 2) * 0.35); m.group.rotation.y = Math.PI + (i - 2) * 0.08; m.setPose(POSES.idle); this.scene.add(m.group); return m;
     });
