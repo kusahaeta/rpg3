@@ -187,10 +187,11 @@ function passCardHTML(n, fresh) {
 }
 function DialogueScreen(id, done) {
   const scene = SCENES[id];
-  const v = GFX.ok ? (SCENE_STAGES[id] ? new StageView(scene, id) : new DialogueView(scene)) : null;
+  let v = GFX.ok ? (SCENE_STAGES[id] ? new StageView(scene, id) : new DialogueView(scene)) : null;
   if (v) { v.key = 'dialog:' + id; GFX.setView(v); }
   Music.play(scene.bgm || 'village');
   const s = h(`<div class="screen dialog ${v ? '' : 'flat'}">
+    <div class="dl-fade"></div>
     <div class="dl-title"><small>${scene.chapter || 'ぼうけん'}</small><b>${scene.title}</b></div>
     <div class="dl-ctrl"><button class="ctl" data-auto>AUTO</button><button class="ctl" data-skip>スキップ</button></div>
     <div class="dl-portrait"></div>
@@ -248,6 +249,17 @@ function DialogueScreen(id, done) {
     }, 30);
     if (speaker !== 'n' && !speaker.startsWith('e:') && Math.random() < 0.25) Sfx.meow(speaker); else Sfx.tone(700 + Math.random() * 200, 0.03, 'sine', 0.02);
   };
+  // 場面転換：会話ウィンドウを空にして暗転し、そのあいだに舞台を組みかえて、明るくしながら次の行へ
+  const fade = s.querySelector('.dl-fade');
+  const changeSet = (set, then) => {
+    textEl.textContent = ''; nameEl.style.display = 'none'; showCard(null);
+    fade.classList.add('on');
+    setTimeout(() => {
+      if (finished) return;
+      v = new StageView(scene, id, set); v.key = `dialog:${id}:${set}`; GFX.setView(v);
+      setTimeout(() => { if (finished) return; fade.classList.remove('on'); then(); }, 150);
+    }, 550);
+  };
   const advance = () => {
     if (finished || waitingChoice || holding || asking) return;
     if (typing) { clearInterval(typing); typing = null; textEl.textContent = full; if (v && v.lineDone) v.lineDone(); scheduleAuto(); return; }
@@ -275,6 +287,8 @@ function DialogueScreen(id, done) {
       return;
     }
     const dir = l.find((x, i) => i >= 2 && x && typeof x === 'object'), go = () => show(l[0], l[1], typeof l[2] === 'string' ? l[2] : undefined, dir);
+    // set：暗転して、別の舞台（scene.sets）に組みかえてから、この行を出す
+    if (dir && dir.set && v && v.set !== undefined && v.set !== dir.set) { holding = true; changeSet(dir.set, () => { holding = false; go(); }); return; }
     // waitMove：前の行で歩きはじめた人物が着くまで待ってから、この行を出す（待つのは長くても 8 秒）
     if (dir && dir.waitMove && v && v.walking && v.walking()) {
       holding = true; const t0 = Date.now();
