@@ -610,6 +610,9 @@ kbd { display: inline-block; font-family: inherit; font-size: 11px; background: 
 .dialog.flat.dlbg-abyss { background: radial-gradient(ellipse at 50% 25%, #5a1a3a, #05040a 70%); }
 .dialog.flat.dlbg-space { background: radial-gradient(ellipse at 50% 30%, #2a2860, #040616 70%); }
 .dl-title { position: absolute; left: 30px; top: 22px; text-shadow: 0 2px 6px #000; }
+/* 場面転換の暗転（3D の舞台だけをおおう。タイトルと会話ウィンドウは上に出したまま） */
+.dl-fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .5s; }
+.dl-fade.on { opacity: 1; }
 .dl-card { position: absolute; right: 36px; top: 70px; width: 330px; padding: 12px 14px 14px; background: #fbf4e4; color: #5a3a2a; border: 3px double #b88a5a; border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, .45); transform: rotate(-2deg) translateY(-12px); opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; }
 .dl-card.show { opacity: 1; transform: rotate(-2deg); }

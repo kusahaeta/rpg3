@@ -16,6 +16,7 @@ Object.assign(POSES, {
   hipHand:     { armLz: 0.75, armLx: 0.25, elbowL: -1.5, armRz: -0.12, elbowR: -0.3, twist: 0.06 },
   weak:        { hipsY: -0.04, lean: 0.14, headX: 0.22, armLx: -0.55, armLz: -0.2, elbowL: -1.4, armRz: -0.1, elbowR: -0.25, kneeL: 0.12, kneeR: 0.1 },
   kneel:       { hipsY: -0.47, lean: 0.1, headX: 0.18, legLx: -1.5, kneeL: 1.5, legRx: 0.12, kneeR: 1.45, armLx: -0.75, armLz: 0.1, elbowL: -0.35, armRx: -0.2, armRz: -0.25, elbowR: -0.4 },
+  sit:         { hipsY: -0.3, lean: 0.04, legLx: -1.45, kneeL: 1.35, legRx: -1.45, kneeR: 1.35, armLx: -0.55, armLz: 0.1, elbowL: -0.9, armRx: -0.55, armRz: -0.1, elbowR: -0.9 },   // いすに腰かける（cast の y でいすの高さまで持ち上げる）
   crouch:      { hipsY: -0.42, lean: 0.35, headX: -0.25, legLx: -1.2, kneeL: 1.9, legRx: -0.9, kneeR: 1.7, armLx: -0.9, elbowL: -1.2, armRx: -0.9, elbowR: -1.2 },
   guardStaff:  { hipsY: -0.02, armRx: -1.1, armRz: 0.1, elbowR: -0.9, armLx: -0.6, armLz: -0.25, elbowL: -1.1, legLx: -0.25, legRx: 0.2, kneeL: 0.2, kneeR: 0.2 },
   explain:     { armRx: -0.9, armRz: -0.35, elbowR: -0.9, armLz: 0.2, elbowL: -0.3, headY: 0.05 },
@@ -56,6 +57,7 @@ const GESTURES = {
   turnAway: [[{ headY: -0.7, twist: -0.18 }, 2.2]],
   hop: [[{}, 0.4, { hop: 0.25 }]],
   pout: [['pout', 1.8]],
+  gazeHand: [[{ armLx: -1.35, armLz: -0.2, elbowL: -0.9, headX: 0.22 }, 8]],   // 左手に持った物（手紙など）を、胸の前で見つめる
 };
 // キャラクターごとの普段の立ち方と表情、戦うときの構え、よく使う身振り
 const CHAR_ACT = {
@@ -253,6 +255,9 @@ class Actor {
     } else if (item === 'card') {   // 魔王城の面会許可証（ハンコの欄が五つ）
       const c = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.01), toon('#f8f0e0')); c.position.y = 0.06; g.add(c);
       for (let i = 0; i < 5; i++) { const s = new THREE.Mesh(new THREE.CircleGeometry(0.014, 10), toon('#d84a4a')); s.position.set(-0.07 + i * 0.035, 0.04, 0.006); g.add(s); }
+    } else if (item === 'letter') {   // 手紙：水色の封筒に、桃色のハートの封（白い毛の子が持っても見えるように）
+      const e = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 0.014), toon('#a8d4ff')); e.position.y = 0.07; g.add(e);
+      for (const sd of [-1, 1]) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.02, 10, 8), toon('#ff5a8a')); s.scale.z = 0.6; s.position.set(sd * 0.012, 0.078, 0); g.add(s); }
     } else if (item === 'manju') {   // 温泉まんじゅう
       const b = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), toon('#c8885a')); b.scale.y = 0.7; b.position.y = 0.05; g.add(b);
       const s = new THREE.Mesh(new THREE.CircleGeometry(0.025, 10), toon('#6a3a2a')); s.position.set(0, 0.09, 0.03); s.rotation.x = -0.9; g.add(s);
@@ -264,6 +269,7 @@ class Actor {
     }
     g.position.y = -0.03;
     if (item === 'jarashiUp') { g.rotation.x = Math.PI; g.userData.swing = true; }   // 手の先（腕の向き）へのばす
+    if (item === 'letter') g.rotation.x = Math.PI / 2;   // 封筒の面を、手のひらの向き（見ている人の側）へ
     this.m.armL.grip.add(g); this.item = g;
   }
   showWeapon(on) { if (this.m.armR && this.m.armR.grip) this.m.armR.grip.visible = on; }
@@ -272,11 +278,23 @@ class Actor {
 // ============================================================
 //  会話シーンの舞台
 // ============================================================
+// 場面転換：台本の行に set: '名前' と書くと、暗転して scene.sets の舞台に組みかえる（エピローグで、仲間それぞれの暮らしを映すなど）
+// その舞台で演じる行：set: の行から、次の set: の行の手前まで（set が null なら、最初の舞台 stage の行）
+function setLines(scene, set) {
+  if (!scene.sets) return scene.lines;
+  const out = []; let cur = null;
+  for (const l of scene.lines) {
+    const d = Array.isArray(l) && l.find((x, i) => i >= 2 && x && typeof x === 'object');
+    if (d && d.set) cur = d.set;
+    if (cur === set) out.push(l);
+  }
+  return out;
+}
 class StageView extends BaseView {
-  constructor(scene, id) {
-    const st = SCENE_STAGES[id], Z = FIELD_ZONES[st.zone], bg = st.bg || Z.bg || CHAPTERS[Z.ci].bg;
+  constructor(scene, id, set = null) {
+    const st = set ? scene.sets[set] : SCENE_STAGES[id], Z = FIELD_ZONES[st.zone], bg = st.bg || Z.bg || CHAPTERS[Z.ci].bg;
     super(bg, 36, { field: true, bare: true, zone: Z });
-    this.st = st; this.sc = scene; this.id = id; this.bg = bg;
+    this.st = st; this.sc = scene; this.id = id; this.bg = bg; this.set = set; this.lines = setLines(scene, set);
     this.bloomStrength = { cave: 0.7, root: 0.7, end: 0.7, night: 0.8, tower: 0.6 }[bg] || 0.45; this.exposure = st.exposure || { meadow: 0.95, road: 0.95, dream: 0.9 }[bg] || 1;
     this.hooks = Object.assign({}, STAGE_FX);
     // 舞台の座標系：原点 O、前 F（一行が向いている方向）、右 R
@@ -304,19 +322,20 @@ class StageView extends BaseView {
   }
   // ---------- 配役 ----------
   // 舞台の cast がなければ、仲間は一行の隊列、ほかの人物は向かい、敵はさらに奥へ自動で並べる
+  // 場面転換の舞台（set）には、その舞台で演じる行の話し手と、舞台の cast だけを立たせる（シーンの cast は最初の舞台だけ）
   autoCast() {
-    const st = this.st, lines = [];
+    const st = this.st, lines = [], sceneCast = this.set ? [] : this.sc.cast || [];
     const walk = ls => ls.forEach(l => { if (Array.isArray(l)) lines.push(l); else if (l.c) l.c.forEach(([t, rs]) => { lines.push([HERO, t]); walk(rs); }); });
-    walk(this.sc.lines);
+    walk(this.lines);
     const speakers = [...new Set(lines.map(l => l[0]).filter(k => k !== 'n'))];
     const comm = k => lines.filter(l => l[0] === k).every(l => String(l[1]).includes('（遠くから）') || String(l[1]).includes('（声）'));
     const party = st.party || partyAt(this.id);
     const cast = {};
     const slots = [[0, 0], [-1.15, 0.3], [1.15, 0.35], [-2.2, -0.35], [2.3, -0.4]];
     party.forEach((k, i) => { cast[k] = { at: slots[i] || [i * 1.1 - 2, -1] }; });
-    const others = [...new Set([...speakers, ...(st.extra || []), ...(this.sc.cast || [])])].filter(k => !party.includes(k) && !k.startsWith('e:') && !comm(k));
+    const others = [...new Set([...speakers, ...(st.extra || []), ...sceneCast])].filter(k => !party.includes(k) && !k.startsWith('e:') && !comm(k));
     others.forEach((k, i) => { cast[k] = { at: [(i - (others.length - 1) / 2) * 1.3, 2.6 + (others.length > 3 ? (i % 2) * 0.8 : 0)], face: HERO }; });
-    const foes = [...new Set([...speakers, ...(this.sc.cast || [])].map(k => k.split('#')[0]))].filter(k => k.startsWith('e:'));   // e:iwa#1（二匹め）は e:iwa の配役から
+    const foes = [...new Set([...speakers, ...sceneCast].map(k => k.split('#')[0]))].filter(k => k.startsWith('e:'));   // e:iwa#1（二匹め）は e:iwa の配役から
     foes.forEach((k, i) => { const d = ENEMIES[k.slice(2)]; cast[k] = { at: [(i - (foes.length - 1) / 2) * 3, d.boss ? 8 : 6] }; });
     for (const [k, o] of Object.entries(st.cast || {})) cast[k] = o === null ? undefined : Array.isArray(o) ? o.map(x => ({ ...(cast[k] || {}), ...x })) : { ...(cast[k] || {}), ...o };   // 配列 ＝ 同じ役を何匹も
     for (const k of Object.keys(cast)) if (!cast[k]) delete cast[k];
@@ -326,7 +345,7 @@ class StageView extends BaseView {
     this.actors = {}; this.party = [];
     const st = this.st, lines = [];
     const walk = ls => ls.forEach(l => { if (Array.isArray(l)) lines.push(l); else if (l.c) l.c.forEach(([t, rs]) => { lines.push([HERO, t]); walk(rs); }); });
-    walk(this.sc.lines);
+    walk(this.lines);
     const speakers = new Set(lines.map(l => l[0]).filter(k => k !== 'n'));
     const comm = k => lines.filter(l => l[0] === k).every(l => String(l[1]).includes('（遠くから）') || String(l[1]).includes('（声）'));
     const face = f => f == null ? null : typeof f === 'number' ? f : Array.isArray(f) ? this.W(f[0], f[1]) : f;

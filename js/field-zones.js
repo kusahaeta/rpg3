@@ -4612,6 +4612,29 @@ class ZoneKit {
     this.add(g);
     if (Math.abs(Math.sin(ry)) < 0.1) this.colBox(x, z, len / 2, 0.42, 0.56); else this.colBox(x, z, 0.42, len / 2, 0.56);
   }
+  // 猫カフェの丸テーブル：クロスをかけた天板に、紅茶のカップ二つと小さなケーキ。ry の向きの両がわに、まるいクッションのいす
+  cafeTable(x, z, ry = 0, cloth = '#fff4f8') {
+    const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry;
+    const at = (geo, mat, px, py, pz, r = {}) => this.mesh(geo, mat, px, py, pz, { ...r, parent: g });
+    at(new THREE.CylinderGeometry(0.3, 0.36, 0.06, 16), 'wood2', 0, 0.03, 0);
+    at(new THREE.CylinderGeometry(0.06, 0.06, 0.66, 8), 'wood2', 0, 0.36, 0);
+    at(new THREE.CylinderGeometry(0.64, 0.64, 0.05, 24), cloth, 0, 0.715, 0);
+    at(new THREE.CylinderGeometry(0.66, 0.72, 0.2, 24, 1, true), this.stdM(cloth, 0.9, { side: THREE.DoubleSide }), 0, 0.64, 0);
+    for (const s of [-1, 1]) {
+      const u = s * 0.34;
+      at(new THREE.CylinderGeometry(0.11, 0.11, 0.015, 14), 'white', u, 0.75, 0.05 * s);
+      at(new THREE.CylinderGeometry(0.07, 0.055, 0.09, 12), 'white', u, 0.8, 0.05 * s);
+      at(new THREE.CircleGeometry(0.06, 12), '#a8602a', u, 0.846, 0.05 * s, { rx: -Math.PI / 2 });
+      at(new THREE.TorusGeometry(0.03, 0.01, 6, 10), 'white', u + 0.075 * s, 0.8, 0.05 * s);
+      const cu = at(new THREE.SphereGeometry(0.3, 14, 10), 'clothPurple', s * 1.05, 0.24, 0); cu.scale.set(1, 0.55, 1);
+      this.col(x + s * 1.05 * Math.cos(ry), z - s * 1.05 * Math.sin(ry), 0.3, 0.4);
+    }
+    at(new THREE.CylinderGeometry(0.11, 0.11, 0.1, 14), '#ffd8e4', 0, 0.79, -0.22);
+    at(new THREE.CylinderGeometry(0.115, 0.115, 0.02, 14), '#ffffff', 0, 0.85, -0.22);
+    at(new THREE.SphereGeometry(0.03, 8, 6), '#e03a4a', 0, 0.88, -0.22);
+    this.add(g);
+    this.col(x, z, 0.7, 0.75);
+  }
   // 野点傘：赤い大きな傘（茶屋の縁台のそば）
   parasol(x, z, col = '#d0403a', h = 2.7, r = 1.7) {
     const y = this.gy(x, z);
@@ -5846,7 +5869,10 @@ const ZONE_BUILD = {
     if (storyCond('scene:c2_02')) for (let i = 0; i < 6; i++) { const f = K.mesh(new THREE.SphereGeometry(0.14, 8, 6), '#8ab8d8', -1 + K.r() * 4, 0.1, -6.5 + K.r() * 3, { ry: K.r() * 3 }); f.scale.set(0.5, 0.5, 2); }
     // ---- 上宿：東に旅籠、西に問屋場。街道の上に、のぼりの飾り ----
     K.catHouse(11, -21, 8, 7, 4.2, 'w', { roof: 'roofRed', sign: '旅籠 またたび', sub: '旅のお宿', lit: true, smoke: true });
-    K.catHouse(-9, -21, 7, 6, 3.6, 'e', { roof: 'roofBlue', sign: '問屋場', sub: '荷物・飛脚' });
+    // guild（エピローグの場面）：問屋場は、クロの冒険者ギルドになっている。戸口のわきに、仲間募集の掲示板
+    const guild = !!(K.v.flags && K.v.flags.guild);
+    K.catHouse(-9, -21, 7, 6, 3.6, 'e', { roof: 'roofBlue', sign: guild ? '冒険者ギルド' : '問屋場', sub: guild ? '仲間、紹介します' : '荷物・飛脚' });
+    if (guild) K.board(-4.4, -17.6, Math.PI / 2, '仲間募集', 'ひとりで行かないこと');
     K.crate(-7.2, -16.4); K.crate(-8.4, -16.2, 0.8); K.barrel(18.6, -16.2); K.barrel(19.8, -16.9); K.crate(19.4, -19.5);
     K.bunting(-4.6, -15.6, 4.6, -15.6, ['#e05a4a', '#ffd27a', '#6ab85a', '#5a8ad8'], 4.4);
     for (const [x, z] of [[-4.8, -25.6], [4.8, -25.6]]) K.lantern(x, z, '#ffc86a');
@@ -6664,13 +6690,17 @@ const ZONE_BUILD = {
     // 玄関：両わきの鎧（の形のほうき立て）と、植木鉢
     for (const x of [-8.6, 8.6]) { K.cyl(x, 16.2, 0.45, 0.7, 'purpleStone', { seg: 12 }); K.mesh(new THREE.IcosahedronGeometry(0.75, 1), 'leafPurple', x, 1.35, 16.2); }
     K.signpost(-7, 13.5, 0, '← 保健の間（健康診断）', '→ 兵の詰め所　↑ 中庭');
+    // cafe（エピローグの場面）：大広間は、マオウの猫カフェ。手続きのいらない城になって、受付の札も、テーブルも変わる
+    const cafe = !!(K.v.flags && K.v.flags.cafe);
+    if (cafe) for (const [x, z, cloth] of [[-5.6, -8.5, '#fff4f8'], [5.6, -8.5, '#f4f0ff'], [-10, -3, '#f4f0ff'], [10, -3, '#fff4f8'], [-5.6, 3, '#fff4f8'], [5.6, 3, '#f4f0ff'], [-10, 8, '#fff4f8'], [10, 8, '#f4f0ff']]) K.cafeTable(x, z, 0, cloth);
     // 面会受付：机と呼び鈴、書類の山、ハンコと朱肉
     { const x = 5, z = 11.6; K.box(x, z, 3.6, 1.05, 0.9, 'wood2'); K.box(x, z, 3.8, 0.08, 1.1, 'clothPurple', { y: 1.05, col: false });
-      K.sign(x, z + 0.47, 0, '面会受付', '魔王さまとの面会はこちら', '#ff8ad8', 0.62, 2.4);
+      K.sign(x, z + 0.47, 0, cafe ? 'ねこカフェ' : '面会受付', cafe ? '手続きなしで、どなたでも' : '魔王さまとの面会はこちら', '#ff8ad8', 0.62, 2.4);
       K.mg('gold', new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), x - 1.2, 1.14, z); K.mg('gold', new THREE.CylinderGeometry(0.02, 0.02, 0.06, 6), x - 1.2, 1.28, z);
       for (let i = 0; i < 4; i++) K.mg('#f4ecd8', new THREE.BoxGeometry(0.42, 0.03, 0.3), x + 1.1, 1.15 + i * 0.03, z, [0, i * 0.12, 0]);
       K.mg('#d8403a', new THREE.CylinderGeometry(0.1, 0.1, 0.04, 12), x + 0.3, 1.15, z + 0.1); K.mg('wood', new THREE.CylinderGeometry(0.04, 0.05, 0.14, 8), x + 0.6, 1.2, z + 0.1); }
-    K.paper(-9.95, 17, Math.PI / 2, '本日の予定', ['健康診断（全員）', '会場：西の保健の間', '魔王さまの遊び相手', '（募集中）'], { bg: '#f0e6f4', ink: '#5a3a7a', w: 1.3 });
+    if (cafe) K.paper(-9.95, 17, Math.PI / 2, 'メニュー', ['魔王さまの紅茶', '減塩・魚のパイ', '魔王さまの遊び相手', '（いつでも）'], { bg: '#f0e6f4', ink: '#5a3a7a', w: 1.3 });
+    else K.paper(-9.95, 17, Math.PI / 2, '本日の予定', ['健康診断（全員）', '会場：西の保健の間', '魔王さまの遊び相手', '（募集中）'], { bg: '#f0e6f4', ink: '#5a3a7a', w: 1.3 });
     // 肖像画の間：歴代の魔王の額（いかめしい顔で、みんな背中に猫じゃらしを隠し持っている）
     const portrait = (x, z, ry, s, o) => {
       const y = K.gy(x, z) + 3.4, c = Math.cos(ry), sn = Math.sin(ry), t = K.portraitTex(o);
