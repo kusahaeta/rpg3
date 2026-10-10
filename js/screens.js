@@ -203,8 +203,8 @@ function startStage(ci, st, techs, after) {
       if (!res.win) return '<div class="dim">へんせいやレベルを見直してみよう。</div>';
       const d = Save.data, exp = (80 + st.lv * 30) * st.waves.length, nib = (10 + st.lv * 3) * (first ? 3 : 1);
       d.cleared[st.id] = true;
-      d.niboshi += nib; d.tp = Math.min(5, d.tp + 1);
-      let html = `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}${first ? '（はじめて）' : ''}　<i class="ic-tp"></i>初手技ポイント +1</div>`;
+      d.niboshi += nib;
+      let html = `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}${first ? '（はじめて）' : ''}</div>`;
       html += '<div class="rw-team">' + d.team.map(k => { const up = grantExp(k, exp); return `<div class="rw-mem">${avatarSVG(k)}<span>Lv.${d.owned[k].lv}${up ? `<b> ▲${up}</b>` : ''}</span></div>`; }).join('') + '</div>';
       Save.save();
       return html;
