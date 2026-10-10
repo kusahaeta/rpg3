@@ -4995,6 +4995,17 @@ class ZoneKit {
     this.fire(x, 0.3, z, '#ff9a3a', 30, 0.26); this.col(x, z, 0.8, 0.5);
     this.light(x, 1.2, z, '#ffb060', 10, 12);
   }
+  // 寝袋：地面に敷いた布と、頭の側の丸めたまくら（ry の向きに長い）
+  bedroll(x, z, ry = 0, cloth = 'cloth') {
+    this.mesh(new THREEX.RoundedBoxGeometry(0.95, 0.1, 1.7, 2, 0.04), cloth, x, 0.05, z, { ry, noShadow: true });
+    this.mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.9, 10), 'clothWhite', x - Math.sin(ry) * 0.72, 0.17, z - Math.cos(ry) * 0.72, { ry, rz: Math.PI / 2 });
+  }
+  // 旅の荷物：ふくらんだ袋と、かぶせ布、巻いた毛布
+  pack(x, z, ry = 0, cloth = 'clothRed') {
+    this.mesh(new THREEX.RoundedBoxGeometry(0.5, 0.55, 0.36, 2, 0.12), cloth, x, 0.27, z, { ry });
+    this.mesh(new THREEX.RoundedBoxGeometry(0.52, 0.08, 0.38, 2, 0.03), 'wood2', x, 0.56, z, { ry });
+    this.mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.56, 8), 'clothYellow', x, 0.68, z, { ry, rz: Math.PI / 2 });
+  }
   tent(x, z, ry = 0, cloth = 'clothYellow') {
     const g = new THREE.ConeGeometry(1.8, 2.2, 4); g.rotateY(Math.PI / 4);
     const m = this.mesh(g, cloth, x, 1.1, z, { ry }); m.scale.set(1, 1, 1.4);

@@ -100,11 +100,16 @@ class Actor {
     this.cur = { ...POSES.idle, ...(POSES[this.stance] || {}) }; this.head = { x: 0, y: 0 };
     this.gest = null; this.gi = 0; this.gt = 0; this.hopT = 1; this.hopH = 0; this.path = null; this.phase = 0; this.speed = 0;
     this.seed = Math.random() * 10; this.alpha = 1; this.lift = o.y || 0; this.dead = 0;
+    this.lie = (o.lie || 0) * Math.PI / 180;   // 横になる（度）：体を前後の軸で倒す。-90 で頭が左、90 で頭が右（寝袋で眠るなど）
     this.headH = this.foe ? m.height * 0.6 : m.height * 0.88;
     if (!this.foe && m.face) m.face.set(C.face || defaultFace(this.base));
   }
   // ワールド座標の頭の位置
-  headPos() { return V3(this.pos.x, this.pos.y + this.lift + this.headH, this.pos.z); }
+  headPos() {
+    if (!this.lie) return V3(this.pos.x, this.pos.y + this.lift + this.headH, this.pos.z);
+    const s = -Math.sin(this.lie) * this.headH, c = Math.cos(this.lie) * this.headH;   // 体の上向きを、倒した向きと体の向きで回す
+    return V3(this.pos.x + s * Math.cos(this.yaw), this.pos.y + this.lift + c, this.pos.z - s * Math.sin(this.yaw));
+  }
   place(p) { this.pos.copy(p); this.pos.y = this.v.gy(p.x, p.z); }
   setFace(f) { if (f && this.m.face) this.m.face.set(f); }
   talk(on) { if (this.m.face) this.m.face.talking = on; }
@@ -184,7 +189,7 @@ class Actor {
     let hop = 0;
     if (this.hopT < 1) { this.hopT = Math.min(1, this.hopT + dt / 0.42); hop = Math.sin(this.hopT * Math.PI) * this.hopH; }
     m.group.position.set(this.pos.x, this.pos.y + this.lift + hop, this.pos.z);
-    m.group.rotation.y = this.yaw;
+    m.group.rotation.set(0, this.yaw, this.lie);
     m.update(dt, t);
     if (this.holo) this.updateHolo(dt, t);
   }
@@ -281,6 +286,8 @@ class StageView extends BaseView {
     const reserved = [{ x: ox, z: oz, r: 6 }];
     buildZoneSet(this, st.zone, { flags: st.flags, reserved });
     this.O.y = this.gy(ox, oz);
+    // props：その場面だけの小道具 [ZoneKit の部品名, 右, 前, 向き（度。0 で舞台の前へ長く、90 で右へ）, 材質]（野宿のたき火・寝袋など）
+    for (const [kind, lx, lz, deg = 0, mat] of st.props || []) { const p = this.W(lx, lz); this.kit[kind](p.x, p.z, Math.PI - th - deg * Math.PI / 180, mat); }
     this.timers = []; this.lineIdx = 0; this.last = null; this.addr = null;
     this.buildCast();
     this.shot('wide', { drift: 0.5, dur: 7 });
@@ -329,7 +336,7 @@ class StageView extends BaseView {
         const foe = key.startsWith('e:'), id = i ? `${key}#${i}` : key;
         const m = foe ? buildEnemy(key.slice(2)) : buildCharacter(key);
         this.scene.add(m.group);
-        const a = new Actor(this, id, m, { foe, stance: o.stance, y: o.y });
+        const a = new Actor(this, id, m, { foe, stance: o.stance, y: o.y, lie: o.lie });
         a.place(this.W(o.at[0], o.at[1]));
         a.faceT = face(o.face) ?? (foe ? this.O.clone() : this.W(0, 3));
         a.yaw = a.baseYaw = a.targetYaw(a.faceT);
@@ -550,6 +557,8 @@ class StageView extends BaseView {
     // 登場しながら話す行は、歩いてくるところが映るよう引きの画にする
     if (d.enter) { this.shot('wide', { drift: 0.3, dur: 6 }); this.lastShot = 'wide'; return; }
     if (A.foe) { this.shot('foe:' + A.key, { drift: 0.2, dur: 4 }); this.lastShot = 'foe'; return; }
+    // 横になっている子（寝袋で眠るなど）は、寄りの画が地面すれすれになるので引きで
+    if (A.lie) { this.shot('wide', { drift: 0.3, dur: 5 }); this.lastShot = 'wide'; return; }
     // 通信（ホログラム）は、アステルの肩越しに映す
     if (A.comm) { const L2 = this.party.find(a => a.visible()); if (this.lastShot !== 'sp:' + sp) { if (L2) this.single(L2, { dur: 6, drift: 0.15 }); else this.shot('wide', { dur: 6 }); } else { this.cam.p0 = this.camera.position.clone(); this.cam.l0 = this.lookNow.clone(); this.cam.t = 0; } this.lastShot = 'sp:' + sp; return; }
     const L = this.actors[this.addr];
