@@ -1307,7 +1307,7 @@ const BATTLE_SETS = {
   '5-1': { zone: 'ruins_out', at: [-2, 6], face: 0 },
   '5-2': { zone: 'ruins_in', at: [0, -12], face: 0 },
   '5-3': { zone: 'ruins_seal', at: [0, 1], face: 0 },
-  '6-1': { zone: 'demon_land', at: [0, -8], face: 0 },
+  '6-1': { zone: 'demon_land', at: [-2, 18], face: 90 },   // c6_01 で出会った南の広場。城門を正面にしないよう、東を向いて戦う
   '6-2': { zone: 'demon_clinic', at: [-12, 0], face: 0 },
   '6-k1': { zone: 'demon_barracks', at: [-11, -26.5], face: 0 },
   '6-k2': { zone: 'demon_cellar', at: [2, -4], face: 0 },
