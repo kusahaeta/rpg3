@@ -2488,48 +2488,208 @@ const FIELD_ZONES = {
     map2d: [610, 540] },
 
   // ---------------- クリア後 ねこ神の夢 ----------------
-  dream: { ci: 8, name: 'ねこ神の夢', w: 66, d: 70, stage: '9-1', arenas: [[0, -14, 0], [0, 10, 0]], build: 'dream', bg: 'dream', groups: 6, chests: 4, crystals: 3,
-    world: true, arch: 'sweets', chestAt: [[-26, -19], [26, -19], [-22, 15], [18, 15]],
-    // へんてこ回廊：お菓子の木立のあいだを北へ。左右のお菓子の庭は行き止まり。奥の段の上に、ねこ神の座布団の玉座
+  // 猫神社の奥から入る、ねこ神の夢の中。夢は三つの階に分かれていて、下りるほど眠りが深くなる（うとうと → すやすや → ぐっすり）
+  dream: { ci: 8, name: 'ねこ神の夢・うとうとの庭', mapName: 'ねこ神の夢', floor: 'うとうと', w: 84, d: 108, stage: '9-1', arenas: [[0, 37, 0]], build: 'dream', bg: 'dream', groups: 6, chests: 3, crystals: 2,
+    world: true, arch: 'dreamgarden', chestAt: [[-19, 35], [-11, -5], [-19, -49]],
+    // お菓子の庭が三つ、北へ続く。ちびクッキーを食べると、ひとまわり小さく、でかミルクを飲むと、ひとまわり大きくなる（FieldView.changeSize。解けるかは tools/check-maps.js が調べる）。
+    //   小さい子は、キャンディの柵（I）のすき間をくぐれる。大きい子は、ケーキの段（高さ 2m）にのぼれるが、木立のあいだの細い道（1 マス）にはつかえる。段からは、だれでも飛びおりられる
+    //   ① 入口の広場：クッキーで小さくなって、柵の向こうへ ② ケーキの庭：ミルクを二杯飲んで大きくなり、ケーキの上へ。細い道の前で、クッキーを食べてもどる
+    //   ③ 庭の奥：ミルクで大きくなってケーキにのぼり、クッキーを二枚食べて小さくなってから、柵に囲まれたくぼ地へ飛びおりる
     map: [
-      '#################################',
-      '#################################',
-      '###########11111111111###########',
-      '##########1111111111111##########',
-      '##########1111^^^^^1111##########',
-      '#########000000000000000#########',
-      '##00000#00000000000000000#00000##',
-      '##00000#00000000000000000#00000##',
-      '##00000000000000000000000000000##',
-      '##00000#00000000000000000#00000##',
-      '##00000##000000000000000##00000##',
-      '###000####0000000000000####000###',
-      '##########0000000000000##########',
-      '###########00000000000###########',
-      '###########00000000000###########',
-      '###########00000000000###########',
-      '###########00000000000###########',
-      '###########00000000000###########',
-      '##########0000000000000##########',
-      '####0000000000000000000000000####',
-      '####000#000000000000000#000######',
-      '####000##0000000000000##000######',
-      '####000##0000000000000##000######',
-      '#####0###0000000000000###0#######',
-      '####000##0000000000000##000######',
-      '####000###00000000000###000######',
-      '##########00000000000############',
-      '##########00000000000############',
-      '###########000000000#############',
-      '###########000000000#############',
-      '###########000000000#############',
-      '############000000000############',
-      '#############0000000#############',
-      '##############00000##############',
-      '###############sss###############',
+      '####################dd####################',
+      '#################22222222#################',
+      '###########4#####22222222#################',
+      '###########4#####22222222#################',
+      '###########4#####22222222#################',
+      '###########4#######IIII###################',
+      '##########4444444422222222################',
+      '##########4444444422222222################',
+      '##########4444444422222222################',
+      '##########4444444422222222################',
+      '##########4444444422222222################',
+      '##########44444444#############222222222##',
+      '##########44444444#############222222222##',
+      '##########44444444#############222222222##',
+      '############22222222222222222##222222222##',
+      '############2222222222222222222222222222##',
+      '############2222222222222222222222222222##',
+      '############22222222222222222##222222222##',
+      '############22222222222222222##222222222##',
+      '#####################2#########222222222##',
+      '#####################2#########222222222##',
+      '#####################2####################',
+      '#############2222222222222222#############',
+      '#############2444222222222222#############',
+      '#############2444222222222222#############',
+      '#############2444222222222222#############',
+      '#############2222222222222222#############',
+      '#############2222222222222222#############',
+      '#0000000000##2222222222222222#############',
+      '#0000000000##0000000000000000#############',
+      '#0000000000000000000000000000#############',
+      '#0000000000000000000000000000#############',
+      '#0000000000##0000000000000000#############',
+      '#0000000000##0000000000000000#############',
+      '#0000000000#########00####################',
+      '#0000000000#########00####################',
+      '###############000000000000###############',
+      '###############000000000000###############',
+      '###############000000000000###############',
+      '###############000000000000###############',
+      '###############000000000000###############',
+      '#################IIIIIIII#####00000000####',
+      '##############00000000000000##00000000####',
+      '##########000I00000000000000##00000000####',
+      '##########000I000000000000000000000000####',
+      '##########000I000000000000000000000000####',
+      '##########000I00000000000000##00000000####',
+      '##############00000000000000##00000000####',
+      '##############00000000000000##00000000####',
+      '##############00000000000000##00000000####',
+      '###################0000###################',
+      '###################0000###################',
+      '###################0000###################',
+      '####################ss####################',
     ],
-    anchor: [0, 26], exits: [{ key: 's', to: 'pokapoka' }],
-    notes: [{ at: [-13.4, 10], face: 0.6, board: ['ここは夢の中', '起きたら全部わすれます　——ねこ神'], title: 'ふしぎな看板', text: '「ここは夢の中。起きたら全部わすれます。——ねこ神」' }],
+    anchor: [-9, 43], spawn: [0, 49], exits: [{ key: 's', to: 'pokapoka' }, { key: 'd', to: 'dream_2' }],
+    // 夢のできごとの部屋（areas は部屋の名前。dreams は待っている猫たちと、話しかけると見られる場面。FieldView.startDream）
+    areas: [{ at: [-40, 2, -20, 18], name: 'ピクニックの丘' }, { at: [18, 28, 34, 46], name: '夢の演芸場' }, { at: [20, -32, 38, -12], name: 'おひるねの野原' }],
+    dreams: [
+      { id: 'dr_kuro', scene: 'dr_kuro', name: '影の四剣のピクニック', who: [['hayate', -31.4, 10], ['rin', -28.6, 9.8], ['gorou', -30, 8.8]] },
+      { id: 'dr_owarai', scene: 'dr_owarai', name: '夢のお笑い大会', who: [['piero_npc', 25.7, 37.6], ['nyahaha_ou', 28.1, 37.2], ['hachi', 23.7, 37.4]] },
+      { id: 'dr_tama', scene: 'dr_tama', name: '世界いちのおひるね', who: [['nemunemu', 28.4, -19.6, 'sleep']] },
+    ],
+    sizes: { climb: 2.2, drop: 2.6, stands: [
+      { kind: 'cookie', at: [-11, 33] }, { kind: 'milk', at: [-9, 9] }, { kind: 'cookie', at: [7, -5] },
+      { kind: 'milk', at: [11, -21] }, { kind: 'cookie', at: [-17, -37] }, { kind: 'milk', at: [7, -37] }, { kind: 'cookie', at: [-5, -49] },
+    ] },
+    notes: [{ at: [3, 43], face: 0, board: ['ここは夢の中', '起きたら全部わすれます　——ねこ神'], title: 'ふしぎな看板', text: '「ここは夢の中。起きたら全部わすれます。——ねこ神」' }],
+    map2d: [330, 410] },
+
+  // へんてこ回廊：入口の間から北へ、まっすぐな回廊。回廊は夢の中でくりかえしていて、へんなところ（異変）があれば引き返し、なければ進む（FieldView.updateLoop。部品は ZoneKit.loopHall）。
+  //   五回つづけて正しく進むと、回廊の先に出口があらわれて、出口の間へ出られる
+  dream_2: { ci: 8, name: 'ねこ神の夢・へんてこ回廊', floor: 'すやすや', parent: 'dream', w: 68, d: 88, stage: '9-2', arenas: [[0, -32, 0]], build: 'dream2', bg: 'dream', groups: 0, chests: 1, crystals: 1,
+    world: true, arch: 'dreamhall', chestAt: [[8, -40]],
+    map: [
+      '################dd################',
+      '############0000000000############',
+      '############0000000000############',
+      '############0000000000############',
+      '############0000000000############',
+      '############0000000000############',
+      '############0000000000############',
+      '############0000000000############',
+      '############0000000000############',
+      '###############0000###############',
+      '###############0000###############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '##############000000##############',
+      '#000000000######00######00000~000#',
+      '#000000000######00######00000~000#',
+      '#000000000##0000000000##00000~000#',
+      '#000000000##0000000000##00000~000#',
+      '#0000000000000000000000000000=000#',
+      '#0000000000000000000000000000=000#',
+      '#000000000##0000000000##00000~000#',
+      '#000000000##0000000000##00000~000#',
+      '#000000000##0000000000##00000~000#',
+      '#000000000##0000000000##00000~000#',
+      '#000000000##0000000000##00000~000#',
+      '################00################',
+      '################uu################',
+    ],
+    anchor: [-6, 35], spawn: [0, 39], exits: [{ key: 'u', to: 'dream' }, { key: 'd', to: 'dream_3' }],
+    areas: [{ at: [-32, 18, -14, 40], name: 'ないしょの会議室' }, { at: [14, 18, 32, 40], name: '夢の小川の間' }],
+    dreams: [
+      { id: 'dr_maou', scene: 'dr_maou', name: '魔王さまをよろこばせる会', who: [['gutsugutsu', -24.9, 30.8], ['chokichoki', -22.8, 30.2], ['dodon', -20.9, 30.7]] },
+      { id: 'dr_shiro', scene: 'dr_shiro', name: '夢の小川のほとり', who: [['yuki', 22.4, 29.8]] },
+    ],
+    // 回廊（hall：飾りを置く範囲）。south・north：引き返した・進んだとみなす線（z）。start：次の回廊の始まりの位置。goal：出口までの、さかなの数
+    loop: { id: 'dreamLoop', hall: [-6, -22, 6, 18], south: 18.6, north: -22.6, start: [0, 12.5], goal: 5, mouthS: 4, mouthN: 8,
+      pillars: [13, 0.5, -9.5, -18.5], lamps: [7, -4.5, -14.5], portraits: [['mike', -1, 3], ['shiro', -1, -7], ['kuro', 1, 5.5], ['tama', 1, -2.5]],
+      clock: [5.2, -12.5], tama: [-4.6, -13.5], statue: [4.1, -20], board: [-5.9, 9.8], counter: [0, 8], plush: [4.6, -6], talker: [-2.2, -10], fake: [2.4, -16.5], eye: -11.8 },
+    map2d: [330, 410] },
+
+  // ねこ神の寝所：大広間の奥、玉座の段の上で、ねこ神が丸くなって眠っている。ねごとで「ね・こ・が・こ・ろ・ん・だ」と言うと、ねがえりをうってこちらを向く。
+  //   向いているあいだに動くと見つかって、入口へもどされる（だるまさんがころんだ。FieldView.updateNap。部品は ZoneKit.godNap）
+  dream_3: { ci: 8, name: 'ねこ神の夢・ねこ神の寝所', floor: 'ぐっすり', parent: 'dream', w: 52, d: 96, stage: '9-3', arenas: [[0, -26, 0]], build: 'dream3', bg: 'dream', groups: 0, chests: 1, crystals: 1,
+    world: true, arch: 'dreamhall', wallH: 12, chestAt: [[-15, 29]],
+    map: [
+      '##########################',
+      '#######111111111111#######',
+      '#######111111111111#######',
+      '#######111111111111#######',
+      '#######111111111111#######',
+      '#######111111111111#######',
+      '###0000000^^^^^^0000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '###00000000000000000000###',
+      '##########000000##########',
+      '#0000000##000000##########',
+      '#0000000##000000##########',
+      '#000000000000000##########',
+      '#000000000000000##########',
+      '#0000000##000000##########',
+      '#0000000##000000##########',
+      '############uu############',
+    ],
+    anchor: [-3, 41], spawn: [0, 43], exits: [{ key: 'u', to: 'dream_2' }],
+    areas: [{ at: [-24, 34, -10, 46], name: 'なつかしい家' }],
+    dreams: [{ id: 'dr_mike', scene: 'dr_mike', name: 'なつかしい家', who: [['mike_papa', -17.8, 39.4], ['mike_mama', -16.2, 39.6]] }],
+    // god：ねこ神の場所。start：この線（z）より北へ入ると、ねごとが始まる。back：見つかったときにもどされる場所。
+    //   checks：ふとんの線 [z, もどされる場所]（こえると、そこからやりなおせる）。covers：かくれられるもの [種類, x, z, 半径]。until：この条件を満たすと、ねこ神はもう遊ばない
+    nap: { god: [0, -41], hall: [-20, -36, 20, 32], start: 31, back: [0, 36], checks: [[4, [0, 6.5]], [-19, [0, -16.5]]], until: 'scene:c10_04',
+      covers: [['pillow', -8, 22, 1.5], ['tamas', 6, 20, 1.4], ['pillow', 2, 12, 1.5], ['gift', -12, 11, 1.2], ['tamas', 13, 9, 1.4],
+        ['pillow', -5, -3, 1.5], ['tamas', 8, -5, 1.4], ['gift', -1, -12, 1.2], ['pillow', -12, -15, 1.5], ['tamas', 12, -16, 1.4], ['gift', -11, -25, 1.2], ['pillow', 11, -26, 1.5]] },
     map2d: [330, 410] },
 };
 prepareMapZones(FIELD_ZONES);
@@ -2544,7 +2704,7 @@ const CHAPTER_ZONES = [
   ['demon_land', 'demon_castle', 'demon_clinic', 'demon_barracks', 'demon_court', 'demon_cellar', 'demon_castle_2f', 'demon_throne'],
   ['tree_root', 'tree_under', 'tree_under_2', 'tree_under_3'],
   ['world_end'],
-  ['dream'],
+  ['dream', 'dream_2', 'dream_3'],
 ];
 function zoneChapter(id) { return FIELD_ZONES[id].ci; }
 
@@ -2575,6 +2735,9 @@ function rootsLive(R, pts) {
   const near = n => pts.some(p => Math.hypot(p[0] - n[0], p[1] - n[1]) < R.r);
   return { bridges: R.bridges.map(b => b.nodes.some(near)), thickets: R.thickets.map(t => near(t.node)) };
 }
+// 大きさの変わる区画（zone.sizes。ねこ神の夢）：大きさ（0 小さい・1 ふつう・2 大きい）ごとの見た目の大きさと体の半径、ちびクッキー・でかミルクの台に手がとどく距離。
+//   大きい子は、ふつうの子が通れる 1 マスの細い道につかえる（半径が 1 マスの半分より大きい）。tools/check-maps.js の検査と共用
+const SIZE_K = [0.45, 1, 2.3], SIZE_R = [0.2, 0.4, 1.05], SIZE_REACH = 2.1;
 // 矩形 [x0, z0, x1, z1]（マスの中心の座標）にふくまれるマスの番号
 function rectCells(T, a) {
   const out = [];
@@ -2787,6 +2950,32 @@ const FRUIT_LINES = {
     ['n', '光る実が、根元の輪の中にあるあいだだけ、その根は元気になる。実は、根のゆりかごに置いておける（F）。持っているあいだは、こうげきできない。']],
   yujo: [['n', '灰色の実が、桃色に光った。……友情の実だ。'], ['mike', 'クロが守ろうとした実と、おんなじ色だ！'], ['kuro', '……ふん。……今度は、割らずに運ぶ。']],
   omoide: [['n', '灰色の実が、水色に光った。……思い出の実だ。'], ['shiro', '……あったかい。だれかの大事な思い出が、つまってるみたい。'], ['maou', '……奥の根の扉へ、運んでやろう。']],
+};
+// ねこ神の夢：はじめて小さく・大きくなったときの、みんなのひとこと（その場にいない子の台詞は出さない）
+const SIZE_LINES = {
+  small: [['n', 'サクッ……ちびクッキーを食べると、みんなの体が、しゅるしゅると小さくなった！'], ['mike', 'わあっ、みんな、ちっちゃくなっちゃった！'], ['shiro', '……これなら、キャンディの柵のすき間も、くぐれそうね。'], ['kuro', '……そのかわり、足が遅くなるな。'],
+    ['n', 'クッキーを食べるたびに、ひとまわり小さく、ミルクを飲むたびに、ひとまわり大きくなる。ねこ地蔵のそばでは、もとの大きさにもどる。']],
+  big: [['n', 'ゴクゴク……でかミルクを飲むと、みんなの体が、むくむくと大きくなった！'], ['tama', '……おおきく……なった……。'], ['maou', 'ふはは！　これぞ魔王の風格よ！'], ['kuro', '……これなら、ケーキの段にも、のぼれそうだ。'], ['shiro', 'でも、木のあいだの細い道は、つかえて通れなさそう。'],
+    ['n', 'ケーキの段にのぼれるのは、大きいときだけ。飛びおりるのは、どの大きさでもできる。']],
+};
+// へんてこ回廊の異変（ZoneKit.loopHall の o.set。見つけたら引き返す）
+const LOOP_ANOMALIES = [['portraitFlip'], ['portraitSwap'], ['fishBack'], ['clockBack'], ['tamaAwake'], ['statueTurn'], ['pillarGone'], ['lampColor'], ['rulesFlip'], ['plush'], ['talker'], ['fake'], ['eye'], ['pawBack'], ['mirror']];
+// へんてこ回廊の、話しかけてくる異変（FieldView.loopTalk）。近づく（r m）と lines の掛け合い（二度目からは short）。again：F で話しかけたとき。
+//   run：話のあと、回廊の奥のもやへ走っていく（偽物のミケ）。fooled・foiled：つられて進んでまちがえたとき・引き返して当てたときに、どこからか聞こえる声
+const LOOP_TALK = {
+  fake: { at: 'fake', r: 4.5, run: true,
+    lines: [['e:nisemike', 'あっ、来た来た！　ぼく、ミケだよ！　出口はこっち、こっち！'], ['mike', '……え？　ミケは、ぼくだよ！？'], ['shiro', '……目の色が、むらさき。本物のミケは、そんな目じゃないわ。'], ['kuro', '……あやしいやつだ。'], ['e:nisemike', 'ほらほら、ついてきて！　先に行ってるよー！']],
+    short: [['e:nisemike', 'あっ、また来た！　出口はこっちだよー！　ついてきて！']],
+    fooled: '（どこからか）偽物のミケの声「へへーん、ひっかかったー！」', foiled: '（どこからか）偽物のミケの声「ちぇーっ、ばれたかー」' },
+  talker: { at: 'talker', r: 3.6,
+    lines: [['e:sakana', 'いいかい、そもそも魚というのはだね、いつも前へ前へと泳ぐものなのだよ。'], ['shiro', '……回廊のまんなかで、魚が演説してる。'], ['e:sakana', 'だから、きみたちも引き返したりせず、さっさと先へ進みたまえ。……いいかい、そもそも……']],
+    short: [['e:sakana', 'いいかい、そもそも魚というのはだね……引き返したりせず、先へ進みたまえ。']],
+    again: [['e:sakana', '……いいかい、そもそも魚というのはだね、前へ前へと……（話が長い）']],
+    fooled: '（どこからか）喋る魚の声「……まあ、魚だって、ときには引き返すものなのだよ」', foiled: '（どこからか）喋る魚の声「……いいかい、そもそも……（まだしゃべっている）」' },
+  plush: { at: 'plush', r: 3,
+    lines: [['e:kuroPlush', '……めんどうだ（録音）。'], ['kuro', '……なんだ、これは。'], ['tama', '……クロに、にてる……もふもふ……。']],
+    short: [['e:kuroPlush', '……めんどうだ（録音）。']],
+    again: [['e:kuroPlush', '……めんどうだ（録音）。']] },
 };
 // 影の回廊：先頭の子の影の言葉と、その子の返事（部屋ごと）。影は、その子の「ひとりぼっちの気持ち」
 const SHADOW_LINES = {
@@ -4006,6 +4195,449 @@ class ZoneKit {
       const U = GFX.grade.uniforms, k = o.tk; U.tint.value.setRGB(1, 1 - 0.1 * k, 1 - 0.3 * k); U.desat.value = 0.18 * k;
     });
     this.v.timeObj = o;
+  }
+  // ---------------- 仕掛け：ねこ神の夢（ちびクッキー・でかミルク・キャンディの柵・ケーキの段） ----------------
+  // zone.sizes.stands：[{ kind: 'cookie' | 'milk', at: [x, z] }]（FieldView.useStand）。クッキーはピンクの台にお皿と山もりのクッキー、ミルクは水色の台に大きなびん。上に名札（いつもこちらを向く）
+  //   地図の I：キャンディの柵。赤白しまのキャンディケーンが、すき間をあけて並ぶ（小さい子だけ、くぐれる。Terrain.walkable）
+  sizeStands() {
+    const Z = this.zone.sizes, T = this.T, v = this.v; if (!Z || !T) return;
+    const caneM = this.caneMat();
+    v.sizeStands = Z.stands.map(st => {
+      const [x, z] = st.at, y = this.gy(x, z), cookie = st.kind === 'cookie', g = new THREE.Group(); g.position.set(x, y, z); this.scene.add(g);
+      const add = (geo, mat, px, py, pz, parent = g) => { const m = new THREE.Mesh(geo, this.M(mat)); m.position.set(px, py, pz); m.castShadow = true; parent.add(m); return m; };
+      // 台：フリルのついた丸い台（クッキーはピンク、ミルクは水色）
+      add(new THREE.CylinderGeometry(0.42, 0.5, 0.75, 20), cookie ? 'candyPink' : 'candyBlue', 0, 0.375, 0);
+      for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; add(new THREE.SphereGeometry(0.09, 8, 6), 'cream', Math.cos(a) * 0.45, 0.72, Math.sin(a) * 0.45); }
+      const item = new THREE.Group(); item.position.y = 0.8; g.add(item);
+      if (cookie) {
+        add(new THREE.CylinderGeometry(0.56, 0.5, 0.05, 24), 'white', 0, 0, 0, item);
+        // クッキーの山（チョコチップ入り）
+        [[0, 0.05, 0], [0.2, 0.05, 0.12], [-0.18, 0.05, 0.14], [0.02, 0.05, -0.22], [0.05, 0.11, 0.02], [-0.06, 0.17, 0.05]].forEach(([cx, cy, cz], k) => {
+          const c = add(new THREE.CylinderGeometry(0.17, 0.17, 0.055, 16), '#d89a52', cx, cy + 0.03, cz, item); c.rotation.set((k % 3 - 1) * 0.15, 0, (k % 2 - 0.5) * 0.2);
+          for (let q = 0; q < 4; q++) add(new THREE.SphereGeometry(0.025, 6, 4), 'choco', cx + Math.cos(q * 1.7 + k) * 0.09, cy + 0.06, cz + Math.sin(q * 1.7 + k) * 0.09, item);
+        });
+      } else {
+        // 大きなミルクびん（青いふたと、牛のぶちのラベル）
+        add(new THREE.CylinderGeometry(0.22, 0.22, 0.5, 18), 'white', 0, 0.25, 0, item);
+        add(new THREE.SphereGeometry(0.22, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), 'white', 0, 0.5, 0, item);
+        add(new THREE.CylinderGeometry(0.1, 0.12, 0.16, 14), 'white', 0, 0.68, 0, item);
+        add(new THREE.CylinderGeometry(0.115, 0.115, 0.06, 14), '#4a8ad8', 0, 0.78, 0, item);
+        add(new THREE.CylinderGeometry(0.225, 0.225, 0.2, 18, 1, true), '#6ab0f0', 0, 0.24, 0, item);
+        for (let q = 0; q < 3; q++) { const sp = add(new THREE.SphereGeometry(0.06, 8, 6), '#3a3a44', Math.cos(q * 2.1) * 0.21, 0.2 + q * 0.04, Math.sin(q * 2.1) * 0.21, item); sp.scale.set(1, 0.6, 0.3); sp.lookAt(0, sp.position.y, 0); }
+      }
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(cookie ? '#ffb8e0' : '#b8e8ff', 0.7), blending: THREE.AdditiveBlending, depthWrite: false })); glow.position.y = 1.1; glow.scale.setScalar(1.8); g.add(glow);
+      const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: signTex(cookie ? 'ちびクッキー' : 'でかミルク', cookie ? 'ひとまわり小さくなる' : 'ひとまわり大きくなる', cookie ? '#ff9ad8' : '#8ad0ff'), toneMapped: false })); tag.position.y = 2.05; tag.scale.set(1.7, 0.42, 1); g.add(tag);
+      const ph = this.r() * 6; this.tick((dt, t) => { item.rotation.y = t * 0.5 + ph; item.position.y = 0.8 + Math.sin(t * 2 + ph) * 0.03; glow.material.opacity = 0.7 + Math.sin(t * 2.5 + ph) * 0.2; });
+      // 台の当たり（大きくなったときに押し出されるので、大きくなれるかどうかには数えない：stand）
+      v.colliders.push({ x, z, r: 0.6, y, top: 1.2, stand: true });
+      this.reserve(x, z, 2.2);
+      return { ...st, name: cookie ? 'ちびクッキー' : 'でかミルク', pos: V3(x, y, z), g };
+    });
+    // キャンディの柵：柵の向き（となりが壁か柵なら、東西に並ぶ）に、0.5m おきにキャンディケーン
+    for (let i = 0; i < T.kind.length; i++) {
+      if (T.ch[i] !== 'I') continue;
+      const c = T.colOf(i), r = T.rowOf(i), x = T.cx(c), z = T.cz(r), y = T.h[i];
+      const wall = j => j < 0 || T.kind[j] <= TK.WINDOW || T.ch[j] === 'I', alongX = wall(T.idx(c - 1, r)) || wall(T.idx(c + 1, r));
+      for (const u of [-0.75, -0.25, 0.25, 0.75]) {
+        const px = x + (alongX ? u : 0), pz = z + (alongX ? 0 : u), h = 1.75 + ((c * 7 + r * 3 + u * 4) % 3) * 0.08, ry = alongX ? 0 : Math.PI / 2;
+        this.mg(caneM, new THREE.CylinderGeometry(0.07, 0.07, h, 10, 1), px, y + h / 2, pz);
+        // 先の曲がったところ（向きを互いちがいに）
+        const s = Math.round((u + 1) * 2) % 2 ? 1 : -1;
+        this.mg(caneM, new THREE.TorusGeometry(0.15, 0.07, 8, 12, Math.PI), px + (alongX ? s * 0.15 : 0), y + h, pz + (alongX ? 0 : s * 0.15), [0, ry, 0]);
+      }
+      this.mg('cream', new THREE.BoxGeometry(alongX ? CELL : 0.3, 0.08, alongX ? 0.3 : CELL), x, y + 0.04, z);
+    }
+  }
+  // 空を泳ぐ魚：n 匹を、区画のまん中から ±w・±d の空に。ゆっくり円をえがいて泳ぐ
+  dreamFish(n, w, d, y0 = 5) {
+    for (let i = 0; i < n; i++) {
+      const g = new THREE.Group(), m = this.toonM(pick(['#8ad8ff', '#ff9ab8', '#ffd27a'])), f = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), m); f.scale.set(0.6, 0.8, 1.8); g.add(f);
+      const t = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.6, 3), m); t.rotation.x = Math.PI / 2; t.position.z = -1.1; t.scale.x = 0.3; g.add(t);
+      const cx = (this.r() - 0.5) * 2 * w, cz = (this.r() - 0.5) * 2 * d, R = 3 + this.r() * 5, y = y0 + this.r() * 6, ph = this.r() * 6, sp = (0.15 + this.r() * 0.15) * (this.r() < 0.5 ? 1 : -1);
+      this.scene.add(g);
+      this.tick((dt, tt) => { const a = tt * sp + ph; g.position.set(cx + Math.cos(a) * R, y + Math.sin(tt * 0.8 + ph) * 0.8, cz + Math.sin(a) * R); g.rotation.y = -a + (sp > 0 ? Math.PI : 0); t.rotation.y = Math.sin(tt * 6 + ph) * 0.3; });
+    }
+  }
+  // 赤と白のしま（キャンディケーン）
+  caneMat() {
+    if (this.mc.cane) return this.mc.cane;
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d');
+    g.fillStyle = '#fff8f4'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#e8384a';
+    for (let k = -2; k < 4; k++) { g.beginPath(); g.moveTo(k * 32, 64); g.lineTo(k * 32 + 16, 64); g.lineTo(k * 32 + 80, 0); g.lineTo(k * 32 + 64, 0); g.fill(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 3);
+    return (this.mc.cane = new THREE.MeshStandardMaterial({ map: t, roughness: 0.35, metalness: 0.05 }));
+  }
+  // ケーキの段の上のふち：クリームの絞りと、ところどころにいちご（段の側面は、地形の cakeTex）
+  cakeTops() {
+    const T = this.T; if (!T) return;
+    for (let i = 0; i < T.kind.length; i++) {
+      if (T.kind[i] !== TK.FLOOR || T.h[i] < 1.5) continue;
+      const c = T.colOf(i), r = T.rowOf(i), x = T.cx(c), z = T.cz(r), y = T.h[i];
+      DIR4.forEach(([dc, dr]) => {
+        const j = T.idx(c + dc, r + dr); if (j < 0 || !T.isWalkKind(T.kind[j]) || y - T.h[j] < 1.5) return;
+        const ex = x + dc * (CELL / 2 - 0.16), ez = z + dr * (CELL / 2 - 0.16);
+        for (const u of [-0.66, 0, 0.66]) this.mg('cream', new THREE.SphereGeometry(0.17, 10, 6), ex + dr * u, y + 0.05, ez + dc * u, null, [1, 0.8, 1]);
+        if ((c * 5 + r * 3 + dc + dr * 2) % 3 === 0) { this.mg('#e8384a', new THREE.SphereGeometry(0.15, 10, 8), ex, y + 0.28, ez, null, [1, 1.2, 1]); this.mg('#5ab04a', new THREE.ConeGeometry(0.1, 0.08, 5), ex, y + 0.45, ez); }
+      });
+    }
+  }
+  // ---------------- 仕掛け：ねこ神の夢・へんてこ回廊（zone.loop。FieldView.updateLoop） ----------------
+  // 回廊の飾りは、すべて hall のグループの中（鏡うつしの異変は、グループを左右反転する。小物の当たりも反転）。
+  //   いつもある飾り：しましまの柱・壁のランプ・仲間の肖像画・大時計・眠るタマ・ねこ神の像・足あとのじゅうたん・きまりの看板・天井を泳ぐ魚
+  //   異変のときだけ出るもの：クロのぬいぐるみ・しゃべる魚・ミケの偽物・壁にひらく大きな目
+  //   回廊の外（反転しない）：天井から下がる「さかなの数」の札、南北の口の夢のもや、出口の札
+  //   o.set(異変) で見た目を切りかえる（null なら、いつもの回廊）。異変は LOOP_ANOMALIES の順に、袋から引くように出す
+  loopHall() {
+    const L = this.zone.loop, T = this.T, v = this.v; if (!L || !T) return;
+    const flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {}, kit = this;
+    const hall = new THREE.Group(); this.scene.add(hall);
+    const cols = [];
+    const M = (geo, mat, x, y, z, parent = hall) => { const m = new THREE.Mesh(geo, this.M(mat)); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+    const col = c => { v.colliders.push(c); cols.push({ c, x: c.x }); return c; };
+    const [hx0, hz0, hx1, hz1] = L.hall, W = hx1 - hx0, y0 = this.gy(0, hz1), ceil = T.ceilOf(T.at(0, (hz0 + hz1) / 2));
+    // しましまの柱（壁ぎわ）
+    const caneM = this.caneMat(), pillars = [];
+    for (const z of L.pillars) for (const sd of [-1, 1]) {
+      const x = sd * (W / 2 - 0.5), g = new THREE.Group(); g.position.set(x, y0, z); hall.add(g);
+      M(new THREE.CylinderGeometry(0.34, 0.34, ceil - y0, 16), caneM, 0, (ceil - y0) / 2, 0, g);
+      M(new THREE.CylinderGeometry(0.5, 0.55, 0.4, 16), 'gold', 0, 0.2, 0, g); M(new THREE.CylinderGeometry(0.55, 0.5, 0.4, 16), 'gold', 0, ceil - y0 - 0.2, 0, g);
+      pillars.push({ g, c: col({ x, z, r: 0.5, y: y0 }) });
+    }
+    // 壁のランプ（電球と光のにじみ）
+    const lamps = [];
+    for (const z of L.lamps) for (const sd of [-1, 1]) {
+      const x = sd * (W / 2 - 0.05), g = new THREE.Group(); g.position.set(x, y0 + 3.3, z); hall.add(g);
+      M(new THREE.BoxGeometry(0.3, 0.12, 0.3), 'gold', -sd * 0.12, -0.2, 0, g);
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), new THREE.MeshBasicMaterial({ color: hdr('#ffe0a8', 2.4), toneMapped: false })); bulb.position.x = -sd * 0.2; g.add(bulb);
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffd8a0', 0.9), blending: THREE.AdditiveBlending, depthWrite: false })); sp.position.x = -sd * 0.25; sp.scale.setScalar(2.2); g.add(sp);
+      lamps.push({ bulb, sp });
+    }
+    // 仲間の肖像画（金の額。左の壁はミケとシロ、右の壁はクロとタマ）
+    const tex = key => { const t = new THREE.TextureLoader().load(typeof GFX !== 'undefined' && GFX.portraits[key] ? GFX.portraits[key] : ''); t.colorSpace = THREE.SRGBColorSpace; return t; };
+    const portraits = L.portraits.map(([key, sd, z]) => {
+      const x = sd * (W / 2 - 0.07), g = new THREE.Group(); g.position.set(x, y0 + 2.6, z); g.rotation.y = -sd * Math.PI / 2; hall.add(g);
+      M(new THREE.BoxGeometry(1.5, 1.8, 0.1), 'gold', 0, 0, -0.03, g);
+      const t = tex(key), pic = new THREE.Mesh(new THREE.PlaneGeometry(1.22, 1.5), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6 })); pic.position.z = 0.03; g.add(pic);
+      return { key, pic, tex: t };
+    });
+    // 大時計（右の壁ぎわ。振り子と、時計回りに回る二本の針）
+    const [cx, cz] = L.clock, clock = new THREE.Group(); clock.position.set(cx, y0, cz); clock.rotation.y = -Math.PI / 2; hall.add(clock);
+    M(new THREE.BoxGeometry(1.0, 2.9, 0.55), '#8a5a3a', 0, 1.45, 0, clock); M(new THREE.ConeGeometry(0.7, 0.5, 4), '#6a4028', 0, 3.15, 0, clock).rotation.y = Math.PI / 4;
+    M(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 24), 'white', 0, 2.3, 0.29, clock).rotation.x = Math.PI / 2;
+    for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; M(new THREE.BoxGeometry(0.03, 0.07, 0.02), '#3a2a2a', Math.sin(a) * 0.33, 2.3 + Math.cos(a) * 0.33, 0.32, clock).rotation.z = -a; }
+    const hand = (len, w) => { const h = new THREE.Group(); h.position.set(0, 2.3, 0.33); clock.add(h); M(new THREE.BoxGeometry(w, len, 0.02), '#2a1a1a', 0, len / 2, 0, h); return h; };
+    const hourH = hand(0.2, 0.05), minH = hand(0.3, 0.035);
+    const pend = new THREE.Group(); pend.position.set(0, 1.75, 0.29); clock.add(pend); M(new THREE.CylinderGeometry(0.015, 0.015, 0.8, 6), 'gold', 0, -0.4, 0, pend); M(new THREE.CylinderGeometry(0.12, 0.12, 0.04, 16), 'gold', 0, -0.82, 0, pend).rotation.x = Math.PI / 2;
+    col({ box: true, x: cx, z: cz, hw: 0.3, hd: 0.55, top: 3.2, y: y0 });
+    // 眠るタマ（ざぶとんの上で丸くなっている。異変：起きて、こちらを見ている）
+    const [tx, tz] = L.tama, tamaG = new THREE.Group(); tamaG.position.set(tx, y0, tz); hall.add(tamaG);
+    M(new THREE.CylinderGeometry(0.75, 0.8, 0.22, 20), 'clothPink', 0, 0.11, 0, tamaG);
+    const tama = typeof buildCharacter === 'function' ? buildCharacter('tama') : null;
+    if (tama) { tama.group.position.y = 0.22; tama.setPose(POSES.sleep); if (tama.face) tama.face.set('sleepy'); tamaG.add(tama.group); }
+    col({ x: tx, z: tz, r: 0.8, y: y0 });
+    // ねこ神の像（北のはし。金の猫が、南を向いてすわっている）
+    const [sx, sz] = L.statue, statue = new THREE.Group(); statue.position.set(sx, y0, sz); hall.add(statue);
+    M(new THREE.BoxGeometry(1.3, 0.7, 1.3), 'stone2', 0, 0.35, 0, statue);
+    const gb = M(new THREE.SphereGeometry(0.5, 16, 12), 'gold', 0, 1.25, 0, statue); gb.scale.set(1, 1.15, 0.9);
+    M(new THREE.SphereGeometry(0.46, 16, 12), 'gold', 0, 2.05, 0.05, statue).scale.set(1.15, 0.95, 1);
+    for (const e of [-1, 1]) { const eg = M(new THREE.ConeGeometry(0.15, 0.3, 4), 'gold', e * 0.28, 2.45, 0, statue); eg.rotation.z = -e * 0.35; }
+    for (const e of [-1, 1]) M(new THREE.SphereGeometry(0.055, 8, 6), this.glow('#ffe08a', 3), e * 0.16, 2.1, 0.47, statue);
+    const crown = M(new THREE.CylinderGeometry(0.25, 0.3, 0.2, 8, 1, true), 'gold', 0, 2.55, 0, statue); crown.material.side = THREE.DoubleSide;
+    const tail = M(new THREE.TorusGeometry(0.35, 0.08, 8, 16, Math.PI * 1.2), 'gold', 0, 0.85, -0.45, statue); tail.rotation.set(Math.PI / 2, 0, 0.6);
+    col({ x: sx, z: sz, r: 0.8, y: y0 });
+    // 足あとのじゅうたん（まん中に、北へ向かう肉球の足あと）
+    const paw = this.pawRugTex(), rug = M(new THREE.PlaneGeometry(3.2, hz1 - hz0 + 1.5), new THREE.MeshStandardMaterial({ map: paw, roughness: 0.95 }), 0, y0 + 0.02, (hz0 + hz1) / 2); rug.rotation.x = -Math.PI / 2; rug.castShadow = false;
+    // きまりの看板（入口の左の壁）
+    const [bx, bz] = L.board, board = new THREE.Group(); board.position.set(bx, y0 + 2.3, bz); board.rotation.y = Math.PI / 2; hall.add(board);
+    M(new THREE.BoxGeometry(2.6, 1.9, 0.08), '#6a4428', 0, 0, -0.03, board);
+    const rulesC = document.createElement('canvas'); rulesC.width = 512; rulesC.height = 368; const rulesT = new THREE.CanvasTexture(rulesC); rulesT.colorSpace = THREE.SRGBColorSpace;
+    M(new THREE.PlaneGeometry(2.44, 1.75), new THREE.MeshStandardMaterial({ map: rulesT, roughness: 0.8 }), 0, 0, 0.02, board);
+    const drawRules = lines => {
+      const g = rulesC.getContext('2d'); g.fillStyle = '#fff4e0'; g.fillRect(0, 0, 512, 368); g.strokeStyle = '#c88ab8'; g.lineWidth = 10; g.strokeRect(8, 8, 496, 352);
+      g.fillStyle = '#7a3a6a'; g.font = '900 34px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.textAlign = 'center'; g.fillText('へんてこ回廊のきまり', 256, 60);
+      g.fillStyle = '#3a2a3a'; g.font = '800 23px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.textAlign = 'left';
+      lines.forEach((l, i) => g.fillText(l, 34, 112 + i * 40));
+      g.textAlign = 'right'; g.fillStyle = '#7a3a6a'; g.fillText('——ねこ神', 478, 338); rulesT.needsUpdate = true;
+    };
+    // 天井を泳ぐ魚（北へ向かって泳ぎ、南のはしからまた出てくる）
+    const fish = [0, 1, 2].map(k => {
+      const g = new THREE.Group(), m = this.toonM(['#8ad8ff', '#ff9ab8', '#ffd27a'][k]), b = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 10), m); b.scale.set(0.6, 0.8, 1.8); g.add(b);
+      const t = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.5, 3), m); t.rotation.x = Math.PI / 2; t.position.z = -0.95; t.scale.x = 0.3; g.add(t);
+      for (const e of [-1, 1]) { const ey = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), this.M('#2a2030')); ey.position.set(e * 0.26, 0.12, 0.55); g.add(ey); }
+      hall.add(g); return { g, t, x: [-2.4, 0.6, 2.8][k], y: y0 + [5.2, 5.9, 5.5][k], ph: k / 3 };
+    });
+    // 異変のときだけ出る：クロのぬいぐるみ・しゃべる魚・ミケの偽物
+    const extra = (key, [x, z], ry) => { if (typeof buildEnemy !== 'function') return null; const m = buildEnemy(key); m.group.position.set(x, y0, z); m.group.rotation.y = ry; m.group.visible = false; hall.add(m.group); return m; };
+    const plush = extra('kuroPlush', L.plush, -Math.PI / 2), talker = extra('sakana', L.talker, 0), fake = extra('nisemike', L.fake, 0);
+    const waveFake = () => { if (fake && fake.critter && POSES.wave) fake.critter.setPose(POSES.wave); };
+    waveFake();
+    // 壁にひらく大きな目（ねこ神の目。左の壁に、プレイヤーを目で追う）
+    const eye = new THREE.Group(); eye.position.set(-W / 2 + 0.05, y0 + 3.0, L.eye); eye.rotation.y = Math.PI / 2; eye.visible = false; hall.add(eye);
+    const white = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), new THREE.MeshBasicMaterial({ color: '#fffaf0' })); white.scale.set(1.5, 0.85, 0.25); eye.add(white);
+    const lid = new THREE.Mesh(new THREE.TorusGeometry(1, 0.08, 8, 32), this.M('#5a3a6a')); lid.scale.set(1.5, 0.85, 1); eye.add(lid);
+    const iris = new THREE.Group(); iris.position.z = 0.26; eye.add(iris);
+    iris.add(new THREE.Mesh(new THREE.CircleGeometry(0.62, 24), new THREE.MeshBasicMaterial({ color: hdr('#ffc84a', 1.2), toneMapped: false })));
+    const pu = new THREE.Mesh(new THREE.CircleGeometry(0.42, 20), new THREE.MeshBasicMaterial({ color: '#1a1020' })); pu.scale.set(0.32, 1, 1); pu.position.z = 0.01; iris.add(pu);
+    // 回廊の外：さかなの数の札（天井から下がる）
+    const [nx, nz] = L.counter, cnt = document.createElement('canvas'); cnt.width = 512; cnt.height = 160; const cntT = new THREE.CanvasTexture(cnt); cntT.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Group(); sign.position.set(nx, y0 + 3.7, nz); this.scene.add(sign);
+    M(new THREE.BoxGeometry(3.0, 0.98, 0.1), '#6a4428', 0, 0, -0.04, sign);
+    M(new THREE.PlaneGeometry(2.86, 0.86), new THREE.MeshBasicMaterial({ map: cntT, toneMapped: false }), 0, 0, 0.02, sign);
+    for (const e of [-1, 1]) M(new THREE.CylinderGeometry(0.02, 0.02, ceil - y0 - 4.15, 6), 'gold', e * 1.2, (ceil - y0 - 4.15) / 2 + 0.49, 0, sign);
+    const counter = n => {
+      const g = cnt.getContext('2d'); g.fillStyle = '#1e2a44'; g.fillRect(0, 0, 512, 160); g.strokeStyle = '#ffd27a'; g.lineWidth = 6; g.strokeRect(6, 6, 500, 148);
+      g.fillStyle = '#fff6e0'; g.font = '900 54px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(n >= L.goal ? '出口 →' : `さかなが ${n} ひき`, 256, 58);
+      for (let k = 0; k < L.goal; k++) { const x = 256 + (k - (L.goal - 1) / 2) * 62, y = 120; g.fillStyle = k < n ? '#ffd27a' : 'rgba(255,255,255,.18)'; g.beginPath(); g.ellipse(x, y, 20, 11, 0, 0, 7); g.fill(); g.beginPath(); g.moveTo(x + 16, y); g.lineTo(x + 30, y - 10); g.lineTo(x + 30, y + 10); g.fill(); }
+      cntT.needsUpdate = true;
+    };
+    // 南北の口の夢のもや（通りぬけられる。回廊の外を見せない）
+    const fogTex = this.dreamFogTex(), mist = (x, z, w, h) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: fogTex.clone(), color: hdr('#ffe8fa', 1.1), transparent: true, opacity: 0.92, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+      m.material.map.needsUpdate = true; m.position.set(x, y0 + h / 2, z); this.scene.add(m); return m;
+    };
+    const mistN = mist(0, L.north + 0.2, L.mouthN, 6.5), mistS = mist(0, L.south - 0.2, L.mouthS, 6.5);
+    // 出口の札（黄色い地に「出口」。出口があらわれると光る）
+    const exitC = document.createElement('canvas'); exitC.width = 512; exitC.height = 160; { const g = exitC.getContext('2d'); g.fillStyle = '#ffd83a'; g.fillRect(0, 0, 512, 160); g.fillStyle = '#1a1a1a'; g.font = '900 92px "Hiragino Sans","Yu Gothic",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('出口', 200, 84); g.beginPath(); g.moveTo(360, 50); g.lineTo(440, 80); g.lineTo(360, 110); g.fill(); }
+    const exitT = new THREE.CanvasTexture(exitC); exitT.colorSpace = THREE.SRGBColorSpace;
+    const exitSign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.82), new THREE.MeshBasicMaterial({ map: exitT, color: hdr('#ffffff', 0.35), toneMapped: false })); exitSign.position.set(0, y0 + 5.6, L.north + 0.4); this.scene.add(exitSign);
+    const RULES = ['・へんなところを見つけたら、すぐに引き返すこと', '・へんなところがなければ、先へ進むこと', `・さかなが ${L.goal} ひきになったら、出口`, '・まちがえたら、さかなは 0 ひきにもどる'];
+    const RULES_X = ['・へんなところがなければ、すぐに引き返すこと', '・へんなところを見つけたら、先へ進むこと', `・さかなが ${L.goal} ひきになったら、出口`, '・まちがえたら、さかなは 0 ひきにもどる'];
+    const o = { L, hall, anomaly: null, count: 0, active: false, exitOpen: false, cleared: !!flags[L.id], rules: RULES, bag: [], last: null };
+    const NAMES = { mike: 'ミケ', kuro: 'クロ', shiro: 'シロ', tama: 'タマ' };
+    // 異変を一つ引く（同じ異変がつづかないよう、袋から順に。袋がからになったら、まぜなおす）
+    o.pick = () => {
+      if (!o.bag.length) { o.bag = LOOP_ANOMALIES.map(a => a[0]).filter(k => k !== o.last); for (let i = o.bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [o.bag[i], o.bag[j]] = [o.bag[j], o.bag[i]]; } }
+      const k = o.bag.pop(); o.last = k; return { k, i: Math.floor(Math.random() * 4), j: Math.floor(Math.random() * 6) };
+    };
+    o.set = a => {
+      o.anomaly = a;
+      hall.scale.x = 1; cols.forEach(q => { q.c.x = q.x; });
+      portraits.forEach(p => { p.pic.rotation.z = 0; p.pic.material.map = p.tex; });
+      o.fishBack = false; o.clockDir = 1; o.awake = false; statue.rotation.y = 0; rug.material.map.rotation = 0;
+      pillars.forEach(q => { q.g.visible = true; if (!v.colliders.includes(q.c)) v.colliders.push(q.c); });
+      lamps.forEach(q => { q.bulb.material.color.copy(hdr('#ffe0a8', 2.4)); q.sp.material.color.copy(hdr('#ffd8a0', 0.9)); });
+      [plush, talker, fake].forEach(m => { if (m) m.group.visible = false; }); eye.visible = false; o.said = false;
+      if (fake) { fake.group.position.set(L.fake[0], y0, L.fake[1]); waveFake(); } o.fakeRun = null;
+      if (tama) { tama.setPose(POSES.sleep); if (tama.face) tama.face.set('sleepy'); tamaG.rotation.y = 0; }
+      let rules = RULES, desc = '';
+      if (a) switch (a.k) {
+        case 'portraitFlip': { const p = portraits[a.i % portraits.length]; p.pic.rotation.z = Math.PI; desc = `${NAMES[p.key]}の絵が、さかさまだった`; break; }
+        case 'portraitSwap': { const p = portraits[a.i % portraits.length], q = portraits[(a.i + 1 + a.j % 3) % portraits.length]; [p.pic.material.map, q.pic.material.map] = [q.tex, p.tex]; desc = `${NAMES[p.key]}と${NAMES[q.key]}の絵が、入れかわっていた`; break; }
+        case 'fishBack': o.fishBack = true; desc = '天井の魚が、うしろ向きに泳いでいた'; break;
+        case 'clockBack': o.clockDir = -14; desc = '大時計の針が、逆向きにぐるぐる回っていた'; break;
+        case 'tamaAwake': o.awake = true; if (tama) { tama.setPose(POSES.sit || POSES.idle); if (tama.face) tama.face.set('neutral'); } desc = '眠っていたはずのタマが、起きて、こっちを見ていた'; break;
+        case 'statueTurn': statue.rotation.y = Math.PI; desc = 'ねこ神の像が、うしろを向いていた'; break;
+        case 'pillarGone': { const q = pillars[a.j % pillars.length]; q.g.visible = false; const i = v.colliders.indexOf(q.c); if (i >= 0) v.colliders.splice(i, 1); desc = 'しましまの柱が、一本なかった'; break; }
+        case 'lampColor': { const q = lamps[a.j % lamps.length]; q.bulb.material.color.copy(hdr('#6ab8ff', 2.6)); q.sp.material.color.copy(hdr('#6ab8ff', 1.1)); desc = '壁のランプが、一つだけ青かった'; break; }
+        case 'rulesFlip': rules = RULES_X; desc = 'きまりの看板の文が、あべこべだった'; break;
+        case 'plush': if (plush) plush.group.visible = true; desc = 'クロのぬいぐるみが、すわっていた'; break;
+        case 'talker': if (talker) talker.group.visible = true; desc = 'しゃべる魚が、先へ進めと演説していた'; break;
+        case 'fake': if (fake) fake.group.visible = true; desc = 'ミケそっくりの偽物が、先へさそっていた'; break;
+        case 'eye': eye.visible = true; desc = '左の壁に、大きな目がひらいていた'; break;
+        case 'pawBack': rug.material.map.rotation = Math.PI; desc = 'じゅうたんの足あとが、南を向いていた'; break;
+        case 'mirror': hall.scale.x = -1; cols.forEach(q => { q.c.x = -q.x; }); desc = '回廊が、まるごと鏡うつしになっていた'; break;
+      }
+      if (a) a.desc = desc;
+      o.rules = rules; drawRules(rules);
+    };
+    // 出口があらわれた・回廊をぬけた：北のもやが晴れて、出口の札が光る
+    o.showExit = on => { mistN.visible = !on; exitSign.material.color.copy(hdr('#ffffff', on ? 1.6 : 0.35)); };
+    o.counter = n => counter(n);
+    o.models = { fake, talker, plush };
+    o.runFake = () => { if (fake) { o.fakeRun = { w: { m: fake.critter, speed: 7.5, phase: 0 } }; Sfx.tone(880, 0.12, 'triangle', 0.04); } };
+    o.mistS = mistS;
+    o.set(null); o.counter(0); o.showExit(o.cleared);
+    // 時計・魚・タマ・目・偽物の動き
+    this.tick((dt, t) => {
+      minH.rotation.z -= dt * 0.5 * o.clockDir; hourH.rotation.z -= dt * 0.04 * o.clockDir; pend.rotation.z = Math.sin(t * 3) * 0.25;
+      for (const f of fish) {
+        const len = hz1 - hz0 + 2, u = ((t * 1.4 / len + f.ph) % 1);
+        f.g.position.set(f.x, f.y + Math.sin(t * 1.3 + f.ph * 9) * 0.25, hz1 + 1 - u * len);
+        f.g.rotation.y = o.fishBack ? 0 : Math.PI; f.t.rotation.y = Math.sin(t * 7 + f.ph * 9) * 0.35;
+      }
+      const p = v.player && v.player.pos;
+      if (tama) {
+        tama.update(dt, t);
+        if (o.awake && p) { const lx = (p.x - tx) * hall.scale.x, lz = p.z - tz; tamaG.rotation.y = Math.atan2(lx, lz); }
+        else if (Math.random() < dt * 0.8 && v.p) v.p.emit(V3(tx * hall.scale.x, y0 + 0.9, tz), V3(0.2, 0.6, 0), hdr('#ffffff', 1.2), { life: 1.6, size: 0.12, drag: 0.3 });
+      }
+      [plush, talker, fake].forEach(m => { if (m && m.group.visible) m.update(dt, t); });
+      if (fake && fake.group.visible && p) {
+        const fp = fake.group.position;
+        if (o.fakeRun) {
+          // もやの奥へ走っていって、消える
+          fp.x += (0 - fp.x) * Math.min(1, dt * 2); fp.z -= dt * 7.5; fake.group.rotation.y = Math.PI;
+          if (fake.critter) v.walkPose(o.fakeRun.w, dt, true);
+          if (fp.z < L.north + 0.4) { fake.group.visible = false; o.fakeRun = null; if (v.p) v.p.burst(V3(fp.x, y0 + 1, fp.z), '#ffd8f4', 30, { speed: 2.5, up: 1, life: 0.8 }); }
+        } else fake.group.rotation.y = Math.atan2(p.x - fp.x, p.z - fp.z);
+      }
+      if (eye.visible && p) {
+        iris.position.x = clamp(-(p.z - L.eye) / 8, -1, 1) * 0.75; iris.position.y = clamp((p.y + 0.8 - y0 - 3) / 6, -1, 1) * 0.3;
+        const blink = Math.sin(t * 0.7) > 0.97 ? 0.12 : 1; white.scale.y = 0.85 * blink; iris.scale.y = blink;
+      }
+      // もやは、カメラが近づくと消す（回廊の始まりでは、カメラがもやのすぐうしろにいる）
+      const cam = v.camera.position;
+      for (const m of [mistN, mistS]) if (m.visible) { m.material.map.offset.x = t * 0.03; m.material.map.offset.y = Math.sin(t * 0.4) * 0.05; m.material.opacity = 0.92 * clamp((Math.abs(cam.z - m.position.z) - 0.8) / 4, 0, 1); }
+    });
+    v.loopObj = o;
+  }
+  // ---------------- 仕掛け：ねこ神の夢・ねこ神の寝所（zone.nap。FieldView.updateNap） ----------------
+  // 玉座の段の上の大きなざぶとんで、ねこ神が丸くなって眠っている。広間には、かくれられるもの（covers）：
+  //   pillow ざぶとんの山と大きなまくら・tamas 眠るタマの山（100匹のタマ）・gift リボンのかかった大きな箱。ねこ神から見て、かげになっていれば見つからない。
+  //   ふとんの線（checks）：こえると、見つかったときに、そこからやりなおせる
+  godNap() {
+    const N = this.zone.nap, T = this.T, v = this.v; if (!N || !T) return;
+    const [gx, gz] = N.god, gy = this.gy(gx, gz);
+    // 玉座：大きな赤いざぶとん（金のふさ）と、うしろの雲の背もたれ、光の輪
+    this.box(gx, gz, 7, 0.7, 5.6, 'clothRed', { round: true });
+    for (const [dx, dz] of [[-3.4, -2.7], [3.4, -2.7], [-3.4, 2.7], [3.4, 2.7]]) this.mesh(new THREE.SphereGeometry(0.28, 10, 8), 'gold', gx + dx, 0.45, gz + dz);
+    for (let i = 0; i < 9; i++) { const a = (i / 8 - 0.5) * Math.PI * 0.9; this.mesh(new THREE.SphereGeometry(1.5 + (i % 2) * 0.4, 14, 10), 'white', gx + Math.sin(a) * 4.2, 1.6 + Math.cos(a) * 1.6, gz - 3.4 - Math.cos(a) * 0.8); }
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(4.6, 0.12, 8, 64), glowMat('#ffe08a', 2.2)); halo.position.set(gx, gy + 6.5, gz - 3.6); this.scene.add(halo);
+    this.tick((dt, t) => { halo.rotation.z = t * 0.2; });
+    // ねこ神（大きく。はじめは北を向いて、丸くなって眠っている）。会話の舞台では、配役のねこ神が出るので置かない
+    const god = typeof buildEnemy === 'function' && typeof FieldView !== 'undefined' && v instanceof FieldView ? buildEnemy('nekogami') : null;
+    if (god) { god.group.scale.multiplyScalar(1.5); god.group.position.set(gx, gy + 0.7, gz); god.group.rotation.y = Math.PI; this.scene.add(god.group); if (god.critter) { god.critter.setPose(POSES.sleep); god.critter.face.set('sleepy'); } }
+    this.col(gx, gz, 3.4);
+    // かくれられるもの
+    const covers = N.covers.map(([kind, x, z, r]) => {
+      const y = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = this.r() * Math.PI * 2; this.scene.add(g);
+      const add = (geo, mat, px, py, pz) => { const m = new THREE.Mesh(geo, this.M(mat)); m.position.set(px, py, pz); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
+      if (kind === 'pillow') {
+        ['clothPink', 'clothPurple', 'clothYellow', 'cloth'].forEach((c, k) => { const m = add(new THREEX.RoundedBoxGeometry(2.6 - k * 0.15, 0.42, 2.6 - k * 0.15, 2, 0.16), c, (this.r() - 0.5) * 0.2, 0.21 + k * 0.42, (this.r() - 0.5) * 0.2); m.rotation.y = (this.r() - 0.5) * 0.5; });
+        const pl = add(new THREEX.RoundedBoxGeometry(2.4, 0.7, 1.3, 3, 0.3), 'clothWhite', 0, 2.0, 0); pl.rotation.z = 0.08;
+      } else if (kind === 'tamas') {
+        const m = typeof buildEnemy === 'function' ? buildEnemy('tamas') : null;
+        if (m) { m.group.scale.multiplyScalar(1.5); g.add(m.group); const ph = this.r() * 6; this.tick((dt, t) => { m.update(dt, t); if (Math.random() < dt * 0.7 && v.p) v.p.emit(V3(x, y + 2.6, z), V3(0.2, 0.5, 0), hdr('#ffffff', 1.2), { life: 1.6, size: 0.12, drag: 0.3 }); }); }
+      } else {
+        add(new THREE.BoxGeometry(2, 1.9, 2), pick(['candyPink', 'candyBlue', 'candyYellow']), 0, 0.95, 0);
+        add(new THREE.BoxGeometry(2.04, 1.94, 0.3), 'clothRed', 0, 0.95, 0); add(new THREE.BoxGeometry(0.3, 1.94, 2.04), 'clothRed', 0, 0.95, 0);
+        for (const s of [-1, 1]) { const b = add(new THREE.TorusGeometry(0.32, 0.1, 8, 16), 'clothRed', s * 0.3, 2.05, 0); b.rotation.set(0, Math.PI / 2, s * 0.6); }
+      }
+      this.col(x, z, r - 0.15, 2.5); this.reserve(x, z, r + 1);
+      return { x, z, r };
+    });
+    // ふとんの線（しましまのふとんを、広間の端から端までしく。両はしにちょうちん）
+    const [hx0, , hx1] = N.hall;
+    for (const [zl] of N.checks) {
+      const y = this.gy(0, zl), f = new THREE.Mesh(new THREE.PlaneGeometry(hx1 - hx0, 1.4), new THREE.MeshStandardMaterial({ map: this.futonTex(), roughness: 0.9 })); f.rotation.x = -Math.PI / 2; f.position.set((hx0 + hx1) / 2, y + 0.03, zl); f.receiveShadow = true; this.scene.add(f);
+      for (const x of [hx0 + 0.8, hx1 - 0.8]) this.lantern(x, zl, '#ffb8e0', 1.6);
+    }
+    v.napObj = { N, god, covers, yaw: Math.PI, want: Math.PI, eye: V3(gx, gy + 5, gz) };
+  }
+  // 夢の宮殿の部屋の飾り（へんてこ回廊の入口・出口の間、ねこ神の寝所）：壁に、ピンクとうす紫のカーテンと、三日月のランプを交互に。天井に星。
+  //   o.skip(f)：飾らない壁（回廊は、回廊の飾りがある）
+  dreamDecor(o = {}) {
+    const T = this.T; if (!T) return;
+    const rod = this.mat('gold'), moonM = this.glow('#ffe8a0', 2.2);
+    this.wallSpots((f, k) => {
+      if (k % 3 || (o.skip && o.skip(f)) || f.top - f.y < 5) return;
+      const g = new THREE.Group(); g.position.set(...f.P(0, 0, 0.06)); g.rotation.set(...f.rot); this.scene.add(g);
+      if (k % 6 === 0) {
+        // カーテン（ひだを三枚。まん中で金のふさでとめる）
+        const h = Math.min(5.2, f.top - f.y - 0.6);
+        [[-0.55, 'clothPink'], [0, 'clothPurple'], [0.55, 'clothPink']].forEach(([u, c], j) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.62, h, 0.08 + j % 2 * 0.06), this.M(c)); m.position.set(u, h / 2 + 0.3, 0.08); m.castShadow = true; g.add(m); });
+        const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.1, 8), rod); bar.rotation.z = Math.PI / 2; bar.position.set(0, h + 0.38, 0.16); g.add(bar);
+        const tas = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), rod); tas.position.set(0, h * 0.45, 0.2); g.add(tas);
+      } else {
+        // 三日月のランプ
+        const m = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.1, 8, 18, Math.PI * 1.25), moonM); m.position.set(0, 3.1, 0.18); m.rotation.z = 0.9; g.add(m);
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffe0a0', 0.6), blending: THREE.AdditiveBlending, depthWrite: false })); sp.position.set(0, 3.1, 0.4); sp.scale.setScalar(2); g.add(sp);
+      }
+    });
+    // 天井の星（小さな光の粒）
+    for (let i = 0; i < T.kind.length; i++) {
+      if (T.kind[i] !== TK.FLOOR || this.r() > 0.35) continue;
+      const x = T.cx(T.colOf(i)) + (this.r() - 0.5) * 1.8, z = T.cz(T.rowOf(i)) + (this.r() - 0.5) * 1.8;
+      this.put('dot', x, T.ceilOf(i) - 0.06, z, 0.04 + this.r() * 0.05, null, pick(['#fff4c8', '#ffd8f4', '#d8e8ff']));
+    }
+  }
+  // ふとんのしま（白と水色）
+  futonTex() {
+    if (this.mc.futon) return this.mc.futon;
+    const c = document.createElement('canvas'); c.width = 256; c.height = 32; const g = c.getContext('2d');
+    for (let x = 0; x < 256; x += 32) { g.fillStyle = (x / 32) % 2 ? '#fff8fc' : '#b8d8ff'; g.fillRect(x, 0, 32, 32); }
+    g.fillStyle = '#ffd27a'; g.fillRect(0, 0, 256, 3); g.fillRect(0, 29, 256, 3);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.repeat.set(8, 1);
+    return (this.mc.futon = t);
+  }
+  // 足あとのじゅうたん（北へ向かう肉球。ふちに金の帯）
+  pawRugTex() {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 512; const g = c.getContext('2d');
+    g.fillStyle = '#b86a9a'; g.fillRect(0, 0, 128, 512); g.fillStyle = '#e8c060'; g.fillRect(0, 0, 10, 512); g.fillRect(118, 0, 10, 512);
+    g.fillStyle = '#f6d8ea';
+    for (let k = 0; k < 4; k++) {
+      const x = k % 2 ? 80 : 48, y = 448 - k * 128;   // 下（南）から上（北）へ
+      g.beginPath(); g.ellipse(x, y, 13, 11, 0, 0, 7); g.fill();
+      for (const [dx, dy] of [[-14, -16], [-5, -22], [5, -22], [14, -16]]) { g.beginPath(); g.ellipse(x + dx, y + dy, 4.5, 5.5, 0, 0, 7); g.fill(); }
+    }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 9); t.center.set(0.5, 0.5);
+    return t;
+  }
+  // 夢のもや（ピンクと白のうず）
+  dreamFogTex() {
+    if (this.mc.dreamFog) return this.mc.dreamFog;
+    const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+    g.fillStyle = '#f8d8f0'; g.fillRect(0, 0, S, S);
+    for (let i = 0; i < 90; i++) { const x = Math.random() * S, y = Math.random() * S, r = 20 + Math.random() * 50, gr = g.createRadialGradient(x, y, 0, x, y, r); const col = ['255,255,255', '255,200,240', '220,200,255'][i % 3]; gr.addColorStop(0, `rgba(${col},.5)`); gr.addColorStop(1, `rgba(${col},0)`); g.fillStyle = gr; g.fillRect(0, 0, S, S); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    return (this.mc.dreamFog = t);
+  }
+  // ---------------- ねこ神の夢：夢のできごとの部屋（zone.dreams の場面の舞台。区画の組み立てと会話の舞台の両方で作る） ----------------
+  // ピクニックの丘：大きな敷物の上に、ケーキとお茶。まわりに花と、大きなぺろぺろキャンディ
+  picnicHill(x, z) {
+    this.mesh(new THREE.BoxGeometry(3.8, 0.04, 2.8), 'clothPink', x, 0.02, z + 0.2, { noShadow: true });
+    for (let k = 0; k < 5; k++) this.mesh(new THREE.BoxGeometry(3.8, 0.045, 0.22), 'clothWhite', x, 0.02, z - 1 + k * 0.55, { noShadow: true });
+    this.mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.3, 20), 'cream', x, 0.19, z + 0.4);
+    this.mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.06, 20), 'candyPink', x, 0.36, z + 0.4);
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; this.mesh(new THREE.SphereGeometry(0.06, 8, 6), 'red', x + Math.cos(a) * 0.24, 0.43, z + 0.4 + Math.sin(a) * 0.24); }
+    for (const [dx, dz] of [[-0.9, 0.9], [0.9, 0.8], [0.6, -0.4], [-0.7, -0.5]]) { this.mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.1, 10), 'white', x + dx, 0.09, z + dz); this.mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.015, 14), 'white', x + dx, 0.045, z + dz); }
+    for (const [dx, dz] of [[-6.5, -5.5], [6.5, -5.5], [-7, 5], [7, 5.5], [0, -6.5]]) this.flowers(x + dx, z + dz, 10, 1.6);
+    for (const [dx, dz] of [[-8, -7], [8, -7], [-8.5, 6.5]]) this.candy(x + dx, z + dz, 0.9);
+  }
+  // 夢の演芸場：北の壁ぎわに赤い幕と低い舞台、看板。両わきにちょうちん、上に旗
+  dreamTheater(x, z) {
+    this.box(x, z - 7, 14, 5.6, 0.3, 'clothRed', { col: false });
+    for (let k = -3; k <= 3; k++) this.box(x + k * 2, z - 6.8, 0.25, 5.4, 0.12, '#b83040', { col: false });
+    this.box(x, z - 6.8, 14.4, 0.4, 0.5, 'gold', { y: 5.6, col: false });
+    this.box(x, z - 5, 9, 0.35, 2.8, 'wood2');
+    this.box(x, z - 5, 9.1, 0.06, 2.9, 'gold', { y: 0.35, col: false });
+    this.sign(x, z - 6.6, 0, '夢の演芸場', '本日、お笑い大会', '#ff9ad8', 4.6, 4.4);
+    for (const s of [-1, 1]) this.lantern(x + s * 6.6, z - 3.5, '#ffb04a', 2.6);
+    this.bunting(x - 7, z + 1, x + 7, z + 1, ['#ff6a8a', '#ffd27a', '#6ad8ff', '#8aff9a'], 4.6);
+  }
+  // おひるねの野原：ねむり花と、ふかふかのまくらが、あちこちに
+  napMeadow(x, z) {
+    for (const [dx, dz, s] of [[-6.5, -6, 1.1], [6.5, -5, 1], [-6, 6.5, 0.9], [7, 6, 1.2], [0, -8, 1]]) this.sleepFlower(x + dx, z + dz, s);
+    for (const [dx, dz, ry] of [[-4, -8, 0.3], [5, -8.5, -0.4], [-7, 1, 1.2], [7.5, 0, -1]]) { const m = this.box(x + dx, z + dz, 1.6, 0.5, 1.1, 'clothWhite', { round: true }); m.rotation.y = ry; }
+    for (const [dx, dz] of [[-3, -6], [3, 6.5], [-7, -2], [6, 3]]) this.flowers(x + dx, z + dz, 8, 1.4, ['#c8a8ff', '#ffffff', '#b8d8ff']);
+  }
+  // ないしょの会議室：四天王の長い机といす、北の壁に「魔王さまをよろこばせる会」の垂れ幕
+  secretMeeting(x, z) {
+    this.box(x, z, 7, 0.85, 1.6, 'wood2');
+    this.box(x, z, 7.2, 0.06, 1.8, 'clothPurple', { y: 0.85, col: false });
+    for (const dx of [-2.6, -0.9, 0.9, 2.6]) { this.box(x + dx, z - 1.4, 0.7, 0.5, 0.7, '#6a4a8a'); this.box(x + dx, z - 1.75, 0.7, 1.1, 0.12, '#6a4a8a', { y: 0.5, col: false }); }
+    for (const dx of [-2.2, 0, 2.2]) { this.mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.14, 10), 'white', x + dx, 0.92, z + 0.2); this.mesh(new THREE.BoxGeometry(0.5, 0.02, 0.36), 'clothWhite', x + dx + 0.5, 0.88, z - 0.2); }
+    this.sign(x, z - 8.6, 0, '魔王さまを', 'よろこばせる会（第百二十八回）', '#ff8ad8', 4.2, 4.6);
+  }
+  // 夢の小川の間：小川のほとりに花（小川と橋は地形）
+  streamRoom(x, z) {
+    for (const [dx, dz] of [[-4, -8], [-2, 8], [2.5, -7], [-4.5, 3], [7.5, -8], [7.5, 7]]) this.flowers(x + dx, z + dz, 10, 1.4, ['#ffffff', '#b8d8ff', '#ffe07a']);
+  }
+  // なつかしい家：食卓（焼き魚のお皿が三つ）といす、寝床、北の壁に家族の絵。あたたかい明かり
+  mikeHome(x, z) {
+    this.box(x, z - 3, 2.6, 0.75, 1.3, 'wood2');
+    for (const dx of [-0.8, 0, 0.8]) {
+      this.mesh(new THREE.CylinderGeometry(0.24, 0.2, 0.04, 16), 'white', x + dx, 0.77, z - 3);
+      const f = this.mesh(new THREE.SphereGeometry(0.16, 10, 8), '#c88a5a', x + dx, 0.84, z - 3); f.scale.set(1.5, 0.45, 0.55);
+    }
+    for (const dx of [-0.8, 0.8]) this.box(x + dx, z - 4.1, 0.6, 0.45, 0.6, 'wood2');
+    this.box(x - 5, z - 3.5, 1.5, 0.35, 2.2, 'wood2'); this.mesh(new THREE.BoxGeometry(1.4, 0.15, 2.1), 'clothPink', x - 5, 0.43, z - 3.5);
+    this.box(x, z - 5.9, 1.8, 1.3, 0.08, 'gold', { y: 1.8, col: false });
+    const pic = new THREE.Mesh(new THREE.PlaneGeometry(1.55, 1.05), new THREE.MeshStandardMaterial({ color: '#fff4e0', roughness: 0.8 }));
+    if (typeof GFX !== 'undefined' && GFX.portraits && GFX.portraits.mike) { pic.material.map = new THREE.TextureLoader().load(GFX.portraits.mike); pic.material.map.colorSpace = THREE.SRGBColorSpace; }
+    pic.position.set(x, this.gy(x, z - 5.9) + 2.45, z - 5.85); this.scene.add(pic);
+    this.light(x, 3.2, z - 1, '#ffd8a0', 7, 12);
   }
   // ---------------- 仕掛け：まどろみの林（綿毛・ねむり花） ----------------
   // たんぽぽ：葉のロゼットと細い茎、てっぺんに綿毛の玉（makePuff）。s で大きさ、bald で綿毛の抜けたあと
@@ -7538,18 +8170,25 @@ const ZONE_BUILD = {
   },
 
   // ---------------- クリア後 ----------------
-  // ねこ神の夢：お菓子の木立、空に浮かぶ魚、奥の段の上に巨大な座布団の玉座
+  // ねこ神の夢・うとうとの庭：お菓子の木立とケーキの段、ちびクッキーとでかミルクの台、キャンディの柵。空には魚が泳ぐ
   dream(K) {
     K.flora({ trees: [['candy', 3], ['round', 1]], leaf: ['#ffb8d8', '#b8e0ff', '#fff0a8', '#c8ffc8'], bark: '#fff8ec', bush: 0.7, bushLeaf: ['#ffd8ec', '#d8f0ff'], flower: ['#ffffff', '#ffe07a'] });
-    K.box(0, -30, 8, 1.4, 5, 'candyPink', { round: true }); K.box(0, -31.8, 8, 4, 1.4, 'candyYellow', { round: true, y: 1.4 });
-    for (const [x, z] of [[-4, -28], [4, -28]]) K.mesh(new THREE.SphereGeometry(0.3, 10, 8), 'gold', x, 1.6, z);
-    for (let i = 0; i < 10; i++) {
-      const g = new THREE.Group(); const f = new THREE.Mesh(new THREE.SphereGeometry(0.6, 12, 10), toon(pick(['#8ad8ff', '#ff9ab8', '#ffd27a']))); f.scale.set(0.6, 0.8, 1.8); g.add(f);
-      const t = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.6, 3), f.material); t.rotation.x = Math.PI / 2; t.position.z = -1.1; t.scale.x = 0.3; g.add(t);
-      const x = (K.r() - 0.5) * 50, z = (K.r() - 0.5) * 50, y0 = 4 + K.r() * 6, ph = K.r() * 6; g.position.set(x, y0, z); K.scene.add(g);
-      K.tick((dt, tt) => { g.position.y = y0 + Math.sin(tt * 0.8 + ph) * 1; g.rotation.y = tt * 0.3 + ph; });
-    }
-    for (const [x, z] of [[-24, -22], [24, -22], [-24, 16], [20, 17]]) K.candy(x, z, 0.8);
+    K.sizeStands(); K.cakeTops();
+    K.picnicHill(-30, 9.6); K.dreamTheater(26, 37); K.napMeadow(29, -22);
+    K.dreamFish(12, 30, 50);
+  },
+  // ねこ神の夢・へんてこ回廊
+  dream2(K) {
+    K.loopHall();
+    K.secretMeeting(-23, 27); K.streamRoom(20, 29);
+    K.dreamDecor({ skip: f => Math.abs(f.x) < 6.6 && f.z > -22.5 && f.z < 18.5 });
+  },
+  // ねこ神の夢・ねこ神の寝所
+  dream3(K) {
+    K.godNap();
+    K.mikeHome(-17, 40);
+    K.dreamDecor();
+    K.dreamFish(8, 16, 30, 5);
   },
 };
 delete ZONE_BUILD._unused;
