@@ -5680,8 +5680,18 @@ class ZoneKit {
     y += this.gy(x, z);
     this.v.emitters.push(dt => { for (let i = 0; i < rate * dt; i++) this.v.p.emit(V3(x + (Math.random() - 0.5) * 0.6, y, z + (Math.random() - 0.5) * 0.6), V3(0, 0.8 + Math.random() * 0.5, 0), hdr(col, 0.35), { life: 2.2, size: 0.6, drag: 0.3 }); });
   }
-  campfire(x, z) {
-    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; this.mesh(new THREE.DodecahedronGeometry(0.22, 0), 'rock', x + Math.cos(a) * 0.6, 0.12, z + Math.sin(a) * 0.6); }
+  // たき火。o.cold：ずっと前に消えたあと（火も明かりもなく、灰の上に焦げた薪がくずれている。石の輪も少しずれている）
+  campfire(x, z, o = {}) {
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2 + (o.cold ? (this.r() - 0.5) * 0.4 : 0), d = o.cold ? 0.6 + (this.r() - 0.3) * 0.25 : 0.6;
+      this.mesh(new THREE.DodecahedronGeometry(0.22, 0), o.cold ? 'rockDark' : 'rock', x + Math.cos(a) * d, 0.12, z + Math.sin(a) * d);
+    }
+    if (o.cold) {
+      this.mesh(new THREE.CircleGeometry(0.5, 14), this.stdM('#6e6866', 1), x, 0.02, z, { rx: -Math.PI / 2, noShadow: true });
+      for (const [ry, rz, dx, dz, l] of [[0.3, 1.45, 0.08, -0.05, 0.8], [1.7, 1.62, -0.1, 0.1, 0.6], [2.6, 1.5, 0.05, 0.14, 0.5]]) this.mesh(new THREE.CylinderGeometry(0.065, 0.075, l, 6), this.stdM('#2e2826', 1), x + dx, 0.08, z + dz, { ry, rz });
+      this.col(x, z, 0.8, 0.4);
+      return;
+    }
     for (let i = 0; i < 3; i++) this.mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.9, 6), 'bark', x, 0.18, z, { rz: Math.PI / 2, ry: i * 1.05 });
     this.fire(x, 0.3, z, '#ff9a3a', 30, 0.26); this.col(x, z, 0.8, 0.5);
     this.light(x, 1.2, z, '#ffb060', 10, 12);
@@ -7159,8 +7169,8 @@ const ZONE_BUILD = {
       [[1, -19, 0.1], [0, -16.5, -0.06], [2, -14, 0.08]].forEach(([i, x, rz]) => K.shadowSword(i, x, -14.9, { ry: 0.15 * (i - 1), rz, mound: true }));
     }
     K.deadTree(-22, -19, 1.2); K.flowers(-15.25, -11.6, 26, 1.8, ['#c8a8ff', '#ffffff']);
-    // 影の四剣の古いテント（川の北の野営あと）
-    K.tent(18, -9, 0.3, 'clothPurple'); K.campfire(15, -7);
+    // 影の四剣の古いテント（川の北の野営あと）。たき火は、ずっと前に消えたまま
+    K.tent(18, -9, 0.3, 'clothPurple'); K.campfire(15, -7, { cold: true });
     // 谷の集落への道（東の出入口）
     K.signpost(28, 15.5, -0.6, '→ 谷の集落', '宿と長老の家', '#c8a8ff');
     for (const [x, z] of [[22, 24], [8, 28]]) K.lantern(x, z, '#c8a8ff');
