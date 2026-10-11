@@ -43,6 +43,8 @@ class FieldView extends BaseView {
     this.persist = true; this.bloomStrength = { cave: 0.7, root: 0.7, end: 0.7, tower: 0.6 }[bg] || 0.45;
     this.exposure = { meadow: 0.95, road: 0.95, dream: 0.9 }[bg] || 1.0;
     this.keys = new Set(); this.busy = false; this.grace = 1.5;
+    // 大きさの変わる区画（zone.sizes。ねこ神の夢）：0 小さい・1 ふつう・2 大きい。探索を離れたときの大きさから再開する（ほかの区画から来たときは、ふつう）
+    this.size = zone.sizes && arrival.pos && arrival.pos.size != null ? arrival.pos.size : 1; this.sizeK = zone.sizes ? SIZE_K[this.size] : 1;
     this.camYaw = 0; this.camPitch = 0.4; this.camDist = 4.8;
     this.colliders = [];
     this.zoneTicks = []; this.emitters = [];
@@ -75,7 +77,7 @@ class FieldView extends BaseView {
   // 探索を離れた位置を記録し、次に探索するときにそこから再開する
   rememberPos() {
     const p = this.player.pos;
-    Save.data.fieldResume = { ci: this.ci, zone: this.zoneId, x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: +this.player.yaw.toFixed(3) };
+    Save.data.fieldResume = { ci: this.ci, zone: this.zoneId, x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: +this.player.yaw.toFixed(3), ...(this.zone.sizes ? { size: this.size } : {}) };
     Save.save();
   }
   get team() { return this.s.team; }
@@ -92,7 +94,7 @@ class FieldView extends BaseView {
       if (g) return { x: g.x + g.nx * 3.5, z: g.z + g.nz * 3.5, yaw: Math.atan2(g.nx, g.nz) };
     }
     // 前回の位置（地形が変わって立てない場所になっていたら時空アンカーから）
-    if (a.pos && (!this.T || this.T.fits(a.pos.x, a.pos.z, 0.4))) return a.pos;
+    if (a.pos && (!this.T || this.T.fits(a.pos.x, a.pos.z, this.bodyR(), undefined, this.moveOpts()))) return a.pos;
     // ねこ地蔵のそばに、区画の中ほどを向いて立つ（カメラが地蔵にかからないよう少し横へ）
     if (a.anchor) {
       const [ax, az] = Z.anchor, l = Math.hypot(ax, az), dx = l > 1 ? -ax / l : 0, dz = l > 1 ? -az / l : 1;
@@ -251,6 +253,19 @@ class FieldView extends BaseView {
       if (m.face) m.face.set('sleepy'); this.scene.add(m.group);
       this.sleeper = { SW, m, pos: V3(x, this.gy(x, z), z), i: 0, target: null, yaw: Math.atan2(x1 - x, z1 - z), speed: 0, phase: 0, zt: 0, nap: 0 };
     }
+    // 夢のできごと（zone.dreams）：旅で出会った猫たちが、夢の部屋で待っている（光をまとって、場面の舞台のほうを向く）。見た場面の猫は、もういない
+    this.dreams = (Z.dreams || []).filter(D => !(Save.data.flags || {})[D.id] && SCENES[D.scene]).map(D => {
+      const [ox, oz] = SCENES[D.scene].stage.at;
+      const ms = D.who.map(([key, x, z, pose]) => {
+        const m = buildCharacter(key); m.setPose(POSES[pose || 'idle']); if (m.face) m.face.set(pose === 'sleep' ? 'sleepy' : defaultFace(key));
+        const y = this.gy(x, z); m.group.position.set(x, y, z); m.group.rotation.y = Math.atan2(ox - x, oz - z); this.scene.add(m.group);
+        this.colliders.push({ x, z, r: 0.5, y });
+        return { key, m, pos: V3(x, y, z) };
+      });
+      const cx = ms.reduce((a, q) => a + q.pos.x, 0) / ms.length, cz = ms.reduce((a, q) => a + q.pos.z, 0) / ms.length, cy = this.gy(cx, cz);
+      const aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffd8f4', 0.5), blending: THREE.AdditiveBlending, depthWrite: false })); aura.position.set(cx, cy + 1.2, cz); aura.scale.setScalar(3 + ms.length); this.scene.add(aura);
+      return { D, ms, aura, c: V3(cx, cy, cz) };
+    });
     // 見張りの番犬（zone.guards）：見回りの道の最初の点から。眠らせた番犬は眠ったまま
     const gflags = Save.data.flags || {};
     this.guards = (Z.guards || []).filter(G => !G.after || storyCond('scene:' + G.after)).map(G => {
@@ -586,7 +601,7 @@ class FieldView extends BaseView {
   }
   // 頭から off の向きに、カメラをどこまで離せるか（壁・天井・障害物にぶつかる手前まで）
   viewDist(head, off, foot, ceil, py) {
-    const T = this.T, cd = this.camDist;
+    const T = this.T, cd = this.camDist * this.camScale();
     const blocked = f => {
       const x = head.x + off.x * cd * f, y = Math.min(ceil, head.y + off.y * cd * f), z = head.z + off.z * cd * f;
       // 太さは頭から離れるほど大きく（頭のそばで太いと、壁ぞいを歩くだけでカメラが寄ってしまう）
@@ -872,10 +887,12 @@ class FieldView extends BaseView {
     const p = this.player, tr = this.trail;
     if (tr[0].distanceTo(p.pos) > 0.2) { tr.unshift(p.pos.clone()); if (tr.length > 60) tr.pop(); }
     for (const f of this.followers) {
-      // 足あとの列にそって gap だけ後ろの点
-      let need = f.gap, target = tr[tr.length - 1].clone(), dir = null;
+      // ねこ神がこちらを見ているあいだは、仲間もぴたりと止まる
+      if (this.napObj && this.napObj.state === 'watch' && !f.hold) { f.speed = 0; this.walkPose(f, d, false); f.m.update(d, t + f.phase); continue; }
+      // 足あとの列にそって gap だけ後ろの点（大きさの変わる区画では、体の大きさに合わせて間をあける）
+      let need = f.gap * this.sizeK, target = tr[tr.length - 1].clone(), dir = null;
       for (let i = 1; i < tr.length; i++) { const seg = tr[i - 1].distanceTo(tr[i]); if (need <= seg) { target = tr[i - 1].clone().lerp(tr[i], need / seg); dir = V3().subVectors(tr[i - 1], tr[i]).setY(0).normalize(); break; } need -= seg; }
-      if (f.side) { const fw = dir && dir.lengthSq() > 0.5 ? dir : V3(Math.sin(p.yaw), 0, Math.cos(p.yaw)); target.x += fw.z * f.side; target.z -= fw.x * f.side; }
+      if (f.side) { const fw = dir && dir.lengthSq() > 0.5 ? dir : V3(Math.sin(p.yaw), 0, Math.cos(p.yaw)); target.x += fw.z * f.side * this.sizeK; target.z -= fw.x * f.side * this.sizeK; }
       // 踏み板で待っている子は、踏み板の上へ（着いたら、先頭の子のほうを見る）
       if (f.hold) target = f.hold.pos.clone();
       const dx = target.x - f.pos.x, dz = target.z - f.pos.z, dist = Math.hypot(dx, dz);
@@ -886,7 +903,7 @@ class FieldView extends BaseView {
       if (f.hold && dist < 0.1) f.yaw = lerpAngle(f.yaw, Math.atan2(p.pos.x - f.pos.x, p.pos.z - f.pos.z), 1 - Math.exp(-5 * d));
       f.pos.y = this.gy(f.pos.x, f.pos.z);
       this.walkPose(f, d, f.speed > 6);
-      f.m.group.position.set(f.pos.x, f.pos.y, f.pos.z); f.m.group.rotation.y = f.yaw;
+      f.m.group.position.set(f.pos.x, f.pos.y, f.pos.z); f.m.group.rotation.y = f.yaw; f.m.group.scale.setScalar(this.sizeK);
       // カメラのすぐ前に来たら見えなくする
       f.m.group.visible = this.camera.position.distanceTo(V3(f.pos.x, f.pos.y + 0.5, f.pos.z)) > 1.3;
       f.m.update(d, t + f.phase);
@@ -915,11 +932,13 @@ class FieldView extends BaseView {
     const len = Math.hypot(mx, mz);
     const attacking = p.atk > 0;
     let target = 0;
-    if (len > 0 && !this.busy) { mx /= len; mz /= len; target = sprint ? 7.4 : 4.2; p.dir.set(mx, 0, mz); }
+    if (len > 0 && !this.busy) { mx /= len; mz /= len; target = (sprint ? 7.4 : 4.2) * (this.zone.sizes ? [0.75, 1, 1.2][this.size] : 1); p.dir.set(mx, 0, mz); }
     if (attacking) target *= 0.15;
     p.speed += (target - p.speed) * (1 - Math.exp(-10 * d));
     if (len > 0 && !attacking) p.yaw = lerpAngle(p.yaw, Math.atan2(p.dir.x, p.dir.z), 1 - Math.exp(-14 * d));
-    this.moveBody(p.pos, p.dir.x * p.speed * d, p.dir.z * p.speed * d, 0.4);
+    const bx = p.pos.x, bz = p.pos.z;
+    this.moveBody(p.pos, p.dir.x * p.speed * d, p.dir.z * p.speed * d, this.bodyR(), this.moveOpts());
+    if (this.zone.sizes) this.sizeHint(len > 0 && !attacking ? Math.hypot(p.pos.x - bx, p.pos.z - bz) / Math.max(1e-4, p.speed * d) : 1, d);
     p.vy -= 20 * d; p.y = Math.max(0, p.y + p.vy * d);
     if (p.y === 0) p.vy = Math.max(0, p.vy);
     this.placePlayer(d);
@@ -961,6 +980,7 @@ class FieldView extends BaseView {
     p.vis = p.vis == null || this.riding ? p.pos.y : p.vis + (p.pos.y - p.vis) * (1 - Math.exp(-28 * d));
     m.group.position.set(p.pos.x, p.vis + p.y, p.pos.z);
     m.group.rotation.y = p.yaw;
+    m.group.scale.setScalar(this.sizeK);
   }
   // 歩き・走りのポーズ（プレイヤーと住人で共用）
   walkPose(w, d, sprint) {
@@ -1087,6 +1107,11 @@ class FieldView extends BaseView {
       const m = n.markAt, nearMark = m && Math.hypot(m.x - p.x, m.z - p.z) < (n.reach || 2.0) + 0.4 && Math.abs(m.y - p.y) < 1.6;
       if (n.pos.distanceTo(p) < (n.reach || 2.0) || nearMark) return { type: 'note', n, text: `調べる：${n.title}` };
     }
+    // へんてこ回廊のきまりの看板
+    const lo = this.loopObj;
+    if (lo && Math.hypot(lo.L.board[0] * lo.hall.scale.x - p.x, lo.L.board[1] - p.z) < 2.4) return { type: 'loopRules', text: '調べる：へんてこ回廊のきまり' };
+    const la = lo && lo.anomaly && LOOP_TALK[lo.anomaly.k], lm = la && lo.models[lo.anomaly.k];
+    if (la && la.again && lm && lm.group.visible && Math.hypot(lo.L[la.at][0] - p.x, lo.L[la.at][1] - p.z) < 2.4) return { type: 'loopTalk', k: lo.anomaly.k, text: `${speakerName(la.again[0][0])}と話す` };
     // 樹の地下：根のゆりかごの実を持ち上げる・置く。根の扉を調べる
     const ro = this.rootObj;
     if (ro) {
@@ -1133,6 +1158,13 @@ class FieldView extends BaseView {
     if (this.sleeper && this.sleeper.pos.distanceTo(p) < 2.0) return { type: 'sleeper', text: `${this.sleeper.SW.name || speakerName(this.sleeper.SW.key)}に話しかける` };
     for (const n of this.naps) if (Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 2.4) return { type: 'nap', n, text: `${n.name || speakerName(n.key)}に話しかける` };
     for (const o of this.fluffObjs || []) if (o.ready && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < 1.8 && Math.abs(o.pos.y - p.y) < 1) return { type: 'fluff', o, text: '綿毛につかまる' };
+    // ねこ神の夢：夢のできごと（部屋で待っている猫たちに話しかける）
+    for (const e of this.dreams || []) if (e.ms.some(q => Math.hypot(q.pos.x - p.x, q.pos.z - p.z) < 2.4 && Math.abs(q.pos.y - p.y) < 1.5)) return { type: 'dream', e, text: `話しかける：${e.D.name}（夢のできごと）` };
+    // ねこ神の夢：ちびクッキー・でかミルクの台
+    for (const st of this.sizeStands || []) if (Math.hypot(st.pos.x - p.x, st.pos.z - p.z) < SIZE_REACH && Math.abs(st.pos.y - p.y) < 1.2) {
+      const can = st.kind === 'cookie' ? this.size > 0 : this.size < 2;
+      return { type: 'size', st, text: !can ? `調べる：${st.name}` : st.kind === 'cookie' ? 'ちびクッキーを食べる（ひとまわり小さくなる）' : 'でかミルクを飲む（ひとまわり大きくなる）' };
+    }
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
     for (const c of this.crystals) if (c.pos.distanceTo(p) < 1.8) return { type: 'post', c, text: c.broken ? '調べる：爪とぎの丸太' : '爪を研ぐ：爪とぎの丸太' };
     if (!Z.noAnchor && Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && Math.abs(this.gy(Z.anchor[0], Z.anchor[1]) - p.y) < 1.5) return { type: 'anchor', text: '調べる：ねこ地蔵' };
@@ -1203,6 +1235,14 @@ class FieldView extends BaseView {
       this.lullaby(it.g);
     } else if (it.type === 'fluff') {
       this.glide(it.o);
+    } else if (it.type === 'size') {
+      this.useStand(it.st);
+    } else if (it.type === 'dream') {
+      this.startDream(it.e);
+    } else if (it.type === 'loopTalk') {
+      this.loopTalk(this.loopObj, it.k, true);
+    } else if (it.type === 'loopRules') {
+      this.startTalk('へんてこ回廊のきまり', [...this.loopObj.rules.map(l => l.replace(/^・/, '')), '——ねこ神'], null, true);
     } else if (it.type === 'sleeper') {
       this.startTalk(this.sleeper.SW.name || speakerName(this.sleeper.SW.key), this.sleeper.SW.talk || ['……すぴー……']);
     } else if (it.type === 'nap') {
@@ -1232,6 +1272,7 @@ class FieldView extends BaseView {
   // ねこ地蔵に近づくと、みんなのHPが回復する
   updateAnchorHeal() {
     const Z = this.zone, p = this.player.pos;
+    if (Z.sizes && this.size !== 1 && Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && this.sizeFits(1)) { this.changeSize(1, null); this.toast('ねこ地蔵のそばで、もとの大きさにもどった'); return; }
     if (Z.noAnchor || !this.team.some(m => m.hpRatio < 1)) return;
     if (Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) >= 2.6 || Math.abs(this.gy(Z.anchor[0], Z.anchor[1]) - p.y) >= 1.5) return;
     this.team.forEach(m => { m.hpRatio = 1; });
@@ -1241,6 +1282,243 @@ class FieldView extends BaseView {
     this.toast('ねこ地蔵のそばで、みんなのHPが回復した');
     this.spawnFollowers();
     this.renderTeam();
+  }
+  // ============================================================
+  //  ねこ神の夢：ちびクッキーとでかミルク（zone.sizes。部品は ZoneKit.sizeStands）
+  //   クッキーを食べると、ひとまわり小さく、ミルクを飲むと、ひとまわり大きくなる（0 小さい・1 ふつう・2 大きい。仲間もいっしょ）。
+  //   小さい子はキャンディの柵（I）のすき間をくぐれ、大きい子はケーキの段にのぼれる（細い道にはつかえる）。段からは、だれでも飛びおりられる
+  // ============================================================
+  bodyR(s = this.size) { return this.zone.sizes ? SIZE_R[s] : 0.4; }
+  moveOpts(s = this.size) { const Z = this.zone.sizes; return Z ? { small: s === 0, up: s === 2 ? Z.climb : STEP, down: Z.drop } : undefined; }
+  camScale() { return 0.55 + 0.45 * this.sizeK; }
+  // その場で大きさ s になれるか（地形と小物。台の当たりは、大きくなったあとで押し出されるので数えない）
+  sizeFits(s) {
+    const p = this.player.pos, r = this.bodyR(s), h = this.T.groundAt(p.x, p.z);
+    return this.T.fits(p.x, p.z, r, h, this.moveOpts(s)) && !this.colliders.some(c => !c.stand && this.hitsCol(c, p.x, p.z, r, h));
+  }
+  useStand(st) {
+    const to = this.size + (st.kind === 'cookie' ? -1 : 1);
+    if (to < 0 || to > 2) { this.startTalk(st.name, [to < 0 ? 'お皿に、小さなクッキーが山もり。……でも、これ以上小さくなったら、だれにも見つけてもらえなくなりそうだ。' : '大きなびんに、ミルクがなみなみ。……でも、これ以上大きくなったら、夢からはみだしてしまいそうだ。'], null, true); return; }
+    if (!this.sizeFits(to)) { Sfx.enemy(); this.toast(to > this.size ? 'ここはせまくて、大きくなれない……（広いところで飲もう）' : '……ここでは、小さくなれない'); return; }
+    this.changeSize(to, st);
+  }
+  // 大きさを変える：台のほうを向いて食べる・飲む → 体がふくらむ・しぼむ（仲間もいっしょ）。はじめてのときは、みんなのひとこと
+  changeSize(to, st) {
+    const p = this.player, k0 = this.sizeK, k1 = SIZE_K[to], grow = to > this.size, eat = st && st.kind === 'cookie';
+    this.size = to; this.busy = true; this.keys.clear();
+    if (st) { p.yaw = Math.atan2(st.pos.x - p.pos.x, st.pos.z - p.pos.z); this.placePlayer(0); }
+    if (eat) for (let k = 0; k < 3; k++) Sfx.noise(0.06, 0.14, 3200 + k * 500, k * 0.13);
+    else if (st) [0, 0.22, 0.44].forEach(t => Sfx.tone(300, 0.14, 'sine', 0.06, -80, t));
+    GFX.delay(st ? 0.55 : 0).then(() => {
+      Sfx.tone(grow ? 330 : 880, 0.6, 'sine', 0.06, grow ? 500 : -500); Sfx.tone(grow ? 495 : 1320, 0.45, 'triangle', 0.03, grow ? 400 : -600, 0.08);
+      this.p.burst(p.pos.clone().add(V3(0, 0.6 * k1, 0)), grow ? '#ffffff' : '#ffd8f0', 50, { speed: 3 * Math.max(k0, k1), up: 1, life: 0.8, size: 0.1 });
+      this.fx.ring(p.pos.clone().add(V3(0, 0.05, 0)), grow ? '#b8e8ff' : '#ffb8d8', { r: 1.2 * Math.max(k0, k1) + 0.5, life: 0.6 });
+      return GFX.tween(0.7, t => { this.sizeK = lerp(k0, k1, t) * (1 + Math.sin(t * Math.PI * 3) * (1 - t) * 0.12); }, Ease.out);
+    }).then(() => {
+      this.sizeK = k1; this.busy = false;
+      // 台の当たりにめりこんでいたら、押し出す
+      this.moveBody(p.pos, 0, 0, this.bodyR(), this.moveOpts()); this.placePlayer(0);
+      const tip = ['small', 'normal', 'big'][to], flags = Save.data.flags || (Save.data.flags = {});
+      if (st && to !== 1 && !flags['dreamSize_' + tip]) {
+        flags['dreamSize_' + tip] = true; Save.save();
+        const say = (SIZE_LINES[tip] || []).filter(([k]) => k === 'n' || this.team.some(m => m.key === k));
+        if (say.length) this.startTalk('', say);
+      } else if (st) this.toast(['ちいさくなった（キャンディの柵のすき間を、くぐれる）', 'もとの大きさにもどった', 'おおきくなった（ケーキの段に、のぼれる）'][to]);
+    });
+  }
+  // 進めなかったとき：何につかえたのかを、ときどき教える（キャンディの柵・高い段・細い道）
+  sizeHint(ratio, d) {
+    const p = this.player, tips = this.sizeTips || (this.sizeTips = { t: 0, last: {} });
+    tips.t = ratio < 0.25 ? tips.t + d : 0;
+    if (tips.t < 0.35) return;
+    tips.t = 0;
+    const r = this.bodyR(), ax = p.pos.x + p.dir.x * (r + 0.5), az = p.pos.z + p.dir.z * (r + 0.5), i = this.T.at(ax, az), now = performance.now() / 1000;
+    let k = null;
+    if (i >= 0 && this.T.ch[i] === 'I' && this.size > 0) k = 'fence';
+    else if (i >= 0 && this.T.walkable(i, { small: true }) && this.T.groundAt(ax, az) - p.pos.y > STEP && this.size < 2) k = 'ledge';
+    else if (this.size === 2) { const q = p.pos.clone(); this.T.move(q, p.dir.x * 0.6, p.dir.z * 0.6, 0.4, this.moveOpts(1)); if (Math.hypot(q.x - p.pos.x, q.z - p.pos.z) > 0.4) k = 'narrow'; }
+    if (!k || now - (tips.last[k] || -99) < 10) return;
+    tips.last[k] = now;
+    this.toast({ fence: 'キャンディの柵だ。すき間がせまくて、通れない……（小さくなれば、くぐれそう）', ledge: 'ケーキの段が高くて、のぼれない……（大きくなれば、のぼれそう）', narrow: '大きすぎて、つかえてしまう……（この道は、ふつうの大きさなら通れそう）' }[k]);
+  }
+  // 夢のできごと：ピンクの光につつまれて、その場面へ（見たことは Save.data.flags[id] に残る。終わったら、この場所から探索にもどる）
+  startDream(e) {
+    this.busy = true; this.keys.clear();
+    (Save.data.flags || (Save.data.flags = {}))[e.D.id] = true; Save.save();
+    this.root.querySelector('.fd-flash').classList.add('on');
+    Sfx.tone(523, 0.9, 'sine', 0.05, 260); Sfx.tone(784, 0.8, 'triangle', 0.03, 200, 0.15);
+    setTimeout(() => this.leave(() => App.go(DialogueScreen, e.D.scene, () => App.go(FieldScreen))), 650);
+  }
+  // ============================================================
+  //  ねこ神の夢：へんてこ回廊（zone.loop。部品は ZoneKit.loopHall）
+  //   回廊は夢の中でくりかえしている。へんなところ（異変）があれば引き返し（南の口へ）、なければ進む（北の口へ）。
+  //   正しければ、さかなが一ぴきふえ、まちがえると 0 ひきにもどる（0 ひきの回廊は、いつも、へんなところのない回廊）。
+  //   さかなが goal ひきになると、回廊の先に出口があらわれる。0 ひきのときに引き返すと、回廊の外（入口の間）へ出る
+  // ============================================================
+  updateLoop() {
+    const o = this.loopObj; if (!o || o.cleared) return;
+    const L = o.L, p = this.player.pos;
+    if (!o.active) {
+      if (p.z < L.north - 3) { this.clearLoop(o, true); return; }   // 出口の間にいる（回廊は、もうぬけている）
+      if (p.z < L.south - 1 && p.z > L.north && p.x > L.hall[0] && p.x < L.hall[2]) this.startLoop(o);
+      return;
+    }
+    if (p.z > L.south) { if (o.count === 0) this.leaveLoop(o); else this.judgeLoop(o, true); return; }
+    if (p.z < L.north) { if (o.exitOpen) this.clearLoop(o); else this.judgeLoop(o, false); return; }
+    // 異変の子は、近づくと話しかけてくる（偽物のミケと喋る魚は、先へ進ませようとする）
+    const a = o.anomaly, T = a && LOOP_TALK[a.k];
+    if (T && !o.said && Math.hypot(L[T.at][0] - p.x, L[T.at][1] - p.z) < T.r) this.loopTalk(o, a.k);
+  }
+  // 異変の子の掛け合い（はじめてのときは長く、二度目からは短く）。again：F で話しかけたとき
+  loopTalk(o, k, again) {
+    const T = LOOP_TALK[k], flags = Save.data.flags || (Save.data.flags = {}), first = !flags['dreamLoopMet_' + k];
+    const [x, z] = o.L[T.at], p = this.player;
+    if (!again) { o.said = true; flags['dreamLoopMet_' + k] = true; Save.save(); }
+    p.yaw = Math.atan2(x - p.pos.x, z - p.pos.z); this.placePlayer(0);
+    const lines = (again ? T.again : first ? T.lines : T.short).filter(([s]) => s === 'n' || s.startsWith('e:') || this.team.some(m => m.key === s));
+    this.startTalk('', lines);
+    if (T.run && !again) this.talk.after = () => { o.runFake(); this.toast('ミケそっくりの偽物は、回廊の奥のもやの中へ、走っていった……'); };
+  }
+  startLoop(o) {
+    o.active = true; o.count = 0; o.exitOpen = false; o.set(null); o.counter(0); o.showExit(false);
+    const flags = Save.data.flags || (Save.data.flags = {});
+    if (flags.dreamLoopTip) { this.toast('へんてこ回廊に入った。……さかなが 0 ひき'); return; }
+    flags.dreamLoopTip = true; Save.save();
+    const lines = [['n', '回廊に足をふみ入れると、うしろの入口が、ふわふわのもやにかすんだ。'], ['shiro', '……左のかべに、きまりの看板があるわ。'],
+      ['n', '「へんなところを見つけたら、すぐに引き返すこと。へんなところがなければ、先へ進むこと。さかなが 5 ひきになったら、出口」——ねこ神'],
+      ['kuro', '……まずは、いつもの回廊を、よく見て覚えておけ。'], ['mike', 'さかなを 5 ひき、あつめればいいんだね！']];
+    this.startTalk('', lines.filter(([k]) => k === 'n' || this.team.some(m => m.key === k)));
+  }
+  leaveLoop(o) { o.active = false; this.toast('もやをぬけて、回廊の外へ出た（さかなは 0 ひきのまま）'); }
+  // 引き返した（back）・進んだ：へんなところがあったかどうかと、くらべる
+  judgeLoop(o, back) {
+    const had = o.anomaly, ok = !!had === back;
+    o.count = ok ? o.count + 1 : 0;
+    const exit = o.count >= o.L.goal, next = exit || o.count === 0 ? null : Math.random() < 0.5 ? null : o.pick();
+    const msg = !ok ? `……あれ？　さかなが 0 ひきにもどった（${had ? 'さっきの回廊は、' + had.desc : 'さっきの回廊に、へんなところはなかった'}）`
+      : exit ? `さかなが ${o.count} ひき！　……回廊の先に、出口があらわれた！` : `${back ? '引き返した。……' : ''}さかなが ${o.count} ひき`;
+    const T = had && LOOP_TALK[had.k], voice = T && (ok ? T.foiled : T.fooled);
+    this.loopWarp(o, next, exit, msg, ok, voice);
+  }
+  // 夢がゆらいで、次の回廊の始まりへ（ピンクの光につつまれる）
+  loopWarp(o, next, exit, msg, ok, voice) {
+    this.busy = true; this.keys.clear();
+    const fl = this.root.querySelector('.fd-flash'); fl.classList.add('on');
+    Sfx.tone(ok ? 523 : 392, 0.9, 'sine', 0.05, ok ? 260 : -140); Sfx.tone(ok ? 784 : 330, 0.7, 'triangle', 0.025, ok ? 200 : -100, 0.12); Sfx.noise(0.8, 0.04, 2400);
+    setTimeout(() => {
+      const [sx, sz] = o.L.start, p = this.player;
+      p.pos.set(sx, 0, sz); p.yaw = Math.PI; p.speed = 0; p.dir.set(0, 0, -1); this.camYaw = 0;
+      o.set(next); o.exitOpen = exit; o.showExit(exit); o.counter(o.count);
+      this.placePlayer(0); this.spawnFollowers();
+      const gy = this.gy(sx, sz); this.camera.position.set(sx, gy + 3.2, sz + 5); this.curLook.set(sx, gy + 1.2, sz);
+      fl.classList.remove('on');
+      setTimeout(() => { this.busy = false; if (voice) this.toast(voice); this.toast(msg); if (exit) Sfx.win(); else if (!ok) Sfx.enemy(); }, 380);
+    }, 520);
+  }
+  clearLoop(o, silent) {
+    o.cleared = true; o.active = false; o.showExit(true);
+    (Save.data.flags || (Save.data.flags = {}))[o.L.id] = true; Save.save();
+    if (!silent) { Sfx.win(); this.toast('へんてこ回廊をぬけた！'); }
+  }
+  // ============================================================
+  //  ねこ神の夢：ねこ神の寝所（zone.nap。部品は ZoneKit.godNap）
+  //   ねこ神のねごと「ね・こ・が・こ・ろ・ん・だ」（chant）が言い終わると、ねがえりをうって、こちらを向く（watch）。
+  //   向いているあいだに動く（走る・跳ぶ・こうげき）と、見つかって、ふとんの線（なければ入口）へもどされる。かくれられるもののかげなら、動いても見つからない。
+  //   ときどき、とちゅうで「むにゃむにゃ……」と寝なおして、ふりむかない
+  // ============================================================
+  updateNap(d, t) {
+    const o = this.napObj; if (!o) return;
+    const N = o.N, p = this.player.pos, el = this.root.querySelector('.fd-nap');
+    o.yaw = lerpAngle(o.yaw, o.want, 1 - Math.exp(-(o.state === 'watch' ? 14 : 5) * d));
+    if (o.god) { o.god.group.rotation.y = o.yaw; o.god.update(d, t); }
+    if (o.off == null) {
+      o.off = storyCond(N.until);
+      // 物語のあと：ねこ神は、こちらを向いて、すやすや眠っている
+      if (o.off) { o.want = o.yaw = 0; }
+    }
+    if (o.off) { if (Math.random() < d * 0.8) this.p.emit(o.eye.clone().add(V3(1, 0, 1)), V3(0.3, 0.6, 0), hdr('#ffffff', 1.3), { life: 2, size: 0.2, drag: 0.2 }); return; }
+    if (!o.on) {
+      if (Math.random() < d * 0.8) this.p.emit(o.eye.clone().add(V3(1, 0, -1)), V3(0.3, 0.6, 0), hdr('#ffffff', 1.3), { life: 2, size: 0.2, drag: 0.2 });
+      if (p.z < N.start && !this.busy) this.startNap(o);
+      return;
+    }
+    // ふとんの線をこえた
+    N.checks.forEach(([zl], i) => { if (p.z < zl && i > o.cp) { o.cp = i; Sfx.select(); this.toast('ふとんの線をこえた。見つかっても、ここからやりなおせる'); } });
+    if (this.busy) return;
+    o.t -= d;
+    if (o.state === 'chant') {
+      if (o.t > 0) return;
+      const sy = o.seq[o.i++];
+      if (sy === 'zzz') { o.text = o.said.join(' ') + ' <em>……むにゃむにゃ</em>'; this.napText(o); Sfx.snore(); o.state = 'back'; o.t = 1.4; return; }
+      o.said.push(sy);
+      if (sy === 'だ') {
+        // ふりむく
+        o.text = o.said.slice(0, -1).join(' ') + ' <b>だ！</b>'; this.napText(o, true);
+        o.state = 'watch'; o.want = 0; o.t = 1.5 + Math.random() * 1.2; o.grace = 0.35;
+        Sfx.tone(260, 0.3, 'square', 0.05, 120); Sfx.tone(520, 0.25, 'triangle', 0.04, 0, 0.05);
+        if (o.god && o.god.critter) { o.god.critter.setPose(POSES.idle); o.god.critter.face.set('surprise'); }
+        return;
+      }
+      o.text = o.said.join(' '); this.napText(o);
+      Sfx.tone(520 + o.i * 30, 0.16, 'sine', 0.035, -40);
+      o.t = o.gaps[o.i - 1];
+      return;
+    }
+    if (o.state === 'watch') {
+      o.grace -= d;
+      const pl = this.player, moving = pl.speed > 0.9 || pl.y > 0.05 || pl.atk > 0;
+      if (o.grace <= 0 && moving && this.napSees(o)) { this.napCaught(o); return; }
+      if (o.t <= 0) { o.state = 'back'; o.t = 0.9; o.want = Math.PI; if (o.god && o.god.critter) { o.god.critter.setPose(POSES.sleep); o.god.critter.face.set('sleepy'); } el.classList.remove('watch'); el.classList.add('hidden'); }
+      return;
+    }
+    if (o.state === 'back' && o.t <= 0) this.napChant(o);
+  }
+  // ねこ神から見えるか：かくれられるもののすぐうしろ（そばにいて、ねこ神とプレイヤーを結ぶ線がかかる）なら見えない
+  napSees(o) {
+    const p = this.player.pos, ax = o.eye.x, az = o.eye.z, bx = p.x, bz = p.z, dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz || 1;
+    return !o.covers.some(c => {
+      if (Math.hypot(bx - c.x, bz - c.z) > c.r + 2.2) return false;
+      const u = clamp(((c.x - ax) * dx + (c.z - az) * dz) / L2, 0, 1);
+      return u < 0.98 && Math.hypot(ax + dx * u - c.x, az + dz * u - c.z) < c.r;
+    });
+  }
+  startNap(o) {
+    o.on = true; o.cp = -1; o.state = 'back'; o.t = 1.2;
+    const flags = Save.data.flags || (Save.data.flags = {});
+    if (flags.dreamNapTip) return;
+    flags.dreamNapTip = true; Save.save();
+    const lines = [['n', '広間の奥、玉座の段の上で、大きな猫が丸くなって眠っている。……ねこ神だ。'], ['n', '「……ね……こ……が……」（ねごとだ）'], ['shiro', 'これって……「だるまさんがころんだ」じゃない？'],
+      ['kuro', '……ふりむいたときに動いたら、見つかるということか。'], ['mike', 'じゃあ、ふりむいたら、ピタッと止まればいいんだね！'],
+      ['n', 'ねこ神が「ね・こ・が・こ・ろ・ん・だ」と言い終わると、ねがえりをうって、こちらを向く。向いているあいだは、動かないこと。ざぶとんの山やタマの山のかげなら、見つからない。']];
+    this.startTalk('', lines.filter(([k]) => k === 'n' || this.team.some(m => m.key === k)));
+  }
+  // 新しいねごと：一音ずつの間（ゆっくり・はやい・「だ」の前に、ためる）。ときどき、とちゅうで寝なおす
+  napChant(o) {
+    const S = ['ね', 'こ', 'が', 'こ', 'ろ', 'ん', 'だ'], tempo = 0.18 + Math.random() * 0.32, rush = Math.random() < 0.25;
+    o.seq = Math.random() < 0.18 ? [...S.slice(0, 3 + Math.floor(Math.random() * 3)), 'zzz'] : S;
+    o.gaps = o.seq.map((s, i) => Math.max(0.1, (rush && i > 2 ? tempo * 0.45 : tempo) * (0.8 + Math.random() * 0.4) + (o.seq[i + 1] === 'だ' && Math.random() < 0.4 ? 0.5 + Math.random() * 0.8 : 0)));
+    o.i = 0; o.said = []; o.state = 'chant'; o.t = 0.2;
+  }
+  napText(o, watch) {
+    const el = this.root.querySelector('.fd-nap');
+    el.innerHTML = o.text; el.classList.remove('hidden'); el.classList.toggle('watch', !!watch);
+  }
+  // 見つかった：「……ん？」→ 夢がゆらいで、ふとんの線（なければ入口）へ
+  napCaught(o) {
+    this.busy = true; this.keys.clear(); o.state = 'caught';
+    o.text = '<b>……ん？</b>　だれか、いるのか……？'; this.napText(o, true);
+    Sfx.tone(180, 0.5, 'sawtooth', 0.05, 120); GFX.shake(0.2);
+    if (o.god && o.god.critter) o.god.critter.flash('#ffe08a', 1.2);
+    const fl = this.root.querySelector('.fd-flash');
+    setTimeout(() => { fl.classList.add('on'); Sfx.noise(0.8, 0.05, 2400); }, 700);
+    setTimeout(() => {
+      const [bx, bz] = o.cp >= 0 ? o.N.checks[o.cp][1] : o.N.back, p = this.player;
+      p.pos.set(bx, 0, bz); p.yaw = Math.PI; p.speed = 0; this.camYaw = 0; this.placePlayer(0); this.spawnFollowers();
+      o.want = o.yaw = Math.PI; o.state = 'back'; o.t = 1.6; if (o.god && o.god.critter) { o.god.critter.setPose(POSES.sleep); o.god.critter.face.set('sleepy'); }
+      this.root.querySelector('.fd-nap').classList.add('hidden');
+      fl.classList.remove('on');
+      setTimeout(() => { this.busy = false; this.toast(o.cp >= 0 ? '見つかった！　……夢がゆらいで、ふとんの線までもどされた' : '見つかった！　……夢がゆらいで、広間の入口までもどされた'); }, 380);
+    }, 1250);
   }
   // ============================================================
   //  樹の地下：光る実と、しおれた根（zone.roots。部品は ZoneKit.roots）
@@ -2365,6 +2643,8 @@ class FieldView extends BaseView {
       <div class="fd-title"></div>
       <div class="fd-banner"></div>
       <div class="fd-wipe"></div>
+      <div class="fd-flash"></div>
+      <div class="fd-nap hidden"></div>
       <div class="fd-help">WASD 移動 ／ Space ジャンプ ／ ドラッグ 視点 ／ ホイール ズーム ／ F 調べる・話す ／ 1〜4 先頭の子を交代</div>
       <div class="overlay hidden"></div>`;
     this.root = r;
@@ -2554,6 +2834,7 @@ class FieldView extends BaseView {
       if (kd === K.LIFT) { g.fillStyle = '#2f9fd8'; g.fillRect(x + 1, y + 1, s - 2, s - 2); }
       if (kd === K.DOOR) { g.fillStyle = '#8ae0ff'; g.fillRect(x + s * 0.3, y + s * 0.3, s * 0.4, s * 0.4); }
       if (kd === K.EXIT) { const E = T.exits[T.ch[i]]; g.fillStyle = E.cabin ? '#e8c77a' : T.locked.has(E.key) ? '#ff4d6d' : '#8ae0ff'; g.globalAlpha = 0.8; g.fillRect(x, y, s, s); g.globalAlpha = 1; }
+      if (T.ch[i] === 'I') { g.fillStyle = '#ff5a78'; for (const [u, v] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) g.fillRect(x + u * s - 1.5, y + v * s - 1.5, 3, 3); }   // キャンディの柵
     }
     // 壁・窓・段差の輪郭
     for (let r = 0; r < T.rows; r++) for (let c = 0; c < T.cols; c++) {
@@ -2674,6 +2955,7 @@ class FieldView extends BaseView {
     this.groups.forEach(gr => { if (gr.alive) dot(gr.pos.x, gr.pos.y, gr.pos.z, gr.state === 'chase' ? '#ff3040' : gr.elite ? '#ff9a4d' : '#ff6b81', gr.elite ? 4 : 3); });
     (this.sealObjs || []).forEach(o => { if (!o.open && o.ready()) o.lamps.forEach(L => { if (!L.lit) dot(L.pos.x, L.pos.y, L.pos.z, { memory: '#ffe2a8', laugh: '#ffe07a', beacon: '#ff9a3a', bar: '#e8c080' }[o.S.look] || '#cfefff', 3.5); }); });
     (this.bounceObjs || []).forEach(b => dot(b.pos.x, b.pos.y, b.pos.z, '#ff9ad8', 2.5));
+    (this.sizeStands || []).forEach(st => dot(st.pos.x, st.pos.y, st.pos.z, st.kind === 'cookie' ? '#ff9ad8' : '#8ad0ff', 3.5));
     // 影の回廊：光の輪（自分は金、影は紫。ゲームの中と同じ輪の形）と、影の印（脈打つ光の輪と、黒紫の猫の顔）。自分から影へ点線をひく
     (this.shadowObjs || []).forEach(o => {
       if (o.solved) return;
@@ -2761,9 +3043,9 @@ class FieldView extends BaseView {
     if (this.flight) { this.updateFlight(d); this.animatePlayer(d, false); }
     else if (!this.busy) { this.updatePlayer(d); if (!this.busy) this.updateGags(d); }
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
-    this.updateRoots(d, t); this.updateShadows(d, t);
+    this.updateRoots(d, t); this.updateShadows(d, t); this.updateNap(d, t);
     this.updateNemuri(t);
-    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); this.updateAnchorHeal(); }
+    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); this.updateAnchorHeal(); this.updateLoop(); }
     this.updateGuards(d, t); this.updateRollers(d, t);
     if (this.followers && !this.flight) this.updateFollowers(d, t);
     this.updateEnemies(d, t);
@@ -2772,6 +3054,11 @@ class FieldView extends BaseView {
     // 住人は近づくとこちらを向く
     this.updateNpcs(d, t);
     this.updateSleepers(d, t);
+    for (const e of this.dreams) {
+      e.ms.forEach((q, i) => q.m.update(d, t + i * 1.3));
+      e.aura.material.opacity = 0.6 + Math.sin(t * 1.6) * 0.25;
+      if (Math.random() < d * 4) this.p.emit(e.c.clone().add(V3((Math.random() - 0.5) * 3, 0.2 + Math.random() * 1.5, (Math.random() - 0.5) * 3)), V3(0, 0.5, 0), hdr(pick(['#ffd8f4', '#fff4c8', '#d8e8ff']), 1.6), { life: 1.6, size: 0.08, drag: 0.3 });
+    }
     this.updateSafe(); this.updateArea();
     this.notes.forEach((n, i) => { n.mark.material.opacity = 0.5 + Math.sin(t * 3 + i) * 0.4; });
     if (this.anchor) { this.anchor.rings.forEach((r, i) => { r.rotation.x = t * (0.8 + i * 0.5); r.rotation.y = t * (0.5 + i * 0.3); }); this.anchor.core.rotation.y = t; }
@@ -2785,7 +3072,7 @@ class FieldView extends BaseView {
     this.chests.forEach(c => { if (!c.opened) c.glow.material.opacity = 0.6 + Math.sin(t * 3 + c.id) * 0.3; });
     // カメラ（壁・天井・障害物にめり込まないよう距離を縮める）
     const T = this.T, foot = p.vis ?? 0;
-    const head = V3(p.pos.x, foot + p.y + 0.8, p.pos.z);
+    const head = V3(p.pos.x, foot + p.y + 0.8 * this.sizeK, p.pos.z);
     const offAt = pitch => V3(Math.sin(this.camYaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(this.camYaw) * Math.cos(pitch));
     const ceil = T ? T.ceilOf(T.at(p.pos.x, p.pos.z)) - 0.45 : 1e9;
     // 頭からカメラまでの実際の距離（天井で頭打ちになる分も入れる）
@@ -2795,7 +3082,7 @@ class FieldView extends BaseView {
     // 持ち上げる角度はなめらかに変え、広い所へ出たらゆっくり元の角度へ戻す。
     // 遠くへ引いているときは、まず 3.4m までは寄せるだけにして、それでも足りない所でだけ持ち上げる（部屋の壁ぎわで真上から見下ろさないように）
     let want = 0;
-    const need = Math.min(this.camDist * 0.8, 3.4);
+    const need = Math.min(this.camDist * 0.8, 3.4) * this.camScale();
     if (reach(offAt(this.camPitch), base) < need) {
       let best = reach(offAt(this.camPitch), base);
       for (let k = 1; k <= 4; k++) {

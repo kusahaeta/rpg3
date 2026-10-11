@@ -310,22 +310,25 @@ class Terrain {
   walkable(i, o = {}) {
     if (i < 0) return false;
     switch (this.kind[i]) {
-      case TK.FLOOR: case TK.STAIR: return true;
+      case TK.FLOOR: return this.ch[i] !== 'I' || !!o.small;   // キャンディの柵（zone.sizes）：小さくなった子だけ、すき間をくぐれる
+      case TK.STAIR: return true;
       case TK.LIFT: return !o.noLift;
       case TK.DOOR: return !o.noDoor;
       case TK.EXIT: return !o.noExit && !this.locked.has(this.ch[i]);
       default: return false;
     }
   }
-  // 半径 r の円を置いたとき、通れない・段差が大きすぎる点の数
+  // 半径 r の円を置いたとき、通れない・段差が大きすぎる点の数。
+  //   o.up・o.down：上れる・下りられる段差（ふだんはどちらも STEP。大きさの変わる区画 zone.sizes では、大きい子は高い段にのぼれ、だれでも段から飛びおりられる）
   misfits(x, z, r, h0, o) {
     let bad = 0;
     for (const [dx, dz] of RING) {
       const px = x + dx * r, pz = z + dz * r, i = this.at(px, pz);
-      if (!this.walkable(i, o) || !(Math.abs(this.groundOf(i, px, pz) - h0) <= STEP)) bad++;
+      if (!this.walkable(i, o) || !this.stepOk(this.groundOf(i, px, pz) - h0, o)) bad++;
     }
     return bad;
   }
+  stepOk(d, o) { return d <= (o && o.up != null ? o.up : STEP) && -d <= (o && o.down != null ? o.down : STEP); }
   fits(x, z, r, h0 = this.groundAt(x, z), o) { return this.misfits(x, z, r, h0, o) === 0; }
   // 円（半径 r）が、通れないマス・段差のあるマスに少しもかからないか（9 点だけでなく、かかるマスをすべて調べる。樹の地下の影）
   fitsCircle(x, z, r) {
@@ -359,7 +362,7 @@ class Terrain {
         const nx = ax === 'x' ? pos.x + d : pos.x, nz = ax === 'z' ? pos.z + d : pos.z;
         const bad = this.misfits(nx, nz, r, h0, o);
         // めり込んでいるときは、少しでも抜け出せる向きなら動ける
-        if (bad === 0 || (cur > 0 && bad <= cur && this.walkable(this.at(nx, nz), o) && Math.abs(this.groundAt(nx, nz) - h0) <= STEP)) { pos.x = nx; pos.z = nz; }
+        if (bad === 0 || (cur > 0 && bad <= cur && this.walkable(this.at(nx, nz), o) && this.stepOk(this.groundAt(nx, nz) - h0, o))) { pos.x = nx; pos.z = nz; }
       }
     }
   }
@@ -430,14 +433,14 @@ class Terrain {
         if (li >= 0 && lj >= 0) ok = li === lj;
         else if (li >= 0) ok = this.lifts[li].levels.some(v => Math.abs(v - edgeH(j, i)) <= STEP);
         else if (lj >= 0) ok = this.lifts[lj].levels.some(v => Math.abs(v - edgeH(i, j)) <= STEP);
-        else ok = Math.abs(edgeH(i, j) - edgeH(j, i)) <= STEP;
+        else ok = Math.abs(edgeH(i, j) - edgeH(j, i)) <= (this.zone.sizes ? this.zone.sizes.climb : STEP);   // 大きさの変わる区画は、大きくなればのぼれる段も行ける場所
         if (ok) { reach[j] = 1; q.push(j); }
       }
     }
     // 敵・宝箱を置けるマス（床のみ。扉・昇降機・出入口のとなりは避ける。トランポリンのまわり 2 マスも、小さな島をふさがないよう避ける）
     this.spawnCells = [];
     for (let i = 0; i < n; i++) {
-      if (!reach[i] || this.kind[i] !== TK.FLOOR || this.rootBridge[i]) continue;
+      if (!reach[i] || this.kind[i] !== TK.FLOOR || this.rootBridge[i] || this.ch[i] === 'I') continue;
       const c = this.colOf(i), r = this.rowOf(i);
       let ok = true;
       for (let dr = -1; dr <= 1 && ok; dr++) for (let dc = -1; dc <= 1; dc++) {
@@ -635,6 +638,10 @@ const ARCH_STYLES = {
   nyapalace: { look: 'palace', heavy: 'royal', roof: true, wallH: 8, wall: '#f6eee2', wall2: '#e6d6c0', trim: '#8a6a3a', cliff: '#eadfce', ceil: '#f2e6d4', step: '#efe6d8', glass: '#ffe8c0', glow: '#ffd27a', light: '#fff4dc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // 壁画の回廊：苔むした古い石の回廊（天井あり、青緑に光る縁取り）
   ruin: { look: 'palace', roof: true, wallH: 8, wall: '#c8c0a4', wall2: '#a8a088', trim: '#5a5a48', cliff: '#b0aa90', ceil: '#6a6a58', step: '#b8b098', glass: '#bfffe8', glow: '#8affe0', light: '#e8fff4', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
+  // ねこ神の夢・うとうとの庭：お菓子の木立と、ケーキの段（cake：段の側面はスポンジとクリームの層で、なめらか。柵は立てない）
+  dreamgarden: { look: 'cliff', outdoor: 'flora', roof: false, canopy: 3, cake: true, rock: '#e8b8d8', cap: '#ffd8e8', path: '#fff0c8', trim: '#c88ab8', cliff: '#ffffff', step: '#ffe8f0', glass: '#bfe8ff', glow: '#ff9ad8', rail: 'none', door: 'swing', lift: 'cage', exit: 'arch' },
+  // ねこ神の夢・へんてこ回廊とねこ神の寝所：うす紫の壁と、夜空の色の天井（ゆめかわいい宮殿）
+  dreamhall: { look: 'palace', roof: true, wallH: 8, wall: '#efe4ff', wall2: '#d8c8f4', trim: '#8a6ab8', cliff: '#e0d4f8', ceil: '#3a2a62', step: '#ece2fc', glass: '#ffe0f8', glow: '#ffb8ec', light: '#fff0fc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // 樹の地下・黒影洞窟の奥：根と土の洞窟
   roots: { look: 'mine', roof: true, wallH: 7, rock: '#5a4a38', trim: '#4a3420', cliff: '#5a4a38', ceil: '#2a2218', step: '#6a5238', glass: '#bfe8ff', glow: '#b8ff8a', light: '#d8ffc8', rail: 'wood', door: 'swing', lift: 'cage', exit: 'tunnel', water: '#4ac88a', waterGlow: '#2a9a5a', waterBed: '#10241a' },
 };
@@ -851,6 +858,22 @@ function woodTex() {
   g.strokeStyle = 'rgba(40,24,12,.25)'; for (let k = 0; k < 40; k++) { const y = Math.random() * S; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(80, y + 4, 160, y - 4, S, y + 2); g.stroke(); }
   return (TexCache.wood = texOf(c));
 }
+// ケーキの段の側面（幅4m × 高さ4m。2m ごとに、下からスポンジ・クリーム・いちごジャム・スポンジ・てっぺんの白いクリーム）
+function cakeTex() {
+  if (TexCache.cake) return TexCache.cake;
+  const S = 512, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+  const Y = m => S - (m % 2) / 4 * S - (m >= 2 ? S / 2 : 0);   // 床からの高さ m（0〜4）→ 画像の y
+  for (const base of [0, 2]) {
+    const band = (a, b, col) => { g.fillStyle = col; g.fillRect(0, Y(base + b), S, Y(base + a) - Y(base + b)); };
+    band(0, 0.8, '#f2cf8e'); band(0.8, 0.94, '#fff6ea'); band(0.94, 1.06, '#e8566e'); band(1.06, 1.74, '#f2cf8e'); band(1.74, 1.999, '#fffaf4');
+    // スポンジの気泡
+    for (let i = 0; i < 260; i++) { const y = Y(base + (Math.random() < 0.55 ? Math.random() * 0.8 : 1.06 + Math.random() * 0.68)); g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,240,200' : '190,140,70'},${0.25 + Math.random() * 0.3})`; g.beginPath(); g.arc(Math.random() * S, y, 1 + Math.random() * 3, 0, 7); g.fill(); }
+    // てっぺんのクリームのたれ
+    g.fillStyle = '#fffaf4';
+    for (let x = 0; x < S; x += 32) { const h = 10 + ((x * 37) % 23); g.beginPath(); g.ellipse(x + 16, Y(base + 1.74), 14, h, 0, 0, 7); g.fill(); }
+  }
+  return (TexCache.cake = texOf(c));
+}
 // 値ノイズ（岩肌の凹凸に使う。ワールド座標の関数なので隣り合う面がつながる）
 const hash3 = (x, y, z) => { const h = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return h - Math.floor(h); };
 function vnoise(x, y, z) {
@@ -879,7 +902,8 @@ function buildArchitecture(view, T) {
       : style === 'palace' ? std(S.wall, { map: marbleTex(), metalness: 0.12, roughness: 0.35 }) : rockM,
     wall2: style === 'station' ? std(S.wall2, { map: panelTex('station'), metalness: 0.25, roughness: 0.5 }) : std(S.wall2 || S.wall || '#aaa', { map: style === 'palace' ? marbleTex() : stoneTex(), metalness: 0.15, roughness: 0.4 }),
     trim: style === 'station' ? std(S.trim, { metalness: 0.6, roughness: 0.35 }) : style === 'mine' ? std(S.trim, { map: woodTex(), roughness: 0.9, metalness: 0 }) : std(S.trim, { metalness: 0.35, roughness: 0.55 }),
-    cliff: style === 'station' ? std(S.cliff, { map: panelTex('station'), metalness: 0.35, roughness: 0.5 })
+    cliff: S.cake ? std(S.cliff, { map: cakeTex(), roughness: 0.75, metalness: 0 })
+      : style === 'station' ? std(S.cliff, { map: panelTex('station'), metalness: 0.35, roughness: 0.5 })
       : style === 'palace' ? std(S.cliff, { map: marbleTex(), metalness: 0.12, roughness: 0.4 }) : style === 'town' ? std(S.cliff, { map: stoneTex(), roughness: 0.9, metalness: 0.02 }) : rockM,
     rock: rockM,
     stone: std('#a4a8b4', { map: stoneTex(), roughness: 0.9, metalness: 0.02 }),
@@ -1086,7 +1110,7 @@ function buildArchitecture(view, T) {
   // 段差の面（低い側を向く）と上端の縁
   function cliffFace(ex, ez, nx, nz, yA, yB, yA2, yB2) {
     const flat = Math.abs(yA - yB) < 0.01, top = Math.max(yA, yB);
-    if (style === 'cliff' || style === 'mine') rockFace('rock', ex, ez, -nx, -nz, CELL, [yB2, yB], [yA2, yA], 0.3);
+    if ((style === 'cliff' || style === 'mine') && !S.cake) rockFace('rock', ex, ez, -nx, -nz, CELL, [yB2, yB], [yA2, yA], 0.3);
     else acc(style === 'town' ? 'stone' : 'cliff', 4).wall(ex, ez, -nx, -nz, CELL, 0, 0, 0, [yB2, yB], [yA2, yA]);
     if (style === 'station') {
       if (flat) { acc('trim').slab(ex, ez, -nx, -nz, CELL, yA - 0.45, yA, 0.08); acc('glow').slab(ex, ez, -nx, -nz, CELL, yA - 0.62, yA - 0.54, 0.04); }

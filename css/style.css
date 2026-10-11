@@ -570,6 +570,16 @@ kbd { display: inline-block; font-family: inherit; font-size: 11px; background: 
 @keyframes fdBanner { 0% { opacity: 0; transform: scale(1.6); } 25% { opacity: 1; transform: scale(1); } 100% { opacity: 1; } }
 .fd-wipe { position: absolute; inset: 0; pointer-events: none; z-index: 4; background: radial-gradient(circle, transparent 0, transparent var(--r, 100%), #05060f calc(var(--r, 100%) + 1%)); opacity: 0; }
 .fd-wipe.on { animation: wipe .85s ease-in forwards; }
+/* ねこ神の夢：へんてこ回廊で、次の回廊へ移るときのピンクの光 */
+.fd-flash { position: absolute; inset: 0; pointer-events: none; z-index: 4; background: radial-gradient(circle, #fffafd 0, #ffd8f2 60%, #e2c8ff 100%); opacity: 0; transition: opacity .45s ease; }
+.fd-flash.on { opacity: 1; }
+/* ねこ神の夢：ねこ神のねごと（ね・こ・が・こ・ろ・ん・だ） */
+.fd-nap { position: absolute; top: 168px; left: 50%; transform: translateX(-50%); z-index: 3; pointer-events: none; padding: 6px 26px; border-radius: 999px; background: rgba(46, 24, 70, .5); color: #fff6fc;
+  font: 900 40px/1.25 "Hiragino Maru Gothic ProN", "Hiragino Sans", sans-serif; letter-spacing: .2em; text-shadow: 0 2px 0 #6a3a8a, 0 0 12px rgba(255, 180, 240, .6); white-space: nowrap; transition: opacity .3s, background .2s; }
+.fd-nap.hidden { opacity: 0; }
+.fd-nap.watch { background: rgba(150, 24, 70, .62); }
+.fd-nap b { color: #ff7aa8; }
+.fd-nap em { font-style: normal; font-size: 24px; letter-spacing: .05em; color: #ffd27a; }
 @keyframes wipe { 0% { opacity: 0; } 40% { opacity: .2; } 100% { opacity: 1; background: #05060f; } }
 .fd-help { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); font-size: 11px; color: rgba(255, 255, 255, .45); white-space: nowrap; }
 .field-select { background: rgba(6, 8, 20, .5); padding: 70px 60px 0; }

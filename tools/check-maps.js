@@ -40,6 +40,10 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   (Z.guards || []).forEach(G => { G.route.forEach((p, i) => add(id, { k: `guard ${G.id}_${i}`, p, r: 0.6 })); add(id, { k: `back ${G.id}`, p: G.back, r: 0.6 }); });
   (Z.rollers || []).forEach((R, i) => { add(id, { k: 'rollA' + i, p: R.a, r: 0.9 }); add(id, { k: 'rollB' + i, p: R.b, r: 0.9 }); add(id, { k: 'bump' + i, p: R.back, r: 0.6 }); });
   (Z.arenas || []).forEach((a, i) => { const [x, z] = zonePoint(Z, [a[0], a[1]]); add(id, { k: 'arena' + i, p: [x, z], area: a[2] || 0 }); });
+  if (Z.sizes) Z.sizes.stands.forEach((st, i) => add(id, { k: `stand ${st.kind}${i}`, p: st.at, r: 0.6 }));
+  if (Z.loop) { const L = Z.loop; add(id, { k: 'loop start', p: L.start, r: 0.6 }); [['clock', L.clock], ['tama', L.tama], ['statue', L.statue], ['plush', L.plush], ['talker', L.talker], ['fake', L.fake]].forEach(([k, p]) => add(id, { k: 'loop ' + k, p, r: 0.4 })); }
+  (Z.dreams || []).forEach(D => D.who.forEach(([key, x, z]) => add(id, { k: `dream ${D.id} ${key}`, p: [x, z], r: 0.5 })));
+  if (Z.nap) { const N = Z.nap; add(id, { k: 'nap back', p: N.back, r: 0.6 }); N.checks.forEach(([, p], i) => add(id, { k: 'nap check' + i, p, r: 0.6 })); N.covers.forEach(([kind, x, z], i) => add(id, { k: `nap ${kind}${i}`, p: [x, z], r: 0.6 })); }
 }
 STORY.forEach(ch => ch.steps.forEach(st => {
   if (st.t !== 'field') return;
@@ -71,7 +75,16 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
     T.reach = r.reach;
     if (verbose) { console.log(`   roots: solved in ${r.n} move(s)（実を持つ・置く）, ${r.states} state(s)`); r.path.forEach(s => console.log('     ' + s)); }
   }
-  const ok = (x, z, r, h0) => { const i = T.at(x, z); return i >= 0 && T.reach[i] && T.fits(x, z, r, h0 ?? T.groundAt(x, z)); };
+  // 大きさの変わる区画：ちびクッキーとでかミルクで大きさを変えながら、出口（d）まで行けるか。行ける場所は、どれかの大きさで立てるマス
+  if (Z.sizes) {
+    const r = solveSizes(T, Z);
+    if (r.n < 0) bad.push('sizes: no solution');
+    else if (r.n === 0) bad.push('sizes: solved without changing size（歩くだけで出口へ行ける）');
+    if (r.stuck) bad.push(`sizes: ${r.stuck} state(s) cannot get back to the entrance（ねこ地蔵）`);
+    T.reach = r.reach;
+    if (verbose) { console.log(`   sizes: solved with ${r.n} size change(s), ${r.states} state(s)`); r.path.forEach(s => console.log('     ' + s)); r.stuckAt.forEach(s => console.log('     stuck: ' + s)); }
+  }
+  const ok = (x, z, r, h0) => { const i = T.at(x, z); return i >= 0 && T.reach[i] && T.fits(x, z, r, h0 ?? T.groundAt(x, z), Z.sizes ? { small: true, up: Z.sizes.climb, down: Z.sizes.drop } : undefined); };
   const mark = {};
   for (const s of spots[id] || []) {
     const [x, z] = s.p;
@@ -219,6 +232,81 @@ function solveRoots(T, Z, bad) {
     });
   }
   return { n: -1, path: [], reach: reachAll, states: seen.size };
+}
+// 大きさの変わる区画（zone.sizes）：0.5m ずつの格子の点と、大きさ（0 小さい・1 ふつう・2 大きい）の組を状態にして、
+//   ちびクッキー・でかミルク（stands）を使う回数の少ない順にたどる（FieldView の動き方と同じ：Terrain.move の段差の決まり、キャンディの柵は小さいときだけ）。
+//   ねこ地蔵（anchor）のそばでは、ふつうの大きさにもどる。出口（d）のマスに着ければ解けた。
+//   stuck：たどりつける状態のうち、ねこ地蔵へもどれないもの（大きさを変えても、どこへも行けなくなる）の数
+function solveSizes(T, Z) {
+  const SZ = Z.sizes, R = G('SIZE_R'), K4 = 4, NX = T.cols * K4, NZ = T.rows * K4, N = NX * NZ;
+  const opt = s => ({ small: s === 0, up: s === 2 ? SZ.climb : G('STEP'), down: SZ.drop });
+  const O = [0, 1, 2].map(opt);
+  const px = k => -T.hw + 0.25 + (k % NX) * 0.5, pz = k => -T.hd + 0.25 + Math.floor(k / NX) * 0.5;
+  const g = new Float32Array(N); for (let k = 0; k < N; k++) g[k] = T.groundAt(px(k), pz(k));
+  // 動かない小物（ねこ地蔵・宝箱・石碑・クッキーとミルクの台）は、円の当たり
+  const obst = [[...Z.anchor, 0.7], ...(Z.chestAt || []).map(p => [...p, 0.6]), ...(Z.notes || []).filter(n => !n.post && !n.board && n.mark == null).map(n => [...n.at, 0.5]), ...SZ.stands.map(st => [...st.at, 0.6])];
+  const hit = (x, z, r) => obst.some(([ox, oz, or]) => Math.hypot(ox - x, oz - z) < or + r);
+  const fit = (k, s, h0) => { const x = px(k), z = pz(k); return T.walkable(T.at(x, z), O[s]) && !hit(x, z, R[s]) && T.misfits(x, z, R[s], h0, O[s]) === 0; };
+  // 一歩（遊ぶときの Terrain.move と同じ：めり込んでいるときは、めり込みが増えない向きへなら動ける）
+  const step = (p, q, s) => {
+    const h0 = g[p], x = px(q), z = pz(q);
+    if (!T.walkable(T.at(x, z), O[s]) || hit(x, z, R[s])) return false;
+    const bad = T.misfits(x, z, R[s], h0, O[s]); if (bad === 0) return true;
+    const cur = T.misfits(px(p), pz(p), R[s], h0, O[s]);
+    return cur > 0 && bad <= cur && T.stepOk(g[q] - h0, O[s]);
+  };
+  const near = SZ.stands.map(st => { const out = []; for (let k = 0; k < N; k++) if (Number.isFinite(g[k]) && Math.hypot(px(k) - st.at[0], pz(k) - st.at[1]) < G('SIZE_REACH') && Math.abs(g[k] - T.groundAt(...st.at)) < 1.2) out.push(k); return new Set(out); });
+  const home = new Set(); for (let k = 0; k < N; k++) if (Number.isFinite(g[k]) && Math.hypot(px(k) - Z.anchor[0], pz(k) - Z.anchor[1]) < 2.6 && Math.abs(g[k] - T.groundAt(...Z.anchor)) < 1.5) home.add(k);
+  const goal = new Set(T.exits.d ? T.exits.d.cells : []);
+  // となりへの一歩と、大きさを変える手（0 = 歩く、1 = クッキー・ミルク）
+  const moves = st => {
+    const k = Math.floor(st / 3), s = st % 3, out = [], ix = k % NX, iz = Math.floor(k / NX);
+    for (const [dx, dz] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const jx = ix + dx, jz = iz + dz; if (jx < 0 || jz < 0 || jx >= NX || jz >= NZ) continue; const q = jz * NX + jx; if (step(k, q, s)) out.push([q * 3 + s, 0, '']); }
+    if (home.has(k) && s !== 1 && fit(k, 1, g[k])) out.push([k * 3 + 1, 0, '']);
+    SZ.stands.forEach((sd, i) => { if (!near[i].has(k)) return; const t = s + (sd.kind === 'cookie' ? -1 : 1); if (t < 0 || t > 2 || !fit(k, t, g[k])) return; out.push([k * 3 + t, 1, `${sd.kind}${i}(${sd.at}) → ${['small', 'normal', 'big'][t]}`]); });
+    return out;
+  };
+  // (x, z) にいちばん近い、ふつうの大きさで立てる点
+  const nearest = (x, z) => { let b = -1, bd = 1e9; for (let k = 0; k < N; k++) { if (!Number.isFinite(g[k])) continue; const d = Math.hypot(px(k) - x, pz(k) - z); if (d < bd && fit(k, 1, g[k])) { bd = d; b = k; } } return b * 3 + 1; };
+  const start = nearest(...Z.anchor);
+  // ほかの区画から来たとき（門から 3.5m 入ったところ。ふつうの大きさ）
+  const arrive = Object.values(T.exits).map(E => nearest(E.outer.x + E.nx * 3.5, E.outer.z + E.nz * 3.5));
+  // 0-1 BFS（歩くのは 0 回、大きさを変えるのは 1 回）。front は今の回数、back は 1 回多い状態
+  const bfs = starts => {
+    const dist = new Int32Array(N * 3).fill(-1), prev = new Int32Array(N * 3).fill(-1), act = new Map(), front = [...starts], back = [];
+    let found = -1;
+    starts.forEach(st => { dist[st] = 0; });
+    while (front.length || back.length) {
+      const st = front.length ? front.pop() : back.shift();
+      const k = Math.floor(st / 3);
+      if (found < 0 && goal.has(T.at(px(k), pz(k)))) found = st;
+      for (const [nx, w, a] of moves(st)) {
+        const nd = dist[st] + w;
+        if (dist[nx] >= 0 && dist[nx] <= nd) continue;
+        dist[nx] = nd; prev[nx] = st; if (a) act.set(nx, a);
+        if (w) back.push(nx); else front.push(nx);
+      }
+    }
+    return { dist, prev, act, found };
+  };
+  const { prev, act, found } = bfs([start]), { dist } = bfs([start, ...arrive]);
+  // 行ける場所：立てる点のマスと、体（半径）がとどくマス（宝箱などの小物が置いてあるマスも、そばまで行ければ行ける場所）
+  const reach = new Uint8Array(T.kind.length); let states = 0;
+  for (let st = 0; st < N * 3; st++) if (dist[st] >= 0) {
+    states++; const k = Math.floor(st / 3), x = px(k), z = pz(k), r = R[st % 3] + 0.3;
+    for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) { const i = T.at(x + dx, z + dz); if (i >= 0 && T.isWalkKind(T.kind[i]) && Math.abs(T.groundAt(x + dx, z + dz) - g[k]) < 0.7) reach[i] = 1; }
+  }
+  // ねこ地蔵へもどれるか：逆向きにたどる
+  const radj = new Map();
+  for (let st = 0; st < N * 3; st++) if (dist[st] >= 0) for (const [nx] of moves(st)) { if (!radj.has(nx)) radj.set(nx, []); radj.get(nx).push(st); }
+  const okBack = new Uint8Array(N * 3), stk = [];
+  for (const k of home) for (let s = 0; s < 3; s++) if (dist[k * 3 + s] >= 0) { okBack[k * 3 + s] = 1; stk.push(k * 3 + s); }
+  while (stk.length) { const st = stk.pop(); for (const p of radj.get(st) || []) if (!okBack[p]) { okBack[p] = 1; stk.push(p); } }
+  let stuck = 0; const stuckAt = [];
+  for (let st = 0; st < N * 3; st++) if (dist[st] >= 0 && !okBack[st]) { stuck++; if (stuckAt.length < 6) { const k = Math.floor(st / 3); stuckAt.push(`${['small', 'normal', 'big'][st % 3]} at ${px(k)},${pz(k)}`); } }
+  if (found < 0) return { n: -1, path: [], reach, states, stuck, stuckAt };
+  const path = []; for (let st = found; st !== start && st >= 0; st = prev[st]) if (act.has(st)) path.unshift(act.get(st));
+  return { n: path.length, path, reach, states, stuck, stuckAt };
 }
 // 影の回廊（zone.shadows）：プレイヤーが area に入ると、影が鏡の位置（mirror 'x' は x = at[0] の線、'xz' は at の点で折り返す）にあらわれ、
 //   プレイヤーが動くと、鏡うつしに動く（壁にぶつかると止まる。影は area を折り返した範囲の外へは出ない）。ひだまり（lights）に入ると、影は消えて、プレイヤーの鏡の位置にあらわれなおす。

@@ -82,6 +82,15 @@ const NPCS = {
     look: { fur: '#d8d8e0', pattern: 'point', patches: ['#6a6a7a'], eye: '#8ad8ff', muzzle: '#f0f0f4', ribbon: '#8ad8ff', material: 'ghost', ghostCol: '#8ab8ff', accent: '#8ad8ff' } },
   gorou:     { name: 'ゴロウ', title: '「影の四剣」の力持ち', elem: 'physical', face: 'joy', scale: 1.18,
     look: { fur: '#e8a050', pattern: 'tabby', patches: ['#b87030'], eye: '#8a6a3a', muzzle: '#fff0d8', belly: '#fff0d8', band: '#e0453a', material: 'ghost', ghostCol: '#ffb86a', accent: '#ffb86a' } },
+  // ---------------- ねこ神の夢に出てくる人 ----------------
+  // シロの幼なじみ（シロのしっぽをつかんで歩いていた、小さいころの姿）
+  yuki:      { name: 'ユキ', title: 'シロの幼なじみ', elem: 'ice', face: 'joy', scale: 0.78,
+    look: { fur: '#f0f2f8', pattern: 'point', patches: ['#b8c0d8'], eye: '#6ab8ff', muzzle: '#ffffff', paws: '#ffffff', earIn: '#ffc8d8', ribbon: '#6ab8ff', accent: '#8ad8ff', blush: 0.5 } },
+  // ミケの両親（夢の中の、光の姿）。お父さんは、ミケと同じ赤いハチマキ
+  mike_papa: { name: 'ミケのお父さん', title: 'ミケの父', elem: 'fire', face: 'smile', scale: 1.12,
+    look: { fur: '#f2a24e', pattern: 'tabby', patches: ['#c8702a'], eye: '#f2a91e', muzzle: '#fff4e0', paws: '#fff4e0', earIn: '#f7b3bd', band: '#e0453a', material: 'ghost', ghostCol: '#ffb86a', accent: '#ffd76a' } },
+  mike_mama: { name: 'ミケのお母さん', title: 'ミケの母', elem: 'fire', face: 'gentle', scale: 1.05,
+    look: { fur: '#fffaf2', pattern: 'calico', patches: ['#f29a3e', '#3b302c'], eye: '#f2a91e', muzzle: '#ffffff', paws: '#ffffff', earIn: '#f7b3bd', kerchief: '#e0453a', apron: '#fff4e0', material: 'ghost', ghostCol: '#ffd27a', accent: '#ffd76a' } },
   // ---------------- 魔王領 ----------------
   mazoku_yukyu: { name: '魔族兵のベル', title: '有給を申請中', elem: 'quantum', face: 'worry',
     look: { fur: '#8a6ad8', eye: '#ffe07a', muzzle: '#b8a0f0', paws: '#b8a0f0', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#4a2a7a', cap: '#5a5a6a', capType: 'helmet', accent: '#ffcf4a' } },
