@@ -703,7 +703,8 @@ class StageView extends BaseView {
 const STAGE_FX = {
   // 流れ星が落ちる（夜の丘）
   meteor(arg) {
-    const to = this.point(arg || 'crater') || this.W(0, 10), from = to.clone().add(V3(-40, 40, -30));
+    // 一行の後ろから見て、左上の空の奥から飛んでくる（look: のカメラの画に、はじめから入るように）
+    const to = this.point(arg || 'crater') || this.W(0, 10), from = to.clone().addScaledVector(this.R, -32).addScaledVector(this.F, 15).add(V3(0, 26, 0));
     const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#fff0c8', 5), blending: THREE.AdditiveBlending, depthWrite: false }));
     m.scale.setScalar(2.4);
     this.fx.add(m, 2.2, (k, o) => { const e = Ease.in(k); o.position.lerpVectors(from, to, e); for (let i = 0; i < 6; i++) this.p.emit(o.position, V3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)), hdr(Math.random() < 0.5 ? '#fff0c8' : '#8ad8ff', 3), { life: 1.2, size: 0.5 }); });

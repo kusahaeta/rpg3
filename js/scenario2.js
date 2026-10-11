@@ -1163,7 +1163,7 @@ const STORY = [
   { title: '第一章　勇者、拾われる', steps: [
     { t: 'scene', id: 'c1_01', g: '魚どろぼう' },
     { t: 'scene', id: 'c1_02', g: '流れ星の夜' },
-    { t: 'field', zone: 'hill', at: [0, 1], start: ['pokapoka', -17, -4], near: ['pokapoka', 'hill'], yaw: 1.3, scene: 'c1_03', g: '流れ星の落ちた、村はずれの丘へ行く' },
+    { t: 'field', zone: 'hill', at: [-1, -6.6], start: ['pokapoka', -17, -4], near: ['pokapoka', 'hill'], yaw: 1.3, scene: 'c1_03', g: '流れ星の落ちた、村はずれの丘へ行く' },
     { t: 'field', zone: 'pokapoka', at: [0, -9], scene: 'c1_04', g: '村に戻って、村長にクロのことを話す' },
     { t: 'field', zone: 'forest_in', at: [-2, -9], scene: 'c1_05', battle: '1-1', g: '村の南の、ほしふる森へ' },
     { t: 'field', zone: 'forest_deep', at: [-4, -5], scene: 'c1_06', battle: '1-2', g: 'ほしふる森の奥へ進む' },
