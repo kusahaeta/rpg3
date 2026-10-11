@@ -183,7 +183,7 @@ class FieldView extends BaseView {
     // when / until：その条件を満たしてから出る／満たすと消える（storyCond の条件）
     const npcDefs = (Z.npcs || []).filter(n => (!n.after || typeof Story === 'undefined' || Story.seen(n.after)) && storyCond(n.when) && !(n.until && storyCond(n.until)));
     const noteDefs = (Z.notes || []).filter(n => (!n.when || storyCond(n.when)) && !(n.until && storyCond(n.until)));
-    this.reserved = [P(Z.anchor, 3.5), ...zoneArenas(Z).map(a => ({ x: a.x, z: a.z, r: 7 }))];
+    this.reserved = [P(Z.anchor, 3.5), ...zoneArenas(Z).filter(a => !a.battleOnly).map(a => ({ x: a.x, z: a.z, r: 7 }))];
     if (Z.spawn) this.reserved.push(P(Z.spawn, 4));
     if (Z.portal) this.reserved.push(P(Z.portal, 4));
     (Z.chestAt || []).forEach(p => this.reserved.push(P(p, 2)));
