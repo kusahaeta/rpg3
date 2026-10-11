@@ -264,6 +264,24 @@ function TeamScreen(backFn) {
 }
 
 // ------------------------------------------------------------
+//  武器（なかま画面・武器屋で使う）
+// ------------------------------------------------------------
+function weaponIcon(id) {
+  const w = WEAPONS[id], c = (w.look && w.look.c) || ELEMENTS[CHARS[w.owner].elem].color, g = (w.look && w.look.g) || '#ffffff';
+  return `<span class="wp-ic" style="--wc:${c};--wg:${g}">${WEAPON_GLYPH[CHARS[w.owner].gear.weapon]}</span>`;
+}
+const weaponTier = id => '★'.repeat(WEAPONS[id].tier + 1);
+const weaponHint = id => { const g = WEAPONS[id].get || {}; return g.shop ? '武器屋で売っている' : g.chest ? `${FIELD_ZONES[g.chest[0]].mapName || FIELD_ZONES[g.chest[0]].name}の宝箱に眠っている` : ''; };
+function weaponList(key) {
+  const eq = equippedWeapon(key), kind = WEAPON_KIND[CHARS[key].gear.weapon];
+  return `<div class="ck-wps"><div class="ck-wps-h"><b>武器（${kind}）</b><small>持っている${kind}を選ぶと、通常攻撃・戦闘スキル・必殺技が変わる</small></div>
+    ${weaponsFor(key).map(id => hasWeapon(id)
+      ? `<button class="wp-row ${id === eq ? 'on' : ''}" data-wp="${id}">${weaponIcon(id)}<span class="wp-info"><b>${weaponName(id)}</b><small>${WEAPONS[id].desc}</small></span><span class="wp-tier">${weaponTier(id)}</span><span class="wp-eq">${id === eq ? '装備中' : 'そうび'}</span></button>`
+      : `<div class="wp-row locked"><span class="wp-ic">？</span><span class="wp-info"><b>？？？</b><small>${weaponHint(id)}</small></span><span class="wp-tier">${weaponTier(id)}</span></div>`).join('')}
+  </div>`;
+}
+
+// ------------------------------------------------------------
 //  なかま（ステータス・わざ）
 // ------------------------------------------------------------
 function CharScreen(sel) {
@@ -271,7 +289,7 @@ function CharScreen(sel) {
   sel = sel && Save.data.owned[sel] ? sel : Save.data.team[0];
   const v3 = GFX.show('chars', () => new ShowcaseView(sel, { screenX: 470 }));
   if (v3 && (!v3.model || v3.model.key !== sel)) v3.setChar(sel);
-  const c = CHARS[sel], o = Save.data.owned[sel], col = ELEMENTS[c.elem].color, gear = Save.data.gear[sel] || 0;
+  const c = charKit(sel), o = Save.data.owned[sel], col = ELEMENTS[c.elem].color, wid = equippedWeapon(sel);
   const st = charStats(sel, o.lv, o.eid);
   const ab = (label, a) => `<div class="ck-ab"><div class="ck-ab-h"><span class="ck-kind">${label}</span><b>${a.name}</b>${a.target ? `<span class="ck-tg">${{ single: '単体', blast: '拡散', aoe: '全体', bounce: 'バウンド', ally: '味方単体', allies: '味方全体', self: '自分' }[a.target]}</span>` : ''}</div><p>${a.desc}</p></div>`;
   const combos = COMBOS.filter(x => x.pair.includes(sel));
@@ -280,7 +298,7 @@ function CharScreen(sel) {
     <div class="ck-art ${GFX.ok ? 'is3d' : ''}" style="--c:${col}">${GFX.ok ? '' : avatarSVG(sel)}</div>
     <div class="ck-info" style="--c:${col}">
       <div class="ck-head"><h2>${c.name}</h2><div class="ck-title">${c.title}</div>
-        <div class="ck-tags">${elemIcon(c.elem)}<span>${ELEMENTS[c.elem].name}</span><span class="ck-path">役割：${PATHS[c.path].name}</span><span class="ck-eid">武器：${GEAR_NAMES[sel][gear]}</span></div></div>
+        <div class="ck-tags">${elemIcon(c.elem)}<span>${ELEMENTS[c.elem].name}</span><span class="ck-path">役割：${PATHS[c.path].name}</span><span class="ck-eid">武器：${weaponName(wid)}</span></div></div>
       <div class="ck-lv"><b>Lv.${o.lv}</b><span>/80</span>
         <div class="bar exp"><i style="width:${o.lv >= 80 ? 100 : o.exp / expToNext(o.lv) * 100}%"></i></div>
         <div class="dim">${o.lv >= 80 ? 'レベル最大' : `次のレベルまで あと ${fmt(expToNext(o.lv) - o.exp)}`}</div></div>
@@ -290,6 +308,7 @@ function CharScreen(sel) {
         <div><span>会心率</span><b>${Math.round(st.crit * 100)}%</b></div><div><span>会心ダメージ</span><b>${Math.round(st.critDmg * 100)}%</b></div>
         <div><span>撃破特効</span><b>${Math.round(st.be * 100)}%</b></div><div><span>EP上限</span><b>${c.energyMax}</b></div>
       </div>
+      ${weaponList(sel)}
       <div class="ck-abs">
         ${ab('通常攻撃', c.basic)}${ab('戦闘スキル', c.skill)}${ab(`必殺技（EP${c.energyMax}）`, c.ult)}
         ${ab('とくせい', c.talent)}${ab('初手技', c.technique)}
@@ -298,6 +317,11 @@ function CharScreen(sel) {
     </div></div>`);
   wireBack(s);
   on(s, '.ck-list .chip', 'click', el => App.go(CharScreen, el.dataset.key));
+  on(s, '.wp-row[data-wp]', 'click', el => {
+    if (el.dataset.wp === wid) return;
+    equipWeapon(sel, el.dataset.wp); Sfx.select();
+    App.go(CharScreen, sel); if (v3) v3.setChar(sel);
+  });
   if (v3) v3.bindDrag(s.querySelector('.ck-art'));
   return s;
 }
@@ -336,14 +360,25 @@ function BondScreen() {
 const SHOP_NAMES = { weapon: '武器を鍛える', item: '道具屋', inn: 'ひと休み', fish: '魚屋' };
 function renderShop(o, kind, name, close, field) {
   const d = Save.data;
+  let shopTab = 'forge';
   const draw = () => {
     let body = '';
     if (kind === 'weapon') {
-      body = `<div class="dim">にぼしで仲間の武器を鍛えると、HP・攻撃力・防御力が上がる。</div><div class="sh-list">` + Object.keys(d.owned).map(k => {
-        const g = d.gear[k] || 0, max = g >= GEAR_MAX, cost = gearCost(g);
-        return `<div class="sh-row"><div class="sh-face">${avatarSVG(k)}</div><div class="sh-info"><b>${CHARS[k].name}</b><small>${GEAR_NAMES[k][g]}${max ? '（最強）' : ` → ${GEAR_NAMES[k][g + 1]}`}</small></div>
-          <button class="btn small" data-buy="${k}" ${max || d.niboshi < cost ? 'disabled' : ''}>${max ? 'これ以上は無理' : `にぼし ${cost}`}</button></div>`;
-      }).join('') + '</div>';
+      const ks = Object.keys(d.owned).filter(k => CHARS[k]);
+      const forge = ks.flatMap(k => weaponsFor(k).filter(hasWeapon)).map(id => {
+        const w = WEAPONS[id], p = weaponPlus(id), max = p >= WEAPON_MAX, cost = weaponCost(id);
+        return `<div class="sh-row">${weaponIcon(id)}<div class="sh-info"><b>${weaponName(id)}${max ? '' : ` → +${p + 1}`}</b><small>${CHARS[w.owner].name}の${WEAPON_KIND[CHARS[w.owner].gear.weapon]}${equippedWeapon(w.owner) === id ? '（装備中）' : ''}</small></div>
+          <button class="btn small" data-forge="${id}" ${max || d.niboshi < cost ? 'disabled' : ''}>${max ? 'これ以上は無理' : `にぼし ${cost}`}</button></div>`;
+      }).join('');
+      const sale = ks.flatMap(k => weaponsFor(k).filter(id => !hasWeapon(id) && WEAPONS[id].get && WEAPONS[id].get.shop)).map(id => {
+        const w = WEAPONS[id];
+        return `<div class="sh-row">${weaponIcon(id)}<div class="sh-info"><b>${w.name}</b><small>${CHARS[w.owner].name}の${WEAPON_KIND[CHARS[w.owner].gear.weapon]}　${w.desc}</small></div>
+          <button class="btn small" data-wbuy="${id}" ${d.niboshi < w.get.price ? 'disabled' : ''}>にぼし ${w.get.price}</button></div>`;
+      }).join('');
+      body = `<div class="sh-tabs"><button class="btn small ${shopTab === 'forge' ? 'gold' : ''}" data-tab="forge">鍛える</button><button class="btn small ${shopTab === 'buy' ? 'gold' : ''}" data-tab="buy">買う</button></div>`
+        + (shopTab === 'forge'
+          ? `<div class="dim">にぼしで武器を鍛えると（+1〜+${WEAPON_MAX}）、その武器を持ったときのHP・攻撃力・防御力が上がる。</div><div class="sh-list">${forge}</div>`
+          : `<div class="dim">買った武器は「なかま」の画面で装備できる。武器を替えると、技がまるごと変わる。</div><div class="sh-list">${sale || '<div class="dim">いまは、売れる武器がないな。</div>'}</div>`);
     } else if (kind === 'item') {
       body = `<div class="sh-list">
         <div class="sh-row"><div class="sh-icon">🌿</div><div class="sh-info"><b>またたびの小袋</b><small>初手技ポイントが満タンになる</small></div><button class="btn small" data-item="tp" ${d.niboshi < 60 || d.tp >= 5 ? 'disabled' : ''}>にぼし 60</button></div>
@@ -364,7 +399,19 @@ function renderShop(o, kind, name, close, field) {
     o.innerHTML = `<div class="ov-box shop"><h2>${name}</h2>${body}<div class="sh-foot"><span class="c-item"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><button class="btn gold" data-close>おしまい</button></div></div>`;
     o.classList.remove('hidden');
     o.querySelector('[data-close]').onclick = () => { Sfx.click(); o.classList.add('hidden'); close(); };
-    o.querySelectorAll('[data-buy]').forEach(b => b.onclick = () => { const k = b.dataset.buy, g = d.gear[k] || 0; d.niboshi -= gearCost(g); d.gear[k] = g + 1; Save.save(); Sfx.brk(); Sfx.meow(k); field && field.toast(`${CHARS[k].name}の武器が「${GEAR_NAMES[k][g + 1]}」になった！`); draw(); });
+    o.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { shopTab = b.dataset.tab; Sfx.select(); draw(); });
+    o.querySelectorAll('[data-forge]').forEach(b => b.onclick = () => {
+      const id = b.dataset.forge, k = WEAPONS[id].owner;
+      d.niboshi -= weaponCost(id); d.weapons[id] = weaponPlus(id) + 1; Save.save(); Sfx.brk(); Sfx.meow(k);
+      field && field.toast(`「${weaponName(id)}」になった！${weaponPlus(id) >= WEAPON_MAX ? '（武器が光りはじめた）' : ''}`);
+      draw();
+    });
+    o.querySelectorAll('[data-wbuy]').forEach(b => b.onclick = () => {
+      const id = b.dataset.wbuy, w = WEAPONS[id];
+      d.niboshi -= w.get.price; gainWeapon(id); Save.save(); Sfx.win(); Sfx.meow(w.owner);
+      field && field.toast(`「${w.name}」を買った！（なかまの画面で${CHARS[w.owner].name}に装備できる）`);
+      draw();
+    });
     o.querySelectorAll('[data-item]').forEach(b => b.onclick = () => {
       const it = b.dataset.item;
       if (it === 'tp') { d.niboshi -= 60; d.tp = 5; field && field.toast('初手技ポイントが満タンになった'); }

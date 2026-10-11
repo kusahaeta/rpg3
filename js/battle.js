@@ -31,7 +31,7 @@ const FOE_HP = 0.55;
 class Unit {
   constructor(side, key, level, opts = {}) {
     this.uid = ++UID; this.side = side; this.key = key; this.level = level;
-    this.def = side === 'ally' ? CHARS[key] : ENEMIES[key];
+    this.def = side === 'ally' ? charKit(key) : ENEMIES[key];
     this.buffs = []; this.dots = []; this.implants = []; this.flags = {};
     this.alive = true; this.gauge = 10000; this.shield = 0; this.shieldTurns = 0;
     this.frozen = null; this.entangle = null;

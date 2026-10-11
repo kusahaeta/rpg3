@@ -551,14 +551,16 @@ function capeGeo(wt, wb, h, curve) {
 }
 
 // ---------- 武器（右手。持ち方は人型と同じ：腕を下ろすと先が前下を向く） ----------
+// G.tint：武器ごとの色（c＝本体、g＝光るところ。js/weapons.js の look）。G.shine：+5 まで鍛えた武器は先が光る
 function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow, G = {}) {
-  const ex = {}, eg = glowMat(elemCol, 3);
+  const tc = (G.tint && G.tint.c) || null, tg = (G.tint && G.tint.g) || null;
+  const ex = {}, eg = glowMat(tg || elemCol, 3);
   const hold = new THREE.Group(); hold.rotation.x = Math.PI - 0.55; armR.grip.add(hold);
   const tipAt = (y, parent = hold) => { ex.tip = new THREE.Object3D(); ex.tip.position.y = y; parent.add(ex.tip); };
   switch (type) {
     case 'sword': {   // 勇者の片手剣
-      const bl = P(new THREE.BoxGeometry(0.045, 0.36, 0.012), T('#e8ecf4')); bl.position.y = 0.24; hold.add(bl);
-      const tipM = P(new THREE.ConeGeometry(0.032, 0.06, 4), T('#e8ecf4')); tipM.scale.z = 0.3; tipM.position.y = 0.45; tipM.rotation.y = Math.PI / 4; hold.add(tipM);
+      const bl = P(new THREE.BoxGeometry(0.045, 0.36, 0.012), T(tc || '#e8ecf4')); bl.position.y = 0.24; hold.add(bl);
+      const tipM = P(new THREE.ConeGeometry(0.032, 0.06, 4), T(tc || '#e8ecf4')); tipM.scale.z = 0.3; tipM.position.y = 0.45; tipM.rotation.y = Math.PI / 4; hold.add(tipM);
       const ed = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.34, 0.016), eg); ed.position.set(0, 0.24, 0); hold.add(ed);
       const gd = P(new THREE.BoxGeometry(0.14, 0.025, 0.035), T('#ffd76a', { emissive: new THREE.Color('#ffd76a'), emissiveIntensity: 0.2 })); gd.position.y = 0.055; hold.add(gd);
       const hi = P(new THREE.CylinderGeometry(0.014, 0.014, 0.08, 8), T('#7a3a2a')); hi.position.y = 0.0; hold.add(hi);
@@ -566,27 +568,27 @@ function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow, G = {}) 
       tipAt(0.47); break;
     }
     case 'blade': {   // クロの黒刀（少し長い）
-      const bl = P(new THREE.BoxGeometry(0.035, 0.52, 0.01), T('#3a3848')); bl.position.y = 0.32; bl.rotation.z = 0.04; hold.add(bl);
-      const ed = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.5, 0.012), glowMat('#b8c6ff', 2.4)); ed.position.set(0.017, 0.32, 0); hold.add(ed);
+      const bl = P(new THREE.BoxGeometry(0.035, 0.52, 0.01), T(tc || '#3a3848')); bl.position.y = 0.32; bl.rotation.z = 0.04; hold.add(bl);
+      const ed = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.5, 0.012), glowMat(tg || '#b8c6ff', 2.4)); ed.position.set(0.017, 0.32, 0); hold.add(ed);
       const gd = P(new THREE.CylinderGeometry(0.04, 0.04, 0.012, 10), T('#b8c6e8')); gd.position.y = 0.05; hold.add(gd);
       const hi = P(new THREE.CylinderGeometry(0.014, 0.014, 0.1, 8), T('#8a2f3c')); hi.position.y = -0.01; hold.add(hi);
       tipAt(0.6); break;
     }
     case 'wand': {    // シロの星の杖
-      const st = P(new THREE.CylinderGeometry(0.012, 0.016, 0.42, 8), T('#f4ecd8')); st.position.y = 0.18; hold.add(st);
-      const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 0), glowMat('#ffe07a', 3)); star.position.y = 0.42; star.scale.set(1, 1, 0.45); hold.add(star);
+      const st = P(new THREE.CylinderGeometry(0.012, 0.016, 0.42, 8), T(tc || '#f4ecd8')); st.position.y = 0.18; hold.add(st);
+      const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 0), glowMat(tg || '#ffe07a', 3)); star.position.y = 0.42; star.scale.set(1, 1, 0.45); hold.add(star);
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.008, 6, 20), glowMat(elemCol, 2.4)); ring.position.y = 0.42; hold.add(ring);
       ex.tip = star; ex.update = (dt, t) => { star.rotation.y = t * 2; ring.rotation.x = t * 1.5; }; break;
     }
     case 'pillow': {  // タマのまくら（左手で抱える）
-      const pl = P(new THREEX.RoundedBoxGeometry(0.3, 0.2, 0.1, 4, 0.045), T('#ffe0ea')); pl.position.set(0.03, -0.02, 0.05); pl.rotation.set(0.1, 0.2, 1.25); armL.grip.add(pl);
-      for (const y of [-0.05, 0.05]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.302, 0.018, 0.101), T('#ff9ab8')); st.position.y = y; pl.add(st); }
+      const pl = P(new THREEX.RoundedBoxGeometry(0.3, 0.2, 0.1, 4, 0.045), T(tc || '#ffe0ea')); pl.position.set(0.03, -0.02, 0.05); pl.rotation.set(0.1, 0.2, 1.25); armL.grip.add(pl);
+      for (const y of [-0.05, 0.05]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.302, 0.018, 0.101), T(tg || '#ff9ab8')); st.position.y = y; pl.add(st); }
       for (const x of [-0.15, 0.15]) { const ts = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), T('#ffd76a')); ts.position.set(x, 0.1, 0); pl.add(ts); }
       ex.tip = pl; break;
     }
     case 'scepter': { // マオウの笏
-      const rod = P(new THREE.CylinderGeometry(0.014, 0.018, 0.5, 8), T('#2a2238')); rod.position.y = 0.2; hold.add(rod);
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 10), glowMat('#c070ff', 2.6)); orb.position.y = 0.48; hold.add(orb);
+      const rod = P(new THREE.CylinderGeometry(0.014, 0.018, 0.5, 8), T(tc || '#2a2238')); rod.position.y = 0.2; hold.add(rod);
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 10), glowMat(tg || '#c070ff', 2.6)); orb.position.y = 0.48; hold.add(orb);
       for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; const s = P(new THREE.ConeGeometry(0.012, 0.08, 5), T('#ffcf4a')); s.position.set(Math.cos(a) * 0.045, 0.46, Math.sin(a) * 0.045); s.rotation.z = Math.cos(a) * -0.5; s.rotation.x = Math.sin(a) * 0.5; hold.add(s); }
       ex.tip = orb; break;
     }
@@ -650,6 +652,10 @@ function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow, G = {}) 
       tipAt(-0.15); break;
     }
     default: ex.tip = armR.grip;
+  }
+  if (G.shine && ex.tip) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(tg || elemCol, 0.7), blending: THREE.AdditiveBlending, depthWrite: false }));
+    sp.scale.setScalar(0.32); ex.tip.add(sp);
   }
   return ex;
 }
