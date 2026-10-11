@@ -1450,11 +1450,7 @@ const FIELD_ZONES = {
       // 影の四剣が集まった順（ハヤテ → ゴロウ → リン）にふれないと、光は消えて、到着した岩棚へ押しもどされる
       order: [0, 2, 1], back: [7, 35], backToast: '……気がつくと、淵の上の岩棚に立っていた。……集まった順を、思い出そう',
       wrong: [['e:kako_kuro', '……ちがう。お前は、あいつらのことを、何も覚えていない。'], ['n', '記憶のかけらの光が、すうっと消えていく。……闇が、あたりをのみこんだ。'], ['kuro', '……っ。……順番が、ちがうのか。']],
-      items: [
-        (K, x, y, z) => { K.mesh(new THREE.BoxGeometry(0.9, 0.05, 0.22), '#3a6ad8', x, y + 0.03, z, { abs: true, ry: 0.4 }); K.mesh(new THREE.BoxGeometry(0.22, 0.05, 0.5), '#3a6ad8', x + 0.3, y + 0.03, z + 0.2, { abs: true, ry: 0.4 }); },
-        (K, x, y, z) => { K.mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 6), 'wood2', x, y + 0.05, z, { abs: true, rz: Math.PI / 2, ry: 0.3 }); K.mesh(new THREE.OctahedronGeometry(0.09), K.glow('#cfefff', 2.2), x + 0.45, y + 0.08, z - 0.14, { abs: true, noShadow: true }); },
-        (K, x, y, z) => { K.mesh(new THREE.SphereGeometry(0.3, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), 'iron', x, y, z, { abs: true }); K.mesh(new THREE.BoxGeometry(0.64, 0.06, 0.12), 'iron', x, y + 0.02, z + 0.24, { abs: true }); },
-      ],
+      items: [0, 1, 2].map(i => (K, x, y, z) => K.memoryItem(i, x, y, z)),
       memories: [
         ['……ハヤテの、青いマフラーだ。', '「クロ、お前は無口だけど、いちばん仲間思いだ」……あいつは、いつもそう言って笑っていた。'],
         ['……リンの、光の杖。', '「こわいときは、明かりを灯せばいいの」……リンは、どんな闇の中でも、光を灯して歩いた。'],
@@ -5829,6 +5825,128 @@ class ZoneKit {
       scarf.position.set(0.035, S.gh + 0.03, 0.03); g.add(scarf);
       let t = 0;
       this.tick(dt => { t += dt; scarf.rotation.set(0.25 + Math.sin(t * 2.1) * 0.1, 0.5 + Math.sin(t * 1.3) * 0.35, 0.2 + Math.sin(t * 1.7) * 0.08); });
+    }
+    this.add(g);
+  }
+  // 記憶のかけらの祭壇にのる、影の四剣の思い出の品（i：0 ハヤテ・1 リン・2 ゴロウ）。(x, y, z) は祭壇の上面のまん中（祭壇は 1.1 × 0.8）
+  //   ハヤテ：編み目のしまの青いマフラー。祭壇の上にゆるく折り重なり、片はしが手前のふちから垂れる（両はしに房）
+  //   リン：白木に銀の帯の光の杖。三日月の輪の中に光の水晶。祭壇にななめに置かれ、水晶から光の粒がこぼれる
+  //   ゴロウ：大きな鉄のかぶと。猫の耳おおい、銅のふちと鋲、てっぺんの峰、ひたいに肉球の紋章。横にへこみ、赤いはちまきを巻いて、結び目のはしが垂れる
+  memoryItem(i, x, y, z) {
+    const g = new THREE.Group(); g.position.set(x, y, z);
+    const at = (geo, mat, px, py, pz, opt = {}) => this.mesh(geo, mat, px, py, pz, { ...opt, parent: opt.parent || g });
+    const std = (key, col, metal, rough, o = {}) => this.mc[key] || (this.mc[key] = new THREE.MeshStandardMaterial({ color: col, metalness: metal, roughness: rough, ...o }));
+    // 布の帯：pts に沿って、幅 w・厚さ h の平たい帯を作る。帯の面は、祭壇の上では上を、ふちから垂れたところでは手前（+Z）を向く
+    //   col(s)：帯のはしからの長さ s（0〜1）での色（しま模様）。o.W：幅の向きを固定する（折り重ねるとき。pts は帯のまん中の線）。o.map：編み目の模様。o.wr：布のしわの大きさ
+    const band = (pts, w, h, col, segs = 90, o = {}) => {
+      const curve = new THREE.CatmullRomCurve3(pts.map(p => V3(...p)), false, 'centripetal'), P = [], C = [], U = [], idx = [], len = curve.getLength();
+      const frames = [];
+      for (let k = 0; k <= segs; k++) {
+        const s = k / segs, p = curve.getPointAt(s), T = curve.getTangentAt(s), dn = clamp(-p.y / 0.06, 0, 1);
+        const W = o.W ? V3(...o.W) : new THREE.Vector3().crossVectors(T, V3(0, 1 - dn, dn).normalize()).normalize(), N = new THREE.Vector3().crossVectors(W, T).normalize();
+        frames.push({ p: p.add(N.clone().multiplyScalar((o.W ? 0 : h / 2) + Math.sin(s * 47) * (o.wr ?? 0.004))), W, N, c: new THREE.Color(col(s)) });
+      }
+      // 上・下・左右の面は頂点を分けて、ふちに角を出す
+      for (const [a, b] of [[[1, 1], [-1, 1]], [[-1, -1], [1, -1]], [[1, -1], [1, 1]], [[-1, 1], [-1, -1]]]) {
+        const base = P.length / 3;
+        frames.forEach((f, k) => { for (const [sw, sn] of [a, b]) { const q = f.p.clone().addScaledVector(f.W, sw * w / 2).addScaledVector(f.N, sn * h / 2); P.push(q.x, q.y, q.z); C.push(f.c.r, f.c.g, f.c.b); U.push((sw + 1) / 2 * w / 0.03, k / segs * len / 0.03); } });
+        for (let k = 0; k < segs; k++) { const m = base + k * 2, n = m + 2; idx.push(m, n, m + 1, m + 1, n, n + 1); }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+      geo.setIndex(idx); geo.computeVertexNormals();
+      const m = new THREE.Mesh(geo, o.map ? std('memKnit', '#ffffff', 0, 1, { vertexColors: true, side: THREE.DoubleSide, map: o.map }) : std('memBand', '#ffffff', 0, 0.95, { vertexColors: true, side: THREE.DoubleSide })); g.add(m);
+      return { curve, frames };
+    };
+    if (i === 0) {
+      // ハヤテの青いマフラー：たたんで祭壇に置き、両はしを手前のふちから垂らす（長いはしが下、短いはしがその上）。はしの近くに白っぽい青のしま
+      const blue = '#3a6ad8', pale = '#b8cef4', navy = '#24448a', h = 0.032, top = k => h / 2 + k * h * 1.02;
+      const col = s => { const e = Math.min(s, 1 - s); return e < 0.025 ? navy : (e > 0.045 && e < 0.065) || (e > 0.085 && e < 0.1) ? pale : blue; };
+      // 編み目：横に並んだ V の列（色に掛け合わせる）
+      const knit = this.mc.memKnitTex || (this.mc.memKnitTex = (() => {
+        const c = document.createElement('canvas'); c.width = c.height = 32; const x2 = c.getContext('2d');
+        x2.fillStyle = '#e4e4e4'; x2.fillRect(0, 0, 32, 32); x2.strokeStyle = '#ffffff'; x2.lineWidth = 5;
+        for (const ox of [0, 16]) { x2.beginPath(); x2.moveTo(ox + 1, 2); x2.lineTo(ox + 8, 30); x2.moveTo(ox + 15, 2); x2.lineTo(ox + 8, 30); x2.stroke(); }
+        const tx = new THREE.CanvasTexture(c); tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.colorSpace = THREE.SRGBColorSpace; return tx;
+      })());
+      const { frames } = band([[0.06, -0.46, 0.425], [0.06, -0.24, 0.43], [0.06, -0.06, 0.428], [0.06, 0.012, 0.4], [0.07, top(0), 0.3], [0.08, top(0), 0], [0.08, top(0), -0.27],
+        [0.08, top(0.5), -0.31], [0.085, top(1), -0.27], [0.09, top(1), 0], [0.09, top(1), 0.28], [0.09, top(1.5), 0.32], [0.095, top(2), 0.28], [0.1, top(2), 0], [0.1, top(2), -0.24],
+        [0.1, top(2.5), -0.28], [0.1, top(3), -0.24], [0.1, top(3), 0.1], [0.1, top(3), 0.33], [0.1, top(2.2), 0.43], [0.1, top(0) - 0.04, 0.47], [0.1, -0.2, 0.47]],
+        0.23, h, col, 220, { W: [1, 0, 0], map: knit });
+      // 両はしの房：帯の向きの先へ、毛糸のよりを五本
+      for (const f of [frames[0], frames[frames.length - 1]]) {
+        const last = f === frames[0], T = (last ? frames[1].p.clone().sub(f.p) : f.p.clone().sub(frames[frames.length - 2].p)).normalize().multiplyScalar(last ? -1 : 1);
+        for (let k = 0; k < 5; k++) {
+          const len = 0.06 + (k % 2) * 0.015, c = f.p.clone().addScaledVector(f.W, (k - 2) * 0.034).addScaledVector(T, len / 2);
+          const fr = at(new THREE.CylinderGeometry(0.008, 0.006, len, 5), std('memNavy', navy, 0, 0.95), c.x, c.y, c.z, { noShadow: true });
+          fr.quaternion.setFromUnitVectors(V3(0, 1, 0), T);
+        }
+      }
+    } else if (i === 1) {
+      // リンの光の杖：杖の向き（ローカル X）を祭壇の長いほうにそろえ（輪を横から見せる）、三日月の輪と石突きで祭壇に乗るよう、少しだけ傾ける
+      const L = 0.72, R = 0.12, tube = 0.018, rb = 0.026, head = L / 2 + 0.06 + R, yaw = 0.18, mid = (head + R + tube - L / 2 - 0.065) / 2;
+      const silver = std('memSilver', '#e4e8f0', 0.55, 0.3), birch = std('memBirch', '#efe6d2', 0.02, 0.7), ice = '#8ad8ff';
+      const tilt = Math.asin((R + tube - rb) / (head + L / 2));
+      // 石突きから輪の先までのまん中を、祭壇のまん中に
+      const s = new THREE.Group(); s.position.set(-mid * Math.cos(yaw), rb + Math.sin(tilt) * L / 2, mid * Math.sin(yaw)); s.rotation.set(0, yaw, tilt); g.add(s);
+      const sat = (geo, mat, px, py, pz, opt = {}) => at(geo, mat, px, py, pz, { ...opt, parent: s });
+      sat(new THREE.CylinderGeometry(0.02, rb, L, 10), birch, 0, 0, 0, { rz: -Math.PI / 2 });
+      sat(new THREE.ConeGeometry(rb + 0.004, 0.07, 10), silver, -L / 2 - 0.03, 0, 0, { rz: Math.PI / 2 });
+      for (const px of [-L / 2 + 0.01, -0.06, L / 2 - 0.02]) sat(new THREE.TorusGeometry(0.026, 0.008, 6, 14), silver, px, 0, 0, { ry: Math.PI / 2 });
+      // 握りに巻いた水色のひも
+      for (let k = 0; k < 7; k++) sat(new THREE.TorusGeometry(0.025, 0.006, 5, 12), std('memIce', ice, 0, 0.8), -0.04 - k * 0.026, 0, 0, { ry: Math.PI / 2 + 0.35 });
+      // 頭：銀のえり、三日月の輪（口を先へ向ける）、輪の両はしの玉、まん中の光の水晶
+      sat(new THREE.CylinderGeometry(0.03, 0.022, 0.08, 12), silver, L / 2 + 0.03, 0, 0, { rz: -Math.PI / 2 });
+      const ring = sat(new THREE.TorusGeometry(R, tube, 8, 36, Math.PI * 1.6), silver, head, 0, 0, { rz: Math.PI * 0.2 });
+      for (const a of [Math.PI * 0.2, Math.PI * 1.8]) sat(new THREE.SphereGeometry(0.026, 10, 8), silver, head + Math.cos(a) * R, Math.sin(a) * R, 0);
+      const gem = sat(new THREE.OctahedronGeometry(0.062, 0), this.glow('#bfe6ff', 1.5), head, 0, 0, { noShadow: true }); gem.scale.set(0.75, 1.25, 0.75);
+      for (const sd of [-1, 1]) sat(new THREE.CylinderGeometry(0.006, 0.006, R - 0.05, 5), silver, head, sd * (R + 0.05) / 2, 0);
+      ring.castShadow = true;
+      // 水晶は、ゆっくり息をするように光り、ときどき光の粒をこぼす
+      g.updateMatrixWorld(true);
+      const wp = gem.getWorldPosition(V3()); let t = 0;
+      this.tick(dt => {
+        t += dt; gem.rotation.y += dt * 0.8; const k = 1 + Math.sin(t * 1.8) * 0.08; gem.scale.set(0.75 * k, 1.25 * k, 0.75 * k);
+        if (this.v.p && Math.random() < dt * 1.6) this.v.p.emit(wp.clone(), V3((Math.random() - 0.5) * 0.3, 0.35, (Math.random() - 0.5) * 0.3), hdr('#cfefff', 2), { life: 1.6, size: 0.05, drag: 0.4 });
+      });
+    } else {
+      // ゴロウの大きなかぶと：鉢と峰と耳おおいは、少し前後に長い楕円（d の中で縦横をつぶす）
+      const steel = std('memSteel', '#7c7886', 0.75, 0.42), bronze = std('memBronze', '#b8823e', 0.8, 0.35), red = std('memRed', '#e0453a', 0, 0.85), Rd = 0.31;
+      g.rotation.y = 0.35;
+      const d = new THREE.Group(); d.scale.set(1, 0.86, 1.1); d.position.y = 0.035; g.add(d);
+      const dat = (geo, mat, px, py, pz, opt = {}) => at(geo, mat, px, py, pz, { ...opt, parent: d });
+      // 鉢：右の横に、戦いでついたへこみ
+      const bowl = new THREE.SphereGeometry(Rd, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), bp = bowl.attributes.position, dent = V3(0.75, 0.45, 0.35).normalize(), v = V3();
+      for (let k = 0; k < bp.count; k++) { v.fromBufferAttribute(bp, k); const f = Math.max(0, v.clone().normalize().dot(dent) - 0.9) / 0.1; v.multiplyScalar(1 - 0.09 * f * f); bp.setXYZ(k, v.x, v.y, v.z); }
+      bowl.computeVertexNormals();
+      dat(bowl, steel, 0, 0, 0);
+      dat(new THREE.TorusGeometry(Rd * 0.98, 0.012, 6, 32, Math.PI), bronze, 0, 0, 0, { ry: Math.PI / 2 });
+      // ふち（銅の輪と鋲）
+      dat(new THREE.TorusGeometry(Rd + 0.005, 0.032, 8, 40), bronze, 0, 0, 0, { rx: Math.PI / 2 });
+      for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2; dat(new THREE.SphereGeometry(0.016, 8, 6), bronze, Math.cos(a) * (Rd + 0.03), 0.012, Math.sin(a) * (Rd + 0.03)); }
+      // 猫の耳おおい：鉢の上の左右に、とがった三角の鉄。内がわに銅の板
+      const tri = (bw, ht, dp, bev) => {
+        const sh = new THREE.Shape(); sh.moveTo(-bw / 2, 0); sh.lineTo(bw / 2, 0); sh.quadraticCurveTo(bw * 0.12, ht * 0.7, 0, ht); sh.quadraticCurveTo(-bw * 0.12, ht * 0.7, -bw / 2, 0);
+        return new THREE.ExtrudeGeometry(sh, { depth: dp, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 2 }).translate(0, 0, -dp / 2);
+      };
+      for (const sd of [-1, 1]) {
+        const a = sd * 0.6, ex = Math.sin(a) * Rd * 0.86, ey = Math.cos(a) * Rd * 0.86;
+        dat(tri(0.2, 0.2, 0.03, 0.012), steel, ex, ey, 0.01, { rz: -sd * 0.38 });
+        dat(tri(0.11, 0.12, 0.006, 0.004), bronze, ex - sd * 0.006, ey + 0.03, 0.034, { rz: -sd * 0.38 });
+      }
+      // ひたいの紋章：銅の丸に、鉄の肉球
+      const fa = 0.95, fn = V3(0, Math.cos(fa), Math.sin(fa)), fp = fn.clone().multiplyScalar(Rd + 0.006);
+      const badge = new THREE.Group(); badge.position.copy(fp); badge.quaternion.setFromUnitVectors(V3(0, 1, 0), fn); d.add(badge);
+      at(new THREE.CylinderGeometry(0.058, 0.062, 0.016, 20), bronze, 0, 0, 0, { parent: badge });
+      at(new THREE.SphereGeometry(0.022, 10, 8), steel, 0, 0.01, 0.008, { parent: badge }).scale.set(1.2, 0.5, 1);
+      for (const [px, pz] of [[-0.026, -0.014], [0, -0.026], [0.026, -0.014]]) at(new THREE.SphereGeometry(0.011, 8, 6), steel, px, 0.01, pz, { parent: badge }).scale.y = 0.5;
+      // 赤いはちまき：鉢に巻いた布と、うしろの結び目
+      const hb = 0.075, hr = Math.sqrt(Rd * Rd - hb * hb) + 0.008;
+      dat(new THREE.CylinderGeometry(hr - 0.004, hr + 0.006, 0.065, 32, 1, true), red, 0, hb, 0);
+      dat(new THREE.SphereGeometry(0.045, 10, 8), red, 0, hb, -hr - 0.012).scale.set(1.3, 0.8, 0.8);
+      // 結び目から、はしが二本、祭壇の上へ垂れて、ふちに沿って横へ流れる（はちまきの帯は d の外の座標で作る）
+      const kz = (-hr - 0.03) * 1.1, ky = 0.035 + hb * 0.86;
+      for (const sd of [-1, 1]) band([[sd * 0.02, ky, kz], [sd * 0.07, ky - 0.05, kz - 0.015], [sd * 0.13, 0.012, kz - 0.01], [sd * 0.2, 0, kz + 0.03], [sd * (0.26 + sd * 0.03), 0, kz + 0.1]], 0.055, 0.012, () => '#e0453a', 40, { wr: 0.0015 });
     }
     this.add(g);
   }
