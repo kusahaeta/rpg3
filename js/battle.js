@@ -319,8 +319,9 @@ class Battle {
     u.el.classList.remove(cls); void u.el.offsetWidth; u.el.classList.add(cls);
     setTimeout(() => u.el && u.el.classList.remove(cls), ms);
   }
-  announce(kind, name, color) {
+  announce(kind, name, color, long) {
     const a = this.$('.announce');
+    a.classList.toggle('long', !!long);
     a.innerHTML = `<span class="an-kind">${kind}</span><span class="an-name">${name}</span>`;
     a.style.setProperty('--c', color || '#e8c77a');
     a.classList.remove('show'); void a.offsetWidth; a.classList.add('show');
@@ -1120,6 +1121,7 @@ class Battle {
         this.float(t, 'まぶしい！', 'info'); break;
     }
     if (t.charging) { t.charging = null; this.float(t, '溜め中断！', 'info'); }
+    if (t.hold === 'break') this.endHold(t);
     src.def.talent.onBreak && src.def.talent.onBreak(this, src, t);
     for (const m of this.mods) m.onBreak && m.onBreak(this, src, t);
     this.updateUnit(t);
@@ -1218,6 +1220,8 @@ class Battle {
   // ---------------- 撃破・戦闘不能 ----------------
   async resolveDeaths(src, kind) {
     let changed = false;
+    for (const e of this.enemies.slice())
+      if (e.alive && e.hp > 0 && e.def.turn && !e.turned && e.hp <= e.maxHp * e.def.turn.at) await this.bossTurn(e);
     for (const e of this.enemies) {
       if (!e.alive || e.hp > 0) continue;
       if (e.def.phases && e.phase < e.def.phases.length) { await this.phaseShift(e); continue; }
@@ -1240,6 +1244,8 @@ class Battle {
       }
     }
     if (changed) {
+      for (const e of this.aliveEnemies())
+        if (e.hold === 'summon' && !this.aliveEnemies().some(x => x.key === e.def.turn.summon[0])) this.endHold(e);
       await wait(500);
       this.enemies = this.enemies.filter(e => e.alive);
       this.renderEnemies();
@@ -1272,6 +1278,48 @@ class Battle {
     Sfx.win();
   }
 
+  // ボスの山場：HP が turn.at を切ったとき一度だけ。形態変化とちがい、HP は戻らない
+  async bossTurn(e) {
+    const T = e.def.turn;
+    e.turned = true;
+    this.announce(T.name, T.cry, '#ff4d6d', true);
+    this.pulse(e, 'powerup', 1200); this.shake(true); Sfx.brk();
+    if (this.v) await this.v.turnFx(e); else await wait(900);
+    if (T.heal) this.heal(e, e, e.maxHp * T.heal);
+    if (T.weak) { e.weak = [...T.weak]; e.implants = []; this.float(e, '弱点が変わった', 'info'); }
+    if (T.moves) e.moves = T.moves;
+    for (const b of T.buffs || []) this.buff(e, { key: 'turn_' + b.stat, name: T.name, turns: Infinity, ...b });
+    if (T.guard) {
+      this.buff(e, { key: 'turn_guard', name: T.name, stat: 'vuln', value: -T.guard, turns: Infinity });
+      if (T.until === 'break') { e.toughness = e.maxTough; e.broken = false; }
+      if (this.v) this.v.shieldFx(e);
+    }
+    if (T.regen) e.regen = T.regen;
+    if (T.until) e.hold = T.until;
+    if (T.strip) for (const a of this.aliveAllies()) {
+      const n = a.buffs.length, sh = a.shield > 0;
+      a.buffs = a.buffs.filter(b => b.debuff || b.turns === Infinity); a.shield = 0;
+      if (a.buffs.length < n || sh) this.float(a, '強化が消された', 'res');
+      this.updateUnit(a);
+    }
+    if (T.isolate) for (const a of this.aliveAllies()) {
+      a.flags.isolated = 2; this.float(a, 'ひとりぼっち', 'res');
+      this.debuff(e, a, 1, { key: 'e_iso', name: 'ひとりぼっち', stat: 'dmg', value: -0.3, turns: 2 }, true);
+    }
+    this.updateUnit(e);
+    if (T.summon) this.summonFoes(T.summon[0], T.summon[1], e.level);
+    await wait(600);
+  }
+  // 山場の守りや眠りが解ける（弱点撃破、または呼んだ仲間の全滅で）
+  endHold(e) {
+    const T = e.def.turn;
+    e.hold = null; e.regen = 0;
+    if (T.moves) e.moves = null;
+    e.buffs = e.buffs.filter(b => b.key !== 'turn_guard');
+    this.float(e, T.end[0], 'info'); this.say(e, T.end[1]);
+    this.updateUnit(e);
+  }
+
   async phaseShift(e) {
     e.phase++;
     const ph = e.def.phases[e.phase - 1];
@@ -1279,7 +1327,7 @@ class Battle {
     e.maxTough += 20; e.toughness = e.maxTough; e.broken = false;
     e.dots = []; e.frozen = null; e.entangle = null; e.charging = null;
     e.buffs = e.buffs.filter(b => !b.debuff);
-    this.announce(`PHASE ${e.phase + 1}`, `${e.name}が力を解放した！`, '#ff4d6d');
+    this.announce(`PHASE ${e.phase + 1}`, ph.cry || `${e.name}が力を解放した！`, '#ff4d6d', true);
     if (this.opts.final && e.def.final && e.phase >= e.def.phases.length) setTimeout(() => this.finale(), 1600 / Game.speed);
     this.pulse(e, 'phase', 1200); this.shake(true); Sfx.brk();
     this.updateUnit(e);
@@ -1294,6 +1342,7 @@ class Battle {
     this.updateUnit(e);
     await this.tickDots(e);
     if (!e.alive || this.battleBlocked()) return;
+    if (e.regen) { this.heal(e, e, e.maxHp * e.regen); await wait(400); }
     if (e.entangle) {
       const v = e.entangle.raw * e.entangle.stacks * this.defResMult(e.entangle.srcLv, e, 'quantum');
       e.entangle = null; this.applyDamage(e, v, null, 'quantum', 'dotf'); this.impact(e, 'quantum');
@@ -1321,11 +1370,20 @@ class Battle {
   }
 
   pickMove(e) {
-    const opts = e.def.moves.filter(([id]) => !(id === 'summon' && this.aliveEnemies().length >= 4));
+    const opts = (e.moves || e.def.moves).filter(([id]) => !(id === 'summon' && this.aliveEnemies().length >= 4));
     const total = opts.reduce((a, [, w]) => a + w, 0);
     let r = Math.random() * total;
     for (const [id, w] of opts) { r -= w; if (r <= 0) return { ...ENEMY_MOVES[id], id }; }
     return ENEMY_MOVES.strike;
+  }
+
+  summonFoes(key, n, lv) {
+    n = Math.min(n, 5 - this.aliveEnemies().length);
+    for (let i = 0; i < n; i++) {
+      const u = this.foeScale(new Unit('enemy', key, lv)); this.applyModStats(u, 'enemyStats');
+      if (i === 0) this.enemies.unshift(u); else this.enemies.push(u);
+    }
+    this.renderEnemies();
   }
 
   aggroPick() {
@@ -1352,14 +1410,8 @@ class Battle {
       return;
     }
     if (mv.type === 'summon') {
-      const key = e.def.summon || 'scout';
-      const lv = e.level;
-      const n = Math.min(2, 5 - this.aliveEnemies().length);
-      for (let i = 0; i < n; i++) {
-        const u = this.foeScale(new Unit('enemy', key, lv)); this.applyModStats(u, 'enemyStats');
-        if (i === 0) this.enemies.unshift(u); else this.enemies.push(u);
-      }
-      this.renderEnemies(); await wait(800); return;
+      this.summonFoes(e.def.summon || 'scout', 2, e.level);
+      await wait(800); return;
     }
     const main = this.aggroPick();
     let targets;

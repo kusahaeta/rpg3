@@ -151,13 +151,7 @@ function runeTex() {
 // 第二形態の演出の型：星核の番人は赤黒い雷、氷刃の女帝は吹雪と氷の棘
 // 第二形態の演出の型（ボスごと）：足もとの魔法陣・周りを巡る結晶・渦・稲妻や棘
 const P2_STYLES = {
-  king_nezumi: { sub: '#fff0b8', dark: '#8a5a10', crown: { color: '#ffcf4a', emissive: '#ffb020', ei: 0.8 }, pulse: '#ffb040', fog: '#8a7a50', swirl: ['#ffffff', null, '#ffcf4a'], tint: [0.1, 0.25, 0.45], desat: 0.2, charge: '#fff0b8', tone: [110, 90, 80] },
-  inoshishi: { sub: '#ffd8a8', dark: '#8a3a10', crown: { color: '#8a5a3a', ei: 0.4 }, pulse: '#ff8a3a', fog: '#8a6a4a', swirl: ['#ffffff', null, '#ff9a4a'], tint: [0.1, 0.3, 0.45], desat: 0.2, charge: '#ffd8a8', tone: [90, 70, 64] },
-  piero: { sub: '#ffe8f4', dark: '#ff3a9a', crown: { color: '#ffd76a', emissive: '#ff6ab8', ei: 0.9 }, pulse: '#ff6ab8', fog: '#6a2a5a', swirl: ['#ffffff', '#6ad8ff', '#ffd76a'], tint: [0.2, 0.45, 0.2], desat: 0.3, charge: '#ffe8f4', tone: [180, 140, 120] },
-  kako_kuro: { sub: '#e8d8ff', dark: '#5a2aff', crown: { color: '#2a1a4a', emissive: '#8a4aff', ei: 1.2 }, pulse: '#6a3aff', fog: '#2a1a48', swirl: ['#ffffff', null, '#6a3aff'], tint: [0.4, 0.5, 0.15], desat: 0.4, charge: '#1a0a38', bolts: true, tone: [80, 62, 56] },
   guardian: { sub: '#fff8d8', dark: '#e8b830', crown: { color: '#e8d8a8', emissive: '#ffd24a', ei: 0.9 }, pulse: '#ffd24a', fog: '#8a8a60', swirl: ['#ffffff', '#8affe0', '#ffd24a'], tint: [0.15, 0.2, 0.5], desat: 0.2, charge: '#fff8d8', spikes: true, tone: [140, 110, 100] },
-  boss_maou: { sub: '#ffd8ff', dark: '#8a2aff', crown: { color: '#2a1040', emissive: '#c04aff', ei: 1.3 }, pulse: '#9a3aff', fog: '#3a1450', swirl: ['#ffffff', '#ff6ad8', '#8a2aff'], tint: [0.35, 0.6, 0.2], desat: 0.3, charge: '#1a0428', bolts: true, tone: [74, 58, 52] },
-  kodoku_kage: { sub: '#d8c8ff', dark: '#2a0a5a', crown: { color: '#0a0418', emissive: '#6a3aff', ei: 1.1 }, pulse: '#3a1a8a', fog: '#140a28', swirl: ['#ffffff', null, '#3a1a8a'], tint: [0.5, 0.55, 0.3], desat: 0.55, charge: '#05020c', bolts: true, tone: [64, 50, 46] },
   kodoku: { sub: '#e8e0ff', dark: '#1a0a4a', crown: { color: '#05020c', emissive: '#8a5aff', ei: 1.4 }, pulse: '#2a1070', fog: '#0c0620', swirl: ['#ffffff', '#ff8ab8', '#2a1070'], tint: [0.55, 0.6, 0.35], desat: 0.65, charge: '#020108', bolts: true, tone: [56, 44, 40] },
   nekogami: { sub: '#fffff0', dark: '#ffd24a', crown: { color: '#fff4c8', emissive: '#ffe08a', ei: 1.0 }, pulse: '#ffe08a', fog: '#f8e8f0', swirl: ['#ffffff', '#ff9ad8', '#ffe08a'], tint: [0.05, 0.15, 0.4], desat: 0.1, charge: '#fffff0', spikes: false, tone: [220, 180, 160] },
 };
@@ -541,18 +535,22 @@ class BattleView extends BaseView {
     this.tweenPose(m, POSES.down, instant ? 0 : 0.5);
     this.p.burst(this.hitPoint(u), '#ff4d6d', instant ? 0 : 30, { speed: 2, life: 0.8 });
   }
+  // ボスの山場（形態変化ではない）：閃光と衝撃波だけの短い演出
+  async turnFx(t) {
+    const e = this.ent(t); if (!e) return;
+    const col = e.model.color, h = e.home, core = this.hitPoint(t);
+    GFX.flash(col, 0.6, 0.8); GFX.shake(0.4);
+    this.fx.ring(h.clone().add(V3(0, 0.05, 0)), col, { r: 10, life: 1.2, width: 0.4 });
+    this.fx.pillar(h, col, { h: 20, r: 2.2, life: 1.2 });
+    this.p.burst(core, col, 150, { speed: 12, life: 1.4, size: 0.14 });
+    e.model.flash('#ffffff', 2);
+    await GFX.delay(0.9);
+  }
   // 形態変化：番人に寄り、力を吸い込んでから解放する
   async phaseFx(t) {
     const e = this.ent(t); if (!e) return;
     const col = e.model.color, h = e.home, U = GFX.grade.uniforms, core = this.hitPoint(t), S = P2_STYLES[t.key];
-    if (!S) {
-      GFX.flash(col, 0.6, 0.8); GFX.shake(0.4);
-      this.fx.ring(h.clone().add(V3(0, 0.05, 0)), col, { r: 10, life: 1.2, width: 0.4 });
-      this.fx.pillar(h, col, { h: 20, r: 2.2, life: 1.2 });
-      this.p.burst(core, col, 150, { speed: 12, life: 1.4, size: 0.14 });
-      e.model.flash('#ffffff', 2);
-      await GFX.delay(0.9); return;
-    }
+    if (!S) return this.turnFx(t);
     this.sway = 0;
     for (const x of this.ents.values()) if (x.ally) x.model.group.visible = false;   // 寄りの画面に味方が入らないように
     // ① 画面が沈み、周囲の光が番人の核へ吸い込まれる
