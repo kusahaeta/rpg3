@@ -733,7 +733,7 @@ Object.assign(SCENES, {
           bukiya2: { at: [-2.6, 2.9], face: 'tabibito_a' }, tanimura: { at: [-2.0, 1.9], face: 'tabibito_a' } },
         wide: { pos: [-3.6, 3.0, -5.6], look: [-0.6, 1.25, 3.4] } },
       // 魔法学校の校長室（本棚・机・地球儀）。机の前に立ったシロが、子猫の生徒たちに教える
-      school: { zone: 'castle_in', at: [-19, -8], face: 270, party: [],
+      school: { zone: 'castle_in', at: [-35, -24.5], face: 270, party: [],
         cast: { shiro: { at: [0, 0.2], face: [0, -3] }, koneko_a: { at: [0.75, -0.95], face: 'shiro' }, koneko_b: { at: [-0.75, -0.95], face: 'shiro' } },
         wide: { pos: [1.5, 2.3, -3.7], look: [0, 0.5, 0.8] }, shots: { letter: { pos: [-0.05, 1.0, -2.5], look: [0, 0.47, 0.2] } } },
       // にゃんだーの樹の根もと。根のトンネルをまたぐ太い根の上で、タマが昼寝をしている（うしろに、実をつけた樹）
@@ -1008,7 +1008,7 @@ const STORY = [
   ] },
   { title: '第三章　笑わない街', steps: [
     { t: 'field', zone: 'nyahaha', at: [0, 22], scene: 'c3_01', g: 'ニャハハ王国に入る' },
-    { t: 'field', zone: 'castle_in', at: [0, -6], scene: 'c3_02', g: '町の北、ニャハハ城の玉座の間で王さまに会う' },
+    { t: 'field', zone: 'castle_in', at: [0, -20], scene: 'c3_02', g: '町の北、ニャハハ城の玉座の間で王さまに会う' },
     { t: 'field', zone: 'tower', at: [0, 14], scene: 'c3_03', battle: '3-1', g: '町の北東、笑顔の塔へ' },
     { t: 'field', zone: 'tower', at: [0, -9], scene: 'c3_03a', g: '大ロビーの奥、階段の間へ' },
     { t: 'field', zone: 'tower_2f', at: [0, 2], scene: 'c3_03c', g: '玉のりのリングで、三つの大玉をスポットライトの下にそろえて「むすっと幕」を上げ、二階の楽屋へ' },

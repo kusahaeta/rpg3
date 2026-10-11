@@ -66,6 +66,8 @@ const NPCS = {
     look: { fur: '#8a8a8a', pattern: 'solid', eye: '#6a8ad8', muzzle: '#b8b8b8', glasses: '#2a2a3a', vest: '#3a4a8a', accent: '#8ad8ff' } },
   eihei:     { name: '衛兵', title: 'ニャハハ城の衛兵', elem: 'physical', face: 'serious',
     look: { fur: '#d8b890', pattern: 'solid', eye: '#6a5a3a', muzzle: '#f0e0c8', cap: '#c8c8d8', capType: 'helmet', vest: '#c83a3a', accent: '#ffcf4a' }, gear: { weapon: 'fork' } },
+  shisho:    { name: '司書', title: 'ニャハハ王国の大図書館の司書', elem: 'imaginary', face: 'sad', faceAfter: ['scene:c3_06', 'gentle'],
+    look: { fur: '#e8dcc8', pattern: 'point', patches: ['#8a6a5a'], eye: '#5a7ac8', muzzle: '#fff8ec', paws: '#fff8ec', glasses: '#6a4a2a', vest: '#4a6a5a', ribbon: '#c8a040', accent: '#ffd27a' } },
   // ---------------- くろねこ谷 ----------------
   kurone:    { name: 'クロネ婆', title: 'くろねこ谷の長老', elem: 'quantum', face: 'gentle',
     look: { fur: '#3a3440', pattern: 'solid', eye: '#e8c040', muzzle: '#4a4450', kerchief: '#8a5aa8', vest: '#5a4a6a', accent: '#c8a8ff' }, gear: { weapon: 'cane' } },
