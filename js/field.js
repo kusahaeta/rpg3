@@ -1144,7 +1144,7 @@ class FieldView extends BaseView {
     if (to && to.past) for (const g of to.talkers || []) if (Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 1.9 && Math.abs(g.pos.y - p.y) < 1.5) return { type: 'ghost', g, text: '昔の猫と話す' };
     for (const o of this.sealObjs || []) if (o.beam && !o.open) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) return { type: 'mirror', o, m, text: `${MIRROR_COLS[m.g][0]}の光の鏡の向きを変える（${MIRROR_COLS[m.g][0]}の鏡はみんな回る）` };
     for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || '光の水晶'; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < (o.S.reach || 2.0)) return { type: 'lamp', o, L, text: !o.ready() ? `調べる：${name}` : o.S.verb ? `${o.S.verb}（${speakerName(o.S.who)}）` : o.S.look === 'laugh' ? `${name}を押す` : o.S.labels ? `${name}（${o.S.labels[L.i]}）にふれる` : `${name}に触れる` }; }
-    // 二匹の門の踏み板：乗っていれば「ここで待ってて」、仲間が待っていれば「よびもどす」
+    // 内門の踏み板：乗っていれば「ここで待ってて」、仲間が待っていれば「よびもどす」
     for (const o of this.plateObjs || []) {
       if (o.open) continue;
       for (const pad of o.pads) {
@@ -1884,7 +1884,7 @@ class FieldView extends BaseView {
     }
     this.p.burst(at, '#ffd23c', 30, { speed: 3, life: 0.6 }); Sfx.tone(600, 0.3, 'triangle', 0.05, -300);
   }
-  // 二匹の門：先頭の子が乗っている踏み板で、仲間に待っていてもらう
+  // 内門：先頭の子が乗っている踏み板で、仲間に待っていてもらう
   holdPad(o, pad, f) {
     if (!o.ready()) { this.startTalk(o.P.name || '踏み板', [o.P.idle || '肉球の形の踏み板。……今は、踏んでも何も起きない。'], null, true); return; }
     if (!f) { this.startTalk(o.P.name || '踏み板', ['踏み板は、ふたつそろって踏まないと動かないようだ。……いっしょに踏んでくれる仲間がいない。'], null, true); return; }

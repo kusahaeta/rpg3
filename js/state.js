@@ -36,7 +36,7 @@ const Save = {
       if (d.story && d.story.ch === 1 && d.story.step >= 4) d.story.step += 4;
       d.ver = 3;
     }
-    // ver 4：関所が切り通しと「なかよし関所」の砦になり、第二章の最後の戦いの前に 1 段階増えた
+    // ver 4：関所が切り通しと「ニャハハ王国関所」の砦になり、第二章の最後の戦いの前に 1 段階増えた
     if (ver < 4) {
       if (d.story && d.story.ch === 1 && d.story.step >= 12) d.story.step += 1;
       d.ver = 4;
