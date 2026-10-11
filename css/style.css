@@ -348,6 +348,7 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .announce { position: absolute; top: 58px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; opacity: 0; pointer-events: none; z-index: 8;
   background: linear-gradient(90deg, transparent, rgba(0, 0, 0, .75) 20%, rgba(0, 0, 0, .75) 80%, transparent); padding: 6px 60px; white-space: nowrap; }
 .announce.show { animation: annc 1.8s ease forwards; }
+.announce.show.long { animation-duration: 3.2s; }   /* ボスの形態変化のひとことは、読めるように長めに */
 .an-kind { font-size: 12px; color: var(--c); border: 1px solid var(--c); padding: 0 6px; }
 .an-name { font-size: 18px; font-weight: 700; letter-spacing: .1em; }
 @keyframes annc { 0% { opacity: 0; transform: translate(-50%, -8px); } 12%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
