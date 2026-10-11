@@ -33,10 +33,10 @@ const expToNext = lv => 100 + lv * 45;
 const flag = k => !!(typeof Save !== 'undefined' && Save.data && Save.data.flags && Save.data.flags[k]);
 
 function charStats(key, lv, eid) {
-  const b = CHARS[key].base, gear = (Save.data && Save.data.gear && Save.data.gear[key]) || 0;
+  const b = CHARS[key].base, w = Save.data ? weaponStatMult(key) : { hp: 1, atk: 1, def: 1 };
   const f = lvFactor(lv) * (1 + 0.06 * eid);
   return {
-    maxHp: b.hp * f * (1 + gear * 0.04), atk: b.atk * f * (1 + gear * 0.06), def: b.def * f * (1 + gear * 0.05), spd: b.spd,
+    maxHp: b.hp * f * w.hp, atk: b.atk * f * w.atk, def: b.def * f * w.def, spd: b.spd,
     crit: b.crit || 0.05, critDmg: b.critDmg || 0.5, be: b.be || 0,
     ehr: b.ehr || 0, eres: b.eres || 0.1, err: 0,
   };
@@ -44,7 +44,8 @@ function charStats(key, lv, eid) {
 
 // ------------------------------------------------------------
 //  にゃんこ（仲間）
-//  look：2頭身のにゃんこの見た目（js/gfx/cats.js）。gear：武器と戦い方
+//  look：2頭身のにゃんこの見た目（js/gfx/cats.js）。gear：武器の種類と戦い方
+//  basic / skill / ult：はじめの武器の技（ほかの武器は js/weapons.js）
 //  target: single / blast / aoe / bounce / ally / allies / self
 // ------------------------------------------------------------
 const CHARS = {

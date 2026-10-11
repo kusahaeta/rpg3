@@ -17,8 +17,9 @@ const Save = {
       bondNews: [],       // 友情レベルが上がった知らせ（ハブで表示）
       bondSeen: {},       // 見た特別イベント
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
-      gear: {},           // 武器の強化段階
-      auto: false, speed: 1, ver: 5,
+      weapons: {},        // 持っている武器と強化段階（はじめの武器は持っていなくても使える。js/weapons.js）
+      equip: {},          // にゃんこごとに装備している武器
+      auto: false, speed: 1, ver: 6,
       eco: null,          // 省エネ（30fps）。null はおまかせ（スマホなら省エネ）
     };
   },
@@ -44,6 +45,15 @@ const Save = {
     if (ver < 5) {
       delete d.expPool;
       d.ver = 5;
+    }
+    // ver 6：武器がにゃんこごとに何本も持てるようになった。鍛えた段階は、はじめの武器の +1〜+5 に引きつぐ。
+    // すでに開けた宝箱に武器が入っていたら、その武器も持っていることにする
+    if (ver < 6) {
+      d.weapons = d.weapons || {};
+      for (const k in d.gear || {}) if (d.gear[k] && startWeapon(k)) d.weapons[startWeapon(k)] = Math.min(WEAPON_MAX, d.gear[k]);
+      delete d.gear;
+      for (const z in d.fieldChests || {}) for (const i of d.fieldChests[z]) { const id = (CHEST_WEAPONS[z] || {})[i]; if (id && d.weapons[id] == null) d.weapons[id] = 0; }
+      d.ver = 6;
     }
   },
   load() {
@@ -101,13 +111,3 @@ function afterBattleBonds(keys, boss) {
   Save.save();
 }
 
-// 武器の強化（にぼしを使う）
-const GEAR_MAX = 5;
-const gearCost = lv => 150 + lv * 200;
-const GEAR_NAMES = {
-  mike: ['木のつるぎ', '銅のつるぎ', '勇者のつるぎ', '流星のつるぎ', 'ひだまりの剣', 'にゃんだーの剣'],
-  kuro: ['古びた黒刀', '研いだ黒刀', '月影の刀', '守護の刀', '夜明けの刀', '絆の黒刀'],
-  shiro: ['見習いの杖', '星の杖', '天才の杖', '大天才の杖', '失敗しない杖（自称）', '成長の杖'],
-  tama: ['ふつうのまくら', 'ふかふかまくら', 'ひだまりまくら', '夢見まくら', '世界樹のまくら', 'みんなのまくら'],
-  maou: ['魔王の笏', '尊大な笏', '暗黒の笏', '元魔王の笏', 'カフェの笏', '友だちの笏'],
-};

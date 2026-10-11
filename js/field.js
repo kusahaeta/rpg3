@@ -309,6 +309,7 @@ class FieldView extends BaseView {
       const c = this.makeChest(), y = put(c.g, p.x, p.z); c.g.rotation.y = this.rand() * Math.PI * 2;
       const done = opened.includes(i);
       if (done) { c.lid.rotation.x = -1.9; c.glow.visible = false; }
+      else if ((CHEST_WEAPONS[this.zoneId] || {})[i] && !hasWeapon(CHEST_WEAPONS[this.zoneId][i])) c.glow.material.color = hdr('#8ad8ff', 1);   // 武器の入った宝箱は青く光る
       this.scene.add(c.g); col(p.x, p.z, 0.6);
       this.chests.push({ id: i, pos: V3(p.x, y, p.z), opened: done, ...c });
       this.reserved.push({ x: p.x, z: p.z, r: 2 });
@@ -1254,14 +1255,19 @@ class FieldView extends BaseView {
       const c = it.c; c.opened = true;
       const all = Save.data.fieldChests || (Save.data.fieldChests = {});
       (all[this.zoneId] = all[this.zoneId] || []).push(c.id);
-      const nib = 40 + Math.floor(Math.random() * 7) * 10;
+      const wid = (CHEST_WEAPONS[this.zoneId] || {})[c.id], gotW = wid && !hasWeapon(wid);
+      const nib = gotW ? 0 : 40 + Math.floor(Math.random() * 7) * 10;
+      if (gotW) gainWeapon(wid);
       Save.data.niboshi += nib; Save.save();
       GFX.tween(0.5, t => { c.lid.rotation.x = -1.9 * t; }, Ease.back);
       c.glow.visible = false;
       this.fx.pillar(c.pos, '#ffd66b', { h: 3, r: 0.4, life: 0.8 });
       this.p.burst(c.pos.clone().add(V3(0, 0.7, 0)), '#ffd66b', 60, { speed: 4, up: 1.2, life: 1.0 });
       Sfx.win();
-      this.toast(`宝箱：にぼし +${nib}`);
+      if (gotW) {
+        const w = WEAPONS[wid], own = Save.data.owned[w.owner];
+        this.startTalk('宝箱', [`「${w.name}」を手に入れた！`, w.desc, own ? `${CHARS[w.owner].name}の${WEAPON_KIND[CHARS[w.owner].gear.weapon]}だ。メニューの「なかま」で装備すると、技がまるごと変わる。` : 'いまの仲間には、使えそうな子がいない……。いつか、使える子に出会えるかもしれない。'], null, true);
+      } else this.toast(`宝箱：にぼし +${nib}`);
       this.renderHud();
     } else if (it.type === 'anchor') {
       this.startTalk('ねこ地蔵', ['赤いよだれかけの、ねこ地蔵だ。そばにいると、みんなのHPが回復する。', 'MAP（M）を開くと、行ったことのある場所のねこ地蔵へ、いつでもひとっとびできる。'], null, true);
@@ -3187,7 +3193,10 @@ class FieldView extends BaseView {
   shopMenu(n) {
     const o = this.root.querySelector('.overlay');
     this.busy = true; this.overlayOpen = true; this.keys.clear();
-    renderShop(o, n.shop, speakerName(n.key), () => { this.closeOverlay(); this.renderHud(); this.renderTeam(); }, this);
+    renderShop(o, n.shop, speakerName(n.key), () => {
+      this.closeOverlay(); this.renderHud(); this.renderTeam();
+      if (n.shop === 'weapon') this.spawnPlayer(this.player.pos, this.player.yaw);   // 鍛えた武器を持ちなおす
+    }, this);
   }
 }
 

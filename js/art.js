@@ -176,7 +176,7 @@ const ULT_ICONS = {
 function ultIcon(key) {
   const c = CHARS[key], col = ELEMENTS[c.elem].color;
   const body = ULT_ICONS[key] || `<path d="M24 4 L29 18 L44 18 L32 27 L36 42 L24 33 L12 42 L16 27 L4 18 L19 18Z" fill="currentColor" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>`;
-  return `<svg class="ult-icon" viewBox="0 0 48 48" style="color:${col}" aria-label="${c.ult.name}">${body}</svg>`;
+  return `<svg class="ult-icon" viewBox="0 0 48 48" style="color:${col}" aria-label="${charKit(key).ult.name}">${body}</svg>`;
 }
 
 function elemIcon(el, extra = '') {
