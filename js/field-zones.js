@@ -1390,9 +1390,10 @@ const FIELD_ZONES = {
     notes: [{ at: [-13.4, 13], mark: 1.2, when: 'scene:c4_03c', title: 'ゴロウの盾', text: 'まっぷたつに割れた、大きな盾。……リンをかばって、影の一撃を受け止めたのだろう。' },
       { at: [-12.2, 11.8], mark: 0.9, when: 'scene:c4_03c', title: 'リンのリボン', text: '色あせた、青いリボン。……光の水晶のかけらが、ひとつ結びつけてある。' }],
     map2d: [620, 30] },
-  cave_deep: { ci: 3, name: '黒影洞窟・最深部', floor: 'B3', parent: 'cave', stage: '4-3', arenas: [[0, -33, 0]], build: 'caveDeep', arch: 'cave', bg: 'cave', groups: 5, chests: 4, crystals: 3, calmAfter: '4-3',
+  cave_deep: { ci: 3, name: '黒影洞窟・最深部', floor: 'B3', parent: 'cave', stage: '4-3', arenas: [[0, -33, 0], [-35, 12, 0], [37, 16, 0], [-4, 37, 90], [26, -13, 90]], build: 'caveDeep', arch: 'cave', bg: 'cave', groups: 5, chests: 4, crystals: 3, calmAfter: '4-3',
     world: true,
     th: { pattern: 'rock', floor: '#302a3a', floor2: '#3a3244', line: '#8a6aff', floorGlow: 0.4, fog: '#0c0a1c', fogD: 0.02, light: 1.0, water: '#3a4aa0', waterGlow: '#4a2ac0' },
+    // 戦場：三本の剣の大広間（ステージ 4-3）のほか、西の縁・東の縁・到着の岩棚・北の縁。道中の戦いは近くの縁で戦い、闇の扉の奥の剣は見せない
     // B3：底の見えない「闇の淵」を巡って下りる。到着の南の岩棚（高さ6）→ 石段で西の縁（高さ3）→ 石段で北の縁（高さ0）。東の縁から岩の橋で淵の中の小島へ。
     //     西の縁のくぼみ・東の縁のくぼみ・小島に「記憶のかけら」（ハヤテ・リン・ゴロウ）。三つにふれると、北の通路の闇の扉が消え、三本の剣の大広間へ
     map: [
