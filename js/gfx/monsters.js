@@ -16,6 +16,9 @@ const CRITTER_LOOKS = {
   guardian:  { look: { fur: '#d8c890', eye: '#ffe07a', muzzle: '#d8c890', paws: '#d8c890', earIn: '#c0b080', material: 'stone', crown: '#e8c870', blush: 0, line: '#4a4030' }, scale: 2.7, expr: 'serious' },
   imp:       { look: { fur: '#8a6ad8', eye: '#ffe07a', muzzle: '#b8a0f0', paws: '#b8a0f0', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#4a2a7a', cap: '#5a5a6a', capType: 'helmet', accent: '#ffcf4a', blush: 0.3 }, gear: { weapon: 'fork' }, scale: 1.0, expr: 'worry' },
   impnurse:  { look: { fur: '#ff9ac8', eye: '#7a4ad8', muzzle: '#ffd0e4', paws: '#ffd0e4', earIn: '#ff6a9a', horns: '#fff0d8', wings: '#8a3a6a', cap: '#ffffff', capType: 'chef', apron: '#ffffff', blush: 0.45 }, scale: 1.0, expr: 'smile' },
+  impguard:  { look: { fur: '#c86a8a', eye: '#ffe07a', muzzle: '#f0b0c8', paws: '#f0b0c8', earIn: '#ffd0e0', horns: '#fff0d8', wings: '#6a2a4a', cap: '#4a4a5a', capType: 'helmet', accent: '#ff6a9a', armor: '#5a5a6a', blush: 0 }, gear: { weapon: 'fork' }, scale: 1.15, expr: 'serious' },
+  impmaid:   { look: { fur: '#7ac8d8', eye: '#5a3ab8', muzzle: '#d0f0f6', paws: '#d0f0f6', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#2a5a7a', kerchief: '#ffffff', apron: '#ffffff', ribbon: '#3a3a5a', blush: 0.4 }, gear: { weapon: 'broom' }, scale: 0.95, expr: 'worry' },
+  impcook:   { look: { fur: '#e8a050', eye: '#5a2a1a', muzzle: '#fbe0b8', paws: '#fbe0b8', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#7a3a1a', kerchief: '#e84a3a', apron: '#f6efe0', blush: 0.35 }, gear: { weapon: 'ladle' }, scale: 1.05, expr: 'neutral' },
   impboss:   { look: { fur: '#6a4ab8', eye: '#ffe07a', muzzle: '#9a80d8', paws: '#9a80d8', earIn: '#ff9ac8', horns: '#fff0d8', wings: '#3a1a5a', glasses: '#1a1a2a', vest: '#2a2a3a', ribbon: '#c83a3a', blush: 0 }, scale: 1.45, expr: 'worry' },
   maou:      { key: 'maou', scale: 1.7, expr: 'smug' },
   // 魔王軍四天王：js/npcs.js の人物の見た目を、そのまま大きくして使う
@@ -23,6 +26,7 @@ const CRITTER_LOOKS = {
   k_nemu:    { key: 'nemunemu', scale: 1.55, expr: 'sleepy' },
   k_choki:   { key: 'chokichoki', scale: 1.5, expr: 'gentle' },
   k_dodon:   { key: 'dodon', scale: 1.6, expr: 'smug' },
+  maouplush: { key: 'maou', look: { material: 'plush', fur: '#7a62a8', paws: '#7a62a8', muzzle: '#a890d0', earIn: '#d89ab8', eye: '#1a1a22', eyeScale: 0.7 }, gear: { weapon: null }, scale: 1.0, expr: 'neutral' },
   fakemike:  { key: 'mike', look: { patches: ['#3b302c', '#f29a3e'], eye: '#8a6aff', band: '#3a6ad8', cape: '#3a6ad8' }, scale: 1.0, expr: 'smug' },
   plush:     { key: 'kuro', look: { fur: '#5a5870', muzzle: '#6a6880', eye: '#1a1a22', eyeScale: 0.6, scarf: '#d86a8a', armor: null }, gear: { weapon: null }, scale: 1.25, expr: 'neutral' },
   nekogami:  { look: { fur: '#ffe8a8', pattern: 'tabby', patches: ['#f0c060'], eye: '#ffffff', eye2: '#ffffff', muzzle: '#fff6dc', paws: '#fff6dc', earIn: '#ffb8a8', crown: '#ffcf4a', cape: '#ffffff', capeIn: '#ffcf4a', sleepy: true, blush: 0.35 }, scale: 3.2, expr: 'sleepy' },
@@ -183,16 +187,25 @@ function buildEnemy(key) {
       update = (dt, t) => { lid.rotation.x = -0.25 - Math.max(0, Math.sin(t * 5 + root.userData.ph)) * 0.55; inner.position.y = Math.abs(Math.sin(t * 5)) * 0.04; };
       height = 1.3; radius = 0.75; scale = 1.1; break;
     }
-    case 'armor': {   // さまよう鎧：中身のない、猫耳かぶとの鎧
+    case 'armor':       // さまよう鎧：中身のない、猫耳かぶとの鎧
+    case 'maouarmor': { // 魔王城の飾り甲冑：紫の鎧に桃色の目の光、金のふち
+      const maou = d.shape === 'maouarmor', eyeCol = maou ? '#ff8ad8' : '#8affe0';
       const am = new THREE.MeshStandardMaterial({ color: col, metalness: 0.7, roughness: 0.35 }); am.userData.e0 = new THREE.Color(0); am.userData.ei0 = 0; mats.push(am);
       for (const s of [-1, 1]) add(P(new THREE.CylinderGeometry(0.1, 0.12, 0.5, 10), am), s * 0.15, 0.25, 0);
       add(P(new THREEX.RoundedBoxGeometry(0.6, 0.55, 0.4, 2, 0.08), am), 0, 0.8, 0);
       const helm = add(P(new THREE.SphereGeometry(0.3, 18, 12), am), 0, 1.32, 0.02);
       catEars(0.17, 1.58, 0, 1.1, am);
-      add(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.06, 0.05), glowMat('#8affe0', 3)), 0, 1.32, 0.29);
+      add(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.06, 0.05), glowMat(eyeCol, 3)), 0, 1.32, 0.29);
       for (const s of [-1, 1]) add(P(new THREE.SphereGeometry(0.15, 12, 8), am), s * 0.4, 1.02, 0);
-      const sw = add(P(new THREE.BoxGeometry(0.08, 1.1, 0.02), tm('#c8d0e0')), -0.5, 0.8, 0.3); sw.rotation.set(0.5, 0, 0.2);
-      emitFn = (p, pos) => { if (Math.random() < 0.3) p.emit(V3(pos.x + (Math.random() - 0.5) * 0.4, pos.y + 1.3, pos.z), V3(0, 0.6, 0), hdr('#8affe0', 1.4), { life: 1, size: 0.1, drag: 0.5 }); };
+      if (maou) {   // 金のふち（胸と肩）と、かぶとの上の桃色の羽飾り。剣のかわりに長い槍
+        const gold = tm('#ffcf4a', { emissive: new THREE.Color('#ffcf4a'), emissiveIntensity: 0.2 });
+        add(P(new THREE.TorusGeometry(0.13, 0.022, 6, 20), gold), 0, 0.86, 0.2);
+        for (const s of [-1, 1]) add(P(new THREE.TorusGeometry(0.12, 0.02, 6, 16), gold), s * 0.4, 1.1, 0).rotation.x = Math.PI / 2;
+        const plume = add(P(new THREE.ConeGeometry(0.08, 0.36, 10), tm('#ff8ad8')), 0, 1.72, -0.08); plume.rotation.x = -0.5;
+        const pole = add(P(new THREE.CylinderGeometry(0.025, 0.025, 1.7, 8), tm('#4a3a5a')), -0.52, 0.9, 0.2);
+        add(P(new THREE.ConeGeometry(0.07, 0.24, 4), tm('#c8d0e0')), 0, 0.96, 0, pole);
+      } else { const sw = add(P(new THREE.BoxGeometry(0.08, 1.1, 0.02), tm('#c8d0e0')), -0.5, 0.8, 0.3); sw.rotation.set(0.5, 0, 0.2); }
+      emitFn = (p, pos) => { if (Math.random() < 0.3) p.emit(V3(pos.x + (Math.random() - 0.5) * 0.4, pos.y + 1.3, pos.z), V3(0, 0.6, 0), hdr(eyeCol, 1.4), { life: 1, size: 0.1, drag: 0.5 }); };
       height = 1.8; radius = 0.6; scale = 1.15; break;
     }
     case 'wisp': {   // 古代ほたる：光る玉に小さな羽
@@ -287,6 +300,62 @@ function buildEnemy(key) {
       for (const [x, y, z] of spots) { const m = buildCat('tama', { look: { sprout: y > 0.9 ? '#7ad86a' : null }, gear: { weapon: null } }); m.group.scale.setScalar(0.55); m.group.position.set(x, y, z + 0.1); m.setPose(POSES.idle); m.face.set('sleepy'); g.add(m.group); mats.push(...m.mats); minis.push(m); }
       update = (dt, t) => minis.forEach((m, i) => { m.update(dt, t + i); m.group.position.y = spots[i][1] + Math.abs(Math.sin(t * 2 + i)) * 0.04; });
       height = 1.6; radius = 0.9; break;
+    }
+    case 'jarashi': {   // 魔界ねこじゃらし：ゆれる茎の先に、ふさふさの穂。穂に目と猫耳、根もとに葉っぱ
+      const stemM = tm('#5a8a4a'), plumeM = tm(col), leafM = tm('#6aa85a');
+      for (let i = 0; i < 3; i++) { const lf = add(P(new THREE.SphereGeometry(0.22, 10, 6), leafM), Math.cos(i * 2.1) * 0.18, 0.06, Math.sin(i * 2.1) * 0.18); lf.scale.set(1, 0.18, 0.45); lf.rotation.y = -i * 2.1; }
+      const sway = new THREE.Group(); inner.add(sway);
+      const st = add(P(new THREE.CylinderGeometry(0.025, 0.04, 0.9, 8), stemM), 0, 0.45, 0, sway);
+      const head = new THREE.Group(); head.position.y = 0.9; sway.add(head);
+      // 穂：細い芯に、長い毛をびっしり放射状に。先へいくほど細く、少しうしろへしなる
+      const hairM = tm('#' + new THREE.Color(col).lerp(new THREE.Color('#ffffff'), 0.3).getHexString());
+      for (let i = 0; i < 9; i++) {
+        const k = i / 8, r = 0.12 * (1 - k * 0.55), y = 0.04 + i * 0.075, z = -k * k * 0.12;
+        add(new THREE.Mesh(new THREE.SphereGeometry(r, 12, 8), plumeM), 0, y, z, head).scale.y = 1.2;
+        const n = Math.round(16 - k * 7), len = 0.22 * (1 - k * 0.45);
+        for (let j = 0; j < n; j++) {
+          const a = (j + (i % 2) * 0.5) / n * Math.PI * 2, dir = V3(Math.cos(a), 0.55, Math.sin(a)).normalize();
+          const hg = new THREE.ConeGeometry(0.03, len, 4); hg.translate(0, len / 2, 0);
+          const hair = add(new THREE.Mesh(hg, j % 3 ? plumeM : hairM), Math.cos(a) * r * 0.6, y, z + Math.sin(a) * r * 0.6, head);
+          hair.quaternion.setFromUnitVectors(V3(0, 1, 0), dir);
+        }
+      }
+      catEars(0.1, 0.72, -0.1, 0.65, plumeM, head);
+      eyes(0.075, 0.3, 0.2, 0.06, head);
+      update = (dt, t) => { const ph = root.userData.ph; sway.rotation.z = Math.sin(t * 2.4 + ph) * 0.22; sway.rotation.x = Math.sin(t * 1.7 + ph) * 0.1; head.rotation.z = Math.sin(t * 2.4 + ph - 0.6) * 0.25; };
+      height = 1.7; radius = 0.4; scale = 1.1; break;
+    }
+    case 'candle': {   // 生きている燭台：金の台に三本のろうそく。まん中の太いろうそくに顔、桃色の炎がゆらめく
+      const gold = tm('#d8b048', { emissive: new THREE.Color('#d8b048'), emissiveIntensity: 0.15 }), wax = tm('#f6eee0');
+      add(P(new THREE.CylinderGeometry(0.22, 0.3, 0.08, 16), gold), 0, 0.04, 0);
+      add(P(new THREE.CylinderGeometry(0.04, 0.06, 0.6, 10), gold), 0, 0.36, 0);
+      const arm = add(P(new THREE.TorusGeometry(0.32, 0.03, 6, 20, Math.PI), gold), 0, 0.82, 0); arm.rotation.z = Math.PI;
+      const flames = [];
+      for (const [x, y, r, h] of [[-0.32, 0.82, 0.06, 0.22], [0.32, 0.82, 0.06, 0.22], [0, 0.68, 0.14, 0.56]]) {
+        add(P(new THREE.CylinderGeometry(r * 1.4, r * 1.2, 0.05, 12), gold), x, y, 0);
+        add(P(new THREE.CylinderGeometry(r, r, h, 14), wax), x, y + h / 2, 0);
+        const f = add(new THREE.Mesh(new THREE.SphereGeometry(r * 0.8, 10, 8), glowMat(col, 3)), x, y + h + r * 0.9, 0); f.scale.y = 1.7; flames.push(f);
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 1.4), blending: THREE.AdditiveBlending, depthWrite: false })); sp.scale.setScalar(r * 6); f.add(sp);
+      }
+      // ろうのたれ
+      for (const a of [0.4, 2.2, 4.1]) add(new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), wax), Math.cos(a) * 0.14, 1.1 + Math.sin(a * 3) * 0.04, Math.sin(a) * 0.14).scale.y = 1.8;
+      eyes(0.05, 1.0, 0.13, 0.04);
+      update = (dt, t) => { const ph = root.userData.ph; flames.forEach((f, i) => { const k = Math.sin(t * 9 + i * 2 + ph) * 0.12 + Math.sin(t * 23 + i) * 0.05; f.scale.set(1 - k * 0.5, 1.7 + k, 1 - k * 0.5); }); inner.position.y = Math.abs(Math.sin(t * 3 + ph)) * 0.06; inner.rotation.z = Math.sin(t * 3 + ph) * 0.05; };
+      emitFn = (p, pos) => { if (Math.random() < 0.35) p.emit(V3(pos.x + (Math.random() - 0.5) * 0.3, pos.y + 1.35, pos.z), V3(0, 0.7, 0), hdr(col, 1.6), { life: 0.7, size: 0.08, drag: 0.6 }); };
+      height = 1.4; radius = 0.45; scale = 1.15; break;
+    }
+    case 'yarn': {   // ころころ毛糸玉：巻いた糸の筋の入った玉に猫耳と目、ほどけた糸がしっぽのように
+      const ym = tm(col), line = tm('#' + new THREE.Color(col).multiplyScalar(0.7).getHexString());
+      const ball = new THREE.Group(); ball.position.y = 0.42; inner.add(ball);
+      add(P(new THREE.SphereGeometry(0.42, 24, 16), ym), 0, 0, 0, ball);
+      for (let i = 0; i < 6; i++) { const r = add(new THREE.Mesh(new THREE.TorusGeometry(0.425, 0.012, 6, 40), line), 0, 0, 0, ball); r.rotation.set(i * 0.55, i * 1.1, i * 0.3); }
+      catEars(0.2, 0.8, 0, 0.9, ym);
+      eyes(0.13, 0.5, 0.38, 0.065);
+      // ほどけた糸：うしろへのびて、くねくね動く
+      const tail = []; let par = inner;
+      for (let i = 0; i < 6; i++) { const q = new THREE.Group(); q.position.set(0, i ? 0 : 0.1, i ? -0.1 : -0.4); par.add(q); add(new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.11, 6), ym), 0, 0, -0.05, q).rotation.x = Math.PI / 2; tail.push(q); par = q; }
+      update = (dt, t) => { const ph = root.userData.ph, b = Math.abs(Math.sin(t * 4 + ph)); inner.position.y = b * 0.1; ball.rotation.x = t * 1.5; ball.scale.set(1 + (1 - b) * 0.06, 1 - (1 - b) * 0.08, 1 + (1 - b) * 0.06); tail.forEach((q, i) => { q.rotation.y = Math.sin(t * 4 + i * 0.8 + ph) * 0.4; }); };
+      height = 1.0; radius = 0.45; break;
     }
     default: {   // 形の分からない敵：光る球
       coreGlow(1, 0, 0.3); float = 0.2; height = 1.6; radius = 0.6;

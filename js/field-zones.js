@@ -1725,7 +1725,7 @@ const FIELD_ZONES = {
 
   // ---------------- 第六章 魔王領 ----------------
   demon_land: { ci: 5, name: '魔王領', w: 70, d: 130, stage: '6-1', arenas: [[0, -8, 0]], build: 'demonLand', groups: 6, chests: 3, crystals: 3,
-    world: true, arch: 'demoncrag', chestAt: [[-28, -26], [18, -20], [30, 18]],
+    world: true, foes: ['mazoku', 'monban', 'jarashi'], arch: 'demoncrag', chestAt: [[-28, -26], [18, -20], [30, 18]],
     // 前庭のまわりと、城門の門楼・塔の根もとは、低い岩場（高い崖が城にめり込まないように）
     lowRock: [[0, 0, 34, 12, 0.4], [6, 13, 28, 17, 0.4]],
     // 西の受付のテント（有給・落とし物・苦情の窓口）から、南の広場へ。北へのびる広い谷の道の先は猫じゃらしの野原（戦い）、大階段を上ると魔王城の門。
@@ -1813,7 +1813,7 @@ const FIELD_ZONES = {
   //   2F の回廊へは、中庭の奥の高台から上る
   // 1F 大広間：南の玄関から入る大きな広間。西・東の廊下の先は保健の間と兵の詰め所、北の通路は中庭へ。四すみに小部屋（肖像画の間・守衛室・落とし物置き場・地下への階段）
   demon_castle: { ci: 5, name: '魔王城', floor: '1F', stage: '6-2', arenas: [[0, -2, 0]], build: 'demonCastle', arch: 'castle', bg: 'demon', groups: 3, chests: 2, crystals: 1, calmAfter: '6-3',
-    world: true, chestAt: [[-26, -13], [26, 9]],
+    world: true, foes: ['mazoku', 'souji', 'shokudai'], eliteFoes: ['kacchu', 'kanbu'], chestAt: [[-26, -13], [26, 9]],
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.014, light: 1.1 },
     map: [
       '#################nnnn############bb###',
@@ -1867,6 +1867,7 @@ const FIELD_ZONES = {
     map2d: [910, 30] },
 
   // 1F 保健の間（大広間の西）：東の待合室で受付をして、西の広い診察室で健康診断（ベッド・体重計・身長計・視力検査表）。北に薬品庫、南に休養室
+  //   敵の保健係（ナース）が出るのは、この区画だけ
   demon_clinic: { ci: 5, name: '魔王城・保健の間', floor: '1F', parent: 'demon_castle', stage: '6-2', arenas: [[-12, 0, 0]], build: 'demonClinic', arch: 'castle', bg: 'demon', groups: 2, chests: 2, crystals: 1, calmAfter: '6-3',
     world: true, chestAt: [[27, -18], [29, 18]],
     th: { pattern: 'checker', floor: '#c8b8d8', floor2: '#b8a6cc', line: '#ff8ad8', floorGlow: 0.15, fog: '#3a2a48', fogD: 0.012, light: 1.25 },
@@ -1920,7 +1921,7 @@ const FIELD_ZONES = {
 
   // 1F 兵の詰め所（大広間の東）：西の入口から東へのびる広い廊下。北に食堂・休憩室・寝室、食堂の奥に広い厨房（四天王グツグツの持ち場）、南に武器庫と広い訓練場
   demon_barracks: { ci: 5, name: '魔王城・兵の詰め所', floor: '1F', parent: 'demon_castle', stage: '6-k1', arenas: [[9, 12, 0], [-11, -26.5, 0]], build: 'demonBarracks', arch: 'castle', bg: 'demon', groups: 3, chests: 2, crystals: 1, calmAfter: '6-3',
-    world: true, chestAt: [[22, -10], [-23, 7]],
+    world: true, foes: ['mazoku', 'ryouri', 'monban'], eliteFoes: ['kanbu'], chestAt: [[22, -10], [-23, 7]],
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.014, light: 1.1 },
     map: [
       '############################',
@@ -1982,7 +1983,7 @@ const FIELD_ZONES = {
   // 中庭（大広間の北）：城壁に囲まれた、空の見える魔王さまの遊び場。キャットタワー・猫じゃらしの花壇・毛糸玉の山・砂場・ハンモック。
   //   北の高台（高さ 2m）の奥に、2F の回廊への階段
   demon_court: { ci: 5, name: '魔王城・中庭', floor: '中庭', parent: 'demon_castle', stage: '6-k1', arenas: [[0, 2, 0]], build: 'demonCourt', arch: 'demoncourt', bg: 'demon', groups: 4, chests: 2, crystals: 2, calmAfter: '6-3',
-    world: true, chestAt: [[-30, 4], [30, 6]],
+    world: true, foes: ['jarashi', 'keito', 'mazoku'], chestAt: [[-30, 4], [30, 6]],
     th: { pattern: 'checker', floor: '#5a4a6a', floor2: '#4e405e', line: '#ff8ad8', floorGlow: 0.15 },
     map: [
       '#################uu#################',
@@ -2033,7 +2034,7 @@ const FIELD_ZONES = {
 
   // 地下倉庫（大広間の北東の階段から）：まん中にミルクの樽がならぶ蔵。西に鉄格子の牢屋（扉は開けっぱなし）と看守室、東に食料庫と宝物庫
   demon_cellar: { ci: 5, name: '魔王城・地下倉庫', floor: 'B1', parent: 'demon_castle', stage: '6-k1', arenas: [[2, -4, 0]], build: 'demonCellar', arch: 'castle', bg: 'demon', groups: 3, chests: 3, crystals: 2, calmAfter: '6-3',
-    world: true, chestAt: [[-29, -20], [27, 4], [22, 15]],
+    world: true, foes: ['mazoku', 'shokudai', 'ryouri', 'keito'], eliteFoes: ['kacchu'], chestAt: [[-29, -20], [27, 4], [22, 15]],
     th: { pattern: 'checker', floor: '#3a3040', floor2: '#322838', line: '#ff8ad8', floorGlow: 0.2, fog: '#1a1024', fogD: 0.02, light: 0.85 },
     map: [
       '##################################',
@@ -2083,7 +2084,7 @@ const FIELD_ZONES = {
   // 2F：まん中の吹き抜けを広い回廊がぐるりと囲み、吹き抜けのまん中を橋が渡る。四すみに魔王さまの私室（おもちゃ部屋・没収品の倉庫・衣装部屋・寝室）
   //   戦闘は、三階への階段の前（北の回廊と踊り場）で行う
   demon_castle_2f: { ci: 5, name: '魔王城・回廊', floor: '2F', parent: 'demon_castle', stage: '6-k4', arenas: [[0, -18, 0]], build: 'demonCastle2f', arch: 'castle', bg: 'demon', groups: 4, chests: 3, crystals: 2, calmAfter: '6-3',
-    world: true, chestAt: [[-30, -7], [30, -7], [-30, 19]],
+    world: true, foes: ['souji', 'nuigurumi', 'shokudai', 'mazoku'], eliteFoes: ['kacchu', 'kanbu'], chestAt: [[-30, -7], [30, -7], [-30, 19]],
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.014, light: 1.1 },
     map: [
       '#################uu#################',

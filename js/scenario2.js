@@ -162,10 +162,10 @@ Object.assign(SCENES, {
     ] },
 
   // ================= 第六章　魔王城へ =================
-  c6_01: { title: '魔王領', cast: ['e:mazoku', 'e:kangoshi'], extra: ['mazoku_yukyu'], bgm: 'field',
+  c6_01: { title: '魔王領', cast: ['e:mazoku', 'e:monban'], extra: ['mazoku_yukyu'], bgm: 'field',
     stage: { zone: 'demon_land', at: [-2, 24], face: 0,
       cast: { mazoku_yukyu: { at: [0, 2.8], face: 'mike' },
-        'e:mazoku': { at: [-2.6, 7], hidden: true }, 'e:kangoshi': { at: [2.6, 7.4], hidden: true } },
+        'e:mazoku': { at: [-2.6, 7], hidden: true }, 'e:monban': { at: [2.6, 7.4], hidden: true } },
       points: { castle: [2, 20, 86] }, shots: { castle: { pos: [-1.4, 3.2, -11], look: [2, 19, 86] } } },
     lines: [
       ['n', '魔王領。紫の空の下、おそろしい魔王城がそびえている。……はずなのだが。', { cam: 'castle', dur: 7, look: { all: 'castle' } }],
@@ -176,7 +176,7 @@ Object.assign(SCENES, {
       ['mazoku_yukyu', 'それに今日はお城で、年に一度の健康診断の日でして……。みんな、城の保健の間に並んでるんです。', { f: 'worry', g: 'explain' }],
       ['mike', 'ぼくたち、魔王に会いに来たんだ！　笑いの実を、返してもらうの！', { f: 'joy', g: 'fist' }],
       ['mazoku_yukyu', '魔王さまに？　それなら、まずお城の受付で、面会の手続きを……。魔王さま、最近ずーっと、ひとりで猫じゃらしで遊んでますけど……', { f: 'neutral', g: 'explain' }],
-      ['mazoku_yukyu', 'あっ、これ言っちゃいけないやつだった！　し、侵入者だーー！', { f: 'surprise', g: 'recoil', enter: ['e:mazoku', 'e:kangoshi'], later: [0.5, { exit: 'mazoku_yukyu' }], stance: { all: 'ready' } }],
+      ['mazoku_yukyu', 'あっ、これ言っちゃいけないやつだった！　し、侵入者だーー！', { f: 'surprise', g: 'recoil', enter: ['e:mazoku', 'e:monban'], later: [0.5, { exit: 'mazoku_yukyu' }], stance: { all: 'ready' } }],
       ['kuro', '……油断するな。', { f: 'serious' }],
     ] },
   // 魔王城の受付：面会許可証（ハンコの欄が五つ）を受け取る。健康診断と、四天王四人のハンコを集める

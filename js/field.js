@@ -309,8 +309,9 @@ class FieldView extends BaseView {
     }
     // 敵グループ（区画に対応するステージの敵）
     const pool = stagePools(Z.pool || Z.stage), dead = this.s.set(this.s.defeated, this.zoneId);
-    // foes：区画ならではの敵（強さはステージのまま）
+    // foes・eliteFoes：区画ならではの敵（強さはステージのまま）
     if (Z.foes) pool.normals = Z.foes;
+    if (Z.eliteFoes) pool.elites = Z.eliteFoes;
     this.groups = [];
     const spawnSafe = [...this.reserved.slice(0, 3).map(p => ({ ...p, r: p.r + 6 })), ...this.safe.map(a => ({ ...a, r: a.r + 8 }))];
     for (let i = 0; i < (this.town ? 0 : Z.groups); i++) {
