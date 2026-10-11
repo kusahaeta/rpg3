@@ -3439,14 +3439,32 @@ class ZoneKit {
     sp.scale.setScalar(1.8); sp.position.set(x + 0.8, y + h - 0.45, z); this.scene.add(sp);
     this.col(x, z, 0.2, h);
   }
-  // 旗飾り：両端の柱のあいだに、三角の旗をたるませて張る
+  // 旗飾り：両端の柱のあいだに、三角の旗をたるませて張る。風で、旗は紐を軸にはためき、紐はゆっくり横にゆれる
   bunting(x0, z0, x1, z1, cols, h = 5, poles = true) {
     const ya = this.gy(x0, z0) + h, yb = this.gy(x1, z1) + h, len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(4, Math.round(len / 0.9)), ry = Math.atan2(x1 - x0, z1 - z0);
+    // 旗は一本の紐ごとに InstancedMesh（色は旗ごと）。上の辺（紐）が回転の軸になるよう、三角の上の辺を原点に置く
+    const g = new THREE.ConeGeometry(0.28, 0.55, 3); g.rotateZ(Math.PI); g.translate(0, -0.275, 0);
+    const mat = this.mc.bunting || (this.mc.bunting = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.9, metalness: 0.02, side: THREE.DoubleSide }));
+    const im = new THREE.InstancedMesh(g, mat, n + 1), flags = [], col = new THREE.Color();
     for (let i = 0; i <= n; i++) {
       const t = i / n, y = lerp(ya, yb, t) - Math.sin(t * Math.PI) * Math.min(1.2, len * 0.05);
-      const g = new THREE.ConeGeometry(0.28, 0.55, 3); g.rotateZ(Math.PI);
-      this.mg(this.stdM(cols[i % cols.length], 0.9, { side: THREE.DoubleSide }), g, lerp(x0, x1, t), y - 0.3, lerp(z0, z1, t), [0, ry + Math.PI / 2, 0], [1, 1, 0.15]);
+      flags.push({ p: V3(lerp(x0, x1, t), y - 0.025, lerp(z0, z1, t)), t });
+      im.setColorAt(i, col.set(cols[i % cols.length]));
     }
+    im.frustumCulled = false; this.add(im);
+    const qy = new THREE.Quaternion().setFromAxisAngle(V3(0, 1, 0), ry + Math.PI / 2), qx = new THREE.Quaternion(), q = new THREE.Quaternion();
+    const X = V3(1, 0, 0), S = V3(1, 1, 0.15), side = V3(Math.cos(ry), 0, -Math.sin(ry)), m = new THREE.Matrix4(), p = V3(), ph = this.r() * 6;
+    const pose = tt => {
+      const gust = 0.65 + 0.35 * Math.sin(tt * 0.45 + ph), sway = Math.sin(tt * 0.9 + ph) * Math.min(0.25, len * 0.012);
+      for (let i = 0; i <= n; i++) {
+        const f = flags[i], arc = Math.sin(f.t * Math.PI);
+        qx.setFromAxisAngle(X, gust * (0.22 + 0.2 * Math.sin(tt * 3.2 + ph - f.t * len * 0.9)));
+        p.copy(f.p).addScaledVector(side, sway * arc); q.copy(qy).multiply(qx);
+        im.setMatrixAt(i, m.compose(p, q, S));
+      }
+      im.instanceMatrix.needsUpdate = true;
+    };
+    pose(0); this.tick((dt, tt) => pose(tt));
     if (poles) for (const [x, z, y] of [[x0, z0, ya], [x1, z1, yb]]) { this.mg('wood2', new THREE.CylinderGeometry(0.08, 0.1, h + 0.3, 6), x, y - h / 2 + 0.15, z); this.col(x, z, 0.15, h); }
   }
   // 垂れ幕（ry = 正面）：上端 y0 から長さ h
