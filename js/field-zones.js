@@ -1643,7 +1643,10 @@ const FIELD_ZONES = {
   //         二3 の金で昔へ → 北3・北2・北1 → 北1 の青で今へ → 封印の扉の間。
   //   どの段にも、まちがえると閉じこめられる水晶（南2 の青・南3 の金・北4 の金・北3 の青）がある。閉じこめられると、入口の間へもどされる（FieldView.checkTimeTrap）。
   //   三4 の白い水晶は、より道（宝箱）
-  ruins_maze: { ci: 4, name: '崩れた回廊', floor: '奥', parent: 'ruins_in', w: 78, d: 98, stage: '5-2', after: 'c5_02', arenas: [[0, 35, 0], [0, -38, 0]], build: 'ruinsMaze', bg: 'ruins', groups: 4, chests: 3, crystals: 2, calmAfter: '5-3', skyTree: false,
+  //   戦場：入口の間と封印の扉の間のほか、16 の小部屋それぞれ（'battle'。戦闘の背景だけ）。小部屋で出会った敵とはその部屋で戦い、まだ着いていない封印の扉は見せない
+  ruins_maze: { ci: 4, name: '崩れた回廊', floor: '奥', parent: 'ruins_in', w: 78, d: 98, stage: '5-2', after: 'c5_02', arenas: [[0, 35, 0], [0, -38, 0],
+      [-27, -22, 0, 'battle'], [-9, -22, 0, 'battle'], [9, -22, 0, 'battle'], [27, -22, 0, 'battle'], [-27, -8, 0, 'battle'], [-9, -8, 0, 'battle'], [9, -8, 0, 'battle'], [27, -8, 0, 'battle'], [-27, 6, 0, 'battle'], [-9, 6, 0, 'battle'], [9, 6, 0, 'battle'], [27, 6, 0, 'battle'], [-27, 20, 0, 'battle'], [-9, 20, 0, 'battle'], [9, 20, 0, 'battle'], [27, 20, 0, 'battle']],
+    build: 'ruinsMaze', bg: 'ruins', groups: 4, chests: 3, crystals: 2, calmAfter: '5-3', skyTree: false,
     world: true, arch: 'ruin', chestAt: [[-21, 9], [-3, -27], [33, 9]],
     th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.3, fog: '#2a3a34', fogD: 0.02, light: 0.95 },
     map: [
@@ -2723,7 +2726,8 @@ function zoneOpen(id) {
   return stageUnlocked(Z.stage) && (!Z.after || typeof Story === 'undefined' || Story.seen(Z.after));
 }
 // 区画の戦場（ワールド座標）。地形マップの区画はマス座標から直す
-function zoneArenas(Z) { return (Z.arenas || []).map(([x, z, f]) => { const [wx, wz] = Z.map ? zonePoint(Z, [x, z]) : [x, z]; return { x: wx, z: wz, face: f || 0 }; }); }
+//   [x, z, 向き, 'battle']：戦闘の背景にだけ使う戦場。フィールドでは場所を空けない（小部屋にも敵が出る・物が置ける）
+function zoneArenas(Z) { return (Z.arenas || []).map(([x, z, f, k]) => { const [wx, wz] = Z.map ? zonePoint(Z, [x, z]) : [x, z]; return { x: wx, z: wz, face: f || 0, battleOnly: k === 'battle' }; }); }
 // その区画に敵が出るか（calmAfter のステージを越えると静かになる）
 function zoneCalm(Z) { return !!(Z.town || Z.calm || (Z.calmAfter && Save.data.cleared[Z.calmAfter])); }
 // 樹の地下の根（zone.roots）：光る実（pts：光っている実の位置 [x, z] の並び）が根元の輪（半径 R.r）の中にある根は元気。
