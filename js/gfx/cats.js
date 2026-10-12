@@ -508,11 +508,13 @@ function buildCat(key, opt = {}) {
       //   うれしいと根もとから立てて先を後ろへ丸め、しょんぼりすると後ろへ垂らして、先は地面につかないよう少し持ち上げる
       const ex = face.expr, want = ['sad', 'worry', 'pained', 'cry'].includes(ex) ? -1 : ['joy', 'smile', 'surprise'].includes(ex) ? 1 : 0;
       mood += (want - mood) * Math.min(1, dt * 3);
-      const wag = mood > 0.5 ? 6 : 2.4;
+      const wag = mood > 0.5 ? 6 : 2.4, out = this.tailOut || 0;
       tail.forEach((g, i) => {
         const base = sp === 'mouse' ? -0.35 + i * 0.12 : sp === 'dog' ? -0.9 : i === 0 ? -1.15 + mood * (mood > 0 ? 0.55 : 0.8) : -0.12 - mood * (mood > 0 ? 0.08 : 0.18);
         g.rotation.x = base + (i ? Math.sin(t * 1.3 - i * 0.5) * 0.05 : 0) - pose.lean * (i ? 0 : 0.6);
         g.rotation.z = Math.sin(t * wag - i * 0.6 + this.seed) * (0.08 + i * 0.03);
+        // tailOut：しっぽを後ろへまっすぐ伸ばす（しっぽでなぎ払う技）
+        if (out) { g.rotation.x = lerp(g.rotation.x, i ? 0.04 : -1.5 - pose.lean, out); g.rotation.z *= 1 - out; }
       });
       // 耳：ときどきぴくっと動く。しょんぼりすると伏せる
       if ((earT -= dt) <= 0) { earT = 2 + Math.random() * 5; earFlick = 1; }

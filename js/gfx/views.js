@@ -165,6 +165,7 @@ class BattleView extends BaseView {
     if (loc) { buildBattleSet(this, loc); this.initCutaway(); }
     this.bloomStrength = 0.55;
     this.ents = new Map();
+    this.partners = new Set();   // 技を撃つ子のほかに、持ち場をはなれている子（友情技の相方）
     this.markGeo = new THREE.RingGeometry(0.75, 0.9, 64);
     this.sway = 0.4; this.swayOff = V3(); this.roll = 0;
     this.scene.add(this.camera);   // カメラ子のスプラッシュ背景を描くため
@@ -369,12 +370,16 @@ class BattleView extends BaseView {
   // ---------- 味方の攻撃 ----------
   async attack(src, targets, kind, opt = {}) {
     const e = this.ent(src); if (!e || !targets.length) return;
-    const m = e.model, col = ELEMENTS[src.elem].color;
+    const m = e.model, col = ELEMENTS[opt.elem || src.elem].color;
     const tEnts = targets.map(t => this.ent(t)).filter(Boolean);
     const main = tEnts[0]; if (!main) return;
     const ult = kind === 'ult';
-    this.lastAttack = { src, moved: false };
+    // 技ごとのモーション（js/gfx/moves.js）。keep の技は、持ち場をはなれた相方をそのまま残す
+    const mv = MOVES[this.animOf(opt)];
+    const away = mv && mv.keep ? this.park(src) : this.recall(src);
+    this.lastAttack = { src, moved: away };
     this.unfocus(); this.sway = 0;
+    if (mv && mv.attack) { await mv.attack.call(this, e, tEnts, { col, ult, kind, opt }); if (ult) GFX.shake(0.3); return; }
     if (m.style === 'melee' && !opt.ranged) {
       const multi = tEnts.length > 2;
       const c = this.enemyCenter();
@@ -421,10 +426,60 @@ class BattleView extends BaseView {
     }
     if (ult) GFX.shake(0.3);
   }
-  async quickShot(src, t) {
+  // 連続攻撃（bounce）の 2 発目から：近接は次の敵へ跳んで斬り、遠距離は弾を撃つ
+  async quickShot(src, t, kind, opt = {}) {
     const e = this.ent(src), te = this.ent(t); if (!e || !te) return;
-    const from = e.model.tipPos();
-    await this.fx.projectile(from, this.hitPoint(t), ELEMENTS[src.elem].color, { dur: 0.16, size: 0.5, arc: 0.3 });
+    const col = ELEMENTS[opt.elem || src.elem].color, mv = MOVES[this.animOf(opt)];
+    if (mv && mv.hop) return mv.hop.call(this, e, te, { col, ult: kind === 'ult', kind, opt });
+    if (this.lastAttack && this.lastAttack.src === src && this.lastAttack.moved) {
+      const dest = this.meleeSpot(te, 0.7);
+      this.closeCam(dest);
+      await this.dashTo(e, dest, { pose: POSES.windup, dur: 0.18, hop: 0.45 });
+      this.face(e, te.home);
+      await this.tweenPose(e.model, POSES.strike, 0.07);
+      this.fx.slash(this.hitPoint(t), col, { cam: this.camera, size: 2.2 });
+      return;
+    }
+    await this.fx.projectile(e.model.tipPos(), this.hitPoint(t), col, { dur: 0.16, size: 0.5, arc: 0.3 });
+  }
+  // 同じ敵へ続けて斬る（二連・三連影）：2 太刀目からは、返す刀と振りかぶり直しをくり返す
+  async restrike(src, t, i, kind, opt = {}) {
+    const e = this.ent(src), te = this.ent(t); if (!e || !te) return;
+    const m = e.model, col = ELEMENTS[opt.elem || src.elem].color;
+    if (!this.lastAttack || this.lastAttack.src !== src || !this.lastAttack.moved) { await this.fx.projectile(m.tipPos(), this.hitPoint(t), col, { dur: 0.2, size: 0.5, arc: 0.3 }); return; }
+    this.face(e, te.home);
+    if (i % 2) await this.tweenPose(m, POSES.strike2, 0.1);
+    else { await this.tweenPose(m, POSES.windup, 0.08); await this.tweenPose(m, POSES.strike, 0.08); }
+    this.fx.slash(this.hitPoint(t), col, { cam: this.camera, size: kind === 'ult' ? 3 : 2.4, angle: (i % 2 ? -0.6 : 0.5) + (Math.random() - 0.5) * 0.4 });
+  }
+  // ダメージのない技の動き（技の run から B.motion で呼ぶ）
+  async motion(src, anim, targets) {
+    const e = this.ent(src), mv = MOVES[anim]; if (!e || !mv) return;
+    const ts = targets.map(t => this.ent(t)).filter(Boolean), col = ELEMENTS[src.elem].color;
+    this.unfocus(); this.sway = 0;
+    if (mv.attack) { this.lastAttack = { src, moved: this.recall(src) }; await mv.attack.call(this, e, ts, { col, ult: false, kind: 'skill', opt: {} }); }
+    else if (mv.support) await mv.support.call(this, e, targets, { col });
+  }
+  // 友情技で先に飛びこんだ相方を、もとの位置へ戻す。src 自身が持ち場をはなれていたら true（戻すのは attackEnd）
+  recall(src) {
+    const away = this.park(src), list = [...this.partners];
+    this.partners.clear();
+    for (const e of list) this.goHome(e);
+    return away;
+  }
+  // 持ち場をはなれている子を相方として覚えておく（src 自身ははずして、はなれていたかを返す）
+  park(src) {
+    const la = this.lastAttack;
+    if (la && la.src !== src && la.moved) { const e = this.ent(la.src); if (e) this.partners.add(e); }
+    this.lastAttack = null;
+    const e = this.ent(src), away = !!e && this.partners.has(e);
+    if (e) this.partners.delete(e);
+    return away;
+  }
+  goHome(e) {
+    const m = e.model, from = m.group.position.clone();
+    this.tweenPose(m, e.u.alive ? POSES.ready : POSES.down, 0.3);
+    GFX.tween(0.3, t => { m.group.position.lerpVectors(from, e.home, t); m.group.position.y = Math.sin(t * Math.PI) * 0.5; }).then(() => { m.group.rotation.y = Math.PI; });
   }
   async attackEnd(src) {
     const e = this.ent(src); if (!e) return;
@@ -436,6 +491,7 @@ class BattleView extends BaseView {
       await GFX.tween(0.3, t => { m.group.position.lerpVectors(from, e.home, t); m.group.position.y = Math.sin(t * Math.PI) * 0.5; });
     } else if (src.alive) this.tweenPose(m, POSES.ready, 0.3);
     m.group.rotation.y = Math.PI;
+    this.recall(src);
     this.lastAttack = null;
     this.wide();
   }
@@ -445,6 +501,9 @@ class BattleView extends BaseView {
     const e = this.ent(src); if (!e) return;
     const col = ELEMENTS[src.elem].color;
     this.unfocus(); this.sway = 0;
+    this.recall(src);
+    const mv = MOVES[this.animOf()];
+    if (mv && mv.support) return mv.support.call(this, e, targets.filter(Boolean), { col });
     this.setCam(V3(e.home.x + 2.0, 1.3, e.home.z - 1.6), V3(e.home.x - 0.2, 0.8, e.home.z + 0.3), { speed: 4 });
     e.model.group.rotation.y = 0.9;
     await this.tweenPose(e.model, POSES.cast2, 0.22);
@@ -788,30 +847,58 @@ class BattleView extends BaseView {
     const cx = es.reduce((a, e) => a + e.home.x, 0) / es.length;
     this.setCam(V3(cx + 0.4, 1.0, 5.4), V3(cx, 0.7, 2.6), { snap: true });
     this.setCam(V3(cx + 0.9, 0.9, 4.6), V3(cx, 0.75, 2.6), { speed: 1.5 });
-    es.forEach((e, i) => { e.model.group.rotation.y = 0; if (e.model.face) e.model.face.set('joy'); GFX.delay(i * 0.08).then(() => this.tweenPose(e.model, POSES.ult, 0.35)); e.model.flash(ELEMENTS[e.u.elem].color, 0.8); this.fx.pillar(e.home, ELEMENTS[e.u.elem].color, { h: 6, r: 0.5, life: 1.1, k: 1.4 }); });
+    es.forEach((e, i) => { e.model.group.rotation.y = 0; if (e.model.face) e.model.face.set('joy'); GFX.delay(i * 0.08).then(() => this.tweenPose(e.model, POSES.ult, 0.35)); e.model.flash(ELEMENTS[e.u.elem].color, 0.5); this.fx.pillar(e.home, ELEMENTS[e.u.elem].color, { h: 6, r: 0.55, life: 1.1, k: 0.45 }); });
     if (es.length > 1) for (let i = 0; i < es.length - 1; i++) this.fx.beam(this.hitPoint(es[i].u), this.hitPoint(es[i + 1].u), '#ffcf4a', { life: 1.0, r: 0.03 });
     this.p.burst(V3(cx, 0.8, 2.6), '#ffcf4a', 80, { speed: 4, life: 1.2, size: 0.08, up: 0.8 });
-    GFX.flash('#fff4c8', 0.35, 0.5);
+    GFX.flash('#fff4c8', 0.2, 0.4);
     await GFX.delay(1.2);
     es.forEach(e => { e.model.group.rotation.y = Math.PI; this.tweenPose(e.model, POSES.ready, 0.2); });
     this.wide();
   }
-  // にゃんこオールスターズ：世界中の猫の光が集まり、虹の柱が敵を貫く
+  // にゃんこオールスターズ：台詞のあいだ、みんなで顔を見合わせ（allStarsLine）、
+  // 「ずっと仲間だ！」で手をあげる。世界中の猫の光がみんなの手もとへ集まり、虹の光になって敵を貫く
+  allStarsLine(mem, i) {
+    const es = mem.map(u => this.ent(u)).filter(e => e && e.u.alive); if (!es.length) return;
+    const cx = es.reduce((a, e) => a + e.home.x, 0) / es.length, z = es[0].home.z;
+    this.unfocus(); this.sway = 0.2;
+    if (i === 0) {
+      // 敵とのあいだは狭いので、引かずに画角を広げて、みんなを入れる
+      this.setFov(52);
+      this.setCam(V3(cx + 0.3, 1.0, z - 3.6), V3(cx, 0.75, z), { snap: true });
+      this.setCam(V3(cx + 0.5, 1.1, z - 3.2), V3(cx, 0.75, z), { speed: 0.6 });
+      // となりの子のほうを向いて、うなずきあう
+      es.forEach(e => { e.model.group.rotation.y = Math.PI + (e.home.x < cx ? -0.5 : e.home.x > cx ? 0.5 : 0); if (e.model.face) e.model.face.set('gentle'); this.tweenPose(e.model, POSES.ready, 0.3); });
+    } else {
+      es.forEach((e, j) => { e.model.group.rotation.y = Math.PI; if (e.model.face) e.model.face.set('joy'); GFX.delay(j * 0.07).then(() => { this.tweenPose(e.model, POSES.hurrah, 0.18); GFX.tween(0.3, k => { e.model.group.position.y = Math.sin(k * Math.PI) * 0.22; }); }); });
+      this.p.burst(V3(cx, 1.4, z), '#fff4c8', 50, { speed: 3, up: 1, life: 1.0, size: 0.08 });
+    }
+  }
   async allStarsFx(mem) {
-    const c = this.enemyCenter();
-    this.unfocus();
-    this.setCam(V3(0, 3.6, 9.5), V3(c.x, 2.2, c.z), { speed: 1.2 });
+    const c = this.enemyCenter(), es = mem.map(u => this.ent(u)).filter(e => e && e.u.alive);
+    const cx = es.length ? es.reduce((a, e) => a + e.home.x, 0) / es.length : 0, z = es.length ? es[0].home.z : 2.6;
+    const gather = V3(cx, 2.0, z - 0.3);   // みんなの手の上
+    this.unfocus(); this.setFov(38);
+    this.setCam(V3(cx + 1.0, 1.4, z + 5.0), V3(cx, 1.6, z - 1.5), { snap: true });
+    this.setCam(V3(cx + 0.8, 1.7, z + 5.6), V3((cx + c.x) / 2, 1.6, (z + c.z) / 2), { speed: 0.8 });
     const cols = ['#ff6a8a', '#ffb84a', '#ffe84a', '#6aff8a', '#6ad8ff', '#8a6aff', '#ff8ad8'];
+    const orb = this.fx.sprite(gather, '#ffffff', 0.4, 1.6, { k: 3, grow: 1 });
     await this.every(1.4, 40, i => {
       const a = Math.random() * Math.PI * 2, r = 14 + Math.random() * 8, from = V3(Math.cos(a) * r, 6 + Math.random() * 6, Math.sin(a) * r - 3);
-      this.fx.projectile(from, c.clone().add(V3(0, 1.5, 0)), cols[i % 7], { dur: 0.6, size: 0.6, arc: 1.5 });
+      this.fx.projectile(from, gather, cols[i % 7], { dur: 0.6, size: 0.6, arc: 1.5 });
+      orb.scale.setScalar(0.4 + i * 0.05);
+      for (const e of es) { const p = this.hitPoint(e.u).add(V3(0, 0.3, 0)); this.p.emit(p, gather.clone().sub(p).multiplyScalar(1.6), hdr(cols[i % 7], 2.5), { life: 0.55, size: 0.1, drag: 0 }); }
     });
+    // 虹の光が敵へ
+    const to = c.clone().add(V3(0, 1.5, 0));
+    cols.forEach((col, i) => GFX.delay(i * 0.03).then(() => this.fx.beam(gather, to, col, { life: 0.8, r: 0.5 - i * 0.05 })));
+    await GFX.delay(0.15);
     GFX.flash('#ffffff', 0.9, 0.8); GFX.shake(0.6); GFX.slowmo(0.35, 0.8);
     cols.forEach((col, i) => GFX.delay(i * 0.05).then(() => this.fx.pillar(c, col, { h: 30, r: 1.2 + i * 0.25, life: 1.4, k: 2 })));
     this.fx.ring(c.clone().add(V3(0, 0.1, 0)), '#ffffff', { r: 16, life: 1.2, width: 0.4 });
     this.p.burst(c.clone().add(V3(0, 2, 0)), '#ffffff', 220, { speed: 14, life: 1.8, size: 0.14 });
     Sfx.slam(); Sfx.win();
     await GFX.delay(0.9);
+    es.forEach(e => { e.model.group.rotation.y = Math.PI; this.tweenPose(e.model, POSES.ready, 0.3); if (e.model.face) e.model.face.set('neutral'); });
   }
   // 世界中の猫の声が届く（光の粒が空から降りてくる）。tip：声が伝ってくる根（世界の果ての hooks.rootVoice）、strong：村で重ねた声
   voiceFx(tip, strong) {

@@ -525,9 +525,11 @@ class Battle {
     if (kind === 'basic') this.addSp(1); else this.addSp(-1);
     this.announce(kind === 'basic' ? '通常攻撃' : '戦闘スキル', ab.name, ELEMENTS[u.elem].color);
     if (target && target.side === 'enemy') this.lastTarget = target;
+    this.curAb = ab;   // 技ごとのモーション（ab.anim）
     if (this.v && !ENEMY_TARGETS.has(ab.target)) await this.v.support(u, ab.target === 'ally' ? [target] : this.aliveAllies());
     const res = (await ab.run(this, u, target)) || [];
     if (this.v && ENEMY_TARGETS.has(ab.target)) await this.v.attackEnd(u);
+    this.curAb = null;
     await this.resolveDeaths(u, kind);
     this.gainEnergy(u, kind === 'basic' ? 20 : 30);
     u.def.talent.afterAction && u.def.talent.afterAction(this, u, kind, res);
@@ -628,9 +630,11 @@ class Battle {
     const target = this.lastTarget && this.lastTarget.alive ? this.lastTarget : this.aiTarget(mem[0], { target: 'single' });
     if (c.id === 'allstars') await this.allStars(mem);
     else {
+      this.curAb = c;
       if (this.v && c.target === 'allies') await this.v.support(mem[0], this.aliveAllies());
       await c.run(this, mem, target);
       if (this.v && c.target !== 'allies') await this.v.attackEnd(mem[mem.length - 1]);
+      this.curAb = null;
       await this.resolveDeaths(mem[0], 'combo');
     }
     mem.forEach(m => this.gainEnergy(m, 10));
@@ -649,7 +653,8 @@ class Battle {
   // にゃんこオールスターズ：世界中の猫たちの「つながり」
   async allStars(mem) {
     const lines = [['mike', '「ぼくたちは――」'], ['all', '「ずっと仲間だ！」']];
-    for (const [k, line] of lines) {
+    for (const [i, [k, line]] of lines.entries()) {
+      if (this.v) this.v.allStarsLine(mem, i);
       if (k === 'all') mem.forEach(m => this.say(m, line)); else { const m = mem.find(x => x.key === k) || mem[0]; this.say(m, line); }
       await wait(1300);
     }
@@ -780,9 +785,11 @@ class Battle {
     this.announce('必殺技', u.def.ult.name, ELEMENTS[u.elem].color);
     if (target && target.side === 'enemy') this.lastTarget = target;
     const ult = u.def.ult;
+    this.curAb = ult;
     if (this.v && !ENEMY_TARGETS.has(ult.target)) await this.v.support(u, ult.target === 'ally' ? [target] : this.aliveAllies());
     const res = (await ult.run(this, u, target)) || [];
     if (this.v && ENEMY_TARGETS.has(ult.target)) await this.v.attackEnd(u);
+    this.curAb = null;
     await this.resolveDeaths(u, 'ult');
     this.gainEnergy(u, 5); this.addBond(15); this.callBack(u);
     u.def.talent.afterAction && u.def.talent.afterAction(this, u, 'ult', res);
@@ -1056,11 +1063,16 @@ class Battle {
     return all;
   }
 
+  // ダメージのない技の動き（anim は js/gfx/moves.js の MOVES）
+  async motion(src, anim, targets = []) { if (this.v) await this.v.motion(src, anim, targets); }
+
   async doHits(src, list, kind, opt = {}) {
+    // 同じ敵へ続けて斬る技（二連・三連影）は、ひと太刀ごとに当てる
+    if (this.v && list.length > 1 && list.every(h => h.t === list[0].t)) return this.doCombo(src, list, kind, opt);
     if (this.v) {
       Sfx.swing();
       const ts = list.map(h => h.t).filter(t => t.alive);
-      if (opt.noAnim) await this.v.quickShot(src, ts[0]);
+      if (opt.noAnim) await this.v.quickShot(src, ts[0], kind, opt);
       else await this.v.attack(src, ts, kind, opt);
     } else if (!opt.noAnim) {
       this.pulse(src, 'lunge', 450); Sfx.swing();
@@ -1069,6 +1081,20 @@ class Battle {
     const results = [];
     for (const h of list) {
       if (!h.t.alive) continue;
+      results.push(await this.hitOne(src, h.t, h.mult, h.tough, kind, opt));
+    }
+    if (opt.heavy) this.shake(true);
+    await wait(180);
+    await this.resolveDeaths(src, kind);
+    return results;
+  }
+
+  async doCombo(src, list, kind, opt) {
+    const results = [];
+    for (let i = 0; i < list.length; i++) {
+      const h = list[i]; if (!h.t.alive) break;
+      Sfx.swing();
+      if (i) await this.v.restrike(src, h.t, i, kind, opt); else await this.v.attack(src, [h.t], kind, opt);
       results.push(await this.hitOne(src, h.t, h.mult, h.tough, kind, opt));
     }
     if (opt.heavy) this.shake(true);
