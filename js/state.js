@@ -19,7 +19,7 @@ const Save = {
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       weapons: {},        // 持っている武器と強化段階（はじめの武器は持っていなくても使える。js/weapons.js）
       equip: {},          // にゃんこごとに装備している武器
-      auto: false, speed: 1, ver: 9,
+      auto: false, speed: 1, ver: 10,
       eco: null,          // 省エネ（30fps）。null はおまかせ（スマホなら省エネ）
     };
   },
@@ -85,6 +85,25 @@ const Save = {
         d.fieldChests.road2 = opened.filter(i => i > 0).map(i => i - 1);
       }
       d.ver = 9;
+    }
+    // ver 10：ミャオ街道が、ひょうたん池の野原（road1）と、風車の立つ丘（road1_hill）の二つの広い区画になり、地図を作りなおした。
+    //   街道にいた場所は、南の池のあたりなら池の区画の入口へ、風車の畑なら丘の頂上へ、宿場へ向かう道なら丘の北のふもとへ、休み場なら丘の南のふもとへ。
+    //   開けた宝箱：もとの 1 番（池）は池の区画の 0 番、0 番（北の見晴らし台）と 2 番（風車の畑）は丘の区画の 0 番と 1 番
+    if (ver < 10) {
+      const r = d.fieldResume;
+      if (r && r.zone === 'road1') {
+        if (r.z >= 12) { r.x = -1; r.z = 68; }
+        else {
+          r.zone = 'road1_hill';
+          if (r.x > 8) { r.x = -3; r.z = -10; } else if (r.z < -10) { r.x = -1; r.z = -88; } else { r.x = 12; r.z = 80; }
+        }
+      }
+      const opened = d.fieldChests && d.fieldChests.road1;
+      if (opened) {
+        d.fieldChests.road1_hill = [[0, 0], [2, 1]].filter(([o]) => opened.includes(o)).map(([, n]) => n);
+        d.fieldChests.road1 = opened.includes(1) ? [0] : [];
+      }
+      d.ver = 10;
     }
   },
   load() {

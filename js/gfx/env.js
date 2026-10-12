@@ -296,10 +296,12 @@ function farTree(T) {
 // なだらかな丘の遠景
 // 区画が遠景の小物をよけてほしいところ（zone.envSkip(x, z)：遠くに見せたいものの手前など）
 const envSkip = (T, x, z) => !!(T.zone && T.zone.envSkip && T.zone.envSkip(x, z));
+// とても広い区画（中心から角まで 90m をこえる）は、遠景の丘と木を、そのぶん遠くへ（区画の中にめりこまないように）
+const envPush = T => { const Z = T.zone; return Z && Z.w ? Math.max(0, Math.hypot(Z.w / 2, Z.d / 2) - 90) : 0; };
 function hills(T, col, r = 140, n = 16, hgt = 18, y0 = -4) {
-  const m = new THREE.MeshStandardMaterial({ color: col, roughness: 1 });
+  const m = new THREE.MeshStandardMaterial({ color: col, roughness: 1 }), push = envPush(T);
   for (let i = 0; i < n; i++) {
-    const a = i / n * Math.PI * 2 + Math.random() * 0.2, rr = r + Math.random() * 40;
+    const a = i / n * Math.PI * 2 + Math.random() * 0.2, rr = r + push + Math.random() * 40;
     if (envSkip(T, Math.cos(a) * rr, Math.sin(a) * rr)) continue;
     const h = new THREE.Mesh(new THREE.SphereGeometry(30 + Math.random() * 30, 16, 10), m);
     h.position.set(Math.cos(a) * rr, y0 - 10, Math.sin(a) * rr); h.scale.y = (hgt + Math.random() * hgt) / 45; T.root.add(h);
@@ -307,9 +309,9 @@ function hills(T, col, r = 140, n = 16, hgt = 18, y0 = -4) {
 }
 // 遠くの木々（ぽこぽこした木）
 function farTrees(T, col, n = 40, r0 = 70, r1 = 120, trunkCol = '#6a4a2a') {
-  const lm = new THREE.MeshStandardMaterial({ color: col, roughness: 1 }), tm = new THREE.MeshStandardMaterial({ color: trunkCol, roughness: 1 });
+  const lm = new THREE.MeshStandardMaterial({ color: col, roughness: 1 }), tm = new THREE.MeshStandardMaterial({ color: trunkCol, roughness: 1 }), push = envPush(T);
   for (let i = 0; i < n; i++) {
-    const a = Math.random() * Math.PI * 2, r = r0 + Math.random() * (r1 - r0), s = 2 + Math.random() * 3;
+    const a = Math.random() * Math.PI * 2, r = r0 + push + Math.random() * (r1 - r0), s = 2 + Math.random() * 3;
     // 広い区画では、区画の中やすぐそばに生えないように
     const Z = T.zone, x = Math.cos(a) * r, z = Math.sin(a) * r;
     if ((Z && Z.w && Math.abs(x) < Z.w / 2 + 10 && Math.abs(z) < Z.d / 2 + 10) || envSkip(T, x, z)) continue;
