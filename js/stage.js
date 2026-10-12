@@ -834,6 +834,7 @@ function battleTheme(loc, fallback) {
 // 区画を組み立てて、戦場の中心が原点・敵の方向が -Z になるよう回して置く
 function buildBattleSet(view, loc) {
   const Z = FIELD_ZONES[loc.zone], [cx, cz] = loc.world ? loc.at : zonePoint(Z, loc.at);
+  if (Z.battleSet) return buildLightBattleSet(view, loc, Z, cx, cz);
   const root = new THREE.Group(); view.scene.add(root);
   const lp = new Particles(root, 1500);
   // 組み立て用の代理：部品は root に、区画の粒子は root の座標で出す
@@ -846,6 +847,35 @@ function buildBattleSet(view, loc) {
   root.position.set(-(cx * c + cz * s), -h, -(-cx * s + cz * c));
   // 戦場の近くの自動扉は閉じたまま、区画の出入口は封鎖の表示のまま
   view.set = { root, pv, lp, hooks: pv.hooks || {}, update(dt, t) { for (const f of pv.zoneTicks) f(dt, t); for (const f of pv.emitters) f(dt); lp.update(dt); } };
+  return view.set;
+}
+// 戦闘用の背景（zone.battleSet）：広い区画は、戦闘のたびに区画をまるごと組み立てると重いので、戦場のまわりだけを軽く組み立てる。
+//   地面は、区画の高さ（丘など）にそった草地の板（環境の床と同じ模様）。小物は battleSet.build の組み立て（座標は戦場から見た位置。
+//   pv.world で区画の座標へ、K.gy は区画の地面の高さ）。戦場の向き（loc.face）と中心は、区画を組み立てるときと同じ
+function buildLightBattleSet(view, loc, Z, cx, cz) {
+  const root = new THREE.Group(); view.scene.add(root);
+  const lp = new Particles(root, 600);
+  const T = Z.map ? new Terrain(Z) : null, a = loc.face * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  const world = (lx, lz) => [cx + lx * c - lz * s, cz + lx * s + lz * c];
+  const ground = (x, z) => {
+    const i = T ? T.at(x, z) : -1; if (i < 0) return 0;
+    const h = T.isWalkKind(T.kind[i]) ? T.groundOf(i, x, z) : T.baseAt(x, z);
+    return Number.isFinite(h) ? h : 0;
+  };
+  const h0 = ground(cx, cz), hAt = (lx, lz) => ground(...world(lx, lz)) - h0;
+  const geo = new THREE.PlaneGeometry(180, 180, 90, 90); geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let k = 0; k < pos.count; k++) pos.setY(k, hAt(pos.getX(k), pos.getZ(k)));
+  geo.computeVertexNormals();
+  const floor = new THREE.Mesh(geo, view.env.floor.material); floor.receiveShadow = true; root.add(floor);
+  view.env.floor.visible = false;
+  const pv = Object.create(view);
+  Object.assign(pv, { scene: root, p: lp, zone: Z, zoneId: loc.zone, ci: Z.ci, ch: CHAPTERS[Z.ci], rand: seeded(hashStr(loc.zone)), T: null,
+    colliders: [], reserved: [{ x: 0, z: 0, r: 9 }], zoneTicks: [], emitters: [], safe: [], flags: {}, hooks: {}, world, hAt, zt: T, face: a,
+    local: (x, z) => { const dx = x - cx, dz = z - cz; return [dx * c + dz * s, -dx * s + dz * c]; } });
+  const K = new ZoneKit(pv); K.gy = hAt;
+  ZONE_BUILD[Z.battleSet.build](K); K.flush();
+  view.set = { root, pv, lp, hooks: {}, update(dt, t) { for (const f of pv.zoneTicks) f(dt, t); for (const f of pv.emitters) f(dt); lp.update(dt); } };
   return view.set;
 }
 for (const k of ['gy', 'hitsCol', 'blocked', 'freeSpot', 'safeAt', 'buildMapExits', 'makeBulkhead', 'makeCabin', 'makeGate', 'makeArchGate', 'makeFieldGate', 'makeStairGate', 'hideGateDoors', 'exitTop']) if (!BattleView.prototype[k]) BattleView.prototype[k] = FieldView.prototype[k];
