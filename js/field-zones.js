@@ -19,6 +19,8 @@
 //   mark: 目印の高さ、または [dx, 高さ, dz]（区画の小物が実物。at はその小物の位置）
 //   reach: 調べられる距離（大きな小物のとき。既定 2m）。どれも書かないと石碑を立てる
 // bg: 空と光（js/gfx/env.js の THEMES。省略時は章の bg）
+// battleSet: { build, marks }：戦闘用の軽い背景（js/stage.js の buildLightBattleSet）。広い区画は、戦闘のたびに区画をまるごと組み立てると重いので、
+//   戦場のまわりだけ（区画の高さにそった草地と、ZONE_BUILD[build] の小物。marks は区画の目印）
 // ごろごろ岩の通り道（zone.rollers）：z の線の、谷の壁から壁まで（x0〜x1）を n 等分し、区間ごとに岩を一つ走らせる。
 //   となりの岩とは向きが逆で、区切りでぶつかって、はね返る。o：岩の大きさ r・速さ speed・はじめの位置 ph・はねとばされる先 back
 function rollerLane(z, x0, x1, n, o) {
@@ -264,6 +266,8 @@ const FIELD_ZONES = {
   // ひょうたん池：村から北へのびる街道。ゆるやかに起伏する広い野原を、道しるべの分かれ道まで。分かれ道の西は、ひょうたんの形の池（ハチとブチが出会った池）
   road1: { ci: 1, name: 'ミャオ街道・ひょうたん池', mapName: 'ミャオ街道', floor: '池', w: 160, d: 160, stage: '2-1', arenas: [[4, 52, 0], [8, -44, 0], [-20, 20, 0]], build: 'road', groups: 6, chests: 3, crystals: 2,
     world: true, arch: 'woods', chestAt: [[-66, -6], [66, -54], [-50, 58]],
+    // 戦闘は、戦場のまわりだけの軽い背景で（区画が広いので、まるごと組み立てると重い）
+    battleSet: { build: 'meadowBattle', marks: [['pond', -50, 8, 9.5], ['pond', -48, -14, 7], ['pond', -44, -4, 5]] },
     // 野原の低い丘（dents の depth を負に）：道の東と西に、なだらかな丘がいくつか（いちばん急なところで 14°）
     dents: [{ at: [40, 36], r: 22, depth: -3.5 }, { at: [36, -24], r: 18, depth: -2.8 }, { at: [-48, 44], r: 16, depth: -2.5 }, { at: [-28, -40], r: 12, depth: -1.8 }],
     map: [
@@ -363,6 +367,9 @@ const FIELD_ZONES = {
   //   丘は dents（depth を負に、top が平らな頂上の半径）。丘の上は、木立（#）を置かず、木は区画の組み立てで一本ずつ（地面の高さにそって立つ）
   road1_hill: { ci: 1, name: 'ミャオ街道・丘', floor: '丘', parent: 'road1', w: 160, d: 192, stage: '2-1', arenas: [[-28, 72, 0], [2, -8, 0], [26, -84, 0]], build: 'roadHill', groups: 8, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-10, -20], [56, -60], [-40, 66]],
+    // 戦闘は、戦場のまわりだけの軽い背景で（丘の高さ・頂上の風車と畑・北の宿場の屋根）
+    battleSet: { build: 'meadowBattle', marks: [['windmill', 7, -21.5, 1.3], ['rows', 7, -10],
+      ['houses', [[-28, -118], [-8, -124], [14, -118], [30, -130], [-20, -140], [6, -146], [-40, -132], [26, -150]]]] },
     th: { fogD: 0.0035 },   // 霧は少しうすく：ふもとから、丘の上の風車が見える
     dents: [{ at: [0, -12], r: 70, top: 14, depth: -10 }],
     map: [
@@ -6878,6 +6885,31 @@ const ZONE_BUILD = {
     for (const [x, z, sc, leaf] of [[40, 36, 1.5, 'leaf2'], [36, -24, 1.3, 'leaf'], [-48, 44, 1.2, 'leaf2'], [-28, -40, 1.1, 'leaf'], [28, 10, 1.2, 'leaf2'], [-24, 24, 1.0, 'leaf'],
       [56, 40, 1.3, 'leaf'], [-60, 24, 1.1, 'leaf2'], [20, -44, 1.2, 'leaf'], [-36, -60, 1.0, 'leaf2'], [30, 60, 1.2, 'leaf2']]) K.roundTree(x, z, sc, leaf);
     for (const [x, z] of [[24, 8], [-16, 36], [52, -6], [-64, 16], [-12, -30], [44, -48], [30, 48]]) K.rock(x, z, 0.5 + K.r() * 0.5);
+  },
+  // 戦闘用の背景（野原の区画。zone.battleSet）：戦場のまわり（60m まで）の木と花・岩と、区画の目印。座標は戦場から見た位置（K.v.world で区画の座標）
+  //   木は、区画の木立（#）のところは茂らせ、野原にはまばらな一本木。道と水の上には植えない。戦場のすぐそば（14m）はあける
+  //   battleSet.marks：['windmill', x, z, 大きさ]・['rows', x, z]（畑の畝）・['pond', x, z, 半径]・['houses', [[x, z], ...]]（遠くの家の屋根）
+  meadowBattle(K) {
+    const r = K.r, v = K.v, ZT = v.zt, leaf = ['#6abf52', '#7ac85a', '#5ab04a'];
+    const cellAt = (lx, lz) => { const [x, z] = v.world(lx, lz), i = ZT ? ZT.at(x, z) : -1; return i < 0 ? 'out' : ZT.water[i] ? 'water' : ZT.paint[i] ? 'road' : ZT.kind[i] <= TK.WINDOW ? 'wood' : 'open'; };
+    for (let gx = -60; gx <= 60; gx += 4) for (let gz = -60; gz <= 60; gz += 4) {
+      const x = gx + (r() - 0.5) * 3, z = gz + (r() - 0.5) * 3, d = Math.hypot(x, z);
+      if (d < 14 || d > 60) continue;
+      const k = cellAt(x, z), p = { wood: 0.75, out: 0.5, open: 0.04 }[k] || 0;
+      if (r() < p) K.plant(r() < 0.8 ? 'round' : 'pine', x, K.gy(x, z), z, (k === 'open' ? 1.2 : 0.9) + r() * 0.5, { leaf, fruit: '#ff9a7a' });
+      else if (k === 'open' && r() < 0.06) K.flowers(x, z, 10, 2.5, r() < 0.5 ? ['#ffe07a', '#ffffff', '#ffb84a'] : ['#ffb8d8', '#ffffff']);
+      else if (k === 'open' && r() < 0.03) K.rock(x, z, 0.5 + r() * 0.4);
+    }
+    for (const m of K.zone.battleSet.marks || []) {
+      const [kind] = m, at = (x, z) => v.local(x, z);
+      if (kind === 'windmill') { const [x, z] = at(m[1], m[2]); K.windmill(x, z, m[3] || 1); }
+      else if (kind === 'rows') for (let i = 0; i < 6; i++) { const [x, z] = at(m[1], m[2] - 5 + i * 2); K.mesh(new THREE.BoxGeometry(7, i < 3 ? 0.35 : 0.5, 0.8), i < 3 ? 'leaf2' : '#e8c060', x, i < 3 ? 0.18 : 0.25, z, { ry: v.face, noShadow: true }); }
+      else if (kind === 'pond') { const [x, z] = at(m[1], m[2]); K.mesh(new THREE.CircleGeometry(m[3], 32), new THREE.MeshStandardMaterial({ color: '#6aa8d0', roughness: 0.15, metalness: 0.1 }), x, 0.04, z, { rx: -Math.PI / 2, noShadow: true }); }
+      else if (kind === 'houses') {
+        const walls = ['#fff4e2', '#ffe8d4', '#f0e0c8'], roofs = ['#8a5a3a', '#6a4a3a', '#a86a4a'];
+        for (const [hx, hz] of m[1]) { const [x, z] = at(hx, hz); K.farHouse(x, z, 6 + r() * 3, 5 + r() * 3, 5 + r() * 3, walls[Math.floor(r() * 3)], roofs[Math.floor(r() * 3)], -1.3 + v.hAt(x, z)); }
+      }
+    }
   },
   // ミャオ街道・丘：頂上の風車と畑、南のふもとの休み場、斜面の一本木と花。北の遠くに、街道の宿場の屋根
   roadHill(K) {

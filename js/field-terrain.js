@@ -1358,12 +1358,13 @@ function buildArchitecture(view, T) {
   if (T.paint.some(v => v)) {
     const P = 16, cv = document.createElement('canvas'); cv.width = cols * P; cv.height = rows * P;
     const g = cv.getContext('2d'), col = th.path || S.path || '#b8946a', rnd = seeded(cols * 31 + rows);
-    g.filter = `blur(${P * 0.32}px)`; g.fillStyle = col;
+    // 道のマスの円をひとつの形にまとめて、ぼかしは一度だけ（マスごとにぼかすと、長い道で数秒かかる）
+    g.filter = `blur(${P * 0.32}px)`; g.fillStyle = col; g.beginPath();
     for (let i = 0; i < kind.length; i++) if (T.paint[i]) {
-      const c = T.colOf(i), r = T.rowOf(i);
-      g.beginPath(); g.ellipse((c + 0.5) * P + (rnd() - 0.5) * P * 0.3, (r + 0.5) * P + (rnd() - 0.5) * P * 0.3, P * 0.72, P * 0.72, 0, 0, Math.PI * 2); g.fill();
+      const c = T.colOf(i), r = T.rowOf(i), x = (c + 0.5) * P + (rnd() - 0.5) * P * 0.3, y = (r + 0.5) * P + (rnd() - 0.5) * P * 0.3;
+      g.moveTo(x + P * 0.72, y); g.ellipse(x, y, P * 0.72, P * 0.72, 0, 0, Math.PI * 2);
     }
-    g.filter = 'none';
+    g.fill(); g.filter = 'none';
     // 小石とわだち
     for (let i = 0; i < kind.length; i++) if (T.paint[i]) for (let n = 0; n < 5; n++) {
       g.fillStyle = rnd() < 0.5 ? 'rgba(255,245,220,.35)' : 'rgba(70,50,30,.3)';
