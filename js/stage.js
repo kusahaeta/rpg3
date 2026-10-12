@@ -145,6 +145,8 @@ class Actor {
       const tg = this.path[0], dx = tg.x - this.pos.x, dz = tg.z - this.pos.z, d = Math.hypot(dx, dz);
       const step = Math.min(d, this.speed * dt);
       if (d > 0.02) { this.pos.x += dx / d * step; this.pos.z += dz / d * step; this.yaw = lerpAngle(this.yaw, Math.atan2(dx, dz), 1 - Math.exp(-12 * dt)); moving = this.speed; }
+      // ごろごろ岩は、進んだぶん本体がころがる（userData.spin。ほかの敵は使わない）
+      if (this.foe) this.m.group.userData.spin = (this.m.group.userData.spin || 0) + step / (this.m.radius || 1);
       if (d < 0.05) this.path.shift();
       this.pos.y = this.v.gy(this.pos.x, this.pos.z);
       if (!this.path.length) this.path = null;
@@ -354,6 +356,7 @@ class StageView extends BaseView {
       list.forEach((o, i) => {
         const foe = key.startsWith('e:'), id = i ? `${key}#${i}` : key;
         const m = foe ? buildEnemy(key.slice(2)) : buildCharacter(key);
+        if (o.scale) m.group.scale.multiplyScalar(o.scale);   // scale：その場面だけ大きく（探索で見る大きさにそろえる）
         this.scene.add(m.group);
         const a = new Actor(this, id, m, { foe, stance: o.stance, y: o.y, lie: o.lie });
         a.place(this.W(o.at[0], o.at[1]));
@@ -629,15 +632,17 @@ class StageView extends BaseView {
     if (d.later) this.timers.push({ t: d.later[0], d: d.later[1] });
   }
   handOf(k) { const a = this.actors[k]; return a ? (a.item ? a.item.getWorldPosition(V3()) : a.m.handPos()) : this.point(k); }
-  // 登場：敵は赤い閃光、それ以外は風を巻いて現れる
+  // 登場：敵は赤い閃光、それ以外は風を巻いて現れる（style 'quiet'：演出なしで姿だけ見せる。遠くから転がってくる岩など）
   enter(k, style) {
     const list = Object.values(this.actors).filter(a => a.key === k || a.base === k);
     list.forEach((a, i) => {
       a.m.group.visible = true; a.alpha = 1;
+      if (style === 'quiet') return;
       const p = a.pos.clone(); p.y += 1 + a.lift;
       if (a.foe) { this.fx.pillar(a.pos, a.m.color || '#ff4d6d', { h: 4, r: 0.8, life: 0.6 }); this.p.burst(p, a.m.color || '#ff4d6d', 40, { speed: 4, life: 0.8 }); a.roar(); }
       else { const pp = a.pos.clone(); pp.y += 0.6 + a.lift; this.p.burst(pp, (CHARS[a.key] ? ELEMENTS[CHARS[a.key].elem].color : '#ffffff'), 40, { speed: 3, life: 0.9, up: 0.5 }); }
     });
+    if (style === 'quiet') return;
     if (list.some(a => a.foe)) { Sfx.enemy(); GFX.flash('#ff3040', 0.35, 0.4); }
     else Sfx.swing();
   }
