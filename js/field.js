@@ -364,6 +364,8 @@ class FieldView extends BaseView {
       }
       return;
     }
+    // enter：目印を出さず、区画に入ってひと息おいたら着いたことにする（区画に入ったときの会話）
+    if (step.enter) { this.enterQuest = 1.2; return; }
     const [qx, qz] = zonePoint(this.zone, step.at);
     let spot = { x: qx, z: qz };
     if (this.blocked(qx, qz, 1.2)) for (let r = 0.5; r < 12; r += 0.5) {
@@ -390,6 +392,12 @@ class FieldView extends BaseView {
     Sfx.win();
     this.root.querySelector('.fd-wipe').classList.add('on');
     setTimeout(() => this.leave(() => Story.arrive()), 900);
+  }
+  // 区画に入ったときの会話（step.enter）：区画の名前が出たあと、そのまま会話へ
+  enterArrive() {
+    this.enterQuest = 0; this.busy = true; this.keys.clear();
+    this.root.querySelector('.fd-wipe').classList.add('on');
+    setTimeout(() => this.leave(() => Story.arrive()), 700);
   }
 
   // ============================================================
@@ -3048,6 +3056,7 @@ class FieldView extends BaseView {
     if (this.T) this.updateMapParts(d, t);
     if (this.flight) { this.updateFlight(d); this.animatePlayer(d, false); }
     else if (!this.busy) { this.updatePlayer(d); if (!this.busy) this.updateGags(d); }
+    if (this.enterQuest && !this.busy && (this.enterQuest -= d) <= 0) this.enterArrive();
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
     this.updateRoots(d, t); this.updateShadows(d, t); this.updateNap(d, t);
     this.updateNemuri(t);

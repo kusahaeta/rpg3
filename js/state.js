@@ -19,7 +19,7 @@ const Save = {
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       weapons: {},        // 持っている武器と強化段階（はじめの武器は持っていなくても使える。js/weapons.js）
       equip: {},          // にゃんこごとに装備している武器
-      auto: false, speed: 1, ver: 6,
+      auto: false, speed: 1, ver: 7,
       eco: null,          // 省エネ（30fps）。null はおまかせ（スマホなら省エネ）
     };
   },
@@ -54,6 +54,11 @@ const Save = {
       delete d.gear;
       for (const z in d.fieldChests || {}) for (const i of d.fieldChests[z]) { const id = (CHEST_WEAPONS[z] || {})[i]; if (id && d.weapons[id] == null) d.weapons[id] = 0; }
       d.ver = 6;
+    }
+    // ver 7：ごろごろ切り通しに入ったときの会話（c2_03k）が入り、第二章の切り通しの戦いの前に 1 段階増えた
+    if (ver < 7) {
+      if (d.story && d.story.ch === 1 && d.story.step >= 12) d.story.step += 1;
+      d.ver = 7;
     }
   },
   load() {
