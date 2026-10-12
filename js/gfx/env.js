@@ -292,10 +292,13 @@ function farTree(T) {
   T.updaters.push((dt, t) => fruits.forEach((f, i) => { f.scale.setScalar((f.userData.s ?? 1) * (1 + Math.sin(t * 2 + i) * 0.15)); }));
 }
 // なだらかな丘の遠景
+// 区画が遠景の小物をよけてほしいところ（zone.envSkip(x, z)：遠くに見せたいものの手前など）
+const envSkip = (T, x, z) => !!(T.zone && T.zone.envSkip && T.zone.envSkip(x, z));
 function hills(T, col, r = 140, n = 16, hgt = 18, y0 = -4) {
   const m = new THREE.MeshStandardMaterial({ color: col, roughness: 1 });
   for (let i = 0; i < n; i++) {
     const a = i / n * Math.PI * 2 + Math.random() * 0.2, rr = r + Math.random() * 40;
+    if (envSkip(T, Math.cos(a) * rr, Math.sin(a) * rr)) continue;
     const h = new THREE.Mesh(new THREE.SphereGeometry(30 + Math.random() * 30, 16, 10), m);
     h.position.set(Math.cos(a) * rr, y0 - 10, Math.sin(a) * rr); h.scale.y = (hgt + Math.random() * hgt) / 45; T.root.add(h);
   }
@@ -305,6 +308,9 @@ function farTrees(T, col, n = 40, r0 = 70, r1 = 120, trunkCol = '#6a4a2a') {
   const lm = new THREE.MeshStandardMaterial({ color: col, roughness: 1 }), tm = new THREE.MeshStandardMaterial({ color: trunkCol, roughness: 1 });
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, r = r0 + Math.random() * (r1 - r0), s = 2 + Math.random() * 3;
+    // 広い区画では、区画の中やすぐそばに生えないように
+    const Z = T.zone, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if ((Z && Z.w && Math.abs(x) < Z.w / 2 + 10 && Math.abs(z) < Z.d / 2 + 10) || envSkip(T, x, z)) continue;
     const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * s, 0.4 * s, 2 * s, 6), tm); tr.position.set(Math.cos(a) * r, s, Math.sin(a) * r); T.root.add(tr);
     const c = new THREE.Mesh(new THREE.SphereGeometry(1.6 * s, 10, 8), lm); c.position.set(tr.position.x, s * 2.8, tr.position.z); c.scale.y = 1.15; T.root.add(c);
   }
