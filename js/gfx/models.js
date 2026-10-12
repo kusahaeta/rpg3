@@ -21,6 +21,26 @@ const POSES = {
   dash:    { hipsY: -0.12, lean: 0.55, twist: 0.3, headX: -0.3, armRx: 0.9, armRz: -0.4, elbowR: -0.2, armLx: -0.9, armLz: 0.3, elbowL: -1.0, legLx: -1.1, kneeL: 0.9, legRx: 0.7, kneeR: 1.1 },
   down:    { hipsY: -0.5, lean: 0.9, headX: 0.4, armLx: -0.4, armRx: -0.4, armLz: 0.4, armRz: -0.4, legLx: -1.4, legRx: -1.4, kneeL: 2.2, kneeR: 2.2 },
   sleep:   { hipsY: -0.55, lean: 0.25, headX: 0.45, headY: 0.2, armLx: -0.9, armLz: 0.1, elbowL: -1.6, armRx: -0.9, armRz: -0.1, elbowR: -1.6, legLx: -1.5, kneeL: 1.2, legRx: -1.5, kneeR: 1.2 },
+  // ---- 技ごとのモーション（js/gfx/moves.js） ----
+  strike2: { hipsY: -0.1, twist: 0.6, lean: 0.25, armRx: -1.3, armRz: -1.2, elbowR: -0.2, armLx: 0.2, armLz: 0.45, legLx: -0.5, kneeL: 0.4, legRx: 0.4, kneeR: 0.2 },   // 返す刀
+  punchUp: { hipsY: -0.06, twist: -0.45, lean: 0.05, armLx: -0.7, armLz: 0.35, elbowL: -1.7, armRx: -0.4, armRz: -0.3, elbowR: -0.9, legLx: -0.4, legRx: 0.3, kneeL: 0.3, kneeR: 0.3 },
+  punch:   { hipsY: -0.1, twist: 0.5, lean: 0.3, armLx: -1.6, armLz: -0.05, elbowL: 0, armRx: 0.2, armRz: -0.4, elbowR: -0.9, legLx: -0.7, kneeL: 0.5, legRx: 0.45, kneeR: 0.2 },
+  bonkUp:  { lean: -0.15, headX: -0.15, armLx: -2.9, armLz: 0.15, elbowL: -0.5, armRx: -2.9, armRz: -0.15, elbowR: -0.5, legLx: -0.3, legRx: 0.2 },   // 両手で振りかぶる（笏）
+  bonk:    { hipsY: -0.15, lean: 0.45, headX: 0.1, armLx: -1.0, armLz: 0.1, elbowL: 0, armRx: -1.0, armRz: -0.1, elbowR: 0, legLx: -0.7, kneeL: 0.6, legRx: 0.5, kneeR: 0.3 },
+  swingUp: { twist: -0.6, lean: -0.05, armLx: 0.6, armLz: 1.1, elbowL: -0.3, armRx: -0.6, armRz: -0.3, elbowR: -0.8, legLx: -0.3, legRx: 0.3, kneeR: 0.3 },   // 左手のまくらを横へ引く
+  swing:   { hipsY: -0.1, twist: 0.6, lean: 0.35, armLx: -1.5, armLz: -0.35, elbowL: 0, armRx: 0.3, armRz: -0.5, elbowR: -0.6, legLx: -0.7, kneeL: 0.5, legRx: 0.45 },   // まくらを振りぬく
+  charge:  { hipsY: -0.2, twist: 0.7, lean: -0.15, headX: 0.1, armRx: -3.0, armRz: -0.5, elbowR: -0.3, armLx: -2.6, armLz: -0.2, elbowL: -0.6, legLx: -0.6, kneeL: 0.8, legRx: 0.5, kneeR: 0.8 },   // 大きく振りかぶってためる
+  cleave:  { hipsY: -0.22, twist: -0.1, lean: 0.55, armRx: -0.5, armRz: 0.1, elbowR: 0, armLx: -0.5, armLz: -0.1, elbowL: 0, legLx: -0.8, kneeL: 0.7, legRx: 0.6, kneeR: 0.4 },   // 真上から振りおろす
+  spin:    { hipsY: -0.08, lean: 0.1, armRx: -1.4, armRz: -1.2, elbowR: 0, armLx: -0.4, armLz: 1.0, elbowL: -0.3, legLx: -0.4, kneeL: 0.3, legRx: 0.3, kneeR: 0.3 },   // 剣を横に伸ばしてまわる
+  raise:   { lean: -0.12, headX: -0.2, armRx: -3.0, armRz: -0.1, elbowR: -0.1, armLx: -0.6, armLz: 0.6, elbowL: -0.5, legLx: -0.3, legRx: 0.2 },   // 杖・笏を高く掲げる
+  tailSpin:{ hipsY: -0.1, lean: 0.35, headX: 0.1, armLx: 0.3, armLz: 0.7, elbowL: -0.4, armRx: 0.3, armRz: -0.7, elbowR: -0.4, legLx: -0.5, kneeL: 0.6, legRx: 0.4, kneeR: 0.6 },
+  guard:   { hipsY: -0.14, lean: 0.08, armRx: -1.35, armRz: 0.55, elbowR: -0.7, armLx: -1.3, armLz: -0.35, elbowL: -0.7, legLx: -0.55, kneeL: 0.55, legRx: 0.45, kneeR: 0.55 },   // 刀を横に構えて受けとめる
+  patUp:   { lean: 0.12, armRx: -2.3, armRz: -0.05, elbowR: -0.9, armLx: -0.8, armLz: 0.3, elbowL: -1.2 },
+  patDown: { lean: 0.16, headX: 0.1, armRx: -1.9, armRz: -0.05, elbowR: -0.4, armLx: -0.8, armLz: 0.3, elbowL: -1.2 },
+  hugPillow: { headX: -0.25, lean: -0.08, armLx: -0.9, armLz: 0.45, elbowL: -1.5, armRx: -0.9, armRz: -0.45, elbowR: -1.5 },   // まくらを胸に抱える
+  cheer:   { headX: -0.2, lean: -0.05, armLx: -2.8, armLz: 0.5, elbowL: -0.2, armRx: -2.8, armRz: -0.5, elbowR: -0.2, legLx: -0.2, legRx: 0.2 },
+  hurrah:  { headX: -0.25, lean: -0.08, armLx: -0.3, armLz: 2.3, elbowL: -0.2, armRx: -0.3, armRz: -2.3, elbowR: -0.2, legLx: -0.2, legRx: 0.2 },   // 両手を横から上へ開く（正面から見て Y の字）
+  open:    { headX: -0.2, lean: -0.08, armLx: -1.3, armLz: 1.25, elbowL: 0, armRx: -1.3, armRz: -1.25, elbowR: 0 },   // 腕を大きく広げる
 };
 
 // 表情の定義：tilt = 眉の傾き（+ で困り顔、- で怒り顔）、browY = 眉の上下、
