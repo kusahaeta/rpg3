@@ -194,7 +194,7 @@ const SCENES = {
 
   // ================= 第二章　にゃんこ大集合 =================
   c2_01: { title: 'ミャオ街道', bgm: 'field',
-    stage: { zone: 'road1', at: [-4, 30], face: 0 },
+    stage: { zone: 'road1', at: [2, 50], face: 0 },
     lines: [
       ['n', 'ミャオ街道。ぽかぽか村から北へ続く、長い長い道。', { cam: 'wide', dur: 7 }],
       ['mike', 'ねえクロ、クロってどこから来たの？', { f: 'smile', g: 'tilt', to: 'kuro' }],
@@ -209,7 +209,7 @@ const SCENES = {
       ['n', '【目的】街道を北へ進もう。', { cam: 'wide', dur: 5 }],
     ] },
   c2_01b: { title: 'けんかした二匹', bgm: 'village',
-    stage: { zone: 'road1', at: [1, 27], face: 0,
+    stage: { zone: 'road1', at: [9, 16], face: 0,
       cast: { hachi: { at: [-1.2, 3.2], face: [-8, 3.2] }, buchi: { at: [1.4, 3.6], face: [8, 3.6] } } },
     lines: [
       ['n', '道しるべの手前で、二匹の猫が、たがいにそっぽを向いて立っていた。', { cam: 'wide', dur: 6 }],
@@ -510,10 +510,10 @@ const SCENES = {
       ['mike', '行こう、クロ、タマ！', { f: 'serious', g: 'fist' }],
       ['kuro', '……面倒だ。', { f: 'serious', g: 'shake', move: { kuro: [-0.6, 3] }, r: { mike: 'surprise' } }],
       ['mike', '……って、先に行ってるし！', { f: 'joy', g: 'point', to: 'kuro', r: { tama: 'smile' } }],
-      ['n', '【目的】宿場の南、街道の風車の畑で、シロをさがそう。', { cam: 'wide', dur: 5 }],
+      ['n', '【目的】宿場の南、街道の丘の上の風車の畑で、シロをさがそう。', { cam: 'wide', dur: 5 }],
     ] },
   c2_03e: { title: 'ひみつの特訓', cast: ['e:karasu', 'e:noraInu'], bgm: 'field',
-    stage: { zone: 'road1', at: [9, -2], face: 90,
+    stage: { zone: 'road1_hill', at: [-2, -10], face: 90,
       cast: { shiro: { at: [0.3, 4.2], face: [0.3, 12] },
         'e:karasu': [{ at: [-2.6, 9], hidden: true }, { at: [2.4, 9.4], hidden: true }], 'e:noraInu': { at: [0, 10], hidden: true } },
       points: { mill: [-11.5, 5, 9] } },
@@ -536,7 +536,7 @@ const SCENES = {
       ['kuro', '……うるさい。来るぞ！', { f: 'shy', stance: { all: 'ready' }, cam: 'wide' }],
     ] },
   c2_03f: { title: '天才の約束', bgm: 'hope',
-    stage: { zone: 'road1', at: [9, -2], face: 90, cast: { shiro: { at: [0.3, 2.6], face: 'mike' } }, points: { mill: [-11.5, 5, 9] } },
+    stage: { zone: 'road1_hill', at: [-2, -10], face: 90, cast: { shiro: { at: [0.3, 2.6], face: 'mike' } }, points: { mill: [-11.5, 5, 9] } },
     lines: [
       ['shiro', '……はあ、はあ……。', { f: 'worry', g: 'lookDown' }],
       ['mike', 'やったね！　最後のシロの雷、ドカーンって！', { f: 'joy', g: 'cheer' }],

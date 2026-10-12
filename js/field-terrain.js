@@ -35,8 +35,8 @@ class Terrain {
     this.liftOf = new Int16Array(n).fill(-1); this.doorOf = new Int16Array(n).fill(-1); this.roomOf = new Int16Array(n).fill(-1);
     this.locked = new Set();     // 封鎖中の出入口の key
     this.cabinKeys = new Set((zone.exits || []).filter(e => e.lift).map(e => e.key));
-    // くぼみ（zone.dents）：床をすり鉢状に下げる（流れ星のクレーターなど）
-    this.dents = (zone.dents || []).map(d => { const [x, z] = zonePoint(zone, d.at); return { x, z, r: d.r, depth: d.depth || 0.8, rim: d.rim || 0, w: d.w || 1 }; });
+    // くぼみ（zone.dents）：床をすり鉢状に下げる（流れ星のクレーターなど）。depth を負にすると、なだらかな丘（top：平らな頂上の半径）
+    this.dents = (zone.dents || []).map(d => { const [x, z] = zonePoint(zone, d.at); return { x, z, r: d.r, depth: d.depth || 0.8, rim: d.rim || 0, w: d.w || 1, top: d.top || 0 }; });
     for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) {
       const i = r * this.cols + c, ch = rows[r][c] ?? '#';
       this.ch[i] = ch;
@@ -274,12 +274,12 @@ class Terrain {
 
   // ---------------- 高さ・通行 ----------------
   groundAt(x, z) { const i = this.at(x, z); return i < 0 ? NaN : this.groundOf(i, x, z); }
-  // くぼみの分の高さ：半径 r の内側はすり鉢状に depth まで下がり、縁（幅 w）は rim だけ盛り上がる
+  // くぼみの分の高さ：半径 r の内側はすり鉢状に depth まで下がり、縁（幅 w）は rim だけ盛り上がる。top の内側は平ら（丘の頂上）
   dentAt(x, z) {
     let y = 0;
     for (const d of this.dents) {
       const s = Math.hypot(x - d.x, z - d.z);
-      if (s < d.r) { const u = 1 - (s / d.r) ** 2; y -= d.depth * u * u; }
+      if (s < d.r) { const u = 1 - (Math.max(0, s - d.top) / (d.r - d.top)) ** 2; y -= d.depth * u * u; }
       const e = (s - d.r) / d.w;
       if (Math.abs(e) < 1) { const u = 1 - e * e; y += d.rim * u * u; }
     }
@@ -938,8 +938,10 @@ function buildArchitecture(view, T) {
   const hAt = (i, x, z) => kind[i] === K.LIFT ? T.lifts[T.liftOf[i]].levels[0] : kind[i] === K.VOID ? ABYSS : T.groundOf(i, x, z);
   // くぼみにかかる床：細かく分けて、くぼみの曲面に沿わせる
   const dented = (c, r) => T.dents.length > 0 && T.dentTouches(c, r);
+  // くぼみの面：マスを n × n に割る（小さなくぼみは細かく。大きな丘は 4 × 4 で十分）
+  const dentN = (x0, z0) => T.dents.some(d => d.r - d.top < 10 && Math.hypot(clamp(d.x, x0, x0 + CELL) - d.x, clamp(d.z, z0, z0 + CELL) - d.z) < d.r + d.w) ? 8 : 4;
   const dentSurf = (G, i, x0, z0, x1, z1, lift = 0, uvf) => {
-    const n = 8, P = (a, b) => { const x = x0 + (x1 - x0) * a / n, z = z0 + (z1 - z0) * b / n; return [x, T.groundOf(i, x, z) + lift, z]; };
+    const n = dentN(Math.min(x0, x1), Math.min(z0, z1)), P = (a, b) => { const x = x0 + (x1 - x0) * a / n, z = z0 + (z1 - z0) * b / n; return [x, T.groundOf(i, x, z) + lift, z]; };
     for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) {
       const q = [P(a, b + 1), P(a + 1, b + 1), P(a + 1, b), P(a, b)];
       G.quad(...q, uvf && q.map(p => uvf(p[0], p[2])));
