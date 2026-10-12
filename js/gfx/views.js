@@ -523,9 +523,11 @@ class BattleView extends BaseView {
   hit(t, elem, big, crit) {
     const e = this.ent(t); if (!e) return;
     const col = ELEMENTS[elem].color, p = this.hitPoint(t);
-    this.fx.sprite(p, col, big ? 2.6 : 1.5, 0.3, { k: 4 });
-    this.fx.sprite(p, '#ffffff', big ? 1.2 : 0.7, 0.15, { k: 4 });
-    this.fx.ring(p, col, { r: big ? 1.6 : 1.0, life: 0.35, face: this.camera.position, width: 0.1 });
+    // 味方が受けるときは、光をひかえめに（敵の技の動きが見えるように）
+    const k = e.ally ? 0.45 : 1;
+    this.fx.sprite(p, col, (big ? 2.6 : 1.5) * (e.ally ? 0.6 : 1), 0.3, { k: 4 * k });
+    this.fx.sprite(p, '#ffffff', (big ? 1.2 : 0.7) * (e.ally ? 0.6 : 1), 0.15, { k: 4 * k });
+    if (!e.ally) this.fx.ring(p, col, { r: big ? 1.6 : 1.0, life: 0.35, face: this.camera.position, width: 0.1 });
     this.p.burst(p, col, big ? 50 : 24, { speed: big ? 7 : 4.5, life: 0.5, size: 0.09, drag: 4 });
     if (crit) this.p.burst(p, '#ffe066', 30, { speed: 8, life: 0.6, size: 0.07, drag: 4 });
     e.model.flash(e.ally ? '#ff3040' : '#ffffff', e.ally ? 1.2 : 1.6);
@@ -917,6 +919,9 @@ class BattleView extends BaseView {
     const ranged = ['drone', 'spirit', 'boss', 'empress', 'dragon', 'deity', 'wraith'].includes(src.def.shape);
     const aoe = mv.type === 'aoe';
     this.setCam(V3(e.home.x * 0.3 + 3.2, 2.4, 7.2), V3(e.home.x * 0.5, 1.5, (e.home.z + 3) / 2), { speed: 4 });
+    // 技ごとのモーション（js/gfx/foe-moves.js）
+    const fm = FOE_MOVES[mv.anim];
+    if (fm) { this.attackerCam(e, tEnts, mv.anim); await fm.call(this, e, tEnts, { col: mv.elem ? ELEMENTS[mv.elem].color : col, mv }); return; }
     e.model.flash(col, 1.2);
     this.fx.sprite(this.hitPoint(src), col, 2.5, 0.5, { k: 2 });
     await GFX.delay(0.25);
@@ -939,10 +944,15 @@ class BattleView extends BaseView {
   async enemyAttackEnd(src) {
     const e = this.ent(src);
     if (e && this.lastEnemy && this.lastEnemy.src === src) {
-      const g = e.model.group, from = g.position.clone();
-      await GFX.tween(0.3, t => g.position.lerpVectors(from, e.home, t));
+      const g = e.model.group, from = g.position.clone(), r0 = g.rotation.y;
+      await GFX.tween(0.3, t => { g.position.lerpVectors(from, e.home, t); g.rotation.y = lerp(r0, 0, t); });
+    }
+    if (e) {
+      const g = e.model.group; g.rotation.set(0, 0, 0); if (!this.lastEnemy || this.lastEnemy.src !== src) g.position.y = 0;
+      if (e.model.critter && src.alive) this.tweenPose(e.model.critter, POSES.ready, 0.25);
     }
     this.lastEnemy = null;
+    this.unfocus();
     this.wide();
   }
 

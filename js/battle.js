@@ -1451,7 +1451,7 @@ class Battle {
     for (const [t, m] of targets) {
       if (!t.alive) continue;
       const r = this.calcDamage(e, t, m, 'enemy', { noCrit: true, elem: 'physical' });
-      this.impact(t, 'physical', mv.type !== 'single' || m > 1.2);
+      this.impact(t, mv.elem || 'physical', mv.type !== 'single' || m > 1.2);   // 命中の光は技の色（ダメージは物理のまま）
       this.pulse(t, 'hurt', 400);
       Sfx.hit();
       this.applyDamage(t, r.value, e);
