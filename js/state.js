@@ -19,7 +19,7 @@ const Save = {
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       weapons: {},        // 持っている武器と強化段階（はじめの武器は持っていなくても使える。js/weapons.js）
       equip: {},          // にゃんこごとに装備している武器
-      auto: false, speed: 1, ver: 8,
+      auto: false, speed: 1, ver: 9,
       eco: null,          // 省エネ（30fps）。null はおまかせ（スマホなら省エネ）
     };
   },
@@ -67,6 +67,24 @@ const Save = {
       if (s && s.ch === 1 && s.step >= 14) s.step += 1;
       else if (s && s.ch === 1 && s.step === 13 && !(d.fieldResume && d.fieldResume.zone === 'road2')) s.step = 14;
       d.ver = 8;
+    }
+    // ver 9：ごろごろ切り通しが、入口からたまり場まで（road2）と、外門の広場から見晴らし台まで（road2_gate）の二区画になり、たまり場から先の道を作りなおした。
+    //   切り通しにいた場所と、開けた宝箱（もとの 0 番は外門の区画の 0 番、1〜3 番は切り通しの 0〜2 番）を、新しい区画に移す
+    if (ver < 9) {
+      const r = d.fieldResume;
+      // 外門の広場から北は外門の区画へ。たまり場は広げて作りなおしたので、たまり場（とその北の細い道）にいたら、たまり場の南のはしへ
+      if (r && r.zone === 'road2') {
+        if (r.z < -22 && r.x < 24) { r.zone = 'road2_gate'; r.z += 52; }
+        else if (r.z < -16 && r.x >= 24) r.z -= 37;   // 東の岩棚
+        else if (r.z < 17) { r.x = 0; r.z = 1; }
+        else r.z -= 13;
+      }
+      const opened = d.fieldChests && d.fieldChests.road2;
+      if (opened) {
+        if (opened.includes(0)) d.fieldChests.road2_gate = [0];
+        d.fieldChests.road2 = opened.filter(i => i > 0).map(i => i - 1);
+      }
+      d.ver = 9;
     }
   },
   load() {

@@ -561,7 +561,7 @@ const SCENES = {
     ] },
   // ごろごろ切り通しの入口：宿場から石段を上ると、岩山の谷。目の前を、ハチマキの岩が爆走していく（ごろごろ団の前ふり）
   c2_03k: { title: 'ごろごろ切り通し', bgm: 'field',
-    stage: { zone: 'road2', at: [0, 71], face: 0, points: { valley: [0, 0.8, 8] },
+    stage: { zone: 'road2', at: [0, 58], face: 0, points: { valley: [0, 0.8, 8] },
       cast: { 'e:iwa': { at: [-29, 8], hidden: true, face: [29, 8], scale: 1.6 } },
       shots: { pass: { pos: [2.2, 3.6, -5.5], look: [-0.5, 1.6, 14] }, roll: { pos: [2.6, 3.0, -4.5], look: [-1, 0.6, 9] } } },
     lines: [
@@ -585,7 +585,7 @@ const SCENES = {
     ] },
   // ごろごろ切り通し：関所の手前で、ごろごろ団（暴走族のような、ごろごろ岩の一団）と、その総長のばくそうイノシシに囲まれる
   c2_04: { title: 'まとまりのないパーティ', cast: ['e:inoshishi'], bgm: 'boss',
-    stage: { zone: 'road2', at: [0, -33], face: 0,
+    stage: { zone: 'road2_gate', at: [0, 19], face: 0,
       cast: { 'e:inoshishi': { at: [0, 9], hidden: true, face: 'mike' },
         'e:iwa': [{ at: [-3.2, 3.2], hidden: true, face: 'mike' }, { at: [3.2, 3.6], hidden: true, face: 'mike' }, { at: [0.4, -3.2], hidden: true, face: 'mike' }] },
       points: { gate: [0, 3, 6] } },
@@ -613,7 +613,7 @@ const SCENES = {
       ['kuro', '……来るぞ！', { f: 'angry', stance: { all: 'ready' } }],
     ] },
   c2_05: { title: 'はじめての連携', cast: ['e:inoshishi'], bgm: 'hope',
-    stage: { zone: 'road2', at: [0, -33], face: 0,
+    stage: { zone: 'road2_gate', at: [0, 19], face: 0,
       cast: { 'e:inoshishi': { at: [0, 6], face: 'mike' },
         'e:iwa': [{ at: [-3.2, 4.6], face: 'mike' }, { at: [3.2, 5], face: 'mike' }, { at: [1.6, 7.8], face: 'mike' }] } },
     lines: [
@@ -642,7 +642,7 @@ const SCENES = {
     ] },
   // 切り通しの見晴らし台：北に関所の砦と、ニャハハ王国のお城と笑顔の塔。ふり返ると、ここまで来た道
   c2_05b: { title: '見晴らし台', bgm: 'hope',
-    stage: { zone: 'road2', at: [-22, -78.5], face: 0,
+    stage: { zone: 'road2_gate', at: [-22, -26.5], face: 0,
       points: { fort: [32, -8, 122], castle: [20, 6, 314], stairs: [-6, -9, -16] },
       // view：北の関所の砦／castle：城下町のむこうのお城と笑顔の塔（遠いので、画角をせまくして寄せる）／back：ふり返って、上ってきた崖の石段（崖ごしなので free）
       shots: { view: { pos: [-2.5, 3.2, -4.5], look: [10, 4, 44] }, castle: { pos: [-1.5, 2.6, -3.6], look: [20, 2, 314], fov: 18 },

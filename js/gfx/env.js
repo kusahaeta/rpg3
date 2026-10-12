@@ -265,19 +265,21 @@ function worldTree(health = 0.8, s = 1, fruit = 1) {
   g.scale.setScalar(s);
   return { g, fruits, halo, leaf };
 }
+// 区画の地図上の位置：ミャオニアの地図で、ほかの区画にまとめている区画（parent）は、まとめ先の位置
+const zoneMap2d = Z => Z && (Z.map2d || (Z.parent && typeof FIELD_ZONES !== 'undefined' && FIELD_ZONES[Z.parent] && FIELD_ZONES[Z.parent].map2d));
 // にゃんだーの樹の方角：区画の地図上の位置（map2d）から見た、樹の根もとの向き（北が 0、東が π/2）
 function treeAngle(Z) {
-  const R = typeof FIELD_ZONES !== 'undefined' && FIELD_ZONES.tree_root;
-  if (!Z || !Z.map2d || !R || Z === R) return -0.6;
-  return Math.atan2(R.map2d[0] - Z.map2d[0], -(R.map2d[1] - Z.map2d[1]));
+  const R = typeof FIELD_ZONES !== 'undefined' && FIELD_ZONES.tree_root, M = zoneMap2d(Z);
+  if (!M || !R || Z === R) return -0.6;
+  return Math.atan2(R.map2d[0] - M[0], -(R.map2d[1] - M[1]));
 }
 // にゃんだーの樹の大きさ（距離230に置くとき）：区画の地図上で根もとから遠いほど小さく。ぽかぽか村（treeLook）の見え方を基準に、
 // 近い森では大きすぎず、遠い魔族の地でも見えなくならないよう、距離の 0.7 乗で小さくする
 function treeSize(Z) {
-  const R = typeof FIELD_ZONES !== 'undefined' && FIELD_ZONES.tree_root, P = R && FIELD_ZONES.pokapoka;
-  if (!Z || !Z.map2d || !R || Z === R) return 1.6;
+  const R = typeof FIELD_ZONES !== 'undefined' && FIELD_ZONES.tree_root, P = R && FIELD_ZONES.pokapoka, M = zoneMap2d(Z);
+  if (!M || !R || Z === R) return 1.6;
   const md = p => Math.hypot(R.map2d[0] - p[0], R.map2d[1] - p[1]), [d0, s0] = P.treeLook;
-  return s0 * 230 / d0 * Math.min(1.3, Math.max(0.3, (md(P.map2d) / md(Z.map2d)) ** 0.7));
+  return s0 * 230 / d0 * Math.min(1.3, Math.max(0.3, (md(P.map2d) / md(M)) ** 0.7));
 }
 function farTree(T) {
   // treeLook：[距離, 大きさ, 高さ]。ぽかぽか村は、タイトル画面と同じ見え方に。ほかの区画は、樹から遠いほど小さく（treeSize）
