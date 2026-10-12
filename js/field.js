@@ -156,7 +156,9 @@ class FieldView extends BaseView {
     this.T.move(pos, dx, dz, r, o);
     const bx = pos.x, bz = pos.z, h = this.T.groundAt(bx, bz);
     this.collide(pos, r, h);
-    if ((pos.x !== bx || pos.z !== bz) && !this.T.fits(pos.x, pos.z, r, h, o)) { pos.x = bx; pos.z = bz; }
+    // 小物に押し出されて、押し出す前より壁にめりこむときだけ、押し出しを取り消す（壁ぎわを歩くと、もともと少し壁にかかっているので、
+    //   「かからないこと」を条件にすると、壁ぎわでは小物の当たりがいつも取り消されて、すり抜けてしまう）
+    if ((pos.x !== bx || pos.z !== bz) && this.T.misfits(pos.x, pos.z, r, h, o) > this.T.misfits(bx, bz, r, h, o)) { pos.x = bx; pos.z = bz; }
   }
   collide(pos, rad, h) {
     for (const c of this.colliders) {

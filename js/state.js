@@ -19,7 +19,7 @@ const Save = {
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       weapons: {},        // 持っている武器と強化段階（はじめの武器は持っていなくても使える。js/weapons.js）
       equip: {},          // にゃんこごとに装備している武器
-      auto: false, speed: 1, ver: 7,
+      auto: false, speed: 1, ver: 8,
       eco: null,          // 省エネ（30fps）。null はおまかせ（スマホなら省エネ）
     };
   },
@@ -59,6 +59,14 @@ const Save = {
     if (ver < 7) {
       if (d.story && d.story.ch === 1 && d.story.step >= 12) d.story.step += 1;
       d.ver = 7;
+    }
+    // ver 8：ごろごろ切り通しの見晴らし台の会話（c2_05b）が入り、第二章の切り通しの戦いのあとに 1 段階増えた。
+    //   切り通しの戦いを終えたところ（関所へ向かう段階）は、まだ切り通しにいれば見晴らし台から、もう関所にいればそのまま
+    if (ver < 8) {
+      const s = d.story;
+      if (s && s.ch === 1 && s.step >= 14) s.step += 1;
+      else if (s && s.ch === 1 && s.step === 13 && !(d.fieldResume && d.fieldResume.zone === 'road2')) s.step = 14;
+      d.ver = 8;
     }
   },
   load() {

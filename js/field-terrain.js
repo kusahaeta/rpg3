@@ -109,6 +109,8 @@ class Terrain {
       const v = S.skyline === 'town' ? Math.floor(hash(Math.floor(c / 3), Math.floor(r / 3)) * 3) * 1.8
         : S.skyline === 'rock' ? hash(c, r) * 2.6 + hash(Math.floor(c / 2), Math.floor(r / 2)) * 2 : 0;
       top[i] = base + wallH + v;
+      // zone.rockCap：崖のてっぺんの上限（見晴らし台より高い崖を作らない）。ぴったりそろわないよう、少しばらつかせる
+      if (this.zone.rockCap != null) top[i] = Math.min(top[i], this.zone.rockCap - hash(c, r) * 1.5);
       this.cap[i] = top[i];
     }
     this.top = top;
@@ -621,7 +623,8 @@ const ARCH_STYLES = {
   // にゃんこファンタジーの野外：木立（# は木の茂る地面。ZoneKit の flora で木を植える）と、岩の崖（# は切り立った岩）
   // outdoor：flora ＝ 木立、cliff ＝ 岩の崖。cap ＝ 崖の上端の草の色、path ＝ 土の道の色、exit: arch ＝ 木のアーチの門
   woods: { look: 'cliff', outdoor: 'flora', roof: false, canopy: 3.2, rock: '#8a7458', cap: '#6aa048', path: '#c2a070', trim: '#5a3a22', step: '#b0a288', glass: '#bfe8ff', glow: '#ffd27a', rail: 'wood', door: 'swing', lift: 'cage', exit: 'arch' },
-  crag: { look: 'cliff', outdoor: 'cliff', roof: false, skyline: 'rock', wallH: 5, rock: '#8a8478', cap: '#7aa858', path: '#b89a70', trim: '#5a3a22', step: '#aaa294', glass: '#bfe8ff', glow: '#ffd27a', rail: 'wood', door: 'swing', lift: 'cage', exit: 'arch' },
+  // capFloor：崖のてっぺんを、歩ける地面と同じ床の模様に（単色の緑だと、地面のそばで浮いて見える）。崖のふちの緑の縁（snowLip）もつけない
+  crag: { look: 'cliff', outdoor: 'cliff', roof: false, skyline: 'rock', wallH: 5, rock: '#8a8478', cap: '#7aa858', capFloor: true, path: '#b89a70', trim: '#5a3a22', step: '#aaa294', glass: '#bfe8ff', glow: '#ffd27a', rail: 'wood', door: 'swing', lift: 'cage', exit: 'arch' },
   // 世界の果て：奈落に浮かぶ石の道（手すりなし）。# は浮かぶ岩
   // 魔王領：紫の岩の崖に、暗い紫の苔
   demoncrag: { look: 'cliff', outdoor: 'cliff', roof: false, skyline: 'rock', wallH: 5, rock: '#5e5072', cap: '#4a3a5e', path: '#8a7090', trim: '#2a1a3a', step: '#7a6a90', glass: '#d8b0ff', glow: '#ff8ad8', rail: 'iron', door: 'swing', lift: 'cage', exit: 'arch' },
@@ -1031,7 +1034,7 @@ function buildArchitecture(view, T) {
     // 屋外の壁の塊：上面の雪と、隣の塊より高い部分の側面
     if (open && k <= K.WINDOW) {
       const y = T.top[i];
-      acc('cap', 4).quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]);
+      (S.capFloor ? acc('floor', 16) : acc('cap', 4)).quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]);
       DIR4.forEach(([dc, dr]) => {
         const j = T.idx(c + dc, r + dr), lo = j < 0 ? y - wallH - 6 : T.top[j];   // 地図の外側は下まで
         if (j >= 0 && (kind[j] > K.WINDOW || lo >= y - 0.01)) return;
@@ -1119,7 +1122,7 @@ function buildArchitecture(view, T) {
       if (flat) { acc('wall2', 4).slab(ex, ez, -nx, -nz, CELL, yA - 0.5, yA, 0.12); acc('glow').slab(ex, ez, -nx, -nz, CELL, yA - 0.62, yA - 0.56, 0.06); }
     } else if (style === 'mine') {
       if (flat) acc('wood').slab(ex, ez, -nx, -nz, CELL, yA - 0.35, yA, 0.12);
-    } else if (flat) snowLip(ex, ez, -nx, -nz, CELL, top);
+    } else if (flat && !S.capFloor) snowLip(ex, ez, -nx, -nz, CELL, top);   // 崖の上が床の模様の区画（capFloor）は、緑の縁をつけない
   }
   // 壁の面
   function wallFace(ex, ez, nx, nz, y0, top, c, r, dc, dr, k, yA, yB) {
@@ -1131,7 +1134,7 @@ function buildArchitecture(view, T) {
     const lo = slope ? T.h[T.idx(c, r)] - 0.02 : y0;
     if (style === 'cliff' || style === 'mine') {
       rockFace('rock', ex, ez, nx, nz, CELL, [lo - 0.3, top], [lo - 0.3, top], style === 'mine' ? 0.45 : 0.55);
-      if (style === 'cliff') snowLip(ex, ez, nx, nz, CELL, top);
+      if (style === 'cliff' && !S.capFloor) snowLip(ex, ez, nx, nz, CELL, top);
       if (style === 'mine' && straight && along % 3 === 0) {      // 坑木の柱と、壁のランタン
         acc('wood').slab(px, pz, nx, nz, 0.4, y0, top, 0.42);
         if (along % 6 === 0) { acc('iron').slab(ex, ez, nx, nz, 0.06, y0 + 2.6, y0 + 2.7, 0.45); acc('lamp').slab(ex, ez, nx, nz, 0.26, y0 + 2.15, y0 + 2.55, 0.5, 0.2); }
