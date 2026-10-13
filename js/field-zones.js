@@ -23,6 +23,8 @@
 //   戦場のまわりだけ（区画の高さにそった草地と、ZONE_BUILD[build] の小物。marks は区画の目印）
 // ごろごろ岩の通り道（zone.rollers）：z の線の、谷の壁から壁まで（x0〜x1）を n 等分し、区間ごとに岩を一つ走らせる。
 //   となりの岩とは向きが逆で、区切りでぶつかって、はね返る。o：岩の大きさ r・速さ speed・はじめの位置 ph・はねとばされる先 back
+// ミャオ街道・丘の頂上の小麦畑（風車の前から東へ。区画の組み立てと、戦闘用の背景で同じ畑）
+const WHEAT_HILL = [[-1.5, -23, 18, -14], [11, -28, 21, -23]], WHEAT_HILL_AVOID = [[7, -21.5, 3.4], [9, -24, 1.2], [10.4, -25.8, 1.3]];   // 植えない円：風車と、尾の竿・車輪
 function rollerLane(z, x0, x1, n, o) {
   return Array.from({ length: n }, (_, i) => ({ a: [x0 + (x1 - x0) * i / n, z], b: [x0 + (x1 - x0) * (i + 1) / n, z], r: o.r, speed: o.speed, ph: ((o.ph || 0) + i * 0.5) % 1, back: o.back }));
 }
@@ -367,9 +369,8 @@ const FIELD_ZONES = {
   //   丘は dents（depth を負に、top が平らな頂上の半径）。丘の上は、木立（#）を置かず、木は区画の組み立てで一本ずつ（地面の高さにそって立つ）
   road1_hill: { ci: 1, name: 'ミャオ街道・丘', floor: '丘', parent: 'road1', w: 160, d: 192, stage: '2-1', arenas: [[-28, 72, 0], [2, -8, 0], [26, -84, 0]], build: 'roadHill', groups: 8, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-10, -20], [56, -60], [-40, 66]],
-    // 戦闘は、戦場のまわりだけの軽い背景で（丘の高さ・頂上の風車と畑・北の宿場の屋根）
-    battleSet: { build: 'meadowBattle', marks: [['windmill', 7, -21.5, 1.3], ['rows', 7, -10],
-      ['houses', [[-28, -118], [-8, -124], [14, -118], [30, -130], [-20, -140], [6, -146], [-40, -132], [26, -150]]]] },
+    // 戦闘は、戦場のまわりだけの軽い背景で（丘の高さ・頂上の風車と小麦畑）
+    battleSet: { build: 'meadowBattle', marks: [['windmill', 7, -21.5, 1.3, -0.66], ['wheat', WHEAT_HILL, WHEAT_HILL_AVOID]] },
     th: { fogD: 0.0035 },   // 霧は少しうすく：ふもとから、丘の上の風車が見える
     dents: [{ at: [0, -12], r: 70, top: 14, depth: -10 }],
     map: [
@@ -472,7 +473,7 @@ const FIELD_ZONES = {
     ],
     anchor: [12, 80], exits: [{ key: 'b', to: 'road1' }, { key: 'a', to: 'road_rest' }],
     notes: [{ at: [8, 76], face: 0, post: ['↑ 街道の宿場（丘をこえて）', '↓ ひょうたん池・ぽかぽか村'], title: '道しるべ', text: '「北　街道の宿場（丘の上の風車をこえて）／南　ひょうたん池・ぽかぽか村」' },
-      { at: [-3, -22], mark: 1.0, title: '丘のてっぺん', text: '丘のてっぺんのベンチ。北に、街道の宿場の屋根が見える。……ふり返ると、ひょうたん池が、きらきら光っている。風車が、ぎいぎいと回っている。' }] },
+      { at: [-3, -22], mark: 1.0, title: '丘のてっぺん', text: '丘のてっぺんのベンチ。北の道を下れば、街道の宿場だ。……ふり返ると、ひょうたん池が、きらきら光っている。風車が、ぎいぎいと回っている。' }] },
 
   road_rest: { ci: 1, name: '街道の宿場', w: 68, d: 64, stage: '2-1', arenas: [[0, -4, 0]], build: 'rest', town: true, groups: 0, chests: 2, crystals: 0,
     world: true, arch: 'woods', chestAt: [[-25, -24], [-23, 9]],
@@ -3028,6 +3029,31 @@ function flowerTex(col) {
   }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return (TexCache[k] = t);
+}
+
+// 小麦の絵（幅 0.5m × 高さ 2m の板に貼る。1m = 256px）：高さ 1.4m の茎と葉、茎の先から少しおじぎした長さ 0.47m の穂（粒が二列）、上へのびるのぎ
+//   猫じゃらし（nekojarashi）と同じ大きさ。透けるところは抜く（alphaTest）
+function wheatTex() {
+  if (TexCache.wheat) return TexCache.wheat;
+  const W = 128, H = 512, P = 256, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  const bx = W / 2, top = H - 1.4 * P, tilt = 0.3;
+  // 茎（根もとが太い）と葉
+  g.strokeStyle = '#b8a04a'; g.lineCap = 'round';
+  for (let i = 0; i < 6; i++) { const y0 = H - i * (H - top) / 6, y1 = H - (i + 1) * (H - top) / 6; g.lineWidth = 7 - i * 0.7; g.beginPath(); g.moveTo(bx + i * 0.4, y0); g.lineTo(bx + (i + 1) * 0.4, y1); g.stroke(); }
+  g.fillStyle = '#9aa84a'; g.beginPath(); g.moveTo(bx + 1, H - 0.28 * P); g.quadraticCurveTo(bx + 30, H - 0.55 * P, bx + 52, H - 0.9 * P); g.quadraticCurveTo(bx + 18, H - 0.6 * P, bx + 2, H - 0.4 * P); g.fill();
+  g.beginPath(); g.moveTo(bx - 1, H - 0.62 * P); g.quadraticCurveTo(bx - 24, H - 0.85 * P, bx - 44, H - 1.15 * P); g.quadraticCurveTo(bx - 14, H - 0.92 * P, bx - 2, H - 0.72 * P); g.fill();
+  // 穂：茎の先から右へ少しかたむけて、のぎ（細い線）を描いてから、粒（二列のだ円）を重ねる
+  g.save(); g.translate(bx + 2.4, top); g.rotate(tilt);
+  g.strokeStyle = '#f0d890'; g.lineWidth = 1.6;
+  for (let k = 0; k < 8; k++) for (const sd of [-1, 1]) { const y = -0.06 * P - k * 0.052 * P; g.beginPath(); g.moveTo(sd * 6, y); g.lineTo(sd * 18, y - 0.26 * P); g.stroke(); }
+  for (let k = 0; k < 7; k++) for (const sd of [-1, 1]) {
+    const r = (0.05 - k * 0.004) * P * 0.55, y = -0.05 * P - k * 0.058 * P;
+    g.fillStyle = k % 2 ? '#e8c25a' : '#dcb44c'; g.strokeStyle = '#a8842e'; g.lineWidth = 1.5;
+    g.beginPath(); g.ellipse(sd * r * 0.8, y, r, r * 1.5, sd * 0.25, 0, Math.PI * 2); g.fill(); g.stroke();
+  }
+  g.restore();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (TexCache.wheat = t);
 }
 
 // 枯れかけた葉の絵：先のとがった葉に、軸と葉脈、しみ、ふちの欠け。白っぽい灰色で描き、色はマテリアルや一枚ずつの色でつける
@@ -5951,11 +5977,73 @@ class ZoneKit {
     this.mesh(new THREE.PlaneGeometry(0.9, 1.3), 'wood2', x + Math.sin(ry) * 1.29, 0.65, z + Math.cos(ry) * 1.29, { ry, noShadow: true });
     this.col(x, z, 1.7, 2.2);
   }
-  windmill(x, z, s = 1) {
-    this.cyl(x, z, 1.4 * s, 6 * s, 'plaster', { r2: 1 * s, seg: 10 });
-    this.mesh(new THREE.ConeGeometry(1.4 * s, 1.8 * s, 10), 'roofRed', x, 6.9 * s, z);
-    const hub = new THREE.Group(); hub.position.set(x, 5.4 * s + this.gy(x, z), z + 1.2 * s); this.scene.add(hub);
-    for (let i = 0; i < 4; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.6 * s, 3.4 * s, 0.06), this.mat('clothWhite')); b.position.y = 1.8 * s; const p = new THREE.Group(); p.rotation.z = i * Math.PI / 2; p.add(b); hub.add(p); b.castShadow = true; }
+  // 風車：オランダ風の塔型。石の土台に白い八角の塔（木の帯・戸口・窓と花の箱）、中ほどに手すりつきの回廊、舟をふせたような赤い帽子。
+  //   帽子のうしろから地面へ、向きを変えるための尾の竿と車輪。羽根は、少し上を向いた軸の先に、格子の骨組みと帆布を張った 4 枚で、ゆっくり回る。
+  //   ry：羽根の向き（0 で +Z を向く）。動かない部分は材質ごとにまとめ（mg）、羽根は回る束（木と帆布の 2 つ）
+  windmill(x, z, s = 1, ry = 0) {
+    const y0 = this.gy(x, z), c = Math.cos(ry), sn = Math.sin(ry), oct = Math.PI / 8;
+    const W = (lx, lz) => [x + (lx * c + lz * sn) * s, z + (-lx * sn + lz * c) * s];
+    // 風車の中の座標（右 lx・上 ly・前 lz）に、風車の中の向きで作った geo を置く
+    const put = (mat, geo, lx, ly, lz) => { geo.scale(s, s, s); geo.rotateY(ry); const [wx, wz] = W(lx, lz); this.mg(mat, geo, wx, y0 + ly * s, wz); };
+    const rAt = ly => 1.55 - (ly - 0.7) / 6.2 * 0.5;   // 塔の太さ（下 1.55・上 1.05）
+    const onFace = (mat, geo, th, ly, out = 0) => { const d = rAt(ly) * Math.cos(oct) + out; geo.rotateY(th); put(mat, geo, Math.sin(th) * d, ly, Math.cos(th) * d); };
+    const plaster = '#fff4e2', woodD = '#6a4a30', woodL = '#a87a4e', roof = '#d8564a', glass = '#3a4a66';
+    // 土台と塔（平らな面が正面を向くよう、八角を 22.5° 回す）と木の帯
+    put('#8a847a', new THREE.CylinderGeometry(1.75, 1.85, 0.7, 8).rotateY(oct), 0, 0.35, 0);
+    put(plaster, new THREE.CylinderGeometry(1.05, 1.55, 6.2, 8).rotateY(oct), 0, 3.8, 0);
+    for (const ly of [0.78, 6.82]) put(woodD, new THREE.CylinderGeometry(rAt(ly) + 0.05, rAt(ly) + 0.05, 0.16, 8).rotateY(oct), 0, ly, 0);
+    // 戸口（上が丸い木の扉）と、窓（木の枠・ガラス・窓台）、正面の窓の下の花の箱
+    onFace(woodD, new THREE.BoxGeometry(0.82, 1.3, 0.1), 0, 1.35, 0.02);
+    onFace(woodD, new THREE.CylinderGeometry(0.41, 0.41, 0.1, 14, 1, false, 0, Math.PI).rotateX(Math.PI / 2).rotateZ(Math.PI / 2), 0, 2.0, 0.02);
+    for (const [th, ly] of [[0, 4.4], [Math.PI / 2, 3.6], [-Math.PI / 2, 5.4], [Math.PI, 4.4], [Math.PI * 0.75, 1.8]]) {
+      onFace(woodD, new THREE.BoxGeometry(0.62, 0.74, 0.08), th, ly, 0.01);
+      onFace(glass, new THREE.BoxGeometry(0.44, 0.56, 0.08), th, ly, 0.04);
+      onFace(woodL, new THREE.BoxGeometry(0.74, 0.08, 0.2), th, ly - 0.38, 0.06);
+    }
+    onFace(woodL, new THREE.BoxGeometry(0.7, 0.2, 0.24), 0, 3.98, 0.12);
+    for (let i = 0; i < 5; i++) onFace(['#ff8ab8', '#ffd24a', '#ffffff'][i % 3], new THREE.SphereGeometry(0.09, 8, 6).translate(-0.24 + i * 0.12, 0, 0), 0, 4.14, 0.12);
+    // 回廊：八角の床板と、下の腕木、柱と二段の手すり
+    const GY = 2.7, GR = 2.25, edge = 2 * GR * Math.sin(oct);
+    put(woodL, new THREE.CylinderGeometry(GR + 0.1, GR + 0.1, 0.16, 8).rotateY(oct), 0, GY, 0);
+    for (let i = 0; i < 8; i++) {
+      const th = i / 8 * Math.PI * 2 + oct, mid = th + oct;   // th：床板の角（柱）、mid：辺のまん中（手すり・腕木）
+      put(woodD, new THREE.BoxGeometry(0.1, 0.1, 1.2).rotateX(-0.6).rotateY(mid), Math.sin(mid) * 1.75, GY - 0.45, Math.cos(mid) * 1.75);
+      put(woodD, new THREE.BoxGeometry(0.08, 0.85, 0.08), Math.sin(th) * GR, GY + 0.5, Math.cos(th) * GR);
+      for (const h of [0.45, 0.88]) put(woodD, new THREE.BoxGeometry(edge, 0.06, 0.06).rotateY(mid), Math.sin(mid) * GR * Math.cos(oct), GY + h, Math.cos(mid) * GR * Math.cos(oct));
+    }
+    // 帽子：舟をふせた形の赤い屋根、ふちの木の輪、棟木と先の玉
+    put(roof, new THREE.SphereGeometry(1.3, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.85, 1.28), 0, 6.9, 0);
+    put(woodD, new THREE.CylinderGeometry(1.34, 1.34, 0.14, 16).scale(1, 1, 1.28), 0, 6.92, 0);
+    put(woodD, new THREE.BoxGeometry(0.12, 0.12, 2.6), 0, 7.98, 0);
+    put('#ffd27a', new THREE.SphereGeometry(0.16, 10, 8), 0, 8.1, 0);
+    // 軸（少し上を向く）と、尾の竿・車輪
+    const tilt = 0.1;
+    put(woodD, new THREE.CylinderGeometry(0.15, 0.19, 2.2, 10).rotateX(Math.PI / 2 - tilt), 0, 7.22, 1.55);
+    const [bx, bz] = W(0, -4.2), wheelY = this.gy(bx, bz) - y0;
+    const pole = V3(0, 6.95 * s, -1.05 * s).sub(V3(0, wheelY + 0.45 * s, -4.2 * s)), plen = pole.length() / s;
+    put(woodD, new THREE.BoxGeometry(0.16, plen, 0.16).rotateX(Math.atan2(pole.z, pole.y)), 0, (6.95 * s + wheelY + 0.45 * s) / 2 / s, (-1.05 - 4.2) / 2);
+    put(woodD, new THREE.CylinderGeometry(0.45, 0.45, 0.12, 14).rotateZ(Math.PI / 2), 0, wheelY / s + 0.45, -4.25);
+    // 戸口のそばの粉袋
+    for (const [lx, lz, sc] of [[0.95, 1.9, 1], [1.35, 1.6, 0.85], [-1.0, 1.95, 0.9]]) {
+      put('#d8c08e', new THREE.SphereGeometry(0.34 * sc, 10, 8).scale(1, 1.2, 0.9), lx, 0.36 * sc, lz);
+      put('#b89a66', new THREE.CylinderGeometry(0.06 * sc, 0.12 * sc, 0.18 * sc, 8), lx, 0.8 * sc, lz);   // しばった口
+    }
+    this.col(x, z, 1.85 * s, 7 * s);
+    // 羽根：竿・格子の骨組み（木）と帆布を、4 枚ぶんまとめて回す
+    const woodG = [], clothG = [], arm = (g, th) => g.rotateZ(th);
+    for (let i = 0; i < 4; i++) {
+      const th = i * Math.PI / 2 + Math.PI / 4;
+      woodG.push(arm(new THREE.BoxGeometry(0.14, 4.5, 0.14).translate(0, 2.05, 0), th));
+      for (const rx of [0.12, 1.02]) woodG.push(arm(new THREE.BoxGeometry(0.06, 3.5, 0.06).translate(rx, 2.5, 0.04), th));
+      for (let k = 0; k < 8; k++) woodG.push(arm(new THREE.BoxGeometry(0.96, 0.05, 0.05).translate(0.57, 0.78 + k * 0.49, 0.04), th));
+      clothG.push(arm(new THREE.BoxGeometry(0.86, 3.36, 0.02).translate(0.57, 2.5, -0.03), th));
+    }
+    woodG.push(new THREE.CylinderGeometry(0.3, 0.3, 0.3, 12).rotateX(Math.PI / 2), new THREE.SphereGeometry(0.22, 10, 8).translate(0, 0, 0.18));
+    const merge = list => THREEX.BufferGeometryUtils.mergeGeometries(list.map(g => g.index ? g.toNonIndexed() : g));
+    const hub = new THREE.Group(), [hx, hz] = W(0, 2.55);
+    hub.position.set(hx, y0 + 7.33 * s, hz); hub.scale.setScalar(s); hub.rotation.set(-tilt, ry, 0, 'YXZ');
+    hub.add(new THREE.Mesh(merge(woodG), this.stdM(woodL, 0.85)), new THREE.Mesh(merge(clothG), this.mat('clothWhite')));
+    this.add(hub);
     this.tick(dt => { hub.rotation.z += dt * 0.6; });
   }
   // 神社：朱い鳥居と小さな社
@@ -6455,6 +6543,52 @@ class ZoneKit {
     this.mg('#8ab85a', new THREE.CylinderGeometry(0.008 * s, 0.008 * s, 0.22 * s, 5), x + d.x * (L + 0.1 * s), y0 + d.y * (L + 0.1 * s), z + d.z * (L + 0.1 * s), rot);
     this.mg('#e8d890', new THREE.CapsuleGeometry(0.055 * s, 0.2 * s, 3, 8), x + d.x * (L + 0.33 * s), y0 + d.y * (L + 0.33 * s) + 0.03 * s, z + d.z * (L + 0.33 * s), rot);
   }
+  // 小麦畑：猫じゃらしと同じ大きさ（高さ 1.4 の細い茎の先に、少しおじぎした長さ 0.47・太さ 0.15 の穂）。一本は、小麦の絵（wheatTex）を貼った
+  //   二枚の板を十字に組んだもの（三角形 4 つ）。猫じゃらしと同じく、まばらに（1m² に 0.7 本ほど）、一本ずつ 0.8〜1.4 倍。rects：[[x0, z0, x1, z1], ...]（区画の座標）
+  //   畑いっぱいにならべて描く（InstancedMesh）。風のゆれは描画の中で：根もとを軸に、上ほど大きくしなる（向きは一本ずつ少しちがう）。
+  //   板の表も裏も、同じ明るさ（法線は上向き。裏の面でも反転させない）
+  //   o.avoid：植えない円 [[x, z, 半径], ...]（風車など）／ o.at：区画の座標 → 置く座標（戦闘用の背景で、戦場から見た位置へ）
+  wheatField(rects, o = {}) {
+    const at = o.at || ((x, z) => [x, z]), r = this.r;
+    // 一本の小麦：絵を貼った板（幅 0.5・高さ 2）を十字に。光はどちらの面も上から当たったように（法線を上へ）
+    const geo = THREEX.BufferGeometryUtils.mergeGeometries([0, Math.PI / 2].map(a => new THREE.PlaneGeometry(0.5, 2).translate(0, 1, 0).rotateY(a)));
+    const nrm = geo.attributes.normal; for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
+    // 植える場所：畑の長方形の中に、まばらにならないよう格子をずらして
+    const pts = [], step = o.step || 1.2;
+    for (const [x0, z0, x1, z1] of rects) for (let x = x0; x <= x1; x += step) for (let z = z0; z <= z1; z += step) {
+      const px = x + (r() - 0.5) * step, pz = z + (r() - 0.5) * step;
+      if ((o.avoid || []).some(([ax, az, ar]) => Math.hypot(px - ax, pz - az) < ar)) continue;
+      pts.push(at(px, pz));
+    }
+    const time = { value: 0 }, mat = new THREE.MeshStandardMaterial({ map: wheatTex(), alphaTest: 0.25, side: THREE.DoubleSide, roughness: 0.9, metalness: 0 });   // 抜く境目は低めに（遠くで絵が小さくなっても、細い茎と穂が消えない）
+    mat.onBeforeCompile = sh => {
+      sh.uniforms.uTime = time;
+      // 裏から見た面も、法線を反転させない（反転すると、上からの光が当たらず暗くなる）
+      sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace('normal *= faceDirection;', ''));
+      sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+        vec2 ip = vec2(instanceMatrix[3][0], instanceMatrix[3][2]);
+        float ph = dot(ip, vec2(0.37, 0.23)), k = max(transformed.y, 0.0); k = k * k / 1.8;
+        transformed.x += (sin(uTime * 1.6 + ph) * 0.12 + sin(uTime * 2.9 + ph * 1.7) * 0.04) * k;
+        transformed.z += sin(uTime * 1.1 + ph * 1.3) * 0.05 * k;`);
+    };
+    const im = new THREE.InstancedMesh(geo, mat, pts.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+    pts.forEach(([x, z], i) => {
+      const h = 0.8 + r() * 0.6;
+      m4.compose(V3(x, this.gy(x, z), z), q.setFromEuler(new THREE.Euler((r() - 0.5) * 0.12, r() * Math.PI * 2, (r() - 0.5) * 0.12)), V3(h, h, h));
+      im.setMatrixAt(i, m4);
+    });
+    im.receiveShadow = true; this.scene.add(im);
+    // 小麦の下の土：畑の長方形ごとに一枚。0.5m おきに地面の高さへそわせ（丘のふちの坂でも、草にうもれない）、地面より少し手前に描く
+    const soil = new THREE.MeshStandardMaterial({ color: '#a88a5a', roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    for (const [x0, z0, x1, z1] of rects) {
+      const nx = Math.ceil((x1 - x0) / 0.5), nz = Math.ceil((z1 - z0) / 0.5), pos = [], idx = [];
+      for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) { const [px, pz] = at(x0 + (x1 - x0) * i / nx, z0 + (z1 - z0) * j / nz); pos.push(px, this.gy(px, pz) + 0.03, pz); }
+      for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const a = j * (nx + 1) + i, b = a + 1, c = a + nx + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+      const m = new THREE.Mesh(geo, soil); m.receiveShadow = true; this.scene.add(m);
+    }
+    this.tick((dt, t) => { time.value = t; });
+  }
   // 生えている猫じゃらし：根もとを軸に茎ごとしなり、茎の先の穂は少し遅れて大きくゆれる（風の向きは一本ずつ少しちがう）
   nekojarashi(x, z, s = 1) {
     const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = this.r() * Math.PI * 2; this.scene.add(g);
@@ -6888,10 +7022,12 @@ const ZONE_BUILD = {
   },
   // 戦闘用の背景（野原の区画。zone.battleSet）：戦場のまわり（60m まで）の木と花・岩と、区画の目印。座標は戦場から見た位置（K.v.world で区画の座標）
   //   木は、区画の木立（#）のところは茂らせ、野原にはまばらな一本木。道と水の上には植えない。戦場のすぐそば（14m）はあける
-  //   battleSet.marks：['windmill', x, z, 大きさ]・['rows', x, z]（畑の畝）・['pond', x, z, 半径]・['houses', [[x, z], ...]]（遠くの家の屋根）
+  //   battleSet.marks：['windmill', x, z, 大きさ, 向き]・['wheat', 長方形の列, 植えない円]（小麦畑）・['pond', x, z, 半径]
   meadowBattle(K) {
     const r = K.r, v = K.v, ZT = v.zt, leaf = ['#6abf52', '#7ac85a', '#5ab04a'];
-    const cellAt = (lx, lz) => { const [x, z] = v.world(lx, lz), i = ZT ? ZT.at(x, z) : -1; return i < 0 ? 'out' : ZT.water[i] ? 'water' : ZT.paint[i] ? 'road' : ZT.kind[i] <= TK.WINDOW ? 'wood' : 'open'; };
+    // 目印（風車・小麦畑）のところにも、木や花を置かない
+    const marks = K.zone.battleSet.marks || [], taken = (x, z) => marks.some(m => m[0] === 'windmill' ? Math.hypot(x - m[1], z - m[2]) < 6 : m[0] === 'wheat' && m[1].some(([x0, z0, x1, z1]) => x > x0 - 1 && x < x1 + 1 && z > z0 - 1 && z < z1 + 1));
+    const cellAt = (lx, lz) => { const [x, z] = v.world(lx, lz), i = ZT ? ZT.at(x, z) : -1; return taken(x, z) ? 'mark' : i < 0 ? 'out' : ZT.water[i] ? 'water' : ZT.paint[i] ? 'road' : ZT.kind[i] <= TK.WINDOW ? 'wood' : 'open'; };
     for (let gx = -60; gx <= 60; gx += 4) for (let gz = -60; gz <= 60; gz += 4) {
       const x = gx + (r() - 0.5) * 3, z = gz + (r() - 0.5) * 3, d = Math.hypot(x, z);
       if (d < 14 || d > 60) continue;
@@ -6900,24 +7036,19 @@ const ZONE_BUILD = {
       else if (k === 'open' && r() < 0.06) K.flowers(x, z, 10, 2.5, r() < 0.5 ? ['#ffe07a', '#ffffff', '#ffb84a'] : ['#ffb8d8', '#ffffff']);
       else if (k === 'open' && r() < 0.03) K.rock(x, z, 0.5 + r() * 0.4);
     }
-    for (const m of K.zone.battleSet.marks || []) {
+    for (const m of marks) {
       const [kind] = m, at = (x, z) => v.local(x, z);
-      if (kind === 'windmill') { const [x, z] = at(m[1], m[2]); K.windmill(x, z, m[3] || 1); }
-      else if (kind === 'rows') for (let i = 0; i < 6; i++) { const [x, z] = at(m[1], m[2] - 5 + i * 2); K.mesh(new THREE.BoxGeometry(7, i < 3 ? 0.35 : 0.5, 0.8), i < 3 ? 'leaf2' : '#e8c060', x, i < 3 ? 0.18 : 0.25, z, { ry: v.face, noShadow: true }); }
+      if (kind === 'windmill') { const [x, z] = at(m[1], m[2]); K.windmill(x, z, m[3] || 1, (m[4] || 0) + v.face); }
+      else if (kind === 'wheat') K.wheatField(m[1], { avoid: m[2], at });
       else if (kind === 'pond') { const [x, z] = at(m[1], m[2]); K.mesh(new THREE.CircleGeometry(m[3], 32), new THREE.MeshStandardMaterial({ color: '#6aa8d0', roughness: 0.15, metalness: 0.1 }), x, 0.04, z, { rx: -Math.PI / 2, noShadow: true }); }
-      else if (kind === 'houses') {
-        const walls = ['#fff4e2', '#ffe8d4', '#f0e0c8'], roofs = ['#8a5a3a', '#6a4a3a', '#a86a4a'];
-        for (const [hx, hz] of m[1]) { const [x, z] = at(hx, hz); K.farHouse(x, z, 6 + r() * 3, 5 + r() * 3, 5 + r() * 3, walls[Math.floor(r() * 3)], roofs[Math.floor(r() * 3)], -1.3 + v.hAt(x, z)); }
-      }
     }
   },
-  // ミャオ街道・丘：頂上の風車と畑、南のふもとの休み場、斜面の一本木と花。北の遠くに、街道の宿場の屋根
+  // ミャオ街道・丘：頂上の風車と小麦畑、南のふもとの休み場、斜面の一本木と花
   roadHill(K) {
     K.flora({ trees: [['round', 4], ['pine', 1]], leaf: ['#6abf52', '#7ac85a', '#5ab04a'], fruit: '#ff9a7a', bush: 0.6, rocks: 0.5, flower: ['#ffe07a', '#ffffff', '#ffb84a'] });
-    // 頂上：風車と畑（緑の畝と、実った黄色の畝）、てっぺんのベンチ
-    K.windmill(7, -21.5, 1.3);
-    for (let i = 0; i < 3; i++) K.mesh(new THREE.BoxGeometry(7, 0.35, 0.8), 'leaf2', 7, 0.18, -15 + i * 2, { noShadow: true });
-    for (let i = 0; i < 3; i++) K.mesh(new THREE.BoxGeometry(7, 0.5, 0.8), '#e8c060', 7, 0.25, -9 + i * 2, { noShadow: true });
+    // 頂上：風車と、その前から東へひろがる小麦畑（シロの特訓・2-3 で敵が立つところ（z > -13.5）は、あけておく）、てっぺんのベンチ
+    K.windmill(7, -21.5, 1.3, -0.66);   // 羽根は、南西（ふもとの道と、頂上の畑の一行）のほうを向く
+    K.wheatField(WHEAT_HILL, { avoid: WHEAT_HILL_AVOID });
     K.bench(-3, -22, 0); K.flowers(-6, -20, 12, 2, ['#ffe07a', '#ffffff']);
     // 南のふもとの休み場：荷車の樽と木箱、灯り、ベンチ
     K.barrel(-48, 54); K.barrel(-47, 55.4); K.crate(-42, 60); K.lantern(-38, 50, '#ffc86a'); K.bench(-44, 48, 0.3);
@@ -6928,10 +7059,6 @@ const ZONE_BUILD = {
     for (const [x, z, n, r] of [[20, 32, 18, 5], [-28, 8, 16, 5], [32, -30, 14, 4], [-40, -40, 14, 4], [10, 86, 14, 3], [44, 60, 12, 4], [-30, -70, 12, 4]])
       K.flowers(x, z, n, r, K.r() < 0.5 ? ['#ffe07a', '#ffffff', '#ffb84a'] : ['#ffb8d8', '#ffffff']);
     for (const [x, z] of [[16, 56], [-52, 26], [52, -16], [-16, -42], [36, -66], [-60, 40]]) K.rock(x, z, 0.5 + K.r() * 0.5);
-    // 北の遠く：街道の宿場の屋根（丘の上から、木立ごしに見える）
-    const walls = ['#fff4e2', '#ffe8d4', '#f0e0c8'], roofs = ['#8a5a3a', '#6a4a3a', '#a86a4a'];
-    for (const [x, z] of [[-28, -118], [-8, -124], [14, -118], [30, -130], [-20, -140], [6, -146], [-40, -132], [26, -150]])
-      K.farHouse(x, z, 6 + K.r() * 3, 5 + K.r() * 3, 5 + K.r() * 3, walls[Math.floor(K.r() * 3)], roofs[Math.floor(K.r() * 3)]);
   },
   // 街道の宿場：南の木戸と下宿（田んぼ・水車小屋）、川べりと橋、広場（茶屋・高札場・井戸・鍛冶屋の屋台）、上宿（旅籠・問屋場）、見晴らしの高台
   rest(K) {
