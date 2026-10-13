@@ -377,23 +377,13 @@ const FOE_MOVES = {
 
 Object.assign(BattleView.prototype, {
   // ---------- 敵の動きの部品 ----------
-  // 敵とねらった子たちのあいだを、横から映す（大きな敵ほど引く）
+  // 全体攻撃は、味方のうしろ上から敵を見る（味方にとどく効果と、敵の両方が入る。大きな敵ほど引く）。
+  //   一人・二人をねらう技は、カメラを切りかえない（enemyAttack の、味方のうしろから敵へ寄るカメラのまま）
   attackerCam(e, ts, anim) {
-    // 敵とねらった子を結ぶ線の横から、ふたりが左右に並ぶように（大きな敵・大勢をねらうほど引く）
-    const xs = ts.map(t => t.home.x), tx = (Math.min(...xs) + Math.max(...xs)) / 2, span = Math.max(...xs) - Math.min(...xs);
-    const big = Math.max(e.model.height, 1.2), T = V3(tx, 0, ts[0].home.z), E = e.home.clone().setY(0);
-    // 全体攻撃は、味方のうしろ上から敵を見る（味方にとどく効果と、敵の両方が入る）
-    if (ts.length >= 3 && anim !== 'stampede') {
-      const back = 3.6 + Math.max(0, big - 1.5) * 1.6;
-      this.setCam(V3(tx + 1.2, 1.6 + big * 0.35, T.z + back), V3((tx + E.x) / 2, 0.5 + big * 0.3, (T.z * 2 + E.z) / 3), { snap: true });
-      return;
-    }
-    const s = tx >= e.home.x ? 1 : -1, L = T.clone().sub(E), len = L.length(), n = V3(L.z, 0, -L.x).normalize().multiplyScalar(s);
-    const mid = E.clone().lerp(T, 0.5), d = Math.max(3.4, len * 1.05 + span * 0.6 + big * 0.5);
-    const pos = mid.clone().addScaledVector(n, d).add(V3(0, 0.8 + big * 0.45, 0));
-    this.setCam(pos, mid.clone().add(V3(0, 0.4 + big * 0.3, 0)), { snap: true });
-    // カメラとねらった子のあいだに立つ子は隠す（enemyAttackEnd で戻す）
-    for (const x of this.ents.values()) if (x.ally && !ts.includes(x) && (x.home.x - tx) * s > 0.3) x.model.group.visible = false;
+    if (ts.length < 3 || anim === 'stampede') return;
+    const xs = ts.map(t => t.home.x), tx = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const big = Math.max(e.model.height, 1.2), T = V3(tx, 0, ts[0].home.z), E = e.home.clone().setY(0), back = 3.6 + Math.max(0, big - 1.5) * 1.6;
+    this.setCam(V3(tx + 1.2, 1.6 + big * 0.35, T.z + back), V3((tx + E.x) / 2, 0.5 + big * 0.3, (T.z * 2 + E.z) / 3), { snap: true });
   },
 
 
