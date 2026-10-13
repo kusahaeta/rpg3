@@ -5971,11 +5971,95 @@ class ZoneKit {
     this.mesh(new THREEX.RoundedBoxGeometry(0.52, 0.08, 0.38, 2, 0.03), 'wood2', x, 0.56, z, { ry });
     this.mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.56, 8), 'clothYellow', x, 0.68, z, { ry, rz: Math.PI / 2 });
   }
-  tent(x, z, ry = 0, cloth = 'clothYellow') {
-    const g = new THREE.ConeGeometry(1.8, 2.2, 4); g.rotateY(Math.PI / 4);
-    const m = this.mesh(g, cloth, x, 1.1, z, { ry }); m.scale.set(1, 1, 1.4);
-    this.mesh(new THREE.PlaneGeometry(0.9, 1.3), 'wood2', x + Math.sin(ry) * 1.29, 0.65, z + Math.cos(ry) * 1.29, { ry, noShadow: true });
-    this.col(x, z, 1.7, 2.2);
+  // テント：棟が前後にのびる三角のテント（ry = 0 で戸口が +Z を向く）。二枚の屋根布は、棟と裾のあいだで少したわみ、裾に色ちがいの帯。
+  //   前の妻は戸口を三角に開けて、両わきに巻き上げた垂れ布と結びひも。中は敷き布。前後の柱の先に玉（前には小旗）、張り綱と杭。
+  //   o.old：雨ざらしの古いテント（色あせて、たわみが深く、つぎはぎ。片方の垂れ布はほどけて垂れ、旗もない。中に毛布と四つの荷物）
+  //   o.trim：裾の帯と旗の色。部品は材質ごとにまとめる
+  tent(x, z, ry = 0, cloth = 'clothYellow', o = {}) {
+    const W = 1.35, H = 2.0, L = 1.5, ov = 0.16, sag = o.old ? 0.17 : 0.08;   // 裾の半幅・棟の高さ・半分の長さ・屋根の張り出し・たわみ
+    const fade = c => o.old ? '#' + new THREE.Color(c).lerp(new THREE.Color('#9a948a'), 0.45).getHexString() : c;
+    const clothC = fade(ZMAT[cloth] ? ZMAT[cloth][0] : cloth), trimC = fade(o.trim || (cloth === 'clothWhite' ? '#8a5ad8' : '#fff8f0'));
+    const parts = {}, add = (mat, geo) => (parts[mat] = parts[mat] || []).push(geo);
+    // 格子の布（u：棟→裾、v：うしろ→前）。f(u, v) が点を返す。flip：面の表を逆に（影のずらしが外へ向くよう、表は外に）
+    const sheet = (f, nu, nv, flip = false) => {
+      const p = [], idx = [];
+      for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) p.push(...f(i / nu, j / nv));
+      for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) { const a = j * (nu + 1) + i, c = a + nu + 1; if (flip) idx.push(a, a + 1, c, a + 1, c + 1, c); else idx.push(a, c, a + 1, a + 1, c, c + 1); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+    };
+    // 屋根の上の点：s = 左右（±1）、u・v、out = 布からの浮き。棟は柱、裾は杭で張るので、まん中ほどたわむ（妻のところはたわまない）
+    const roof = (s, u, v, out = 0) => {
+      const zz = -(L + ov) + v * 2 * (L + ov), body = Math.max(0, Math.sin(Math.PI * (zz + L) / (2 * L)));
+      const nl = Math.hypot(H, W), nx = s * H / nl, ny = W / nl, d = out - sag * Math.sin(Math.PI * u) * body;
+      const lift = u > 0.85 ? 0.05 * Math.abs(Math.sin(Math.PI * 2 * v)) * (u - 0.85) / 0.15 : 0;   // 杭と杭のあいだで、裾が少し持ち上がる
+      return [s * W * u + nx * d, H * (1 - u) + 0.04 + lift + ny * d, zz];
+    };
+    for (const s of [-1, 1]) {
+      add(clothC, sheet((u, v) => roof(s, u, v), 6, 10, s < 0));
+      add(trimC, sheet((u, v) => roof(s, 0.88 + u * 0.12, v, 0.012), 1, 10, s < 0));
+    }
+    add(trimC, new THREE.CylinderGeometry(0.05, 0.05, 2 * (L + ov), 8).rotateX(Math.PI / 2).translate(0, H + 0.04, 0));
+    // 妻：うしろは一枚、前は戸口を三角に抜く
+    const tri = (w, h) => [new THREE.Vector2(-w, 0), new THREE.Vector2(w, 0), new THREE.Vector2(0, h)];
+    const DW = 0.78, DH = 1.55, back = new THREE.Shape(tri(W - 0.03, H)), front = new THREE.Shape(tri(W - 0.03, H));
+    front.holes.push(new THREE.Path(tri(DW, DH).reverse()));
+    add(clothC, new THREE.ShapeGeometry(back).rotateY(Math.PI).translate(0, 0.04, -L));
+    add(clothC, new THREE.ShapeGeometry(front).translate(0, 0.04, L));
+    // a から b への棒（綱・柱・巻いた布）
+    const rod = (mat, a, b, r, seg = 6) => {
+      const A = V3(...a), B = V3(...b), dir = B.clone().sub(A), g = new THREE.CylinderGeometry(r, r, dir.length(), seg);
+      g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), dir.normalize())); g.translate((A.x + B.x) / 2, (A.y + B.y) / 2, (A.z + B.z) / 2);
+      add(mat, g);
+    };
+    // 戸口のふちに巻き上げた垂れ布と結びひも。古いテントは、左の垂れ布がほどけて、ぎざぎざの裾が戸口に半分かかる
+    for (const s of [-1, 1]) {
+      const a = [s * (DW + 0.08), 0.1, L + 0.07], b = [s * 0.07, DH + 0.02, L + 0.07];
+      if (o.old && s < 0) {
+        const hinge = V3(...a), ax = V3(...b).sub(hinge).normalize(), q = new THREE.Quaternion().setFromAxisAngle(ax, -0.45);
+        const pts = [[...b], [...a], [-0.4, 0.08, L + 0.07], [-0.26, 0.3, L + 0.07], [-0.04, 0.22, L + 0.07], [0.02, 0.7, L + 0.07]].map(p => V3(...p).sub(hinge).applyQuaternion(q).add(hinge));
+        const p = []; for (let i = 1; i < pts.length - 1; i++) p.push(...pts[0].toArray(), ...pts[i].toArray(), ...pts[i + 1].toArray());
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.computeVertexNormals(); add(clothC, g);
+        continue;
+      }
+      rod(clothC, a, b, 0.075, 8);
+      for (const t of [0.3, 0.68]) {   // 結びひも：巻いた布に巻きつく、短い太めの輪
+        const m = a.map((q, i) => q + (b[i] - q) * t), dx = (b[0] - a[0]) * 0.025, dy = (b[1] - a[1]) * 0.025;
+        rod(trimC, [m[0] - dx, m[1] - dy, m[2]], [m[0] + dx, m[1] + dy, m[2]], 0.088, 8);
+      }
+    }
+    // 敷き布と、前後の柱（棟をつきぬけて、先に玉）
+    add(o.old ? '#6a6258' : '#7a6448', new THREE.BoxGeometry(2 * W - 0.25, 0.03, 2 * L - 0.1).translate(0, 0.03, 0));
+    const woodC = '#6a4a30';
+    for (const pz of [L - 0.08, -L + 0.08]) {
+      rod(woodC, [0, 0, pz], [0, H + 0.3, pz], 0.045, 8);
+      add(o.old ? '#8a7a5a' : '#ffd27a', new THREE.SphereGeometry(0.08, 10, 8).translate(0, H + 0.33, pz));
+    }
+    if (!o.old) add(trimC, new THREE.ShapeGeometry(new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(0.55, 0.13), new THREE.Vector2(0, 0.27)])).translate(0, H, L - 0.08));
+    // 張り綱と杭：前後は柱の先から、わきは屋根のなかほどから（古いテントは、わきの綱が一本切れている）
+    const ropeC = o.old ? '#8a8270' : '#d8c8a0', stake = (sx, sz, tx, tz) => rod(woodC, [sx, -0.05, sz], [sx + tx * 0.08, 0.22, sz + tz * 0.08], 0.03, 5);
+    for (const sz of [1, -1]) { rod(ropeC, [0, H + 0.2, sz * (L - 0.08)], [0, 0.16, sz * (L + 1.0)], 0.016, 4); stake(0, sz * (L + 1.05), 0, sz); }
+    for (const s of [-1, 1]) for (const sz of [1, -1]) {
+      const [rx, rY, rz] = roof(s, 0.45, (sz * 0.55 * L + L + ov) / (2 * (L + ov)));
+      if (!(o.old && s > 0 && sz < 0)) rod(ropeC, [rx, rY, rz], [s * (W + 0.8), 0.16, rz], 0.016, 4);
+      stake(s * (W + 0.85), rz, s, 0);
+      stake(s * (W + 0.05), sz * (L + ov - 0.05), s, sz);   // 裾の四すみの杭
+    }
+    // 古いテントの中：色あせた毛布と、四つの荷物。屋根のつぎはぎ
+    if (o.old) {
+      add('#8a7a9a', new THREEX.RoundedBoxGeometry(1.0, 0.14, 0.7, 2, 0.05).rotateY(0.2).translate(0.3, 0.1, 0.1));
+      [[-0.75, -0.95, '#a8746a'], [-0.25, -1.1, '#b8a87a'], [0.35, -1.05, '#6a7a9a'], [0.85, -0.85, '#7a6a8a']].forEach(([px, pz, c], i) => {
+        add(c, new THREEX.RoundedBoxGeometry(0.4, 0.46, 0.3, 2, 0.1).rotateY((i - 1.5) * 0.25).translate(px, 0.26, pz));
+        add('#6a5a48', new THREEX.RoundedBoxGeometry(0.42, 0.07, 0.32, 1, 0.03).rotateY((i - 1.5) * 0.25).translate(px, 0.5, pz));
+      });
+      for (const [s, u0, v0, c] of [[1, 0.3, 0.55, '#8a8070'], [-1, 0.5, 0.3, '#7a6a5a'], [1, 0.62, 0.2, '#a89a7a']]) add(c, sheet((u, v) => roof(s, u0 + u * 0.2, v0 + v * 0.14, 0.014), 2, 2, s < 0));
+    }
+    const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry;
+    for (const [c, list] of Object.entries(parts)) {
+      const geo = THREEX.BufferGeometryUtils.mergeGeometries(list.map(q => { q = q.index ? q.toNonIndexed() : q; for (const k of Object.keys(q.attributes)) if (k !== 'position' && k !== 'normal') q.deleteAttribute(k); return q; }));
+      g.add(new THREE.Mesh(geo, this.stdM(c, 0.92, { side: THREE.DoubleSide })));
+    }
+    this.add(g);
+    this.col(x, z, 1.7, H);
   }
   // 風車：オランダ風の塔型。石の土台に白い八角の塔（木の帯・戸口・窓と花の箱）、中ほどに手すりつきの回廊、舟をふせたような赤い帽子。
   //   帽子のうしろから地面へ、向きを変えるための尾の竿と車輪。羽根は、少し上を向いた軸の先に、格子の骨組みと帆布を張った 4 枚で、ゆっくり回る。
@@ -7795,7 +7879,7 @@ const ZONE_BUILD = {
     }
     K.deadTree(-22, -19, 1.2); K.flowers(-15.25, -11.6, 26, 1.8, ['#c8a8ff', '#ffffff']);
     // 影の四剣の古いテント（川の北の野営あと）。たき火は、ずっと前に消えたまま
-    K.tent(18, -9, 0.3, 'clothPurple'); K.campfire(15, -7, { cold: true });
+    K.tent(18, -9, 0.3, 'clothPurple', { old: true }); K.campfire(15, -7, { cold: true });
     // 谷の集落への道（東の出入口）
     K.signpost(28, 15.5, -0.6, '→ 谷の集落', '宿と長老の家', '#c8a8ff');
     for (const [x, z] of [[22, 24], [8, 28]]) K.lantern(x, z, '#c8a8ff');
