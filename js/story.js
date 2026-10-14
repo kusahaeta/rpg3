@@ -476,7 +476,9 @@ function StoryScreen() {
 
 function ChapterClearScreen(ci, niboshi) {
   const ch = STORY[ci], [a, b] = ch.title.split('　'), nx = STORY[ci + 1];
-  const v3 = GFX.show('scene:clear', () => new SceneryView((CHAPTERS[ci] || CHAPTERS[0]).bg));
+  // 背景：章の clearSet（区画のその場所）があれば、その景色。なければ章の空と地面だけの景色（同じ鍵だと、前の章の景色が残ってしまうので章ごとに）
+  const bg = (CHAPTERS[ci] || CHAPTERS[0]).bg, loc = ch.clearSet || null;
+  const v3 = GFX.show('scene:clear:' + ci, () => new SceneryView(bg, loc ? { loc, radius: loc.radius || 13, height: loc.height || 3.2, lookY: loc.lookY, cam: loc.cam } : {}));
   if (v3) v3.setEnemies([]);
   const s = h(`<div class="screen chclear-scr"><div class="ov-box result win chclear">
     <div class="res-title">${a}　おしまい</div>
