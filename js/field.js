@@ -256,16 +256,19 @@ class FieldView extends BaseView {
       this.sleeper = { SW, m, pos: V3(x, this.gy(x, z), z), i: 0, target: null, yaw: Math.atan2(x1 - x, z1 - z), speed: 0, phase: 0, zt: 0, nap: 0 };
     }
     // 夢のできごと（zone.dreams）：旅で出会った猫たちが、夢の部屋で待っている（光をまとって、場面の舞台のほうを向く）。見た場面の猫は、もういない
-    this.dreams = (Z.dreams || []).filter(D => !(Save.data.flags || {})[D.id] && SCENES[D.scene]).map(D => {
+    //   笑顔の塔の寄り道の笑いも、同じしくみ（tag：調べるときの見出し、aura：光の色、after：そのシーンを見てから。who の 'e:ゴースト' は敵の姿）
+    this.dreams = (Z.dreams || []).filter(D => !(Save.data.flags || {})[D.id] && SCENES[D.scene] && (!D.after || storyCond('scene:' + D.after))).map(D => {
       const [ox, oz] = SCENES[D.scene].stage.at;
       const ms = D.who.map(([key, x, z, pose]) => {
-        const m = buildCharacter(key); m.setPose(POSES[pose || 'idle']); if (m.face) m.face.set(pose === 'sleep' ? 'sleepy' : defaultFace(key));
+        const foe = key.startsWith('e:'), m = foe ? buildEnemy(key.slice(2)) : buildCharacter(key);
+        if (!foe) { m.setPose(POSES[pose || 'idle']); if (m.face) m.face.set(pose === 'sleep' ? 'sleepy' : defaultFace(key)); }
+        else if (pose === 'hammer') pikoHammer(m);   // 敵の姿の 4 つめは、持たせる物（大喜利のゴーストのピコピコハンマー）
         const y = this.gy(x, z); m.group.position.set(x, y, z); m.group.rotation.y = Math.atan2(ox - x, oz - z); this.scene.add(m.group);
         this.colliders.push({ x, z, r: 0.5, y });
         return { key, m, pos: V3(x, y, z) };
       });
       const cx = ms.reduce((a, q) => a + q.pos.x, 0) / ms.length, cz = ms.reduce((a, q) => a + q.pos.z, 0) / ms.length, cy = this.gy(cx, cz);
-      const aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffd8f4', 0.5), blending: THREE.AdditiveBlending, depthWrite: false })); aura.position.set(cx, cy + 1.2, cz); aura.scale.setScalar(3 + ms.length); this.scene.add(aura);
+      const aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(D.aura || '#ffd8f4', 0.5), blending: THREE.AdditiveBlending, depthWrite: false })); aura.position.set(cx, cy + 1.2, cz); aura.scale.setScalar(3 + ms.length); this.scene.add(aura);
       return { D, ms, aura, c: V3(cx, cy, cz) };
     });
     // 見張りの番犬（zone.guards）：見回りの道の最初の点から。眠らせた番犬は眠ったまま
@@ -1066,7 +1069,7 @@ class FieldView extends BaseView {
     for (const o of this.rubbleObjs || []) {
       if (o.broken) continue;
       const to = V3(o.pos.x - p.pos.x, 0, o.pos.z - p.pos.z), dist = to.length();
-      if (dist < (o.R.r || 1.6) + 1.6 && to.normalize().dot(fwd) > 0.2) { if (o.R.look === 'jackbox') this.hitJackbox(o); else this.breakRubble(o); }
+      if (dist < (o.R.r || 1.6) + 1.6 && to.normalize().dot(fwd) > 0.2) { if (o.R.look === 'jackbox') this.pokeJackbox(o); else this.breakRubble(o); }
     }
   }
   // 爪を研ぐ：先頭の子が丸太のほうを向き、前足でカリカリ。爪あとが残り、初手技ポイント +1（満タンなら研がない）
@@ -1134,16 +1137,6 @@ class FieldView extends BaseView {
       }
       for (const kn of ro.knots) if (!kn.open && Math.hypot(kn.col.x - p.x, kn.col.z - p.z) < 2.4) return { type: 'knot', kn, text: '調べる：根の扉' };
     }
-    // 玉のりのリング：やりなおしのベルと、大玉（前後・左右にまっすぐ並んだとき、向こう側へ押せる）
-    const bo = this.ballObj;
-    if (bo && !bo.open) {
-      if (Math.hypot(bo.P.reset[0] - p.x, bo.P.reset[1] - p.z) < 1.8) return { type: 'ballReset', text: 'リングのベルを鳴らす（大玉を元の場所へもどす）' };
-      for (const b of bo.balls) {
-        const dx = b.col.x - p.x, dz = b.col.z - p.z, ax = Math.abs(dx), az = Math.abs(dz);
-        if (Math.hypot(dx, dz) > 2.3 || Math.max(ax, az) < 1.0 || Math.min(ax, az) > 0.9 || b.dest) continue;
-        return { type: 'ball', b, dx: ax > az ? Math.sign(dx) : 0, dz: ax > az ? 0 : Math.sign(dz), text: bo.ready() ? '大玉を押す' : '調べる：大玉' };
-      }
-    }
     // 時の水晶
     const to = this.timeObj;
     if (to) for (const q of to.crystals) if (Math.hypot(q.pos.x - p.x, q.pos.z - p.z) < 2.0 && Math.abs(q.pos.y - p.y) < 1.5) {
@@ -1165,12 +1158,12 @@ class FieldView extends BaseView {
     }
     // 見張りの番犬：タマが先頭なら、こもりうたで眠らせられる
     for (const g of this.guards || []) if (!g.asleep && g.pos.distanceTo(p) < 2.6) return { type: 'guard', g, text: this.team[this.leader].key === 'tama' ? 'こもりうたを歌う（タマ）' : '調べる：見張りの番犬' };
-    for (const o of this.rubbleObjs || []) if (!o.broken && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < (o.R.r || 1.6) + 1.2) return { type: 'rubble', o, text: o.R.look !== 'jackbox' ? '調べる：落石の岩山' : o.seen ? `ねじを巻く（いま ${o.turns}回）` : '調べる：巨大びっくり箱' };
+    for (const o of this.rubbleObjs || []) if (!o.broken && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < (o.R.r || 1.6) + 1.2) return { type: 'rubble', o, text: `調べる：${o.R.name || '落石の岩山'}` };
     if (this.sleeper && this.sleeper.pos.distanceTo(p) < 2.0) return { type: 'sleeper', text: `${this.sleeper.SW.name || speakerName(this.sleeper.SW.key)}に話しかける` };
     for (const n of this.naps) if (Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 2.4) return { type: 'nap', n, text: `${n.name || speakerName(n.key)}に話しかける` };
     for (const o of this.fluffObjs || []) if (o.ready && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < 1.8 && Math.abs(o.pos.y - p.y) < 1) return { type: 'fluff', o, text: '綿毛につかまる' };
     // ねこ神の夢：夢のできごと（部屋で待っている猫たちに話しかける）
-    for (const e of this.dreams || []) if (e.ms.some(q => Math.hypot(q.pos.x - p.x, q.pos.z - p.z) < 2.4 && Math.abs(q.pos.y - p.y) < 1.5)) return { type: 'dream', e, text: `話しかける：${e.D.name}（夢のできごと）` };
+    for (const e of this.dreams || []) if (e.ms.some(q => Math.hypot(q.pos.x - p.x, q.pos.z - p.z) < 2.4 && Math.abs(q.pos.y - p.y) < 1.5)) return { type: 'dream', e, text: `話しかける：${e.D.name}（${e.D.tag || '夢のできごと'}）` };
     // ねこ神の夢：ちびクッキー・でかミルクの台
     for (const st of this.sizeStands || []) if (Math.hypot(st.pos.x - p.x, st.pos.z - p.z) < SIZE_REACH && Math.abs(st.pos.y - p.y) < 1.2) {
       const can = st.kind === 'cookie' ? this.size > 0 : this.size < 2;
@@ -1211,15 +1204,8 @@ class FieldView extends BaseView {
     } else if (it.type === 'lamp') {
       this.lightLamp(it.o, it.L);
     } else if (it.type === 'rubble') {
-      const o = it.o, R = o.R;
-      if (R.look !== 'jackbox') this.startTalk('落石の岩山', ['崩れた岩が、石段の上り口をふさいでいる。……攻撃すれば、砕けそうだ。'], null, true);
-      else if (o.seen) this.windBox(o);
-      else {
-        // はじめて調べたとき：札と、ねじまきハンドルのこと。二度目からは、F でねじを巻く
-        o.seen = true;
-        this.startTalk('巨大びっくり箱', [`「${R.act || '？'}」と書かれた札の、大きなびっくり箱。横に、ねじまきハンドルがついている。`, ...(R.hint ? [R.hint] : []),
-          '……ねじを巻いて（F）、ふたをたたけば（攻撃）、開きそうだ。でも、何回巻けばいいんだろう？'], null, true);
-      }
+      const R = it.o.R;
+      this.startTalk(R.name || '落石の岩山', R.text || ['崩れた岩が、石段の上り口をふさいでいる。……攻撃すれば、砕けそうだ。'], null, true);
     } else if (it.type === 'fruitTake') {
       this.takeFruit(it.f);
     } else if (it.type === 'fruitPut') {
@@ -1227,10 +1213,6 @@ class FieldView extends BaseView {
     } else if (it.type === 'knot') {
       const n = it.kn.K.cradles.length, done = it.kn.K.cradles.filter(c => this.rootObj.fruits.some(f => f.lit && f.at === c && f.i !== this.rootObj.carry)).length;
       this.startTalk('根の扉', [`かたくからまった根が、道をふさいでいる。……そばの根のゆりかご${n > 1 ? `（${n}つ）` : ''}に光る実をそなえれば、ほどけそうだ。${n > 1 ? `（いま ${done}/${n}）` : ''}`], null, true);
-    } else if (it.type === 'ball') {
-      this.pushBall(it.b, it.dx, it.dz);
-    } else if (it.type === 'ballReset') {
-      this.resetBalls();
     } else if (it.type === 'ghost') {
       this.talkGhost(it.g);
     } else if (it.type === 'time') {
@@ -2039,7 +2021,6 @@ class FieldView extends BaseView {
   breakRubble(o) {
     o.broken = true; (Save.data.flags || (Save.data.flags = {}))[o.R.id] = true; Save.save();
     const i = this.colliders.indexOf(o.col); if (i >= 0) this.colliders.splice(i, 1);
-    if (o.R.look === 'jackbox') { this.popJackbox(o); return; }
     const at = o.pos.clone().add(V3(0, 0.8, 0));
     this.p.burst(at, '#8a8478', 70, { speed: 5, up: 1.4, life: 0.9, size: 0.14 }); this.fx.ring(o.pos.clone().add(V3(0, 0.05, 0)), '#c8b8a0', { r: 2.5, life: 0.5 });
     Sfx.hit(); GFX.shake(0.35);
@@ -2047,85 +2028,12 @@ class FieldView extends BaseView {
     setTimeout(() => o.g.removeFromParent(), 400);
     this.toast('岩山を砕いた！　石段を上れるようになった');
   }
-  // 巨大びっくり箱：ふたが跳ね上がり、ばねの先のピエロの顔が「ばあっ！」と飛び出して、箱ごとしぼんで消える
-  popJackbox(o) {
-    const at = o.pos.clone().add(V3(0, 2.5, 0));
-    Sfx.pop(); GFX.shake(0.3);
-    this.p.burst(at, '#ffd27a', 40, { speed: 6, up: 3, life: 1.2, size: 0.12 }); this.p.burst(at, '#ff6a8a', 40, { speed: 6, up: 3, life: 1.2, size: 0.12 }); this.p.burst(at, '#6ad8ff', 30, { speed: 5, up: 3, life: 1.2, size: 0.1 });
-    o.jack.visible = true; o.jack.scale.set(1, 0.05, 1);
-    GFX.tween(0.25, t => { o.lid.rotation.x = -t * 2.2; }, Ease.out);
-    GFX.tween(0.7, t => { const k = 1 + Math.sin(t * Math.PI * 3) * (1 - t) * 0.5; o.jack.scale.set(1, t * k + 0.05, 1); o.jack.rotation.z = Math.sin(t * 18) * (1 - t) * 0.3; });
-    this.toast('びっくり箱が開いた！　「ばあっ！」');
-    setTimeout(() => { GFX.tween(0.5, t => { o.g.scale.setScalar(1 - t); }, Ease.inOut); }, 1300);
-    setTimeout(() => { o.g.removeFromParent(); this.toast('……びっくり箱がしぼんで、通れるようになった'); }, 1850);
-  }
-  // 出し物のびっくり箱のねじを巻く（F）。巻いた数は、ふたをたたくまで箱が覚えている
-  windBox(o) {
-    o.turns = Math.min(9, o.turns + 1); o.spin = 1;
-    Sfx.tone(520 + o.turns * 50, 0.05, 'square', 0.04); Sfx.tone(400 + o.turns * 50, 0.05, 'square', 0.04, 0, 0.09);
-    this.toast(`ギリギリ……ねじを巻いた（${o.turns}回）　攻撃で、ふたをたたく`);
-  }
-  // 出し物のびっくり箱のふたをたたく：巻いた数がちょうど（R.turns）なら開く。足りなければ「ぽすっ」。
-  //   巻きすぎると「ばあっ！」と飛び出して、一行は R.back まで飛ばされる。ちょうどでなければ、ねじは元にもどる
-  hitJackbox(o) {
-    const R = o.R, n = o.turns;
-    if (R.turns == null || n === R.turns) { this.breakRubble(o); return; }
-    o.turns = 0;
-    if (!n) { Sfx.tone(260, 0.1, 'sine', 0.05); this.toast('ぽこん。……ねじが巻かれていないので、何も起きない（F でねじを巻く）'); return; }
-    if (n < R.turns) {
-      Sfx.puff(); GFX.tween(0.5, t => { o.lid.rotation.x = -Math.sin(t * Math.PI) * 0.3; });
-      this.toast('ぽすっ……ふたが少しだけ浮いて、また閉じた。ばねの力が足りないみたいだ（ねじがもどった）');
-      return;
-    }
-    // 巻きすぎ：ピエロの顔が勢いよく飛び出して、しばらくしてから、しゅるしゅると箱にもどる
-    Sfx.pop(); Sfx.laugh(); GFX.shake(0.45); GFX.flash('#ffe8f0', 0.3, 0.4);
-    this.p.burst(o.pos.clone().add(V3(0, 3, 0)), '#ff6a8a', 50, { speed: 7, up: 3, life: 1, size: 0.12 });
-    o.jack.visible = true; o.jack.scale.set(1, 0.05, 1);
-    GFX.tween(0.2, t => { o.lid.rotation.x = -t * 2.2; }, Ease.out);
-    GFX.tween(0.6, t => { const k = 1 + Math.sin(t * Math.PI * 4) * (1 - t) * 0.8; o.jack.scale.set(1, 1.3 * t * k + 0.05, 1); o.jack.rotation.z = Math.sin(t * 20) * (1 - t) * 0.4; });
-    setTimeout(() => { if (o.broken) return; GFX.tween(0.5, t => { o.jack.scale.set(1, 1.3 * (1 - t) + 0.05, 1); o.lid.rotation.x = -2.2 * (1 - t); }); setTimeout(() => { if (!o.broken) o.jack.visible = false; }, 520); }, 2200);
-    const lead = this.team[this.leader].key;
-    this.startTalk('', [['n', 'ばあああああっ！！　巻きすぎたばねで、ピエロの顔が、ものすごい勢いで飛び出した！'], ...(JACKBOX_LINES[lead] ? [[lead, JACKBOX_LINES[lead]]] : [])]);
-    if (R.back) this.talk.after = () => this.sendBack(R.back, o.pos, '……気がつくと、ずっと手前まで飛ばされていた。巻きすぎだったみたいだ（ねじがもどった）', 900);
-  }
-  // 玉のりの大玉を押す：向こう側へ、何かにぶつかるか、スポットライトの輪に入るまで転がる（rollBall）。位置は Save.data.flags に残す
-  pushBall(b, dx, dz) {
-    const o = this.ballObj, P = o.P;
-    if (!o.ready()) { this.startTalk('大玉', [P.idle || 'サーカスの大玉。'], null, true); return; }
-    if (o.balls.some(q => q.dest)) return;
-    const [x, z] = o.pos[b.k], to = rollBall(P, o.pos, b.k, dx, dz);
-    if (to[0] === x && to[1] === z) { Sfx.tone(140, 0.15, 'sine', 0.06); this.toast('……大玉は、びくともしない。向こう側に、何かあるみたいだ'); return; }
-    o.pos[b.k] = to; b.dest = to;
-    (Save.data.flags || (Save.data.flags = {}))[P.id] = o.pos.map(q => q.slice()); Save.save();
-    Sfx.tone(90, 0.5, 'triangle', 0.08, 40); Sfx.noise(0.5, 0.1, 300);
-  }
-  // 大玉が止まった（ZoneKit.ballRing から）：スポットライトの輪の上なら知らせる。三つそろえば、ショーの始まり（むすっと幕が上がる）
-  ballStopped(o, b) {
-    const P = o.P, on = (x, z) => o.pos.some(q => Math.abs(q[0] - x) < 0.5 && Math.abs(q[1] - z) < 0.5);
-    const [x, z] = o.pos[b.k], y = this.gy(x, z);
-    Sfx.hit(); GFX.shake(0.08);
-    if (!P.targets.some(t => Math.abs(t[0] - x) < 0.5 && Math.abs(t[1] - z) < 0.5)) return;
-    const n = P.targets.filter(t => on(t[0], t[1])).length;
-    this.fx.pillar(V3(x, y, z), '#fff0c8', { h: 6, r: 0.9, life: 0.7 }); Sfx.tone(880, 0.15, 'triangle', 0.06); Sfx.tone(1320, 0.25, 'triangle', 0.05, 0, 0.1);
-    if (n < P.targets.length) { this.toast(`スポットライトの下に、大玉がぴたり！（${n}/${P.targets.length}）`); return; }
-    // ショーの始まり：紙吹雪と、幕の大笑い
-    o.open = true;
-    for (const [tx, tz] of P.targets) this.p.burst(V3(tx, y + 3, tz), pick(['#ff6a8a', '#ffd27a', '#6ad8ff', '#8aff9a']), 60, { speed: 5, up: 3, life: 1.6, size: 0.1 });
-    const seal = (this.sealObjs || []).find(s => s.S.id === P.seal);
-    if (seal && !seal.open) this.openSeal(seal);
-    Sfx.laugh();
-    if (P.done) this.startTalk('', P.done.filter(([k]) => k === 'n' || this.team.some(m => m.key === k)));
-  }
-  // リングのベル：大玉を、はじめの場所へもどす
-  resetBalls() {
-    const o = this.ballObj, P = o.P;
-    if (!o.ready()) { this.startTalk('リングのベル', ['小さな金のベル。……今は、鳴らしても何も起きない。'], null, true); return; }
-    if (o.balls.some(q => q.dest)) return;
-    o.pos = P.balls.map(q => q.slice());
-    o.balls.forEach(b => { const [x, z] = o.pos[b.k]; b.g.position.x = x; b.g.position.z = z; b.col.x = x; b.col.z = z; this.p.burst(V3(x, b.g.position.y, z), '#ffd27a', 20, { speed: 2, up: 1, life: 0.6, size: 0.1 }); });
-    delete (Save.data.flags || {})[P.id]; Save.save();
-    Sfx.tone(1568, 0.3, 'triangle', 0.06); Sfx.tone(2093, 0.4, 'triangle', 0.05, 0, 0.12);
-    this.toast('チリリン！　……大玉が、ころころと元の場所へもどった');
+  // 笑顔の塔の大きなびっくり箱（rubble の look: 'jackbox'）：たたいても開かない。ふたが少しだけ浮いて、しょんぼり顔がのぞいて「……ばあ」（開くのは、笑わせたあと。R.openAfter）
+  pokeJackbox(o) {
+    if (o.popping) return;
+    Sfx.tone(260, 0.1, 'sine', 0.05);
+    if (o.peek) o.peek();
+    this.toast(o.R.poke || 'ぽこん。……ふたが少しだけ浮いて、しょんぼり顔の道化がのぞいた。「……ばあ」');
   }
   // 時の水晶にふれる：遺跡が「今」と「昔」で切りかわる（ZoneKit.timeShift）。仲間は、すぐそばへ呼びよせる
   touchTime(o, q) {
@@ -2244,7 +2152,7 @@ class FieldView extends BaseView {
     setTimeout(() => { Sfx.win(); GFX.shake(0.15); this.toast(P.openToast || '結界が消えた！'); }, 500);
     if (P.done) this.startTalk('', P.done.filter(([k]) => k === 'n' || this.team.some(m => m.key === k)));
   }
-  // 笑顔の塔の仕掛け：ブーブークッション（踏むと鳴る）とトランポリン（乗ると跳ぶ）
+  // 笑顔の塔の小ネタ：ブーブークッション（踏むと鳴る）
   updateGags(d) {
     const p = this.player.pos;
     for (const c of this.cushionObjs || []) {
@@ -2258,29 +2166,6 @@ class FieldView extends BaseView {
       c.squish = Math.max(0, c.squish - d * 2.5);
       c.pad.scale.set(1 + c.squish * 0.3, 0.22 * (1 - c.squish * 0.6), 1 + c.squish * 0.3);
     }
-    for (const b of this.bounceObjs || []) {
-      const dist = Math.hypot(b.pos.x - p.x, b.pos.z - p.z);
-      // 踏みこんだ向き（歩いてきた向きを、前後左右のどれかにそろえる）へ跳ぶ
-      if (b.armed && dist < 0.8 && Math.abs(b.pos.y - p.y) < 0.5) { const v = this.player.dir, ax = Math.abs(v.x) > Math.abs(v.z); this.launch(b, ax ? Math.sign(v.x) : 0, ax ? 0 : Math.sign(v.z) || -1); return; }
-      if (!b.armed && dist > 1.6) b.armed = true;
-    }
-  }
-  // トランポリンで跳ぶ：(dc, dr) の向きへ zone.bounceLen マス先まで、弧をえがいて（そのあいだは操作できない。仲間は着地してから追いつく）。
-  //   着地するマスもトランポリンなら、そこでもう一度跳ぶ（chain）。床がなければ、奈落へ落ちて、安全ネットで zone.bounceBack へもどる（fall）
-  launch(b, dc, dr, chain = 0) {
-    const p = this.player, T = this.T, L = this.zone.bounceLen || 3, from = p.pos.clone();
-    const j = T.idx(T.colOf(b.i) + dc * L, T.rowOf(b.i) + dr * L), next = (this.bounceObjs || []).find(q => q.i === j);
-    const land = j >= 0 && (T.kind[j] === TK.FLOOR || T.kind[j] === TK.STAIR);
-    const tx = b.pos.x + dc * L * CELL, tz = b.pos.z + dr * L * CELL, to = V3(tx, land ? this.gy(tx, tz) : b.pos.y - 16, tz);
-    const dist = L * CELL;
-    this.busy = true; this.keys.clear(); b.armed = false;
-    this.flight = { from, to, t: 0, dur: 0.8 + dist * 0.035 + (land ? 0 : 0.5), h: 3 + dist * 0.12, yaw: Math.atan2(dc, dr), next, dc, dr, chain, fall: !land };
-    (this.followers || []).forEach(f => { f.m.group.visible = false; });
-    Sfx.boing();
-    GFX.tween(0.3, t => { b.mat.position.y = 0.4 - Math.sin(t * Math.PI) * 0.25; });
-    this.p.burst(from.clone().add(V3(0, 0.5, 0)), '#ffd27a', 24, { speed: 3, up: 2, life: 0.6, size: 0.1 });
-    this.toast(chain ? 'ぼよよよーん！　もう一回！' : 'ぼよよーん！');
-    if (!land) setTimeout(() => { if (this.flight && this.flight.fall) Sfx.tone(900, 1.2, 'sine', 0.05, -700); }, 450);
   }
   // 綿毛につかまって飛ぶ：ふわりと浮き上がり、風にゆられながら o.to へ降りる（そのあいだは操作できない）
   glide(o) {
@@ -2314,14 +2199,6 @@ class FieldView extends BaseView {
       if (Math.random() < d * 5) this.p.emit(F.puff.position.clone().add(V3((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 1.2)), V3((Math.random() - 0.5) * 0.6, 0.2, (Math.random() - 0.5) * 0.6), hdr('#ffffff', 1.4), { life: 1.6, size: 0.06, drag: 0.6 });
     }
     if (t < 1) return;
-    // トランポリンの上に着いたら、同じ向きにもう一度。床のないところへ跳んだら、安全ネットではね返されて舞台へ
-    if (F.next) { p.pos.copy(F.to); this.flight = null; this.launch(F.next, F.dc, F.dr, F.chain + 1); return; }
-    if (F.fall) {
-      this.flight = null; p.y = 0; p.vy = 0; p.speed = 0;
-      const back = this.zone.bounceBack || this.zone.anchor;
-      this.sendBack(back, V3(back[0], 0, back[1] - 10), '……ひゅるるる……ぼよーん！　安全ネットにはね返されて、舞台にもどってきた', 600);
-      return;
-    }
     this.flight = null; p.y = 0; p.vy = 0; p.speed = 0;
     this.placePlayer(1);
     if (F.glide) {
@@ -2337,7 +2214,6 @@ class FieldView extends BaseView {
     if (!F.bump) this.fx.ring(p.pos.clone().add(V3(0, 0.05, 0)), '#ffd27a', { r: 1.6, life: 0.5 });
     this.p.burst(p.pos.clone().add(V3(0, 0.2, 0)), '#e8dcc8', 20, { speed: 2, up: 0.5, life: 0.5, size: 0.1 });
     Sfx.hit(); GFX.shake(0.12); this.grace = 1;
-    for (const b of this.bounceObjs || []) if (Math.hypot(b.pos.x - p.pos.x, b.pos.z - p.pos.z) < 1.6) b.armed = false;
     this.spawnFollowers();
     this.busy = false;
   }
@@ -2970,7 +2846,6 @@ class FieldView extends BaseView {
     this.crystals.forEach(cr => { if (!cr.broken) dot(cr.pos.x, cr.pos.y, cr.pos.z, '#9d8cff', 2.5); });
     this.groups.forEach(gr => { if (gr.alive) dot(gr.pos.x, gr.pos.y, gr.pos.z, gr.state === 'chase' ? '#ff3040' : gr.elite ? '#ff9a4d' : '#ff6b81', gr.elite ? 4 : 3); });
     (this.sealObjs || []).forEach(o => { if (!o.open && o.ready()) o.lamps.forEach(L => { if (!L.lit) dot(L.pos.x, L.pos.y, L.pos.z, { memory: '#ffe2a8', laugh: '#ffe07a', beacon: '#ff9a3a', bar: '#e8c080' }[o.S.look] || '#cfefff', 3.5); }); });
-    (this.bounceObjs || []).forEach(b => dot(b.pos.x, b.pos.y, b.pos.z, '#ff9ad8', 2.5));
     (this.sizeStands || []).forEach(st => dot(st.pos.x, st.pos.y, st.pos.z, st.kind === 'cookie' ? '#ff9ad8' : '#8ad0ff', 3.5));
     // 影の回廊：光の輪（自分は金、影は紫。ゲームの中と同じ輪の形）と、影の印（脈打つ光の輪と、黒紫の猫の顔）。自分から影へ点線をひく
     (this.shadowObjs || []).forEach(o => {
@@ -3002,9 +2877,6 @@ class FieldView extends BaseView {
     // つながりの石畳：始まりの石（青緑の四角）。時の水晶（今は青緑・昔は琥珀色）
     (this.strokeObjs || []).forEach(o => { if (!o.solved) o.tiles.forEach(q => { if (q.isS) dot(q.x, q.y, q.z, '#8affe0', 3, true); }); });
     if (this.timeObj) this.timeObj.crystals.forEach(q => dot(q.pos.x, q.pos.y, q.pos.z, this.timeObj.can(q) ? q.col : '#5a5a5a', 3.5));
-    // 玉のりのリング：スポットライト（金の四角）と大玉（赤い点）
-    const bo = this.ballObj;
-    if (bo && !bo.open && bo.ready()) { const y = this.gy(bo.P.ring[0], bo.P.ring[1]); bo.P.targets.forEach(([x, z]) => dot(x, y, z, '#ffe07a', 3, true)); bo.balls.forEach(b => dot(b.g.position.x, y, b.g.position.z, '#ff6a8a', 3.5)); }
     (this.fluffObjs || []).forEach(o => dot(o.pos.x, o.pos.y, o.pos.z, '#ffffff', 2.5));
     (this.sealObjs || []).forEach(o => { if (o.beam && !o.open) o.beam.mirrors.forEach(m => dot(m.pos.x, m.pos.y, m.pos.z, '#9ad8ff', 2.5, true)); });
     (this.plateObjs || []).forEach(o => { if (!o.open && o.ready()) o.pads.forEach(pad => dot(pad.pos.x, pad.pos.y, pad.pos.z, '#8ad8ff', 3.5, true)); });

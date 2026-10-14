@@ -197,6 +197,7 @@ function DialogueScreen(id, done) {
     <div class="dl-portrait"></div>
     <div class="dl-choices"></div>
     <div class="dl-card"></div>
+    <div class="dl-meter"></div>
     <div class="dl-box"><div class="dl-name"></div><div class="dl-text"></div><div class="dl-next">▼</div></div>
     <div class="overlay dl-skipask hidden"><div class="ov-box"><h2>スキップ</h2><div class="dim">このシーンをスキップしますか？</div>
       <div class="dl-skipbtns"><button class="btn gold" data-skip-yes>スキップする</button><button class="btn" data-skip-no>つづきを見る</button></div></div></div>
@@ -212,6 +213,18 @@ function DialogueScreen(id, done) {
     if (n == null) { cardEl.classList.remove('show'); return; }
     cardEl.innerHTML = passCardHTML(n, stamp); cardEl.classList.add('show');
     if (stamp) setTimeout(() => Sfx.tone(180, 0.12, 'square', 0.06, -60), 380);
+  };
+  // わらいメーター（scene.meter: { name, max, moods }）：行の meter: n で、笑わせる相手のごきげんを n にする。一度出したら、シーンの終わりまで出しておく
+  const meterEl = s.querySelector('.dl-meter');
+  let meterN = null;
+  const setMeter = n => {
+    const M = scene.meter; if (!M) return;
+    const up = meterN != null && n > meterN, moods = M.moods || ['むすっ……', 'にやり', 'くすくす', '大わらい！'];
+    meterN = n;
+    meterEl.innerHTML = `<small>${M.name}のごきげん</small><b class="${up ? 'up' : ''}">${moods[Math.min(n, moods.length - 1)]}</b>
+      <div class="dm-bar">${Array.from({ length: M.max }, (_, i) => `<i class="${i < n ? 'on' : ''} ${up && i === n - 1 ? 'new' : ''}"></i>`).join('')}</div>`;
+    meterEl.classList.add('show'); meterEl.classList.toggle('full', n >= M.max);
+    if (up) Sfx.laugh();
   };
   // 台本の「そのシーンで起きること」（仲間になる・友情・物語のフラグ）は、スキップしても必ず反映する
   const applied = new Set();
@@ -239,6 +252,7 @@ function DialogueScreen(id, done) {
     box.classList.toggle('narr', speaker === 'n');
     box.style.setProperty('--c', speakerColor(speaker));
     showCard(dir && dir.card != null ? dir.card : null, dir && dir.stamp);
+    if (dir && dir.meter != null) setMeter(dir.meter);
     if (v) { if (v.line) v.line(speaker, text, dir || {}); else speaker === 'n' ? v.wide() : v.focus(speaker); }
     else portrait.innerHTML = speaker === 'n' || speaker.startsWith('e:') ? '' : avatarSVG(speaker);
     let i = 0; textEl.textContent = '';
@@ -304,7 +318,9 @@ function DialogueScreen(id, done) {
     Sfx.select();
     const [text, replies, dir] = node.c[i];
     if (dir && dir.bond) { const [a, b, n] = dir.bond; addBond(a, b, n); Save.save(); }
-    queue.unshift([HERO, text, dir || {}], ...replies);
+    // miss：すべった選択肢。応答のあと、その選択肢をのぞいて、もう一度えらぶ
+    const again = dir && dir.miss ? [{ ...node, c: node.c.filter((_, j) => j !== i) }] : [];
+    queue.unshift([HERO, text, dir || {}], ...replies, ...again);
     advance();
   };
   s.addEventListener('click', e => { if (e.target.closest('button, .dl-skipask')) return; Sfx.init(); advance(); });

@@ -20,6 +20,9 @@ Object.assign(POSES, {
   crouch:      { hipsY: -0.42, lean: 0.35, headX: -0.25, legLx: -1.2, kneeL: 1.9, legRx: -0.9, kneeR: 1.7, armLx: -0.9, elbowL: -1.2, armRx: -0.9, elbowR: -1.2 },
   guardStaff:  { hipsY: -0.02, armRx: -1.1, armRz: 0.1, elbowR: -0.9, armLx: -0.6, armLz: -0.25, elbowL: -1.1, legLx: -0.25, legRx: 0.2, kneeL: 0.2, kneeR: 0.2 },
   explain:     { armRx: -0.9, armRz: -0.35, elbowR: -0.9, armLz: 0.2, elbowL: -0.3, headY: 0.05 },
+  // 空中ブランコ：両手でバーにぶらさがる（hang）。受け手は、ひざをバーにかけて、さかさまにぶらさがる（hangKnees。体ごと上下さかさまにして使う）
+  hang:        { hipsY: 0, lean: 0, twist: 0, headX: -0.12, headY: 0, armLx: -3.05, armLz: 0.14, elbowL: -0.05, armRx: -3.05, armRz: -0.14, elbowR: -0.05, legLx: 0.12, legRx: 0.04, kneeL: 0.3, kneeR: 0.35 },
+  hangKnees:   { hipsY: 0, lean: 0, twist: 0, headX: 0.3, headY: 0, armLx: -3.05, armLz: 0.18, elbowL: -0.05, armRx: -3.05, armRz: -0.18, elbowR: -0.05, legLx: -0.3, legRx: -0.3, kneeL: 1.7, kneeR: 1.7 },
   point:       { armRx: -1.45, armRz: -0.05, elbowR: -0.08, lean: 0.04, headX: -0.03 },
   cheer:       { armRx: -2.85, armRz: -0.35, elbowR: -0.25, armLx: -2.85, armLz: 0.35, elbowL: -0.25, headX: -0.15, lean: -0.05 },
   fist:        { armRx: -1.3, armRz: 0.25, elbowR: -2.0, armLz: 0.2, elbowL: -0.4, lean: 0.06 },
@@ -194,6 +197,8 @@ class Actor {
     if (this.hopT < 1) { this.hopT = Math.min(1, this.hopT + dt / 0.42); hop = Math.sin(this.hopT * Math.PI) * this.hopH; }
     m.group.position.set(this.pos.x, this.pos.y + this.lift + hop, this.pos.z);
     m.group.rotation.set(0, this.yaw, this.lie);
+    // rig：ほかのしくみ（空中ブランコなど）が、体の置き場所・かたむき・姿勢を決める
+    if (this.rig) this.rig(P, dt);
     m.update(dt, t);
     if (this.holo) this.updateHolo(dt, t);
   }
@@ -310,6 +315,7 @@ class StageView extends BaseView {
     for (const [kind, lx, lz, deg = 0, mat] of st.props || []) { const p = this.W(lx, lz); this.kit[kind](p.x, p.z, Math.PI - th - deg * Math.PI / 180, mat); }
     this.timers = []; this.lineIdx = 0; this.last = null; this.addr = null;
     this.buildCast();
+    if (st.trapeze) this.tz = new TrapezeRig(this, st.trapeze);
     this.shot('wide', { drift: 0.5, dur: 7 });
     this.snapCam();
   }
@@ -335,7 +341,8 @@ class StageView extends BaseView {
     const cast = {};
     const slots = [[0, 0], [-1.15, 0.3], [1.15, 0.35], [-2.2, -0.35], [2.3, -0.4]];
     party.forEach((k, i) => { cast[k] = { at: slots[i] || [i * 1.1 - 2, -1] }; });
-    const others = [...new Set([...speakers, ...(st.extra || []), ...sceneCast])].filter(k => !party.includes(k) && !k.startsWith('e:') && !comm(k));
+    // voices：姿のない話し手（しゃべる幕やびっくり箱など。区画の小物が演じる）は立たせない
+    const others = [...new Set([...speakers, ...(st.extra || []), ...sceneCast])].filter(k => !party.includes(k) && !k.startsWith('e:') && !comm(k) && !(st.voices || {})[k]);
     others.forEach((k, i) => { cast[k] = { at: [(i - (others.length - 1) / 2) * 1.3, 2.6 + (others.length > 3 ? (i % 2) * 0.8 : 0)], face: HERO }; });
     const foes = [...new Set([...speakers, ...sceneCast].map(k => k.split('#')[0]))].filter(k => k.startsWith('e:'));   // e:iwa#1（二匹め）は e:iwa の配役から
     foes.forEach((k, i) => { const d = ENEMIES[k.slice(2)]; cast[k] = { at: [(i - (foes.length - 1) / 2) * 3, d.boss ? 8 : 6] }; });
@@ -359,6 +366,7 @@ class StageView extends BaseView {
         if (o.scale) m.group.scale.multiplyScalar(o.scale);   // scale：その場面だけ大きく（探索で見る大きさにそろえる）
         this.scene.add(m.group);
         const a = new Actor(this, id, m, { foe, stance: o.stance, y: o.y, lie: o.lie });
+        if (o.carry === 'hammer') a.hammer = pikoHammer(m);   // carry：手のない敵の姿に持たせる物（ピコピコハンマー。演出 piko で振る）
         a.place(this.W(o.at[0], o.at[1]));
         a.faceT = face(o.face) ?? (foe ? this.O.clone() : this.W(0, 3));
         a.yaw = a.baseYaw = a.targetYaw(a.faceT);
@@ -560,6 +568,9 @@ class StageView extends BaseView {
       for (const a of this.party) if (a !== A && !(d.look && (d.look[a.key] || d.look.all))) a.look = sp;
       if (A.comm) for (const a of this.party) if (!(d.look && d.look[a.key])) a.look = sp;
     }
+    // 姿のない話し手（voices）：みんなは、その小物のほうを見る
+    const vp = !A && (this.st.voices || {})[sp];
+    if (vp) for (const a of this.party) if (!(d.look && (d.look[a.key] || d.look.all))) a.look = this.point(vp);
     // 通信が終わったらホログラムを消す
     if (this.commOn && this.commOn !== sp && !(A && A.comm)) { const c = this.actors[this.commOn]; if (c && this.sinceComm++ > 0) { c.want = 0; this.commOn = null; } }
     if (A && A.comm) this.sinceComm = 0;
@@ -567,14 +578,16 @@ class StageView extends BaseView {
     this.last = sp;
   }
   lineDone() { this.stopTalk(); }
-  // 歩いている人物がいるか（台本の waitMove で、着くまで次の行を待つ）
-  walking() { return Object.values(this.actors).some(a => a.path && a.path.length); }
+  // 歩いている人物がいるか（台本の waitMove で、着くまで次の行を待つ）。空中ブランコで跳んだり落ちたりしているあいだも
+  walking() { return Object.values(this.actors).some(a => a.path && a.path.length) || !!(this.tz && this.tz.moving()); }
   stopTalk() { for (const a of Object.values(this.actors)) if (!a.foe) a.talk(false); }
   // カメラの選び方
   camFor(sp, A, d) {
     // keep：前の行のカメラのまま（切りかえは later の cam で）
     if (d.cam === 'keep') { this.lastShot = 'keep'; return; }
     if (d.cam) { this.shot(d.cam, { to: this.addr, drift: d.drift ?? 0.3, dur: d.dur || 5, close: d.close }); this.lastShot = d.cam; return; }
+    // 姿のない話し手は、その小物を映す（shots に同じ名前の画があれば、その画）。続けて話すあいだは切りかえない
+    if (!A && (this.st.voices || {})[sp]) { const v = this.st.voices[sp], k = (this.st.shots || {})[v] ? v : 'look:' + v; if (this.lastShot !== k) this.shot(k, { drift: 0.3, dur: 6 }); this.lastShot = k; return; }
     if (!A) { this.shot('wide', { drift: 0.5, dur: 7 }); this.lastShot = 'wide'; return; }
     // 登場しながら話す行は、歩いてくるところが映るよう引きの画にする
     if (d.enter) { this.shot('wide', { drift: 0.3, dur: 6 }); this.lastShot = 'wide'; return; }
@@ -595,7 +608,8 @@ class StageView extends BaseView {
   choice() {
     const a = this.actors[HERO]; if (!a) return;
     a.setFace('neutral'); a.gesture('think');
-    const L = this.actors[this.last] && !this.actors[this.last].foe && !this.actors[this.last].comm ? this.actors[this.last] : null;
+    // 直前の話し手の肩越しに（ミケ自身が話したあとなら、ミケだけを映す。自分の肩越しにはできない）
+    const L = this.last !== HERO && this.actors[this.last] && !this.actors[this.last].foe && !this.actors[this.last].comm ? this.actors[this.last] : null;
     if (L) this.ots(L, a, { dur: 6, drift: 0.15 }); else this.single(a, { close: true, dur: 6 });
     this.lastShot = 'choice';
   }
@@ -704,6 +718,194 @@ class StageView extends BaseView {
     this.p.update(d);
   }
 }
+// ---------- 空中ブランコ（舞台の st.trapeze：{ bars: [[右, 前], ...], top: 支点の高さ, len: 綱の長さ }） ----------
+//   支点からつるしたバーが、舞台の左右の向きにふり子のようにゆれる。台本の fx 'tz:命令,引数,…' で、役者を乗せて演じさせる
+//   mount,役,バー[,hang|knees|sit[,秒]] … 床から跳びついて、バーにぶらさがる（knees：ひざをかけて、さかさまの受け手。sit：バーの上で丸くなる）
+//   swing[,バー]                         … ゆれはじめる（となりのバーとは逆向きに。まん中で近づく）。バーを書けば、そのバーだけ
+//   fly,跳ぶ役[,受ける役]                … つぎに相手へいちばん近づいたときに手をはなし、受ける役の手へ跳ぶ（受ける役がいなければ、そのまま落ちる）
+//   drop,役[,下の役]                      … バーがいちばん下をすぎるときに手をはなして落ちる（その役の手にぶらさがっている役も、いっしょに）。下の役がいれば、その上に重なる
+//   down                                  … みんなブランコから下りて、乗る前の場所へもどり、バーのゆれもおさまっていく
+const TZ_HANG = 1.18, TZ_W = 2.42;   // ぶらさがった手から足までの長さ（m）、ゆれの速さ（ひとゆれ 2.6 秒）
+class TrapezeRig {
+  constructor(v, o) {
+    this.v = v; this.len = o.len || 3.6; this.time = 0; this.riders = {};
+    const th = v.st.face * Math.PI / 180, top = o.top || 8.2;
+    this.yaw = Math.atan2(-v.F.x, -v.F.z);   // 乗った役は、一行（カメラ）のほうを向く
+    this.bars = o.bars.map(([lx, lz], i) => {
+      const piv = v.W(lx, lz, top), g = new THREE.Group(); g.position.copy(piv); g.rotation.y = -th; v.scene.add(g);
+      const sw = new THREE.Group(); g.add(sw);
+      const rope = toon('#ffd27a'), gold = toon('#e8b84a');
+      for (const sz of [-0.8, 0.8]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, this.len, 6), rope); r.position.set(0, -this.len / 2, sz); sw.add(r); }
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 10), gold); bar.rotation.x = Math.PI / 2; bar.position.y = -this.len; bar.castShadow = true; sw.add(bar);
+      // 支点の金具と、天井へのびる吊り綱
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.24, 1.9), gold); g.add(cap);
+      for (const sz of [-0.9, 0.9]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 4, 5), rope); c.position.set(0, 2, sz); g.add(c); }
+      return { piv, sw, amp: 0, ampT: 0, ph: i % 2 ? Math.PI : 0, theta: 0 };
+    });
+    v.zoneTicks.push(dt => this.update(dt));
+  }
+  update(dt) {
+    this.time += dt;
+    for (const b of this.bars) { b.amp += Math.sign(b.ampT - b.amp) * Math.min(Math.abs(b.ampT - b.amp), dt * 0.45); b.theta = b.amp * Math.sin(TZ_W * this.time + b.ph); b.sw.rotation.z = b.theta; }
+  }
+  cmd(arg) { const [c, ...p] = String(arg).split(','); if (this[c]) this[c](...p); }
+  moving() { return Object.values(this.riders).some(r => r.state !== 'ride' && r.state !== 'lie'); }
+  // バーの位置と、綱の向き（支点から下へ）
+  barAt(b) { const v = this.v, s = Math.sin(b.theta), c = Math.cos(b.theta); const d = v.R.clone().multiplyScalar(s).add(V3(0, -c, 0)); return { d, bar: b.piv.clone().addScaledVector(d, this.len) }; }
+  // 乗っている役の足もとの位置と、体のかたむき（hang：手がバー。knees：さかさまで、足がバー。under：受ける役の手に、手でぶらさがる。sit：バーの上）
+  seat(r) {
+    if (r.mode === 'under') {
+      const q = this.riders[r.on], { d, bar } = this.barAt(this.bars[q.bar]), hands = bar.clone().addScaledVector(d, TZ_HANG - 0.15);
+      return { pos: hands.addScaledVector(d, TZ_HANG), roll: this.bars[q.bar].theta };
+    }
+    const b = this.bars[r.bar], { d, bar } = this.barAt(b);
+    if (r.mode === 'knees') return { pos: bar.addScaledVector(d, -0.15), roll: b.theta + Math.PI };
+    if (r.mode === 'sit') return { pos: bar.addScaledVector(d, -0.02), roll: b.theta };
+    return { pos: bar.addScaledVector(d, TZ_HANG), roll: b.theta };
+  }
+  mount(key, bi, mode = 'hang', sec = 0.9) {
+    const a = this.v.actors[key]; if (!a) return;
+    if (!a.home) a.home = a.pos.clone();
+    const old = this.riders[key], from = old ? old.p.clone() : a.pos.clone();
+    const r = this.riders[key] = { a, bar: +bi, mode, state: 'jump', t: 0, dur: +sec, from, p: from.clone(), roll0: old ? old.roll || 0 : 0 };
+    a.path = null; Sfx.swing();
+    a.rig = (P, dt) => this.drive(r, P, dt);
+  }
+  swing(bi) { this.bars.forEach((b, i) => { if (bi == null || +bi === i) b.ampT = 0.72; }); }
+  // 相手のバーへいちばん近づく時（fly）、いちばん下をすぎる時（drop）まで待つ
+  nextPhase(b, target, period) { const cur = TZ_W * this.time + b.ph; let dt = ((target - cur) % period + period * 4) % period / TZ_W; if (dt < 0.3) dt += period / TZ_W; return this.time + dt; }
+  fly(key, to) {
+    const r = this.riders[key]; if (!r) return;
+    const b = this.bars[r.bar], other = to && this.riders[to] ? this.bars[this.riders[to].bar] : this.bars.find(x => x !== b) || b;
+    const s = Math.sign(V3().subVectors(other.piv, b.piv).dot(this.v.R)) || 1;
+    Object.assign(r, { state: 'wait', release: this.nextPhase(b, s > 0 ? Math.PI / 2 : Math.PI * 1.5, Math.PI * 2), to: to && this.riders[to] ? to : null, s });
+  }
+  drop(key, onto) {
+    const r = this.riders[key]; if (!r) return;
+    Object.assign(r, { state: 'wait', release: this.nextPhase(this.bars[r.bar], 0, Math.PI), drop: true, onto: onto || null });
+  }
+  down() {
+    for (const r of Object.values(this.riders)) Object.assign(r, { state: 'down', t: 0, dur: 0.9, from: r.p.clone(), roll0: r.roll || 0, lie0: r.lie || 0 });
+    this.bars.forEach(b => { b.ampT = 0; });
+  }
+  // 落ちはじめる（手にぶらさがっている役も、いっしょに）
+  fall(r, vx) {
+    Object.assign(r, { state: 'fall', vel: this.v.R.clone().multiplyScalar(vx || 0), stack: 0 });
+    // 手にぶらさがっていた役は、下にいるので先に着く。落としたほうは、その上に重なる
+    for (const q of Object.values(this.riders)) if (q.mode === 'under' && q.on === r.a.key && q.state === 'ride') { Object.assign(q, { state: 'fall', vel: r.vel.clone(), onto: r.onto, stack: 0 }); r.stack = 1; }
+  }
+  drive(r, P, dt) {
+    const a = r.a, g = a.m.group, v = this.v;
+    let pos, roll;
+    const pose = k => { const Q = POSES[k]; for (const key of POSE_KEYS) if (Q[key] != null) P[key] = Q[key]; };
+    if (r.state === 'jump' || r.state === 'fly') {
+      r.t += dt; const k = Math.min(1, r.t / r.dur), e = k * k * (3 - 2 * k), S = this.seat(r);
+      pos = r.from.clone().lerp(S.pos, e); pos.y += Math.sin(k * Math.PI) * (r.state === 'fly' ? 0.7 : 1.2); roll = lerp(r.roll0, S.roll, e);
+      if (k >= 1) { r.state = 'ride'; if (r.mode === 'under') { Sfx.tone(880, 0.12, 'triangle', 0.05); v.p.burst(pos.clone().add(V3(0, 1.1, 0)), '#ffe8a0', 16, { speed: 2, life: 0.5, size: 0.08 }); } }
+    } else if (r.state === 'ride' || r.state === 'wait') {
+      const S = this.seat(r); pos = S.pos; roll = S.roll;
+      // 下で受ける役が、まだ歩いているあいだは、つぎにいちばん下をすぎるときまで待つ
+      if (r.state === 'wait' && this.time >= r.release && r.drop && r.onto && v.actors[r.onto] && v.actors[r.onto].path) r.release = this.nextPhase(this.bars[r.bar], 0, Math.PI);
+      if (r.state === 'wait' && this.time >= r.release) {
+        if (r.drop) this.fall(r, 0);
+        else if (r.to) Object.assign(r, { state: 'fly', t: 0, dur: 0.55, from: pos.clone(), roll0: roll, mode: 'under', on: r.to });
+        else this.fall(r, r.s * 2.6);
+        Sfx.swing();
+      }
+    } else if (r.state === 'fall') {
+      r.vel.y -= 13 * dt; pos = r.p.clone().addScaledVector(r.vel, dt); roll = (r.roll || 0) * Math.exp(-4 * dt);
+      const under = r.onto && v.actors[r.onto], land = under ? under.pos.y + 0.5 + (r.stack || 0) * 0.42 : v.gy(pos.x, pos.z);
+      if (pos.y <= land) {
+        pos.y = land; r.state = 'lie'; r.lie = (r.stack ? -1 : 1) * Math.PI / 2; r.landAt = pos.clone();
+        Sfx.hit(); GFX.shake(0.25); v.p.burst(pos.clone().add(V3(0, 0.3, 0)), '#f4e8f0', 24, { speed: 2.5, up: 0.8, life: 0.7, size: 0.12 });
+        if (under) { under.setStance('crouch'); under.setFace('pained'); }
+      }
+    } else if (r.state === 'lie') { pos = r.landAt; roll = 0; }
+    else if (r.state === 'down') {
+      r.t += dt; const k = Math.min(1, r.t / r.dur), e = k * k * (3 - 2 * k);
+      pos = r.from.clone().lerp(a.home, e); pos.y += Math.sin(k * Math.PI) * 1.0; roll = lerp(r.roll0, 0, e); r.lie = lerp(r.lie0 || 0, 0, e);
+      if (k >= 1) {
+        a.rig = null; a.pos.copy(a.home); a.home = null; a.lie = 0; a.lift = 0; delete this.riders[a.key];
+        for (const q of Object.values(v.actors)) if (q.stance === 'crouch' && !this.riders[q.key]) q.setStance((CHAR_ACT[q.base] || {}).stance || 'idle');
+        return;
+      }
+    }
+    r.roll = roll; r.p = pos.clone();
+    if (r.state === 'lie') { g.position.copy(pos); g.rotation.set(0, this.yaw, r.lie); pose('hang'); return; }
+    if (r.state === 'down') { g.position.copy(pos); g.rotation.set(0, this.yaw, roll + (r.lie || 0)); return; }
+    g.position.copy(pos); g.rotation.set(0, this.yaw, roll);
+    if (r.mode === 'sit' && r.state === 'ride') pose('sleep'); else pose(r.mode === 'knees' ? 'hangKnees' : 'hang');
+  }
+}
+
+// ---------- 動く小道具（台本の fx 'item:名前,動き,引数…'。名前ごとに一つ。はじめて使うときに作る） ----------
+//   futon（ふとん）：show,右,前（床に置く）／lift,役（頭の上にかかげる）／throw,役（放り投げて、その役の頭にばさっとかぶさる）／
+//                    bed,役（その役の下に敷く）／tug（ゆさゆさ引っぱられる）／back（床の元の場所へ）／hide
+//   can（アルミ缶）：show,右,前（床に立てる）／stand,役（その役が、ぴょんと缶の上にのる）／crush（べこっとつぶれる）／
+//                    slice（輪切りになって、ころころ並ぶ）／fish（魚が一ぴき、上にぽとっとのる）／reset（新しい缶。のっていた役は元の場所へ）／hide
+const STAGE_ITEMS = {
+  futon(v) {
+    const g = new THREE.Group(); g.visible = false; v.scene.add(g);
+    const flat = new THREE.Group(); g.add(flat);
+    const pink = toon('#ff9ab8'), white = toon('#fff4f0');
+    const q = new THREE.Mesh(new THREEX.RoundedBoxGeometry(1.3, 0.12, 0.95, 2, 0.05), pink); q.position.y = 0.06; q.castShadow = true; flat.add(q);
+    for (const x of [-0.4, 0, 0.4]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.125, 0.96), white); st.position.set(x, 0.06, 0); flat.add(st); }
+    const pil = new THREE.Mesh(new THREEX.RoundedBoxGeometry(0.42, 0.12, 0.3, 2, 0.05), white); pil.position.set(-0.42, 0.16, 0); flat.add(pil);
+    // 頭にかぶさった形：頭をすっぽりおおう、ふくらんだおわん（どの向きから見ても顔がかくれる）。すそは少し波打つ
+    const dg = new THREE.SphereGeometry(0.62, 22, 12, 0, Math.PI * 2, 0, 2.0), dp = dg.attributes.position;
+    for (let i = 0; i < dp.count; i++) { const x = dp.getX(i), z = dp.getZ(i), y = dp.getY(i); if (y < 0) dp.setY(i, y + Math.sin(Math.atan2(z, x) * 5) * 0.05); }
+    dg.computeVertexNormals();
+    const dr = new THREE.Mesh(dg, new THREE.MeshToonMaterial({ color: '#ff9ab8', side: THREE.DoubleSide })); dr.scale.set(1, 1.05, 1); dr.visible = false; dr.castShadow = true; g.add(dr);
+    for (const x of [-0.25, 0.25]) { const st = new THREE.Mesh(new THREE.TorusGeometry(Math.sqrt(0.62 * 0.62 - x * x) + 0.005, 0.022, 6, 24, Math.PI), white); st.rotation.y = Math.PI / 2; st.position.x = x; dr.add(st); }   // しま模様（おわんの面にそって）
+    const it = { g, home: null,
+      put(p, yaw = 0) { v.scene.attach(g); g.position.copy(p); g.rotation.set(0, yaw, 0); g.scale.set(1, 1, 1); flat.visible = true; dr.visible = false; g.visible = true; },
+      show(lx, lz) { it.home = v.W(+lx, +lz); it.put(it.home, Math.PI / 2 - v.st.face * Math.PI / 180); Sfx.fluff(); },
+      back() { if (it.home) it.put(it.home, Math.PI / 2 - v.st.face * Math.PI / 180); },
+      hide() { v.scene.attach(g); g.visible = false; },
+      lift(k) { const a = v.actors[k]; if (!a) return; g.visible = true; flat.visible = true; dr.visible = false; a.m.group.attach(g); const h = a.headH / (a.m.group.scale.y || 1); GFX.tween(0.35, e => { g.position.lerp(V3(0, h + 0.45, 0.05), e); g.rotation.set(0, 0, 0); }); },
+      throw(k) {
+        const a = v.actors[k]; if (!a) return;
+        v.scene.attach(g); const from = g.position.clone(), r0 = g.rotation.y; Sfx.swing();
+        GFX.tween(0.75, e => { const to = a.headPos(); g.position.lerpVectors(from, to, e); g.position.y += Math.sin(e * Math.PI) * 1.6; g.rotation.set(Math.sin(e * Math.PI * 2) * 0.6, r0 + e * Math.PI * 2, 0); }).then(() => {
+          a.m.group.attach(g); g.position.set(0, a.headH / (a.m.group.scale.y || 1) - 0.08, 0); g.rotation.set(0, 0, 0); flat.visible = false; dr.visible = true;
+          Sfx.fluff(); GFX.tween(0.3, e => { g.scale.set(1 + Math.sin(e * Math.PI) * 0.15, 1 - Math.sin(e * Math.PI) * 0.2, 1); });
+        });
+      },
+      bed(k) { const a = v.actors[k]; if (!a) return; it.put(a.pos.clone(), a.yaw + Math.PI / 2); a.lift = 0.1; it.sleeper = a; },
+      tug() { const p0 = g.position.clone(), d = v.R.clone(); GFX.tween(1.2, e => { g.position.copy(p0).addScaledVector(d, Math.sin(e * Math.PI * 6) * 0.08 * (1 - e)); }); },
+    };
+    const back0 = it.back; it.back = () => { if (it.sleeper) { it.sleeper.lift = 0; it.sleeper = null; } back0(); };
+    return it;
+  },
+  can(v) {
+    const g = new THREE.Group(); g.visible = false; v.scene.add(g);
+    const body = new THREE.Group(); g.add(body);
+    const metal = new THREE.MeshStandardMaterial({ color: '#d8dce4', metalness: 0.8, roughness: 0.3 });
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.32, 18), metal); c.position.y = 0.16; c.castShadow = true; body.add(c);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.113, 0.113, 0.12, 18), toon('#e04a5a')); band.position.y = 0.16; body.add(band);
+    const top = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 6, 18), metal); top.rotation.x = Math.PI / 2; top.position.y = 0.32; body.add(top);
+    const rings = [0, 1, 2, 3, 4].map(i => { const r = new THREE.Group(); const m1 = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.055, 18), i === 2 ? toon('#e04a5a') : metal); r.add(m1); r.visible = false; g.add(r); return r; });
+    const fish = new THREE.Group(); fish.visible = false; g.add(fish);
+    { const f = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), toon('#8ab8d8')); f.scale.set(0.6, 0.55, 2.0); fish.add(f); const t = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.14, 3), toon('#6a98b8')); t.rotation.x = -Math.PI / 2; t.position.z = -0.24; t.scale.y = 0.35; fish.add(t); const e = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 4), toon('#2a1a2a')); e.position.set(0.05, 0.03, 0.12); fish.add(e); }
+    const it = { g,
+      show(lx, lz) { g.position.copy(v.W(+lx, +lz)); g.visible = true; it.reset(); },
+      hide() { g.visible = false; if (it.on) it.off(); },
+      reset() { body.visible = true; body.scale.set(1, 1, 1); rings.forEach(r => { r.visible = false; }); fish.visible = false; if (it.on) it.off(); },
+      // のっている役を、のる前の場所へ
+      off() { const a = it.on; it.on = null; const p0 = a.pos.clone(); GFX.tween(0.4, e => { a.pos.lerpVectors(p0, it.from, e); a.lift = Math.sin(e * Math.PI) * 0.4; }).then(() => { a.lift = 0; }); },
+      stand(k) { const a = v.actors[k]; if (!a) return; it.on = a; it.from = a.pos.clone(); a.path = null; const p0 = a.pos.clone(), to = g.position.clone(); Sfx.swing(); GFX.tween(0.5, e => { a.pos.lerpVectors(p0, to, e); a.lift = 0.32 * e + Math.sin(e * Math.PI) * 0.5; }); },
+      // べこっ：缶がつぶれて、のっていた子は、しりもちをつくように元の場所へぴょんとおりる（つぶれた缶が見えるように）
+      crush() { Sfx.hit(); GFX.shake(0.12); GFX.tween(0.15, e => { body.scale.set(1 + e * 0.4, 1 - e * 0.8, 1 + e * 0.4); if (it.on) it.on.lift = 0.32 * (1 - e * 0.8); }).then(() => GFX.delay(0.35)).then(() => { if (it.on) it.off(); }); v.p.burst(g.position.clone().add(V3(0, 0.1, 0)), '#e8ecf4', 16, { speed: 2, up: 0.5, life: 0.5, size: 0.06 }); },
+      slice() {
+        body.visible = false; Sfx.zap(); v.fx.sprite(g.position.clone().add(V3(0, 0.2, 0)), '#ffffff', 1, 0.3);
+        rings.forEach((r, i) => { r.visible = true; const to = v.R.clone().multiplyScalar((i - 2) * 0.26); GFX.tween(0.6, e => { r.position.set(to.x * e, lerp(0.03 + 0.06 * i, 0.11, e) + Math.sin(e * Math.PI) * 0.15, to.z * e); r.rotation.set(Math.PI / 2 * e, 0, 0); }); });   // 輪は、ころがるように立って並ぶ（立つと、半径ぶん浮く）
+      },
+      fish() { fish.visible = true; GFX.tween(0.6, e => { const b = e < 0.7 ? 1 - (e / 0.7) ** 2 : Math.sin((e - 0.7) / 0.3 * Math.PI) * 0.08; fish.position.set(0, 0.36 + 0.06 + b * 2.4, 0); fish.rotation.set(0, e * 3, 0); }).then(() => { Sfx.tone(320, 0.12, 'sine', 0.05, -80); }); },
+    };
+    return it;
+  },
+};
+
 // ---------- 物語の出来事の演出（台本の fx: '名前:引数' で呼ぶ。this は StageView） ----------
 const STAGE_FX = {
   // 流れ星が落ちる（夜の丘）
@@ -737,6 +939,69 @@ const STAGE_FX = {
   // 笑いがもどる（色とりどりの紙吹雪）
   laugh() { const c = this.O.clone().add(V3(0, 3, 0)); for (let i = 0; i < 6; i++) GFX.delay(i * 0.15).then(() => this.p.burst(c.clone().add(V3((Math.random() - 0.5) * 6, 0, (Math.random() - 0.5) * 6)), pick(['#ff6a8a', '#ffd27a', '#6ad8ff', '#8aff9a']), 50, { speed: 5, up: 1.2, life: 2, grav: 2, size: 0.1 })); Sfx.win(); },
   // きらきら（喜び・友情）
+  // 笑顔の塔：むすっと幕が、ぷっと吹き出して、笑った顔になって巻き上がる（区画の seals の look: 'laugh'）
+  curtain() { const o = (this.sealObjs || []).find(q => q.S.look === 'laugh' && !q.open); if (!o) return; o.open = true; GFX.shake(0.25); STAGE_FX.confetti.call(this, 'curtain'); },
+  // 大きなびっくり箱が笑って「ばあっ！」と開く（jackPop）。わきへ跳びのく（jackHop）。しょんぼり顔でのぞいて、ひっこむ（jackPeek）。区画の rubble の look: 'jackbox'
+  jackPop() { const o = (this.rubbleObjs || []).find(q => q.R.look === 'jackbox'); if (o && o.pop) o.pop(); },
+  jackPeek() { const o = (this.rubbleObjs || []).find(q => q.R.look === 'jackbox'); if (o && o.peek) o.peek(); },
+  jackHop() { const o = (this.rubbleObjs || []).find(q => q.R.look === 'jackbox'); if (o && o.hop) o.hop(); },
+  // ピコッ！：ピコピコハンマーを持った役が、arg の子のところへ飛んでいって、頭をたたいて、元の場所へもどる
+  piko(arg) {
+    const a = Object.values(this.actors).find(q => q.hammer), b = this.actors[arg || HERO]; if (!a || !b || a.bonking) return;
+    const pv = a.hammer, g = a.m.group, rest = pv.userData.rest, tilt = pv.userData.tilt, HIT = PIKO.hit;
+    // ななめ前（右）から来て、ななめうしろ向きにたたく（正面から映しても、両方が見える）
+    const f = this.R.clone().add(this.F).multiplyScalar(-1).normalize(), yawT = Math.atan2(f.x, f.z);
+    // 振りおろした形（rotation.x = HIT、かたむきなし）で、たたく面のまん中が体の足もとからどこにあるかを測る
+    //   ふわふわ浮く体は、上下のゆれのまん中で測り、たたくあいだは、ゆれのぶんを浮きの高さで打ち消す
+    const inner = a.m.inner, mid = a.m.float ? 0.1 : inner.position.y, bob = () => mid - inner.position.y;
+    const sp = g.position.clone(), sr = g.rotation.clone(), px = pv.rotation.x, pz = pv.rotation.z, iy = inner.position.y;
+    g.position.set(0, 0, 0); g.rotation.set(0, yawT, 0); pv.rotation.set(HIT, 0, 0); inner.position.y = mid; g.updateMatrixWorld(true);
+    const face = pv.userData.head.localToWorld(V3(0, PIKO.half + 0.03, 0));
+    g.position.copy(sp); g.rotation.copy(sr); pv.rotation.set(px, 0, pz); inner.position.y = iy;
+    // たたく面が、ちょうど頭のてっぺんにのる場所へ（足もとの高さの差は、浮いてうめる）
+    const top = b.pos.clone(); top.y += b.m.height * 1.02;
+    const to = top.clone().sub(face), lift = to.y - b.pos.y; to.y = b.pos.y;
+    const home = a.pos.clone(), y0 = a.yaw, face0 = a.faceT;
+    a.bonking = true; a.faceT = yawT;
+    GFX.tween(0.45, e => { a.pos.lerpVectors(home, to, e); a.lift = (lift + bob()) * e; a.yaw = lerpAngle(y0, yawT, e); pv.rotation.x = lerp(rest, -0.7, e); pv.rotation.z = lerp(tilt, 0, e); }, Ease.inOut).then(() =>
+      GFX.tween(0.14, e => { a.lift = lift + bob(); pv.rotation.x = lerp(-0.7, HIT, e * e); }).then(() => {
+        Sfx.tone(1400, 0.06, 'square', 0.05); Sfx.tone(1900, 0.08, 'square', 0.04, 0, 0.05); STAGE_FX.poof.call(this, b.key); b.setFace('pained'); b.gesture('recoil');
+        // ピコッ：頭がぺこっとつぶれて、はねかえる
+        GFX.tween(0.4, e => { a.lift = lift + bob(); pv.userData.head.scale.set(1, 1 - Math.sin(Math.min(1, e / 0.6) * Math.PI) * 0.35, 1); pv.rotation.x = HIT - Math.sin(Math.min(1, e / 0.6) * Math.PI) * 0.25; }).then(() => GFX.tween(0.5, e => { a.pos.lerpVectors(to, home, e); a.lift = (lift + bob()) * (1 - e); pv.rotation.x = lerp(HIT, rest, e); pv.rotation.z = lerp(0, tilt, e); }, Ease.inOut).then(() => { a.bonking = false; a.faceT = face0; a.lift = 0; }));
+      }));
+  },
+  // 動く小道具：item:名前,動き,引数…（STAGE_ITEMS）
+  item(arg) { const [name, act, ...p] = String(arg).split(','); const items = this.items || (this.items = {}); const it = items[name] || (STAGE_ITEMS[name] && (items[name] = STAGE_ITEMS[name](this))); if (it && it[act]) it[act](...p); },
+  // ふわふわとのぼっていく：rise:役[,balloons]（敵は e: をはぶいて書ける。fx の引数は : で切れるため）。左右にゆれながら天井をすりぬけて、見えなくなる。
+  //   ピコピコハンマーを持っていれば、振りながら。balloons：頭の上に風船を三つ持って
+  rise(arg) {
+    const [k, opt] = String(arg || '').split(','), a = this.actors[k] || this.actors['e:' + k]; if (!a || a.rising) return;
+    a.rising = true;
+    if (opt === 'balloons') {
+      const cols = ['#ff6a8a', '#ffd27a', '#6ad8ff'], h = (a.m.height || 1.4) / (a.m.group.scale.x || 1);
+      cols.forEach((c, i) => {
+        const x = (i - 1) * 0.32, y = h + 0.9 + (i === 1 ? 0.2 : 0);
+        const b = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 10), toon(c)); b.scale.y = 1.18; b.position.set(x, y, 0); a.m.group.add(b);
+        const str = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, y - h + 0.2, 4), toon('#ffffff')); str.position.set(x / 2, (y + h - 0.2) / 2, 0); str.rotation.z = Math.atan2(x / 2, y - h + 0.2); a.m.group.add(str);
+      });
+    }
+    const x0 = a.pos.clone(), l0 = a.lift, pv = a.hammer;
+    Sfx.tone(523, 0.6, 'sine', 0.04, 260); Sfx.tone(784, 0.7, 'triangle', 0.03, 300, 0.2);
+    GFX.tween(3.6, e => {
+      a.lift = l0 + e * e * 9;
+      a.pos.copy(x0).addScaledVector(this.R, Math.sin(e * Math.PI * 3) * 0.35 * (1 - e * 0.5));
+      if (pv) pv.rotation.x = pv.userData.rest + Math.sin(e * Math.PI * 8) * 0.6;
+      if (Math.random() < 0.3) this.p.emit(a.pos.clone().add(V3(0, a.lift + 0.4, 0)), V3((Math.random() - 0.5) * 0.4, -0.3, (Math.random() - 0.5) * 0.4), hdr(pick(['#ffe8a0', '#ffd8f4', '#d8d8ff']), 1.6), { life: 1.2, size: 0.08, drag: 0.4 });
+    }).then(() => { a.m.group.visible = false; a.alpha = 0; });
+  },
+  // 空中ブランコ：tz:命令,引数…（TrapezeRig）
+  tz(arg) { if (this.tz) this.tz.cmd(arg); },
+  // 紙吹雪：arg の点（なければ舞台のまん中）の上から、色とりどりの紙が舞い落ちる
+  confetti(arg) {
+    const c = (this.point(arg) || this.O.clone().add(V3(0, 2, 0))).clone(), cols = ['#ff6a8a', '#ffd27a', '#6ad8ff', '#8aff9a', '#c88aff'];
+    for (let i = 0; i < 5; i++) GFX.delay(i * 0.12).then(() => this.p.burst(c.clone().add(V3((Math.random() - 0.5) * 5, 1.5 + Math.random(), (Math.random() - 0.5) * 3)), pick(cols), 40, { speed: 4, up: 1.5, life: 2.2, grav: 1.5, size: 0.11 }));
+    Sfx.laugh();
+  },
   sparkle(arg) { const a = this.actors[arg]; const c = a ? a.headPos() : this.O.clone().add(V3(0, 1, 0)); this.p.burst(c, '#fff0a8', 30, { speed: 2, up: 1, life: 1.2, size: 0.08 }); this.fx.sprite(c, '#fff0a8', 1.2, 0.5); Sfx.tone(1200, 0.2, 'sine', 0.05); Sfx.tone(1600, 0.25, 'sine', 0.04, 0, 0.08); },
   // 闇がせまる・晴れる
   darkness() { const U = GFX.grade.uniforms; GFX.tween(1.2, k => { U.tint.value.setRGB(1 - 0.45 * k, 1 - 0.5 * k, 1 - 0.3 * k); U.desat.value = 0.4 * k; }, Ease.out, true); Sfx.tone(60, 1.5, 'sawtooth', 0.08, 20); },

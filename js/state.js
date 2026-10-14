@@ -19,7 +19,7 @@ const Save = {
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       weapons: {},        // 持っている武器と強化段階（はじめの武器は持っていなくても使える。js/weapons.js）
       equip: {},          // にゃんこごとに装備している武器
-      auto: false, speed: 1, ver: 10,
+      auto: false, speed: 1, ver: 11,
       eco: null,          // 省エネ（30fps）。null はおまかせ（スマホなら省エネ）
     };
   },
@@ -104,6 +104,11 @@ const Save = {
         d.fieldChests.road1 = opened.includes(1) ? [0] : [];
       }
       d.ver = 10;
+    }
+    // ver 11：笑顔の塔の仕掛けを、笑いの会話（漫才・コント・空中ブランコ）にした。二階のびっくり箱の会話（c3_03e）が入り、第三章の三階へ向かう段階の前に 1 段階増えた
+    if (ver < 11) {
+      if (d.story && d.story.ch === 2 && d.story.step >= 5) d.story.step += 1;
+      d.ver = 11;
     }
   },
   load() {

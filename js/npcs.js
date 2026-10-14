@@ -54,6 +54,9 @@ const NPCS = {
     look: { fur: '#d8c8b8', pattern: 'calico', patches: ['#b8987a', '#6a5a50'], eye: '#6a7a9a', muzzle: '#f0e8e0', accent: '#ffd27a' } },
   shimin_c:  { name: '王国の猫', title: '笑わない市民', elem: 'ice', face: 'worry', faceAfter: ['clear:3-3', 'smile'],
     look: { fur: '#8a8a96', pattern: 'solid', eye: '#c8c86a', muzzle: '#a8a8b0', scarf: '#8a8aa8', accent: '#8ad8ff' } },
+  // 笑顔の塔で道をふさぐ、しゃべる小物（姿は区画の小物。会話の舞台の voices で、その小物を映す。look は名前の色だけ）
+  maku:      { name: 'むすっと幕', title: '笑顔の塔の大ロビーの幕', elem: 'fire', look: { accent: '#ff7a8a' } },
+  bikkuri:   { name: 'びっくり箱', title: '笑顔の塔の楽屋の、大きなびっくり箱', elem: 'imaginary', look: { accent: '#ffd27a' } },
   piero_npc: { name: 'ピエロ', title: '笑顔の塔の道化', elem: 'imaginary', face: 'smile',
     look: { fur: '#ffffff', pattern: 'spots', patches: ['#ff8ab8'], eye: '#6a8aff', muzzle: '#ffffff', earIn: '#ffb8c8', nose: '#ff3a4a', cap: '#ff6a8a', capType: 'clown', ruff: '#ffe07a', accent: '#6ad8ff', vest: '#8a5ad8', blush: 0.6 }, gear: { weapon: 'juggle' } },
   douguya2:  { name: '道具屋', title: '王国の道具屋', elem: 'wind', face: 'sad', faceAfter: ['clear:3-3', 'joy'],
