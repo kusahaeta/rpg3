@@ -25,13 +25,10 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   (Z.notes || []).forEach(n => add(id, { k: 'note ' + n.title, p: n.at, r: 0.5 }));
   (Z.chestAt || []).forEach((p, i) => add(id, { k: 'chest' + i, p, r: 0.6 }));
   (Z.seals || []).forEach(S => { S.lamps.forEach((p, i) => add(id, { k: `lamp ${S.id}_${i}`, p, r: 0.6 })); add(id, { k: `wall ${S.id}`, p: [(S.wall[0] + S.wall[2]) / 2, (S.wall[1] + S.wall[3]) / 2], r: 0.3 }); });
-  (Z.rubble || []).forEach(R => add(id, { k: 'rubble ' + R.id, p: R.at, r: 0.5 }));
+  (Z.rubble || []).forEach(R => { add(id, { k: 'rubble ' + R.id, p: R.at, r: 0.5 }); if (R.aside) add(id, { k: 'aside ' + R.id, p: R.aside, r: 1.6 }); });
   (Z.cushions || []).forEach((p, i) => add(id, { k: 'cushion' + i, p, r: 0.5 }));
-  (Z.bounce || []).forEach((p, i) => add(id, { k: 'bounce' + i, p, r: 0.9 }));
-  if (Z.bounceBack) add(id, { k: 'bounceBack', p: Z.bounceBack, r: 0.6 });
   (Z.stroke || []).forEach(P => { add(id, { k: 'stroke ' + P.id + ' start', p: P.start, r: 0.8 }); add(id, { k: 'stroke ' + P.id + ' goal', p: P.goal, r: 0.8 }); add(id, { k: 'stroke ' + P.id + ' gate', p: [(P.gate[0] + P.gate[2]) / 2, (P.gate[1] + P.gate[3]) / 2], r: 0.3 }); });
   if (Z.timeShift) Z.timeShift.crystals.forEach((p, i) => add(id, { k: 'crystal' + i, p: p.slice(0, 2), r: 0.8 }));
-  if (Z.balls) { const P = Z.balls; [...P.balls, ...P.targets, ...P.blocks].forEach((p, i) => add(id, { k: 'ball ' + P.id + '_' + i, p, r: 0.9 })); add(id, { k: 'reset ' + P.id, p: P.reset, r: 0.5 }); }
   (Z.fluff || []).forEach((B, i) => { add(id, { k: 'fluff' + i, p: B.at, r: 0.9 }); add(id, { k: 'glide' + i, p: B.to, r: 0.6 }); });
   (Z.nemuri || []).forEach((N, i) => { add(id, { k: 'nemuri' + i, p: N.at, r: 0.2 }); add(id, { k: 'wake' + i, p: N.back, r: 0.6 }); });
   if (Z.sleepwalk) Z.sleepwalk.route.forEach((p, i) => add(id, { k: 'walk' + i, p, r: 0.5 }));
@@ -125,13 +122,6 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
     if (!sols) bad.push(`beam ${S.id} has no solution`);
     if (trace(T, B, st(B, B.init || [0])).hit) bad.push(`beam ${S.id} is already solved at start`);
     if (verbose) console.log(`   beam ${S.id}: ${sols} solution state(s) of ${1 << n}`);
-  }
-  // 大玉ころがし：解けるか（最短の押す回数）。最初の置き方のままでは、そろっていないか
-  if (Z.balls) {
-    const P = Z.balls, roll = G('rollBall'), n = solveBalls(T, P, roll);
-    if (n < 0) bad.push(`balls ${P.id} has no solution`);
-    if (n === 0) bad.push(`balls ${P.id} is already solved at start`);
-    if (verbose) console.log(`   balls ${P.id}: solved in ${n} push(es)`);
   }
   // つながりの石畳：始まりの石から終わりの石まで、すべての石を一度ずつ通る道があるか（道の数は -v で表示）。石は床の上で、同じ高さか
   for (const P of Z.stroke || []) {
@@ -410,26 +400,6 @@ function timeReach(T, Z) {
   f.past = (x, z) => { const i = T.at(x, z); return dist[1][i] >= 0 && !!back[1][i]; };
   f.back = (x, z) => { const i = T.at(x, z); return [0, 1].some(p => dist[p][i] >= 0 && back[p][i]); };
   return f;
-}
-// 大玉ころがしを、押す回数の少ない順に調べる（プレイヤーは、大玉と台のないマスを歩いて、押す側に回りこめるか）
-function solveBalls(T, P, roll) {
-  const on = (list, x, z) => list.some(q => Math.abs(q[0] - x) < 0.5 && Math.abs(q[1] - z) < 0.5);
-  const key = pos => pos.map(p => p.join(',')).sort().join('|'), done = pos => P.targets.every(t => on(pos, t[0], t[1]));
-  const start = P.balls.map(p => p.slice()), seen = new Set([key(start)]), q = [[start, 0]];
-  for (let qi = 0; qi < q.length && qi < 200000; qi++) {
-    const [pos, n] = q[qi];
-    if (done(pos)) return n;
-    // リングのベルから歩いて行けるマス
-    const reach = new Uint8Array(T.kind.length), st = [T.at(P.reset[0], P.reset[1])]; reach[st[0]] = 1;
-    const free = i => T.isWalkKind(T.kind[i]) && !on(pos, T.cx(T.colOf(i)), T.cz(T.rowOf(i))) && !on(P.blocks, T.cx(T.colOf(i)), T.cz(T.rowOf(i)));
-    while (st.length) { const i = st.pop(); for (const [dc, dr] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) { const j = T.idx(T.colOf(i) + dc, T.rowOf(i) + dr); if (j >= 0 && !reach[j] && free(j) && Math.abs(T.h[j] - T.h[i]) < 0.6) { reach[j] = 1; st.push(j); } } }
-    pos.forEach(([x, z], k) => { for (const [dx, dz] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
-      if (!reach[T.at(x - dx * CELL, z - dz * CELL)]) continue;
-      const to = roll(P, pos, k, dx, dz); if (to[0] === x && to[1] === z) continue;
-      const np = pos.map(p => p.slice()); np[k] = to; const kk = key(np); if (seen.has(kk)) continue; seen.add(kk); q.push([np, n + 1]);
-    } });
-  }
-  return -1;
 }
 console.log(problems ? `${problems} problem(s)` : 'all maps ok');
 process.exitCode = problems ? 1 : 0;

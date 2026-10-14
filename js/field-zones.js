@@ -1132,10 +1132,12 @@ const FIELD_ZONES = {
       { at: [31, -24], mark: 2.3, title: '宝物庫の台座', text: '「笑いの実」の台座。戻ってきた実が、ほんのりと光っている。', when: 'scene:c6_04' }],
     map2d: [330, 95] },
 
-  // 笑顔の塔：円い塔の四つの階（parent：ワールドマップでは塔の入口にまとめる）。どの階も、サーカスの出し物を考えて解く
-  //   1F：玉のりのリング（balls。大玉は、押すと何かにぶつかるまで転がる。三つをスポットライトの下にそろえると、むすっと幕が上がる）
-  //   2F：出し物のびっくり箱（rubble の look: 'jackbox'。ねじを出番の数だけ巻いて、ふたをたたく。出番の順は、楽屋のメモから考える）
-  //   3F：トランポリン（bounce。走ってきた向きに 3 マス跳ぶ。跳んだ先もトランポリンなら、もう一度）  ブーブークッション（cushions。踏むと鳴る）はあちこちに
+  // 笑顔の塔：円い塔の四つの階（parent：ワールドマップでは塔の入口にまとめる）。どの階も、笑い方を忘れた相手が道をふさいでいて、
+  //   笑いの会話（ネタを選ぶ。すべったら選びなおし）で笑わせると通れる。笑わせるたびに、笑いがどう生まれるかを一つずつ知っていく
+  //   1F：むすっと幕（seals の look: 'laugh'）と漫才（c3_03a）……ツッコミがいると、笑いになる
+  //   2F：大きなびっくり箱（rubble の look: 'jackbox'）と、ピエロのネタ帳のコント（c3_03e）……ひとりで言うギャグも、みんなで演じると笑いになる
+  //   3F：渡り板に並ぶミミックたちと、空中ブランコ（c3_03d）……失敗しても、受け止める相手がいれば笑いになる
+  //   寄り道の笑い（dreams の tag）：1F の風船の間で、ゴーストとにらめっこ。2F の小道具部屋で、ゴーストの大喜利。ブーブークッション（cushions。踏むと鳴る）はあちこちに
   tower: { ci: 2, name: '笑顔の塔', floor: '1F', stage: '3-1', after: 'c3_02', arenas: [[0, 16, 0]], build: 'tower', arch: 'tower', bg: 'tower', groups: 6, chests: 3, crystals: 3, calmAfter: '3-3',
     world: true,
     th: { pattern: 'checker', floor: '#6a3458', floor2: '#7a4068', line: '#ffd27a', floorGlow: 0.25, fog: '#3a1a3a', light: 1.15 },
@@ -1190,19 +1192,12 @@ const FIELD_ZONES = {
     anchor: [-9, 31], spawn: [0, 39], chestAt: [[-38, -18], [27, -31], [37, 15]], exits: [{ key: 's', to: 'nyahaha' }, { key: 'u', to: 'tower_2f', stair: 'up' }],
     areas: [{ name: '笑顔の塔・入口の広間', at: [-12, 22, 12, 44] }, { name: '笑顔の塔・大ロビー', at: [-22, -17, 22, 22] }, { name: '笑顔の塔・びっくり鏡の回廊', at: [-40, -20, -22, 20] },
       { name: '笑顔の塔・風船の間', at: [22, -18, 40, 18] }, { name: '笑顔の塔・きっぷ売り場', at: [-32, -34, -16, -10] }, { name: '笑顔の塔・楽団の控え室', at: [16, -34, 32, -10] }, { name: '笑顔の塔・階段の間', at: [-12, -42, 12, -17] }],
-    // むすっと幕：玉のりのリング（balls）で、三つの大玉をスポットライトの下にそろえると、ショーが始まって上がる
-    seals: [{ id: 'towerSeal1', look: 'laugh', name: 'むすっと幕', wall: [-4, -17.3, 4, -16.7], lamps: [], after: 'c3_03a', openAfter: 'c3_03c',
-      openToast: 'むすっと幕が、ぷっと吹き出して、するする上がっていった！' }],
-    // 玉のりのリング：大玉は、押すと何かにぶつかるまで止まらない（スポットライトの輪に入ると、ぴたりと止まる）。マスの中心に置く。
-    //   最短 7 手。まん中の玉を東へ（東の玉が止め役）→ 北へ（右のライト）、東の玉を西へ（西の玉が止め役）……と、大玉どうしを止め役に使う。
-    //   北の太鼓（blocks の [1, -7]）は、まん中のライトへ入れる玉の止め役。リングのベル（reset）で、大玉を元の場所へもどせる
-    balls: { id: 'towerBalls', seal: 'towerSeal1', ring: [-7, -7, 7, 3], blocks: [[-1, -3], [1, -3], [1, -7]], targets: [[-3, -3], [3, -3], [-1, -5]],
-      balls: [[-5, 3], [1, 3], [5, 3]], reset: [-9.6, 4.4], after: 'c3_03a',
-      idle: 'サーカスの大玉。……今は、転がして遊んでいる場合じゃなさそうだ。',
-      done: [['n', '三つの大玉がそろうと、スポットライトがぱっと明るくなった。……チャーン、チャチャーン！'], ['n', 'むすっと幕の口の端が、ぴくぴく……。「……ぷっ。ブワッハッハッハ！　こりゃ見事な玉のりだ！」'],
-        ['mike', 'やったー！　幕が笑った！'], ['shiro', 'ふふん、玉のりなら天才にまかせなさい！　……転がしたのは、ほとんどミケだけど。'], ['kuro', '……ぶつけて止める。剣の間合いと同じだ。'], ['tama', '……たま……ころころ……たのしかった。']] },
+    // むすっと幕：おもしろいショーが始まるときにしか上がらない幕。漫才で笑わせると、ぷっと吹き出して巻き上がる（c3_03a。会話の舞台の演出 curtain）
+    seals: [{ id: 'towerSeal1', look: 'laugh', name: 'むすっと幕', wall: [-4, -17.3, 4, -16.7], lamps: [], openAfter: 'c3_03a' }],
+    // 寄り道の笑い：風船の間の小さな舞台で、にらめっこの好きなゴーストが待っている（FieldView.startDream）
+    dreams: [{ id: 'tw_niramekko', scene: 'tw_niramekko', name: '風船の間のゴースト', tag: '笑いのできごと', aura: '#ffe8a0', after: 'c3_03', who: [['e:ghost', 32, -3]] }],
     cushions: [[-14, 15], [14, -5], [23, -27]],
-    notes: [{ at: [-12.5, 8], face: 0.5, board: ['玉のりのリング', '三つの玉を ライトの下へ'], title: '玉のりのリング', text: '「大玉は、押すと、何かにぶつかるまで止まりません。スポットライトの輪に入ると、ぴたりと止まります。三つそろえば、ショーの始まり！」……「うまくいかないときは、リングのベルを鳴らしてね」' },
+    notes: [{ at: [-12.5, 8], face: 0.5, board: ['玉のりのリング', '本日 休演'], title: '玉のりのリング', text: '「玉のりのリング　本日休演」……リングの大玉には、うっすらほこりがつもっている。' },
       { at: [-21, -3], mark: [-0.7, 2.9, 0], title: '古いポスター', text: '「笑顔の塔　大サーカス！　主演：ピエロ」……色あせて、涙のしみがある。' },
       { at: [-33, -9], mark: 2.0, title: 'びっくり鏡', text: '鏡の中のミケは、横にびろーんと広がっている。……のびたおもちみたいだ。' },
       { at: [-31, 7], mark: 2.0, title: 'びっくり鏡', text: '鏡の中のクロは、頭が大きくて足が短い。……クロは、そっと目をそらした。' },
@@ -1214,10 +1209,8 @@ const FIELD_ZONES = {
     world: true,
     th: { pattern: 'planks', floor: '#6a4838', floor2: '#7a5444', line: '#ffd27a', floorGlow: 0.2, fog: '#3a1a30', light: 1.1 },
     // 2F：北の階段から、ぐるりと回る廊下。まん中はピエロの楽屋、まわりに楽屋・衣装部屋・小道具部屋・物置。
-    //     南の上り階段へは、東か西の廊下を通る（どちらも巨大びっくり箱がふさいでいる）。
-    //     びっくり箱は、ねじを「その出し物の出番の数」だけ巻いて（F）、ふたをたたく（攻撃）と開く。出番表は四番までにじんで読めないので、
-    //     楽屋に残った芸人たちのメモから考える：空中ブランコ＝一番、ジャグリングは一番ではない、玉のりはジャグリングのすぐあと、
-    //     つなわたりは玉のりよりあと、ピエロ＝五番 → ジャグリング 2・玉のり 3・つなわたり 4。メモはどれも、びっくり箱の手前（北半分）にある
+    //     南の上り階段の口を、大きなびっくり箱がふさいでいる。ピエロのネタ帳のギャグを、みんなでコントにして笑わせると、跳びのく（c3_03e）。
+    //     楽屋に残った芸人たちのメモは、どれも同じ字（ピエロが、ひとりで何役もしていた）
     map: [
       '############################################',
       '#####################dd#####################',
@@ -1267,17 +1260,18 @@ const FIELD_ZONES = {
     anchor: [-4, -36], chestAt: [[-38, -17], [38, 17], [22, -34], [-19, 35]], exits: [{ key: 'd', to: 'tower', stair: 'down' }, { key: 'u', to: 'tower_3f', stair: 'up' }],
     areas: [{ name: '笑顔の塔・ピエロの楽屋', at: [-18, -18, 18, 16] }, { name: '笑顔の塔・衣装部屋', at: [-24, -38, -10, -30] }, { name: '笑顔の塔・小道具部屋', at: [10, -38, 24, -30] },
       { name: '笑顔の塔・西の楽屋', at: [-40, -20, -30, 22] }, { name: '笑顔の塔・東の楽屋', at: [30, -20, 40, 22] }, { name: '笑顔の塔・物置', at: [-24, 30, -12, 38] }, { name: '笑顔の塔・物置', at: [12, 30, 24, 38] }],
-    // act：箱の札（出し物の名前）、turns：ちょうどの巻き数、back：巻きすぎて「ばあっ！」と飛ばされる先。小道具部屋の「おためし」の箱で、やり方を試せる
-    rubble: [{ id: 'towerBox1', look: 'jackbox', act: 'つなわたり', turns: 4, back: [-28, -12], at: [-28, 0], r: 1.8 },
-      { id: 'towerBox2', look: 'jackbox', act: '玉のり', turns: 3, back: [28, -12], at: [28, 0], r: 1.8 },
-      { id: 'towerBox3', look: 'jackbox', act: 'おためし', turns: 1, back: [13, -32], at: [18, -34], r: 1.4, hint: '札のすみに、小さく「ねじは一回」と書いてある。' }],
+    // 大きなびっくり箱：南の上り階段の口をふさぐ。笑わせると、aside へ跳びのいて、開いたまま笑っている
+    //   ry：ふたのちょうつがいを奥（南）に向ける（開いたふたが、手前の一行の前にかぶさらないよう）
+    rubble: [{ id: 'towerJack', look: 'jackbox', at: [0, 39], r: 1.8, ry: Math.PI, aside: [-3.9, 35.4], openAfter: 'c3_03e', name: '大きなびっくり箱',
+      text: ['ピエロの顔のびっくり箱が、上り階段の口をふさいでいる。', '……中から、ときどき「……ばあ」と、元気のない声がする。'] }],
     cushions: [[-14, -26], [14, -26], [-10, 26], [12, 26], [-28, 14], [28, -12], [-8, 2]],
-    notes: [{ at: [6, -16.6], mark: [0, 2.5, -0.8], title: '今夜の出番表', text: '「今夜の出番表」……一番から四番は、インクがにじんで読めない。いちばん下だけが、はっきり読める。「五番（トリ）　ピエロの大笑いショー」' },
-      { at: [11, -36], mark: [0, 2.3, -1.8], title: 'びっくり箱のつかいかた', text: '「出し物のびっくり箱：①ねじを、その出し物の出番の数だけ巻く（おためしの箱は一回）　②ふたを、ポンとたたく」……「巻きすぎると、ばあっ！　足りないと、ぽすっ」' },
-      { at: [-22.6, -33], mark: [-0.7, 2.3, 0], title: '空中ブランコのメモ', text: '「わたしの出番は、いちばんはじめ！　幕が上がったら、まずは空から、お客さんをわっとおどろかせるの」' },
-      { at: [10, 11], mark: 1.0, title: 'ジャグリングのメモ', text: 'ジャグリングの棒に、メモがはさまっている。「ぼくの出番は、いちばんはじめじゃない。……はじめは、もっと派手なのがいいんだって」' },
-      { at: [-38.6, -9], mark: [-0.7, 2.3, 0], title: 'つなわたりのメモ', text: '「ぼくの出番は、玉のりより あと。……高いところは、こわくない。こわいのは、だれも見ていないこと」' },
-      { at: [38.6, -8], mark: [0.7, 2.3, 0], title: '玉のりのメモ', text: '「わたしの出番は、ジャグリングの すぐあと。ころころ、ぐらぐら、それが楽しいの」……よく見ると、どのメモも、同じ字で書いてある。' },
+    // 寄り道の笑い：小道具部屋で、大喜利の司会をしたいゴーストが待っている
+    dreams: [{ id: 'tw_oogiri', scene: 'tw_oogiri', name: '小道具部屋のゴースト', tag: '笑いのできごと', aura: '#ffe8a0', after: 'c3_03a', who: [['e:ghost', 17, -35.4, 'hammer']] }],
+    notes: [{ at: [6, -16.6], mark: [0, 2.5, -0.8], title: '今夜の出番表', text: '「今夜の出番表」……一番　空中ブランコ、二番　ジャグリング、三番　玉のり、四番　つなわたり、五番　ピエロの大笑いショー。……どの出し物のとなりにも、同じ字で「ピエロ」と書いてある。' },
+      { at: [-22.6, -33], mark: [-0.7, 2.3, 0], title: '空中ブランコのメモ', text: '「空中ブランコ。跳ぶ人：ピエロ。受け止める人：　　　」……受け止める人のところだけ、空欄のままだ。' },
+      { at: [10, 11], mark: 1.0, title: 'ジャグリングのメモ', text: 'ジャグリングの棒に、メモがはさまっている。「玉は、ひとりで投げて、ひとりで受ける。……落としても、拾ってくれる人はいない」' },
+      { at: [-38.6, -9], mark: [-0.7, 2.3, 0], title: 'つなわたりのメモ', text: '「高いところは、こわくない。こわいのは、だれも見ていないこと」' },
+      { at: [38.6, -8], mark: [0.7, 2.3, 0], title: '玉のりのメモ', text: '「ころころ、ぐらぐら、それが楽しいの」……よく見ると、どのメモも、同じ字で書いてある。' },
       { at: [-3, 14], mark: [0, 1.2, 1.0], title: 'ピエロのネタ帳', text: '「ふとんが ふっとんだ」「ねこが ねころんだ」「アルミ缶の上にある みかん」……どれも、上から線で消してある。「だれも わらわなかった」' },
       { at: [3, 14], mark: [0, 2.2, 1.2], title: '楽屋の鏡', text: '鏡のまわりに、ピエロの笑顔の写真がたくさん貼ってある。……どれも、昔の写真だ。' },
       { at: [-38.6, 17], mark: [-0.7, 2.4, 0], title: '笑顔の練習表', text: '「月：にっこり　火：にやり　水：くすくす　木：げらげら　金：大爆笑」……金曜日のところだけ、空欄のままだ。' },
@@ -1287,11 +1281,9 @@ const FIELD_ZONES = {
   tower_3f: { ci: 2, name: '笑顔の塔・空中ブランコの間', floor: '3F', parent: 'tower', stage: '3-2', arenas: [[0, 4, 0]], build: 'tower3f', arch: 'tower', bg: 'tower', groups: 5, chests: 4, crystals: 3, calmAfter: '3-3',
     world: true,
     th: { pattern: 'checker', floor: '#8a2a3a', floor2: '#e8c890', line: '#ffd27a', floorGlow: 0.2, fog: '#3a1a3a', light: 1.15 },
-    // 3F：底の見えない吹き抜けを、回廊がぐるりと囲む。渡り板でまん中の舞台へ。北の高い桟敷（上り階段）へは、吹き抜けに浮かぶ
-    //     小島を、トランポリンで渡っていく。トランポリンは、走ってきた向きに 3 マス跳ぶ（跳んだ先もトランポリンなら、同じ向きにもう一度）。
-    //     島が小さいので、どのトランポリンにどちらから踏みこめるかが決まっている。床のないところへ跳ぶと、安全ネットで舞台へはね返される。
-    //     道順：舞台の東のトランポリン（北へ）→ 東の島 → 西へ（まん中の一つ島を中継ぎに）→ 西の島 → 北へ → 北西の島 → 回りこんで東へ
-    //     （まん中の一つ島を中継ぎに）→ 北東の細い島 → 北へ → 桟敷。まん中の列をまっすぐ北へ跳ぶと、奈落へ落ちる。東の島の北には、宝箱の島
+    // 3F：底の見えない吹き抜けを、回廊がぐるりと囲む。南の渡り板でまん中の舞台へ。舞台の北から、細い渡り板が吹き抜けをこえて、
+    //     北の高い桟敷（上り階段）へのびている。渡り板には、宝箱のふりをしたミミックたちが並んで通せんぼ（c3_03b で正体をあらわす）。
+    //     空中ブランコで笑わせると、ミミックたちは渡り板の両わきへどいて、笑いながら見送ってくれる（c3_03d）。東西の回廊から、小さな舞台へ
     map: [
       '############################################',
       '#####################uu#####################',
@@ -1301,26 +1293,26 @@ const FIELD_ZONES = {
       '##############4444444444444444##############',
       '##############4444444444444444##############',
       '##############4444444444444444##############',
-      '##############                ##############',
-      '###########                      ###########',
-      '##########              3         ##########',
-      '######000        22     3 22       000######',
-      '######000        22  2  3 2        000######',
-      '######000                          000######',
-      '######000         1       1        000######',
-      '######000        11  1  111        000######',
-      '######000                          000######',
-      '######000                          000######',
-      '######000        0000000000        000######',
-      '######000        0000000000        000######',
-      '######000  111   0000000000   111  000######',
-      '######000  111   0000000000   111  000######',
-      '######000  111   0000000000   111  000######',
-      '######000  111   0000000000   111  000######',
-      '######000        0000000000        000######',
-      '######000        0000000000        000######',
-      '######000        0000000000        000######',
-      '######000        0000000000        000######',
+      '##############       ^^       ##############',
+      '###########          ^^          ###########',
+      '##########           ^^           ##########',
+      '######000            ^^            000######',
+      '######000            00            000######',
+      '######000            00            000######',
+      '######000            00            000######',
+      '######000            00            000######',
+      '######000            00            000######',
+      '######000            00            000######',
+      '######000         0000000000       000######',
+      '######000         0000000000       000######',
+      '######00000000    0000000000  00000000######',
+      '######00000000    0000000000  00000000######',
+      '######00000000    0000000000  00000000######',
+      '######00000000    0000000000  00000000######',
+      '######000         0000000000       000######',
+      '######000         0000000000       000######',
+      '######000         0000000000       000######',
+      '######000         0000000000       000######',
       '######000            00            000######',
       '######000            00            000######',
       '######000            00            000######',
@@ -1338,16 +1330,15 @@ const FIELD_ZONES = {
       '#####################dd#####################',
       '############################################',
     ],
-    anchor: [-8, 35], chestAt: [[-17, -3], [17, -3], [-13, -39], [11, -21]], exits: [{ key: 'd', to: 'tower_2f', stair: 'down' }, { key: 'u', to: 'tower_top', stair: 'up' }],
-    areas: [{ name: '笑顔の塔・まん中の舞台', at: [-10, -8, 10, 12] }, { name: '笑顔の塔・ブランコの島', at: [-12, -26, 12, -8] }, { name: '笑顔の塔・桟敷', at: [-16, -42, 16, -26] }],
-    // トランポリン（マスの中心）：舞台の北の縁に二つ、吹き抜けの小島に九つ（まん中の列の二つは、トランポリンだけの一つ島）、東西の回廊と小島に二つずつ。
-    //   落ちたら bounceBack（舞台）へもどる
-    bounce: [[-1, -7], [7, -7], [-1, -13], [-1, -19], [5, -13], [9, -15], [9, -19], [-7, -15], [-9, -13], [-7, -19], [5, -23],
-      [-27, -1], [-21, 1], [27, -1], [21, 1]], bounceBack: [0, -3],
+    anchor: [-8, 35], chestAt: [[-17, -3], [17, -3], [-13, -39], [13, -37]], exits: [{ key: 'd', to: 'tower_2f', stair: 'down' }, { key: 'u', to: 'tower_top', stair: 'up' }],
+    areas: [{ name: '笑顔の塔・まん中の舞台', at: [-10, -8, 10, 12] }, { name: '笑顔の塔・渡り板', at: [-4, -26, 4, -8] }, { name: '笑顔の塔・桟敷', at: [-16, -42, 16, -26] },
+      { name: '笑顔の塔・西の小舞台', at: [-28, -6, -16, 4] }, { name: '笑顔の塔・東の小舞台', at: [16, -6, 28, 4] }],
+    // 渡り板のミミック：c3_03d を見るまでは、宝箱のふりをして渡り板に横一列（通れない）。見たあとは、渡り板の両わきで笑っている
+    mimics: { block: [[-1.3, -9.4], [0, -9.6], [1.3, -9.4]], cheer: [[-3.6, -7.4], [3.6, -7.4], [-3.2, -27.6], [3.2, -27.6]], after: 'c3_03d' },
     cushions: [[8, 38]],
-    notes: [{ at: [-31, 4], mark: 1.8, title: 'トランポリンの注意書き', text: '「ぼよよーん！　トランポリンは、走ってきた向きに、ちょうど三マス跳びます。跳んだ先にもトランポリンがあれば、もう一度！」……「よい子は、おうちのベッドでまねしないでね」' },
-      { at: [3, -5], face: 0, board: ['桟敷へは', '島づたいに'], title: '舞台の縁の看板', text: '「桟敷へは、島づたいに。……いちばんの近道は、いちばんの遠回り」……だれかの字で「まっすぐ跳んだら、ネットまで落ちた」と書き足してある。' },
-      { at: [10, -36], mark: 1.8, title: '空中ブランコの名札', text: '「ピエロ」「ピエロ」「ピエロ」……ぜんぶ、ピエロの名前だ。ひとりで何役もしていたらしい。' }],
+    notes: [{ at: [3, -5], face: 0, board: ['桟敷へは', '渡り板で'], title: '舞台の縁の看板', text: '「桟敷へは、渡り板で。……空中ブランコのお客さまは、渡り板の上で見てはいけません」' },
+      { at: [10, -36], mark: 1.8, title: '空中ブランコの名札', text: '「ピエロ」「ピエロ」「ピエロ」……ぜんぶ、ピエロの名前だ。ひとりで何役もしていたらしい。' },
+      { at: [-31, 4], mark: 1.8, title: '安全ネットの注意書き', text: '「空中ブランコの下には、安全ネットがあります」……下をのぞくと、ネットは、はるか下にぼんやり見えるだけだ。だれかの字で「受け止めてくれる人がいれば、ネットはいらない」と書き足してある。' }],
     map2d: [470, 30] },
   tower_top: { ci: 2, name: '笑顔の塔・大舞台', floor: '最上階', parent: 'tower', stage: '3-3', arenas: [[0, -26, 0]], build: 'towerTop', arch: 'tower', bg: 'tower', groups: 3, chests: 3, crystals: 2, calmAfter: '3-3',
     world: true,
@@ -3184,20 +3175,6 @@ function traceBeam(T, B, states) {
   return { pts: [...pts, [x, z]], hit: false, used };
 }
 
-// 大玉ころがし（zone.balls）：pos[k] の大玉を (dx, dz) の向きへ押したときに止まる位置。大玉は、リング（ring：マスの中心の範囲 [x0, z0, x1, z1]）の縁・
-//   台（blocks）・ほかの大玉にぶつかるまで、1 マスずつ転がる。スポットライトの輪（targets）に入ると、そこでぴたりと止まる
-function rollBall(P, pos, k, dx, dz) {
-  const [x0, z0, x1, z1] = P.ring, on = (list, x, z) => list.some(q => Math.abs(q[0] - x) < 0.5 && Math.abs(q[1] - z) < 0.5);
-  let [x, z] = pos[k];
-  for (let step = 0; step < 40; step++) {
-    const nx = x + dx * CELL, nz = z + dz * CELL;
-    if (nx < x0 - 0.5 || nx > x1 + 0.5 || nz < z0 - 0.5 || nz > z1 + 0.5 || on(P.blocks, nx, nz) || on(pos.filter((q, j) => j !== k), nx, nz)) break;
-    x = nx; z = nz;
-    if (on(P.targets, x, z)) break;
-  }
-  return [x, z];
-}
-
 // いま物語で向かっている、フィールドの段階（なければ null）
 function storyStep() {
   const cur = typeof Story !== 'undefined' ? Story.current() : null;
@@ -3825,7 +3802,7 @@ class ZoneKit {
   seals() {
     const flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {}, kit = this;
     return (this.v.sealObjs = (this.zone.seals || []).map(S => {
-      const open = !!flags[S.id] || !!(S.openAfter && storyCond('scene:' + S.openAfter));
+      const open = !!flags[S.id] || !!(S.openAfter && this.seenAt(S.openAfter));
       const o = { S, open, lamps: [], ready: () => !S.after || storyCond('scene:' + S.after) };
       if (S.look === 'beacon' || S.look === 'bar') return this.featSeal(S, open, o, flags);
       // 光の水晶：岩の台座に紫の水晶。灯すと青白く光る。記憶のかけら（look: 'memory'）：石の祭壇に思い出の品と、金色に光る玉
@@ -4217,37 +4194,66 @@ class ZoneKit {
     });
   }
   // zone.rubble：[{ id, at: [x, z], r }]：攻撃で砕ける落石の岩山（砕いたら Save.data.flags[id]）
-  //   look: 'jackbox' ＝ 巨大びっくり箱。act の札（出し物の名前）がつき、ねじを turns 回ちょうど巻いてから、たたくと開く
-  //   （ばねの先のピエロの顔が飛び出して消える。巻きすぎると back へ飛ばされ、足りないと何も起きない。FieldView.windBox・hitJackbox）
+  //   look: 'jackbox' ＝ 笑顔の塔の大きなびっくり箱（姿は jackInTheBox）。たたいても開かない（FieldView.pokeJackbox）。openAfter のシーンで笑わせると、
+  //   ばねの先のピエロの顔が飛び出して（o.pop。会話の舞台の演出 jackPop）、aside へぴょんと跳びのく（o.hop。演出 jackHop）。そのあとは aside に、開いたまま置いておく。
+  //   name・text：調べたときの名前と文、poke：たたいたときの知らせ
   rubbles() {
-    const flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {};
+    const flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {}, kit = this;
     return (this.v.rubbleObjs = (this.zone.rubble || []).map(R => {
-      const [x, z] = R.at, r0 = R.r || 1.6, o = { R, pos: V3(x, this.gy(x, z), z), broken: !!flags[R.id] };
-      if (o.broken) return o;
+      const jack = R.look === 'jackbox', open = jack && !!R.openAfter && this.seenAt(R.openAfter);
+      const [x, z] = open && R.aside ? R.aside : R.at, r0 = R.r || 1.6, o = { R, pos: V3(x, this.gy(x, z), z), broken: open || (!jack && !!flags[R.id]) };
+      if (o.broken && !jack) return o;
       const g = new THREE.Group(); g.position.copy(o.pos); this.scene.add(g);
-      if (R.look === 'jackbox') {
-        // 箱：しま模様の四面と、はてなの札、横のねじまきハンドル。ふたは開くときに跳ね上がる
-        const s = r0 * 1.1, cols = ['#ff6a8a', '#ffd27a', '#6ad8ff', '#8aff9a'];
-        const body = new THREE.Mesh(new THREE.BoxGeometry(s * 2, s * 1.6, s * 2), [0, 1, 2, 3, 4, 5].map(k => this.M(cols[k % 4]))); body.position.y = s * 0.8; body.castShadow = true; g.add(body);
-        for (const [dx, dz, ry] of [[0, s + 0.01, 0], [0, -s - 0.01, Math.PI], [s + 0.01, 0, Math.PI / 2], [-s - 0.01, 0, -Math.PI / 2]]) { const q = new THREE.Mesh(new THREE.PlaneGeometry(s * 1.2, s * 0.3), new THREE.MeshBasicMaterial({ map: signTex(R.act || '？', null, '#ffffff'), transparent: true, toneMapped: false })); q.position.set(dx, s * 0.9, dz); q.rotation.y = ry; g.add(q); }
-        const lid = new THREE.Group(); lid.position.set(0, s * 1.6, -s); g.add(lid);
-        const lm = new THREE.Mesh(new THREE.BoxGeometry(s * 2.1, 0.16, s * 2.1), this.mat('gold')); lm.position.set(0, 0.08, s); lid.add(lm);
-        const crank = new THREE.Group(); crank.position.set(s + 0.1, s * 0.8, 0); g.add(crank);
-        const ax = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6), this.mat('metal')); ax.rotation.z = Math.PI / 2; ax.position.x = 0.25; crank.add(ax);
-        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.08), this.mat('metal')); arm.position.set(0.5, 0.25, 0); crank.add(arm);
-        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), this.mat('clothRed')); knob.position.set(0.5, 0.55, 0); crank.add(knob);
-        // 中のピエロ（ばねと顔）：開くまでは隠しておく
-        const jack = new THREE.Group(); jack.position.y = s * 1.2; jack.visible = false; g.add(jack);
-        for (let k = 0; k < 8; k++) { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.05, 6, 14), this.mat('metal')); ring.rotation.x = Math.PI / 2; ring.position.y = k * 0.22; jack.add(ring); }
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.7, 18, 14), this.M('#fff4e8')); head.position.y = 2.2; jack.add(head);
-        const nose = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), this.glow('#ff4a5a', 1.4)); nose.position.set(0, 2.2, 0.68); jack.add(nose);
-        for (const sd of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), this.M('#2a1a2a')); e.position.set(sd * 0.25, 2.42, 0.6); jack.add(e); const hair = new THREE.Mesh(new THREE.SphereGeometry(0.34, 10, 8), this.M(sd < 0 ? '#ff6a8a' : '#6ad8ff')); hair.position.set(sd * 0.62, 2.4, -0.1); jack.add(hair); }
-        const mouth = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.06, 6, 14, Math.PI), this.M('#c8304a')); mouth.position.set(0, 2.02, 0.6); mouth.rotation.z = Math.PI; jack.add(mouth);
-        const hat = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.8, 12), this.M('#ffd27a')); hat.position.y = 3.1; jack.add(hat);
-        // ねじを巻くと（o.spin）ハンドルが速く回り、巻いた数（o.turns）が多いほど、箱がカタカタとゆれる
-        const ph = this.r() * 6; o.turns = 0; o.spin = 0;
-        this.tick((dt, t) => { if (o.broken) return; o.spin = Math.max(0, o.spin - dt * 2); crank.rotation.x += dt * (0.8 + o.spin * 14); body.rotation.z = Math.sin(t * (9 + o.turns * 3) + ph) * (o.turns ? 0.012 * o.turns : Math.sin(t * 0.7 + ph) > 0.8 ? 0.03 : 0); });
-        o.g = g; o.lid = lid; o.jack = jack; o.body = body; o.col = { box: true, x, z, hw: s, hd: s, top: s * 1.6, y: o.pos.y }; this.v.colliders.push(o.col);
+      if (jack) {
+        // 箱と中の道化（jackInTheBox）。閉じているあいだは道化をかくし、ふたを閉める。開いたあとは、ふたを開けて大笑いしている
+        const s = r0 * 1.1, J = jackInTheBox(this, s), box = J.box, lid = J.lid, jk = J.jack;
+        g.add(J.g); if (R.ry) g.rotation.y = R.ry;
+        // 影はミケたちと同じ：床に落とすだけで、自分には受けない（トゥーンの三段の塗りだけの、大まかな陰）
+        J.g.traverse(m => { if (m.isMesh) m.receiveShadow = false; });
+        jk.g.visible = open; jk.setFace(open ? 'laugh' : 'sad');
+        if (open) lid.rotation.x = -2.2;
+        // 閉じているあいだは、ときどきカタッとゆれて、ハンドルがゆっくり回る（ふさぎこんでいる）。開いたあとは、ばねの上でゆらゆら笑っている
+        const ph = this.r() * 6; o.spin = 0;
+        this.tick((dt, t) => {
+          J.crank.rotation.x += dt * (0.4 + o.spin * 16); o.spin = Math.max(0, o.spin - dt);
+          if (o.popping) return;
+          if (!jk.g.visible) { box.rotation.z = Math.sin(t * 0.7 + ph) > 0.85 ? Math.sin(t * 30) * 0.015 : 0; return; }
+          jk.g.rotation.z = Math.sin(t * 2.2 + ph) * 0.1; jk.extend(1 + Math.sin(t * 5 + ph) * 0.05); jk.head.rotation.y = Math.sin(t * 1.3 + ph) * 0.15;
+        });
+        o.g = g; o.lid = lid; o.jack = jk.g; o.jester = jk; o.body = box;
+        o.col = open ? { x, z, r: s * 0.9, top: J.top, y: o.pos.y } : { box: true, x, z, hw: s, hd: s, top: J.top, y: o.pos.y };
+        this.v.colliders.push(o.col);
+        // 笑って、ばあっ！：ハンドルがぐるぐる回り、ふたが跳ね上がって、ばねの先の道化が大笑いで飛び出す（o.pop）。そのあと、aside へぴょんと跳びのく（o.hop）
+        o.pop = () => {
+          if (o.popping || jk.g.visible) return;
+          o.popping = true; o.spin = 1.2;
+          const at = o.pos.clone().add(V3(0, J.top + 1.5, 0)), P = kit.v.p;
+          Sfx.pop(); GFX.shake(0.3);
+          if (P) for (const c of ['#ffd27a', '#ff6a8a', '#6ad8ff']) P.burst(at, c, 40, { speed: 6, up: 3, life: 1.2, size: 0.12 });
+          jk.g.visible = true; jk.setFace('laugh'); jk.extend(0.02);
+          GFX.tween(0.25, t => { lid.rotation.x = -t * 2.2; }, Ease.out);
+          GFX.tween(0.8, t => { const k = 1 + Math.sin(t * Math.PI * 3) * (1 - t) * 0.45; jk.extend(t * k); jk.g.rotation.z = Math.sin(t * 18) * (1 - t) * 0.3; }).then(() => { o.popping = false; });
+        };
+        // ……ばあ：ふたが少しだけ持ち上がって、しょんぼり顔の道化がのぞき、またひっこむ（閉じているときだけ）
+        o.peek = () => {
+          if (o.popping || jk.g.visible) return;
+          o.popping = true; o.spin = 0.3; Sfx.puff();
+          jk.g.visible = true; jk.setFace('sad'); jk.extend(0.02);
+          GFX.tween(0.45, t => { lid.rotation.x = -Math.sin(t * Math.PI / 2) * 0.55; jk.extend(0.02 + Math.sin(t * Math.PI / 2) * 0.3); }).then(() => GFX.delay(1.1)).then(() =>
+            GFX.tween(0.35, t => { lid.rotation.x = -0.55 * (1 - t); jk.extend(0.32 * (1 - t) + 0.02); })).then(() => { jk.g.visible = false; lid.rotation.x = 0; o.popping = false; });
+        };
+        o.hop = () => {
+          if (o.broken) return;
+          if (!jk.g.visible) { lid.rotation.x = -2.2; jk.g.visible = true; jk.setFace('laugh'); jk.extend(1); }
+          const [ax, az] = R.aside || R.at, from = g.position.clone(), to = V3(ax, kit.gy(ax, az), az), P = kit.v.p;
+          o.popping = true; Sfx.boing();
+          GFX.tween(0.8, t => { g.position.lerpVectors(from, to, t); g.position.y += Math.sin(t * Math.PI) * 2.2; jk.extend(1 - Math.sin(t * Math.PI) * 0.4); }).then(() => {
+            o.popping = false; o.broken = true; o.pos.copy(to);
+            const i = kit.v.colliders.indexOf(o.col); if (i >= 0) kit.v.colliders.splice(i, 1);
+            if (P) P.burst(to.clone().add(V3(0, 0.3, 0)), '#f4e8f0', 24, { speed: 2, up: 0.6, life: 0.7, size: 0.12 });
+            GFX.shake(0.15);
+          });
+        };
         return o;
       }
       for (let i = 0; i < 8; i++) { const s = 0.45 + this.r() * 0.55, m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), this.mat(i % 3 ? 'rockDark' : 'rock')); m.position.set((this.r() - 0.5) * r0 * 1.5, s * 0.55 + (i > 5 ? 0.8 : 0), (this.r() - 0.5) * r0 * 0.9); m.rotation.set(this.r() * 3, this.r() * 3, 0); m.castShadow = true; g.add(m); }
@@ -4264,80 +4270,6 @@ class ZoneKit {
       this.reserve(x, z, 1);
       return { pos: V3(x, y, z), g, pad, armed: true, squish: 0 };
     }));
-  }
-  // zone.bounce：[[x, z], ...]：トランポリン（マスの中心。走ってきた向きに zone.bounceLen マス跳ぶ。FieldView.updateGags）。赤と黄色の縁に、黒い布
-  bouncers() {
-    return (this.v.bounceObjs = (this.zone.bounce || []).map(([x, z]) => {
-      const y = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y, z); this.scene.add(g);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.12, 8, 24), this.M('#e05a4a')); rim.rotation.x = Math.PI / 2; rim.position.y = 0.42; g.add(rim);
-      for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, st = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.13, 0.28), this.M(k % 2 ? '#ffd27a' : '#e05a4a')); st.position.set(Math.cos(a) * 0.95, 0.42, Math.sin(a) * 0.95); st.rotation.y = -a; g.add(st); }
-      const mat = new THREE.Mesh(new THREE.CircleGeometry(0.86, 24), this.M('#2a2030')); mat.rotation.x = -Math.PI / 2; mat.position.y = 0.4; g.add(mat);
-      const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.6, 24), this.glow('#ffd27a', 1.4)); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.41; g.add(ring);
-      for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + 0.4, leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.42, 6), this.mat('metal')); leg.position.set(Math.cos(a) * 0.9, 0.21, Math.sin(a) * 0.9); g.add(leg); }
-      this.reserve(x, z, 1.6);
-      const ph = this.r() * 6; this.tick((dt, t) => { ring.scale.setScalar(0.9 + Math.sin(t * 4 + ph) * 0.12); });
-      return { pos: V3(x, y, z), i: this.T.at(x, z), g, mat, armed: true };
-    }));
-  }
-  // zone.balls：玉のりのリング（{ id, seal, ring: [x0, z0, x1, z1], blocks, targets, balls, reset: [x, z], after }。座標はマスの中心）
-  //   赤いリングの縁、台（blocks：まん中は玉のり台、ほかは太鼓）、天井からのスポットライト（targets）、しまもようの大玉、やりなおしのベル（reset）。
-  //   大玉は押すと転がる（rollBall。FieldView.pushBall）。位置は Save.data.flags[id] に残す。幕（seal）が開いたあとは、大玉はスポットライトの下
-  ballRing() {
-    const P = this.zone.balls; if (!P) return;
-    const flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {}, kit = this;
-    const S = (this.zone.seals || []).find(s => s.id === P.seal) || {}, open = !!flags[P.seal] || !!(S.openAfter && storyCond('scene:' + S.openAfter));
-    const pos = (open ? P.targets : flags[P.id] || P.balls).map(q => q.slice());
-    const o = { P, pos, open, ready: () => !P.after || storyCond('scene:' + P.after), balls: [], lights: [] };
-    // リングの縁：赤と金の低い縁石（人はまたげる。大玉は越えられない）と、うっすら赤い床
-    const [x0, z0, x1, z1] = P.ring, e = CELL / 2, y = this.gy(x0, z0), W = x1 - x0 + CELL, D = z1 - z0 + CELL, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-    const tint = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshBasicMaterial({ color: '#ff4a6a', transparent: true, opacity: 0.12, depthWrite: false })); tint.rotation.x = -Math.PI / 2; tint.position.set(cx, y + 0.02, cz); this.scene.add(tint);
-    for (const [px, pz, w, d] of [[cx, z0 - e, W + 0.3, 0.3], [cx, z1 + e, W + 0.3, 0.3], [x0 - e, cz, 0.3, D], [x1 + e, cz, 0.3, D]]) {
-      const n = Math.round(Math.max(w, d) / 1), long = w > d;
-      for (let k = 0; k < n; k++) { const u = -Math.max(w, d) / 2 + (k + 0.5) * Math.max(w, d) / n; this.mesh(new THREE.BoxGeometry(long ? Math.max(w, d) / n : 0.3, 0.16, long ? 0.3 : Math.max(w, d) / n), k % 2 ? 'gold' : 'clothRed', px + (long ? u : 0), 0.08, pz + (long ? 0 : u), { noShadow: true }); }
-    }
-    // 台：となり合う二つはまとめて、玉のり台（赤い円筒に金の縁）。一つだけのものは、大太鼓
-    P.blocks.forEach(([bx, bz]) => {
-      const pair = P.blocks.some(([qx, qz]) => Math.abs(qz - bz) < 0.5 && Math.abs(qx - bx - CELL) < 0.5), inPair = pair || P.blocks.some(([qx, qz]) => Math.abs(qz - bz) < 0.5 && Math.abs(bx - qx - CELL) < 0.5);
-      if (pair) { this.box(bx + CELL / 2, bz, CELL * 2 - 0.2, 1.1, CELL - 0.2, 'clothRed', { round: true }); this.box(bx + CELL / 2, bz, CELL * 2 - 0.1, 0.12, CELL - 0.1, 'gold', { y: 1.1, col: false }); for (const s of [-1, 1]) this.mesh(new THREE.SphereGeometry(0.34, 14, 10), s < 0 ? '#6ad8ff' : '#ffd27a', bx + CELL / 2 + s * 0.9, 1.56, bz); }
-      else if (!inPair) { this.cyl(bx, bz, 0.85, 1.1, 'clothRed', { seg: 20 }); this.mesh(new THREE.CylinderGeometry(0.88, 0.88, 0.1, 20), 'white', bx, 1.12, bz); for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; this.mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.0, 5), 'gold', bx + Math.cos(a) * 0.87, 0.55, bz + Math.sin(a) * 0.87, { rz: 0.5 * (k % 2 ? 1 : -1), noShadow: true }); } }
-    });
-    // スポットライト：床の光る輪と、天井から差す光の円すい。大玉が乗ると明るくなる
-    P.targets.forEach(([tx, tz]) => {
-      const ringM = this.glow('#ffe8a0', 1.2).clone(); ringM.transparent = true;
-      const r = this.mesh(new THREE.RingGeometry(0.7, 0.9, 28), ringM, tx, 0.04, tz, { rx: -Math.PI / 2, noShadow: true });
-      const coneM = new THREE.MeshBasicMaterial({ color: hdr('#fff0c8', 0.8), transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-      this.mesh(new THREE.ConeGeometry(1.1, 6.4, 20, 1, true), coneM, tx, 3.2, tz, { noShadow: true });
-      this.mesh(new THREE.CylinderGeometry(0.28, 0.2, 0.5, 10), 'metal', tx, 6.6, tz, { noShadow: true });
-      o.lights.push({ x: tx, z: tz, ringM, coneM, k: 0 });
-    });
-    // やりなおしのベル：細い柱に金の鐘
-    { const [rx, rz] = P.reset; this.cyl(rx, rz, 0.08, 1.3, 'metal', { seg: 8 }); this.mesh(new THREE.CylinderGeometry(0.1, 0.34, 0.4, 14, 1, true), 'gold', rx, 1.5, rz); this.mesh(new THREE.SphereGeometry(0.08, 8, 6), 'gold', rx, 1.3, rz); }
-    // 大玉：しまもようの玉。押すと、転がる向きに回りながら進む（dest へ）
-    const tex = ballTex(), R = 0.8;
-    pos.forEach(([bx, bz], k) => {
-      const g = new THREE.Group(); g.position.set(bx, y + R, bz); this.scene.add(g);
-      const m = new THREE.Mesh(new THREE.SphereGeometry(R, 24, 16), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.45 })); m.castShadow = true; m.rotation.set(this.r() * 3, this.r() * 3, 0); g.add(m);
-      const col = { x: bx, z: bz, r: R, top: R * 2, y };
-      this.v.colliders.push(col);
-      o.balls.push({ k, g, m, col, dest: null });
-    });
-    const on = (x, z) => o.pos.some(q => Math.abs(q[0] - x) < 0.5 && Math.abs(q[1] - z) < 0.5);
-    this.tick(dt => {
-      for (const b of o.balls) {
-        if (b.dest) {
-          const [tx, tz] = b.dest, dx = tx - b.g.position.x, dz = tz - b.g.position.z, dist = Math.hypot(dx, dz), step = Math.min(dist, dt * 9);
-          if (dist > 1e-3) {
-            b.g.position.x += dx / dist * step; b.g.position.z += dz / dist * step;
-            // 進む向きと直角の軸のまわりに回す
-            b.m.rotateOnWorldAxis(V3(dz / dist, 0, -dx / dist), step / R);
-          }
-          b.col.x = b.g.position.x; b.col.z = b.g.position.z;
-          if (dist <= step + 1e-3) { b.g.position.x = tx; b.g.position.z = tz; b.col.x = tx; b.col.z = tz; b.dest = null; kit.v.ballStopped(o, b); }
-        }
-      }
-      for (const L of o.lights) { L.k += ((on(L.x, L.z) && !o.balls.some(b => b.dest) ? 1 : 0) - L.k) * (1 - Math.exp(-6 * dt)); L.coneM.opacity = 0.1 + L.k * 0.22; L.ringM.opacity = 0.55 + L.k * 0.45; }
-    });
-    this.v.ballObj = o;
   }
   // zone.stroke：つながりの石畳（[{ id, name, area: [x0, z0, x1, z1], holes, start, goal, gate: [x0, z0, x1, z1], openToast, done }]。座標はマスの中心）
   //   石の板（踏むと光る）と、崩れた柱（holes）、始まりの石（足あと）・終わりの石（星）の印、gate の結界（光のまく）。
@@ -6800,14 +6732,133 @@ const CUSHION_LINES = {
   tama: ['……ぷぅ。', '……もういっかい、ふむ。'],
   maou: ['……我ではない。断じて。'],
 };
-// 出し物のびっくり箱を巻きすぎて、飛ばされたときの先頭の子のひとこと（FieldView.hitJackbox）
-const JACKBOX_LINES = {
-  mike: 'うわああああ！　ま、巻きすぎたーっ！',
-  kuro: '……っ。……巻きすぎ、か。',
-  shiro: 'きゃあああ！　べ、べつにびっくりなんか、してないんだからね！',
-  tama: '……ふわぁ……とんでる……。',
-  maou: '……余を吹き飛ばすとは、無礼な箱め。',
-};
+// ---------- 笑顔の塔の大きなびっくり箱（rubble の look: 'jackbox'） ----------
+// 箱の面の絵：道化の衣装のような菱形のだんだら模様に、金の額縁。前（front）は「びっくり！」の札、横は大きな「？」、うしろとふたは星
+function jackPanelTex(kind) {
+  const key = 'jackPanel_' + kind; if (TexCache[key]) return TexCache[key];
+  const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+  const P = { front: ['#e8485e', '#f8687a', '#ffd24a'], left: ['#3a7ae0', '#5a96f0', '#ffd24a'], right: ['#2fa86a', '#4cc486', '#ffd24a'], back: ['#8a4ad0', '#a068e6', '#ffd24a'], lid: ['#ffc23a', '#ffd46a', '#e8485e'] }[kind];
+  g.fillStyle = P[0]; g.fillRect(0, 0, S, S);
+  g.fillStyle = P[1]; const n = 4, w = S / n;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if ((i + j) % 2 === 0) { const cx = (i + 0.5) * w, cy = (j + 0.5) * w; g.beginPath(); g.moveTo(cx, cy - w / 2); g.lineTo(cx + w / 2, cy); g.lineTo(cx, cy + w / 2); g.lineTo(cx - w / 2, cy); g.closePath(); g.fill(); }
+  // 菱形のつなぎ目の小さな金の点
+  g.fillStyle = '#ffe8a0'; for (let i = 1; i < n; i++) for (let j = 1; j < n; j++) { g.beginPath(); g.arc(i * w, j * w, 4, 0, Math.PI * 2); g.fill(); }
+  g.lineWidth = 16; g.strokeStyle = '#e8b84a'; g.strokeRect(8, 8, S - 16, S - 16);
+  g.lineWidth = 3; g.strokeStyle = '#7a4a2a'; g.strokeRect(19, 19, S - 38, S - 38);
+  const star = (x, y, r, col) => { g.fillStyle = col; g.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.45 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.closePath(); g.fill(); g.lineWidth = 3; g.strokeStyle = '#7a4a2a'; g.stroke(); };
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  if (kind === 'front') {
+    g.fillStyle = '#fff6e8'; g.strokeStyle = '#7a4a2a'; g.lineWidth = 4;
+    g.beginPath(); g.roundRect ? g.roundRect(34, 92, S - 68, 72, 18) : g.rect(34, 92, S - 68, 72); g.fill(); g.stroke();
+    g.font = '900 40px "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "Yu Gothic", sans-serif'; g.fillStyle = '#e8485e'; g.fillText('びっくり！', S / 2, S / 2 + 2);
+    star(56, 56, 20, P[2]); star(S - 56, 56, 20, P[2]); star(56, S - 56, 20, P[2]); star(S - 56, S - 56, 20, P[2]);
+  } else if (kind === 'lid' || kind === 'back') star(S / 2, S / 2, 70, P[2]);
+  else {
+    g.fillStyle = '#fff6e8'; g.beginPath(); g.arc(S / 2, S / 2, 66, 0, Math.PI * 2); g.fill(); g.lineWidth = 5; g.strokeStyle = '#7a4a2a'; g.stroke();
+    g.font = '900 104px "Arial Rounded MT Bold", "Hiragino Maru Gothic ProN", sans-serif'; g.fillStyle = P[0]; g.fillText('?', S / 2, S / 2 + 6);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (TexCache[key] = t);
+}
+// 箱（体の大きさの半分 s）：だんだら模様の四面、金のふち飾りと四つの足、ちょうつがいが奥のふた（星と、前の留め金）、右の横のねじまきハンドル。
+//   中の道化（jesterJack）は、箱のふちから飛び出す。{ g, box, lid, crank, jack } を返す。
+//   にゃんこや敵と同じトゥーン（toon）に、外がわの輪郭線（outlined）
+function jackInTheBox(K, s) {
+  const g = new THREE.Group(), box = new THREE.Group(); g.add(box);
+  const H = s * 1.6, gold = toon('#f0c050'), OC = '#4a2a1a';
+  const pm = k => toon('#ffffff', { map: jackPanelTex(k) });
+  const body = outlined(new THREE.BoxGeometry(s * 2, H, s * 2), [pm('right'), pm('left'), pm('lid'), pm('lid'), pm('front'), pm('back')], { oc: OC, thick: 0.0018 });
+  body.position.y = H / 2 + 0.12; box.add(body);
+  const add = (geo, m, x, y, z) => { const o = outlined(geo, m, { oc: OC, thick: 0.0018 }); o.position.set(x, y, z); box.add(o); return o; };
+  // 縁飾り：縦の四本と、上下の横の八本。下の角に金の玉の足
+  const T = 0.16, y0 = 0.12;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) { add(new THREE.BoxGeometry(T, H + T, T), gold, sx * s, y0 + H / 2, sz * s); add(new THREE.SphereGeometry(0.2, 12, 8), gold, sx * s, 0.13, sz * s); }
+  for (const y of [y0, y0 + H]) for (const sd of [-1, 1]) { add(new THREE.BoxGeometry(s * 2 + T, T, T), gold, 0, y, sd * s); add(new THREE.BoxGeometry(T, T, s * 2 + T), gold, sd * s, y, 0); }
+  // ふた：奥（-z）がちょうつがい。上は星の絵、まわりは金。前のふちに留め金
+  const lid = new THREE.Group(); lid.position.set(0, y0 + H + T / 2, -s); box.add(lid);
+  const lo = (geo, m) => outlined(geo, m, { oc: OC, thick: 0.0018 });
+  const lm = lo(new THREE.BoxGeometry(s * 2.12, 0.22, s * 2.12), [gold, gold, pm('lid'), gold, gold, gold]); lm.position.set(0, 0.11, s); lid.add(lm);
+  const latch = lo(new THREE.BoxGeometry(0.36, 0.42, 0.08), gold); latch.position.set(0, -0.08, s * 2.08); lid.add(latch);
+  for (const sx of [-0.7, 0.7]) { const hg = lo(new THREE.CylinderGeometry(0.07, 0.07, 0.5, 8), gold); hg.rotation.z = Math.PI / 2; hg.position.set(sx * s, 0, -0.02); lid.add(hg); }
+  // ねじまきハンドル（右の横、+x）
+  const crank = new THREE.Group(); crank.position.set(s + 0.1, y0 + H * 0.55, 0); box.add(crank);
+  { const ax = lo(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8), gold); ax.rotation.z = Math.PI / 2; ax.position.x = 0.25; crank.add(ax);
+    const plate = lo(new THREE.CylinderGeometry(0.22, 0.22, 0.06, 16), gold); plate.rotation.z = Math.PI / 2; plate.position.x = 0.04; crank.add(plate);
+    const arm = lo(new THREE.BoxGeometry(0.1, 0.8, 0.12), gold); arm.position.set(0.5, 0.34, 0); crank.add(arm);
+    const knob = lo(new THREE.CylinderGeometry(0.11, 0.11, 0.34, 12), toon('#e8485e')); knob.rotation.z = Math.PI / 2; knob.position.set(0.66, 0.7, 0); crank.add(knob); }
+  const jack = jesterJack(); jack.g.position.y = y0 + H - 0.35; g.add(jack.g);
+  return { g, box, lid, crank, jack, top: y0 + H };
+}
+// 中の道化：巻いたばね、ひだえり、白い顔（赤い鼻、ほおの紅、目の下の青い菱形）、三つまたの道化帽子（先に金の鈴）、白い手袋。
+//   setFace('sad' | 'laugh')：しょんぼり（困り眉、へのじ口、涙）と大笑い（にっこり閉じた目、大きく開けた口）。extend(k)：ばねの伸び（0〜）
+function jesterJack() {
+  const g = new THREE.Group(), SH = 1.5, turns = 7, N = turns * 24, pts = [];
+  for (let i = 0; i <= N; i++) { const a = i / 24 * Math.PI * 2; pts.push(V3(Math.cos(a) * 0.3, i / N * SH, Math.sin(a) * 0.3)); }
+  // トゥーン（toon）に輪郭線（outlined）。顔の目・口・眉などの小さな描きこみ（F）だけは、輪郭線なし
+  const spring = outlined(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), N, 0.055, 6, false), toon('#c8ccd8'), { thick: 0.0016 }); g.add(spring);
+  const top = new THREE.Group(); top.position.y = SH; g.add(top);
+  const tm = c => toon(c), M = (geo, m, x, y, z, p = top) => { const o = outlined(geo, m, { thick: 0.0018 }); o.position.set(x, y, z); p.add(o); return o; };
+  const F = (geo, m, x, y, z, p) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); p.add(o); return o; };
+  // 胴（だんだらの短い筒）とひだえり
+  M(new THREE.CylinderGeometry(0.34, 0.42, 0.4, 14), tm('#8a4ad0'), 0, 0.12, 0);
+  for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, f = M(new THREE.SphereGeometry(0.24, 10, 8), tm(k % 2 ? '#ffffff' : '#ff9ab8'), Math.cos(a) * 0.46, 0.4, Math.sin(a) * 0.46); f.scale.set(0.65, 0.45, 1); f.rotation.y = -a; }
+  // 頭（前は +z）
+  const head = new THREE.Group(); head.position.y = 1.12; top.add(head);
+  const R = 0.72; M(new THREE.SphereGeometry(R, 24, 18), tm('#fff6ee'), 0, 0, 0, head);
+  M(new THREE.SphereGeometry(0.16, 14, 10), toon('#ff3a4a', {}, 0.35), 0, -0.02, R + 0.04, head);
+  for (const sd of [-1, 1]) {
+    const ck = F(new THREE.SphereGeometry(0.13, 12, 8), tm('#ff9ab0'), sd * 0.36, -0.14, 0.62, head); ck.scale.set(1, 0.7, 0.3); ck.rotation.y = sd * 0.5;
+    const dm = F(new THREE.OctahedronGeometry(0.07), tm('#4a8ae8'), sd * 0.29, -0.13, 0.68, head); dm.scale.set(0.7, 1.4, 0.3); dm.rotation.y = sd * 0.4;
+    // 髪：耳の上のもこもこ（桃色と水色）
+    for (let k = 0; k < 3; k++) M(new THREE.SphereGeometry(0.2, 10, 8), tm(sd < 0 ? '#ff7aa8' : '#6ac8ff'), sd * (0.66 + k * 0.08), 0.12 - k * 0.16, -0.08 - k * 0.04, head);
+  }
+  const dark = tm('#2a1a2a'), sad = new THREE.Group(), laugh = new THREE.Group(); head.add(sad); head.add(laugh);
+  for (const sd of [-1, 1]) {
+    // しょんぼり：たれた黒目と、八の字の困り眉
+    const e = F(new THREE.SphereGeometry(0.075, 10, 8), dark, sd * 0.25, 0.14, 0.68, sad); e.scale.set(1, 1.35, 0.5);
+    F(new THREE.SphereGeometry(0.025, 6, 4), new THREE.MeshBasicMaterial({ color: '#ffffff' }), sd * 0.23, 0.18, 0.72, sad);
+    const br = F(new THREE.BoxGeometry(0.2, 0.035, 0.03), dark, sd * 0.27, 0.32, 0.65, sad); br.rotation.set(-0.3, sd * 0.35, sd * -0.4);
+    // 大笑い：にっこり閉じた目（∩）と、上がった眉
+    const le = F(new THREE.TorusGeometry(0.1, 0.03, 6, 14, Math.PI), dark, sd * 0.25, 0.13, 0.69, laugh); le.rotation.set(-0.2, sd * 0.36, 0);
+    const lb = F(new THREE.BoxGeometry(0.2, 0.035, 0.03), dark, sd * 0.27, 0.38, 0.62, laugh); lb.rotation.set(-0.3, sd * 0.35, 0);
+  }
+  { const mo = F(new THREE.TorusGeometry(0.14, 0.035, 6, 14, Math.PI), tm('#c8304a'), 0, -0.38, 0.68, sad); mo.rotation.x = -0.55; }   // へのじ口（∩）
+  { const td = F(new THREE.SphereGeometry(0.05, 8, 6), toon('#9ad8ff', {}, 0.3), 0.33, -0.02, 0.66, sad); td.scale.set(0.8, 1.4, 0.6); }   // なみだ
+  { const mo = F(new THREE.CircleGeometry(0.27, 20, Math.PI, Math.PI), tm('#8a1a2a'), 0, -0.25, 0.7, laugh); mo.rotation.x = -0.32;   // 大きく開けた口（下半分の円）と、舌
+    const tg = F(new THREE.CircleGeometry(0.14, 14, Math.PI, Math.PI), tm('#ff7a8a'), 0, -0.4, 0.68, laugh); tg.rotation.x = -0.32; tg.scale.x = 1.2;
+    const lip = F(new THREE.TorusGeometry(0.27, 0.03, 6, 20, Math.PI), tm('#e8485e'), 0, -0.25, 0.7, laugh); lip.rotation.set(-0.32, 0, Math.PI); }
+  // 道化帽子：額の帯と、三つの先（左・まん中・右）の先に金の鈴
+  { const band = M(new THREE.TorusGeometry(0.6, 0.09, 8, 24), tm('#ffd24a'), 0, 0.42, -0.02, head); band.rotation.x = Math.PI / 2 - 0.15;
+    const bell = toon('#ffd24a', {}, 0.15);
+    [[-0.38, 0.62, 0.75, '#e8485e'], [0, 0.72, 0.05, '#4a8ae8'], [0.38, 0.62, -0.75, '#ffc23a']].forEach(([x, y, rz, col]) => {
+      const pg = new THREE.Group(); pg.position.set(x, y, -0.05); pg.rotation.set(-0.2, 0, rz); head.add(pg);
+      const cone = outlined(new THREE.ConeGeometry(0.24, 0.95, 14), tm(col), { thick: 0.0018 }); cone.position.y = 0.42; cone.rotation.z = rz * -0.25; pg.add(cone);
+      const b = outlined(new THREE.SphereGeometry(0.1, 10, 8), bell, { thick: 0.0018 }); b.position.set(0.12 * Math.sign(-rz || 0), 0.92, 0); pg.add(b);
+    }); }
+  // 白い手袋（そで口は桃色）：しょんぼりは箱のふちに、大笑いはおなかをかかえて
+  const gloves = [-1, 1].map(sd => { const gg = new THREE.Group(); top.add(gg); const h = outlined(new THREE.SphereGeometry(0.17, 12, 8), tm('#ffffff'), { thick: 0.0018 }); h.scale.set(1, 0.85, 1.15); gg.add(h); const cuff = outlined(new THREE.TorusGeometry(0.13, 0.05, 6, 12), tm('#ff9ab8'), { thick: 0.0018 }); cuff.rotation.y = Math.PI / 2; cuff.position.x = -sd * 0.14; gg.add(cuff); return { gg, sd }; });
+  const J = { g, top, head, setFace(k) {
+      sad.visible = k !== 'laugh'; laugh.visible = k === 'laugh';
+      gloves.forEach(({ gg, sd }) => { if (k === 'laugh') gg.position.set(sd * 0.42, 0.05, 0.42); else gg.position.set(sd * 0.75, -0.25, 0.25); });
+    },
+    extend(k) { spring.scale.y = Math.max(0.02, k); top.position.y = SH * k; } };
+  J.setFace('sad');
+  return J;
+}
+// ピコピコハンマー：ゴーストなど手のない敵の姿（buildEnemy）の手のあたりに持たせる。握りを支点にした組を返す（rotation.x を＋にすると、前へ振りおろす）
+//   頭は、たたく面（黄色いふたの片方）が、振る向きの前を向く。HIT（振りおろしたときの rotation.x）で、たたく面がちょうど真下を向くよう、柄に対して少しかたむけてある
+const PIKO = { grip: [-0.56, 0.68, 0.18], len: 0.72, half: 0.21, r: 0.17, hit: 1.2, rest: [0.25, 0.35] };
+function pikoHammer(m) {
+  const P = PIKO, pv = new THREE.Group(); pv.position.set(...P.grip); pv.rotation.set(P.rest[0], 0, P.rest[1]); (m.inner || m.group).add(pv);
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, P.len + 0.03, 8), toon('#ffd24a')); handle.position.y = P.len / 2 - 0.02; pv.add(handle);
+  // 頭：円柱の軸（たたく面の向き）を、前（＋z）から、HIT で真下になる向きへ
+  const head = new THREE.Group(); head.position.y = P.len; head.rotation.x = Math.PI - P.hit; pv.add(head);
+  head.add(new THREE.Mesh(new THREE.CylinderGeometry(P.r, P.r, P.half * 2, 16), toon('#ff5a6a')));
+  for (const s of [-1, 1]) { const cap = new THREE.Mesh(new THREE.CylinderGeometry(P.r + 0.01, P.r + 0.01, 0.06, 16), toon('#ffd24a')); cap.position.y = s * P.half; head.add(cap); }
+  pv.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  pv.userData.rest = P.rest[0]; pv.userData.tilt = P.rest[1]; pv.userData.head = head;
+  return pv;
+}
 // ニャハハ王国関所の内門：踏み板で「ここで待ってて」とたのまれた仲間のひとこと（FieldView.holdPad）
 const HOLD_LINES = {
   mike: ['まかせて！　ここ、ぜったい動かないから！', 'はやくはやくー！'],
@@ -6864,7 +6915,7 @@ function ruinsTemple(K, x0, z0) {
   // 正面の壁の横帯（金の文様）
   for (const s of [-1, 1]) box(s * (door / 2 + side / 2), H - 1.2, 0.06, side, 0.3, 0.1, K.glow('#ffd8a0', 1.2));
 }
-// 玉のりの大玉の模様：ビーチボールのような、六色のしま（球の経線に沿う）
+// 玉のりの大玉の模様：ビーチボールのような、六色のしま（球の経線に沿う。大ロビーの飾りの大玉）
 function ballTex() {
   if (TexCache.circusBall) return TexCache.circusBall;
   const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d');
@@ -7733,7 +7784,7 @@ const ZONE_BUILD = {
 
     K.light(0, 7, -16, '#fff0d8', 9, 28); K.light(0, 6, 17, '#fff0d8', 8, 26); K.light(-29, 8, -10, '#fff0d8', 8, 30);
   },
-  // 笑顔の塔 1F：大ロビーの玉のりのリングと太鼓、びっくり鏡の回廊、風船の間、きっぷ売り場、楽団の控え室、むすっと幕
+  // 笑顔の塔 1F：大ロビーの玉のりのリング（休演中）と太鼓、びっくり鏡の回廊、風船の間、きっぷ売り場、楽団の控え室、むすっと幕
   tower(K) {
     const happy = storyCond('scene:c3_05');
     // 大ロビー：太鼓、ベンチ、看板（北半分は玉のりのリング）
@@ -7766,7 +7817,19 @@ const ZONE_BUILD = {
     K.catStatue(-8, -30, 0.4, 1.3, 'marble'); K.mesh(new THREE.ConeGeometry(0.34, 0.9, 12), 'clothYellow', -8, 3.1, -30); K.mesh(new THREE.SphereGeometry(0.14, 10, 8), K.glow('#ff4a5a', 1.4), -8 + Math.sin(0.4) * 0.5, 2.1, -30 + Math.cos(0.4) * 0.5);
     K.sign(0, -37.8, 0, '階段の間', '↑ 2F 楽屋', '#ffd27a', 4.6, 3.4);
     for (const [x, z] of [[-10, -36], [10, -36], [-10, -24], [10, -24]]) K.brazier(x, z, '#ffd27a', 1.1);
-    K.seals(); K.ballRing(); K.rubbles(); K.cushions();
+    // 玉のりのリング（休演中）：赤と金の縁、うっすら赤い床、玉のり台と、ほこりをかぶった大玉
+    { const W = 16, D = 12, cx = 0, cz = -2;
+      K.mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshBasicMaterial({ color: '#ff4a6a', transparent: true, opacity: 0.12, depthWrite: false }), cx, 0.02, cz, { rx: -Math.PI / 2, noShadow: true });
+      for (const [px, pz, w, d] of [[cx, cz - D / 2, W + 0.3, 0.3], [cx, cz + D / 2, W + 0.3, 0.3], [cx - W / 2, cz, 0.3, D], [cx + W / 2, cz, 0.3, D]]) {
+        const long = w > d, len = Math.max(w, d), n = Math.round(len);
+        for (let k = 0; k < n; k++) { const u = -len / 2 + (k + 0.5) * len / n; K.mesh(new THREE.BoxGeometry(long ? len / n : 0.3, 0.16, long ? 0.3 : len / n), k % 2 ? 'gold' : 'clothRed', px + (long ? u : 0), 0.08, pz + (long ? 0 : u), { noShadow: true }); }
+      }
+      K.box(0, -5, 3.8, 1.1, 1.8, 'clothRed', { round: true }); K.box(0, -5, 3.9, 0.12, 1.9, 'gold', { y: 1.1, col: false });
+      const tex = ballTex();
+      for (const [bx, bz] of [[-5, 1], [1.5, 2], [5, -1]]) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.8, 24, 16), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6, color: '#d8ccd0' })); m.position.set(bx, K.gy(bx, bz) + 0.8, bz); m.rotation.set(K.r() * 3, K.r() * 3, 0); m.castShadow = true; K.scene.add(m); K.col(bx, bz, 0.8, 1.6); }
+      for (const [dx, dz] of [[-6, -6], [6, -6]]) { K.cyl(dx, dz, 0.85, 1.1, 'clothRed', { seg: 20 }); K.mesh(new THREE.CylinderGeometry(0.88, 0.88, 0.1, 20), 'white', dx, 1.12, dz); }
+    }
+    K.seals(); K.rubbles(); K.cushions();
     K.light(0, 6, 6, '#fff0f8', 10, 30); K.light(32, 5, 0, '#ffd8f0', 8, 22); K.light(-31, 4, 0, '#d8e8ff', 7, 22); K.light(0, 5, -28, '#ffe8c8', 8, 22);
   },
   // 2F：楽屋うら。ピエロの楽屋の鏡台とネタ帳、楽屋の鏡、衣装部屋の着ぐるみ、小道具部屋のピコピコハンマー、びっくり箱
@@ -7793,21 +7856,20 @@ const ZONE_BUILD = {
     K.crate(23, -31); K.crate(23.2, -32.2, 0.8); K.barrel(11, -31);
     // 物置：木箱と樽
     for (const [x, z] of [[-22, 33], [-14, 35], [14, 33], [22, 35]]) { K.crate(x, z); K.barrel(x + 1.3, z + 0.6); }
-    // 出し物のびっくり箱の手がかり：ピエロの楽屋の出番表（四番までにじんでいる）、小道具部屋のつかいかた、芸人たちのメモ（ジャグリングのメモは、床の棒にはさまっている）
-    K.paper(6, -17.9, 0, '今夜の出番表', ['1　にじんで', '2　読めない', '3　……', '4　……', '5　ピエロの大笑い'], { bg: '#fff4d8', ink: '#6a3a2a', w: 1.3, y: 2.0, stain: true });
-    K.paper(11, -37.9, 0, 'びっくり箱', ['ねじを', '出番の数だけ巻き', 'ふたを ポン！'], { bg: '#ffe8f0', ink: '#c8304a', w: 1.1 });
-    K.paper(-23.9, -33, Math.PI / 2, 'ブランコ', ['出番は', 'いちばん', 'はじめ！'], { bg: '#e8f0ff', ink: '#3a5aa0', w: 1.0 });
-    K.paper(-39.9, -9, Math.PI / 2, 'つなわたり', ['出番は', '玉のりより', 'あと'], { bg: '#f0ffe8', ink: '#3a7a4a', w: 1.0 });
-    K.paper(39.9, -8, -Math.PI / 2, '玉のり', ['出番は', 'ジャグリングの', 'すぐあと'], { bg: '#fff0d8', ink: '#a0602a', w: 1.0 });
+    // ピエロの楽屋の出番表と、芸人たちのメモ（どれも同じ字。ジャグリングのメモは、床の棒にはさまっている）
+    K.paper(6, -17.9, 0, '今夜の出番表', ['1 ブランコ…ピエロ', '2 ジャグリング…ピエロ', '3 玉のり…ピエロ', '4 つなわたり…ピエロ', '5 大笑い…ピエロ'], { bg: '#fff4d8', ink: '#6a3a2a', w: 1.3, y: 2.0, stain: true });
+    K.paper(-23.9, -33, Math.PI / 2, 'ブランコ', ['跳ぶ人', 'ピエロ', '受け止める人', '……'], { bg: '#e8f0ff', ink: '#3a5aa0', w: 1.0 });
+    K.paper(-39.9, -9, Math.PI / 2, 'つなわたり', ['こわいのは', 'だれも', '見ていないこと'], { bg: '#f0ffe8', ink: '#3a7a4a', w: 1.0 });
+    K.paper(39.9, -8, -Math.PI / 2, '玉のり', ['ころころ', 'ぐらぐら', '楽しいの'], { bg: '#fff0d8', ink: '#a0602a', w: 1.0 });
     K.mesh(new THREE.PlaneGeometry(0.34, 0.44), '#fff4d8', 10.6, 0.08, 10.4, { rx: -Math.PI / 2, rz: 0.4, noShadow: true });
     // 廊下の貼り紙
     K.paper(-16, -24.1, Math.PI, '出番まで', ['あと 5分', '……のまま、止まっている'], { bg: '#fff4d8', ink: '#8a5a3a', w: 1.0 });
-    K.paper(16, 24.1, 0, 'びっくり箱', ['ねじを巻きすぎ', 'ちゅうい！'], { bg: '#ffe8f0', ink: '#c8304a', w: 1.0 });
+    K.paper(16, 24.1, 0, 'びっくり箱', ['おどかすのが', 'お仕事です'], { bg: '#ffe8f0', ink: '#c8304a', w: 1.0 });
     for (const [x, z] of [[-28, -26], [28, -26], [-28, 26], [28, 26], [-4, -26], [4, -26]]) K.brazier(x, z, '#ffd27a', 1.0);
     K.rubbles(); K.cushions();
     K.light(0, 5, 6, '#fff0f8', 9, 26); K.light(-35, 4, 0, '#ffe8c8', 6, 20); K.light(35, 4, 0, '#ffe8c8', 6, 20); K.light(0, 4, 30, '#ffd8f0', 6, 20);
   },
-  // 3F：空中ブランコ（ゆれる）、まん中の舞台の輪、万国旗、吹き抜けの底の安全ネット、トランポリン
+  // 3F：空中ブランコ（ゆれる）、まん中の舞台の輪、万国旗、吹き抜けの底の安全ネット、桟敷への渡り板と、渡り板のミミックたち
   tower3f(K) {
     for (const [x, z] of [[-13, -12], [13, -12], [-12, 17], [12, 17], [0, 22], [-24, 4], [24, 4]]) {
       const g = new THREE.Group(); g.position.set(x, 9.5, z); K.scene.add(g);
@@ -7822,13 +7884,24 @@ const ZONE_BUILD = {
     // 吹き抜けのずっと下の安全ネット（……たぶん、届かない）
     { const m = new THREE.MeshBasicMaterial({ color: '#ffd8f0', wireframe: true, transparent: true, opacity: 0.25 }); const net = new THREE.Mesh(new THREE.PlaneGeometry(50, 48, 25, 24), m); net.rotation.x = -Math.PI / 2; net.position.set(0, -14, 2); K.scene.add(net); }
     K.v.emitters.push(dt => { if (K.v.p && Math.random() < dt * 12) { const x = -24 + Math.random() * 48, z = -20 + Math.random() * 44; if (Math.abs(x) < 10 && z > -8 && z < 12) return; K.v.p.emit(V3(x, -9, z), V3(0, 3, 0), hdr(pick(['#ff9ad8', '#ffd27a', '#8ad8ff']), 1.8), { life: 3, size: 0.12, drag: 0 }); } });
-    // 渡り板の手すり、吹き抜けの小島を吊る綱（島の角から天井へ）
-    for (const x of [-1.9, 1.9]) K.mesh(new THREE.BoxGeometry(0.08, 0.08, 12), 'gold', x, 1.0, 18);
-    for (const [x, z] of [[-9.8, -22], [-6.2, -22], [-9.8, -12.2], [-6.2, -14], [4.2, -12.2], [9.8, -12.2], [10.2, -22], [11.8, -20.2], [4.2, -24], [5.8, -24], [-0.2, -12.2], [-1.8, -19.8]]) { const y0 = K.gy(x, z), h = 11 - y0; K.mesh(new THREE.CylinderGeometry(0.04, 0.04, h, 5), 'clothYellow', x, y0 + h / 2, z, { abs: true, noShadow: true }); }
+    // 渡り板の手すり（南の渡り板と、桟敷への渡り板。桟敷への渡り板は、まん中から上りの段）
+    for (const x of [-1.9, 1.9]) { K.mesh(new THREE.BoxGeometry(0.08, 0.08, 12), 'gold', x, 1.0, 18); K.mesh(new THREE.BoxGeometry(0.08, 0.08, 12), 'gold', x, 1.0, -14.5); }
+    for (const x of [-1.9, 1.9]) { const a = V3(x, K.gy(0, -21.5) + 1, -21.5), b = V3(x, K.gy(0, -28.5) + 1, -28.5), len = a.distanceTo(b); K.mesh(new THREE.BoxGeometry(0.08, 0.08, len), 'gold', x, (a.y + b.y) / 2, (a.z + b.z) / 2, { abs: true, rx: Math.atan2(b.y - a.y, a.z - b.z) }); }
+    for (const z of [-8.6, -14.5, -20.4]) for (const x of [-1.9, 1.9]) K.cyl(x, z, 0.05, 1.0, 'gold', { seg: 6, col: false });
     K.sign(0, -39.8, 0, '桟敷', '↑ 最上階 大舞台', '#ffd27a', 3.4, 3.6);
-    K.board(-26, 30, 0.3, 'トランポリン', 'ぼよよーん ↑');
+    // 西・東の小舞台：玉のり台と、ジャグリングの棒
+    for (const sx of [-1, 1]) { K.box(sx * 22, -1, 3, 0.9, 3, 'clothRed', { round: true }); K.box(sx * 22, -1, 3.1, 0.1, 3.1, 'gold', { y: 0.9, col: false }); for (let i = 0; i < 4; i++) K.mesh(new THREE.CylinderGeometry(0.05, 0.1, 0.6, 8), pick(['clothRed', 'clothYellow', 'white']), sx * 24 + (K.r() - 0.5) * 1.4, 0.06, 2 + (K.r() - 0.5), { rz: Math.PI / 2, ry: K.r() * 6, noShadow: true }); }
+    // 渡り板のミミック：c3_03d のまえは、宝箱のふりをして渡り板に横一列（ふたは閉じたまま。通れない）。
+    //   見たあとは、渡り板の両わきで、ふたをぱくぱく笑っている。会話の舞台の flags.mimics なら置かない（舞台の配役が演じる）
+    { const M = K.zone.mimics, cheer = K.seenAt(M.after);
+      if (!(K.v.flags && K.v.flags.mimics)) (cheer ? M.cheer : M.block).forEach(([x, z], i) => {
+        const m = buildEnemy('mimic'); m.group.position.set(x, K.gy(x, z), z); m.group.rotation.y = cheer ? Math.atan2(-x, (z < -20 ? -24 : -9) - z) : 0; m.group.userData.ph = i * 1.7; K.scene.add(m.group);
+        if (cheer) { K.tick((dt, t) => m.update(dt, t * 1.4)); K.col(x, z, 0.7, 1.4); }
+      });
+      if (!cheer && !(K.v.flags && K.v.flags.mimics)) K.colBox(0, -9.5, 2.2, 0.6, 1.6);
+    }
     for (const [x, z] of [[-31, 27], [31, 27], [-31, -20], [31, -20], [-14, -30], [14, -30]]) K.brazier(x, z, '#ffd27a', 1.1);
-    K.bouncers(); K.cushions();
+    K.cushions();
     K.light(0, 7, 3, '#fff0f8', 10, 30); K.light(0, 5, -34, '#ffe8c8', 8, 22); K.light(0, 4, -18, '#ffd8f0', 6, 16); K.light(0, 4, 34, '#fff0f8', 7, 22);
   },
   // 最上階：幕と大舞台、奈落、段々の客席にハリボテのお客さん、スポットライト、くす玉

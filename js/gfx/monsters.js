@@ -403,7 +403,7 @@ function critterEnemy(key, d, C) {
 function enemyModel(root, inner, mats, key, d, o) {
   const model = {
     group: root, inner, mats, key, height: o.height, radius: o.radius, color: d.color, flashAmt: 0, flashCol: new THREE.Color(1, 1, 1),
-    brokenAmt: 0, isBoss: !!d.boss, critter: o.critter || null,
+    brokenAmt: 0, isBoss: !!d.boss, critter: o.critter || null, float: o.float || 0,   // float：ふわふわ浮く幅（体の中心は 0.1 の高さ）
     update(dt, t) {
       inner.position.y = o.float ? 0.1 + Math.sin(t * 1.8 + this.seed) * o.float : inner.position.y;
       if (o.update) o.update(dt, t);
