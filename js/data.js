@@ -86,17 +86,9 @@ const CHARS = {
     gear: { weapon: 'blade', style: 'melee' },
     basic: { name: '黒爪', target: 'single', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
-    skill: { name: '孤高の剣', target: 'single', anim: 'guard',
-      get desc() { return flag('kuroGuard') ? '【守護】味方全体に防御力55%+300のシールド（2ターン）。自身は敵に狙われやすくなる（2ターン）。' : '指定した敵単体に攻撃力200%の物理ダメージ。自身は敵に狙われやすくなる（2ターン）。'; },
-      get target() { return flag('kuroGuard') ? 'allies' : 'single'; },
+    skill: { name: '孤高の剣', target: 'single', desc: '指定した敵単体に攻撃力200%の物理ダメージ。自身は敵に狙われやすくなる（2ターン）。',
       run: async (B, s, t) => {
         B.buff(s, { key: 'kuro_aggro', name: '挑発', stat: 'aggro', value: 3, turns: 2 });
-        if (flag('kuroGuard')) {
-          const v = s.stat('def') * 0.55 + 300 * lvFactor(s.level);
-          B.aliveAllies().forEach(a => B.shield(s, a, v, 2));
-          B.float(s, '守護', 'info');
-          return [];
-        }
         return B.single(s, t, 2.0, 20, 'skill');
       } },
     ult: { name: '月影一閃', target: 'aoe', desc: '敵全体に攻撃力150%の物理ダメージ。自身に防御力80%のシールド（3ターン）。',
@@ -105,21 +97,25 @@ const CHARS = {
         B.shield(s, s, s.stat('def') * 0.8, 3);
         return r;
       } },
-    talent: { name: '……面倒だ', desc: '自身の被ダメージ-15%。【守護】を覚えると、味方全体の被ダメージ-8%。',
+    // 第四章で「守護」を覚えると、とくせいが変わる（武器の技ではないので、どの刀を持っていても守る）
+    talent: {
+      get name() { return flag('kuroGuard') ? '守護' : '……面倒だ'; },
+      get desc() { return flag('kuroGuard') ? '自身の被ダメージ-15%、味方全体の被ダメージ-8%。味方が攻撃を受けてHPが50%を下回ると、その味方に防御力60%+300のシールド（2ターン）。クロのターンごとに1回。' : '自身の被ダメージ-15%。'; },
       onBattleStart(B, s) {
         s.buffs.push({ key: 'kuro_t', name: '……面倒だ', stat: 'vuln', value: -0.15, turns: Infinity, hidden: true });
-        if (flag('kuroGuard')) B.aliveAllies().filter(a => a !== s).forEach(a => a.buffs.push({ key: 'kuro_g', name: '守護', stat: 'vuln', value: -0.08, turns: Infinity, hidden: true }));
+        if (!flag('kuroGuard')) return;
+        B.aliveAllies().filter(a => a !== s).forEach(a => a.buffs.push({ key: 'kuro_g', name: '守護', stat: 'vuln', value: -0.08, turns: Infinity, hidden: true }));
+        s.flags.guard = true;
+      },
+      onTurnStart(B, s) { if (flag('kuroGuard')) s.flags.guard = true; },
+      onAllyHit(B, s, a) {
+        if (!s.flags.guard || !s.alive || !a.alive || a.hp <= 0 || a.hp / a.maxHp >= 0.5) return;
+        s.flags.guard = false;
+        B.float(s, '守護', 'info');
+        B.shield(s, a, s.stat('def') * 0.6 + 300 * lvFactor(s.level), 2);
       } },
     technique: { name: '影の足音', desc: '戦闘開始時、敵全体の行動順を20%遅らせる。',
       run: (B, s) => B.aliveEnemies().forEach(e => { B.delay(e, 0.2); B.float(e, '行動遅延', 'info'); }) },
-    ai(B, s) {
-      if (flag('kuroGuard')) {
-        const low = B.aliveAllies().filter(a => a.hp / a.maxHp < 0.6 && a.shield <= 0);
-        if (B.sp >= 1 && (low.length >= 2 || B.sp >= 4)) return { kind: 'skill' };
-        return { kind: 'basic' };
-      }
-      return null;
-    },
     talkName: '仲間の話',
   },
 

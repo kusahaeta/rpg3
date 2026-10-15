@@ -1409,7 +1409,7 @@ const SCENES = {
       ['n', '三匹は、笑って、光の中に消えていった。', { exit: ['hayate', 'rin', 'gorou'], fx: 'sparkle:rin', cam: 'wide', dur: 6 }],
       ['kuro', '……ミケ。シロ。タマ。', { f: 'serious', stance: { kuro: 'idle' }, face: { kuro: 'mike' } }],
       ['kuro', '……今度は、全員で行く。', { f: 'smile', g: 'nod', cam: 'kuro', close: true, r: { mike: ['joy', 'cheer'], shiro: 'smile', tama: 'smile' } }],
-      { flag: 'kuroGuard', say: 'クロは「守護」の力を覚えた！（戦闘スキルが、味方全体を守るわざに変わった）' },
+      { flag: 'kuroGuard', say: 'クロは「守護」の力を覚えた！（とくせいが「守護」に変わり、どの刀を持っていても仲間を守るようになった）' },
       { bond: ['mike', 'kuro', 20] },
       ['kuro', '……こいつらの剣は、谷へ連れて帰る。', { f: 'gentle', look: { kuro: [0, 1, 7.4] } }],
       ['kuro', '……あいつらの墓の前に、並べてやりたい。……もう、四つ目の石はいらない。', { f: 'smile', g: 'nod' }],
