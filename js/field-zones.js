@@ -1402,7 +1402,7 @@ const FIELD_ZONES = {
   valley: { ci: 3, name: 'くろねこ谷', w: 70, d: 68, stage: '4-1', arenas: [[-6, 18, 0]], build: 'valley', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'crag', chestAt: [[-24, -27], [26, -25], [-28, 21]],
     th: { path: '#8a7a6a' },
-    // 西から谷へ。南の広場の東に谷の集落への道、川を渡ると北に墓標の丘（石段）、北東の野営あとから切り通しを抜けて黒影洞窟へ。北西は古代遺跡へ
+    // 西から谷へ。南の広場の東に谷の集落への道、川を渡ると北に墓標の丘（石段）、北東の野営あとから切り通しを抜けて黒影洞窟へ。北西は苔むす古道（古代遺跡へ）
     map: [
       '#######rrr############ccc##########',
       '#######222############000##########',
@@ -1439,7 +1439,7 @@ const FIELD_ZONES = {
       '###################################',
       '###################################',
     ],
-    anchor: [4, 26], exits: [{ key: 'w', to: 'nyahaha' }, { key: 'c', to: 'cave' }, { key: 'r', to: 'ruins_out' }, { key: 's', to: 'valley_village' }],
+    anchor: [4, 26], exits: [{ key: 'w', to: 'nyahaha' }, { key: 'c', to: 'cave' }, { key: 'r', to: 'old_road' }, { key: 's', to: 'valley_village' }],
     notes: [{ at: [-15.25, -16], mark: 1.9, until: 'scene:c4_05', title: '三つの墓標', text: '「ハヤテ」「リン」「ゴロウ」——そして、名前の刻まれていない四つ目の石。' },
       { at: [-16.5, -16], mark: 1.9, when: 'scene:c4_05', title: '三つの墓標', text: '「ハヤテ」「リン」「ゴロウ」。墓の前に、黒影洞窟から連れて帰った三本の剣が並んでいる。……名前のない四つ目の石は、もうない。' },
       { at: [18, -9], mark: 2.8, reach: 2.9, title: '古いテント', text: '雨ざらしのテント。中に、誰かの荷物が残されている。', until: 'scene:c4_02c' },
@@ -1689,10 +1689,94 @@ const FIELD_ZONES = {
     map2d: [620, 30] },
 
   // ---------------- 第五章 古代遺跡 ----------------
+  // 苔むす古道：くろねこ谷の北西から、古代遺跡の外庭へ上る古い道（谷の崖を抜けて、森へ）。
+  //   南の入口の岩場 → 小川の丸木橋 → 東岸の石段 → 茶屋あと（ねこ地蔵。西に小さな滝）→ 石灯籠の古道を西へ → 西のはしの石段 → 見晴らしの段 → 崩れた石の門の石段 → 北の森から外庭へ。
+  //   東岸の南の岩かげは、落石の岩山でふさがれている（攻撃で砕くと宝箱）。北の森の東の奥にも宝箱。下は谷の枯れ木、上へ行くほど緑の森
+  old_road: { ci: 4, name: '苔むす古道', w: 80, d: 128, stage: '5-1', arenas: [[-20, 47, 0], [-22, -21, 0], [10, -50, 0], [8, 32, 0, 'battle'], [-4, -1, 0, 'battle'], [26, -1, 0, 'battle']],
+    build: 'oldRoad', groups: 6, chests: 3, crystals: 3, foes: ['kageneko', 'hotaru', 'sekizou'],
+    world: true, arch: 'crag', chestAt: [[27, 51], [21, -23], [35, -53]],
+    th: { path: '#a89a7a' },
+    map: [
+      '#######################nnn##############',
+      '#######################,,,##############',
+      '#######################,,,##############',
+      '#################77777777777777####7777#',
+      '###############777777777777777777##7777#',
+      '###############777777777777777777777777#',
+      '###############777777777777777777777777#',
+      '###############777777777777777777##7777#',
+      '###############777777777777777777##7777#',
+      '###############777777777777777777#######',
+      '##################7777777777777#########',
+      '##################7777777777777#########',
+      '######################77777#############',
+      '######################^^^^^#############',
+      '######################^^^^^#############',
+      '#####################5555555############',
+      '###############5555555555555############',
+      '###555555555555,,,,,,55555555555########',
+      '###555555555555,,,,,,55555555555########',
+      '#55555555555555,,,,,,55555555555########',
+      '#5555555555555555555#55555555555########',
+      '#55555555555555#############5555########',
+      '#55555555555555#########################',
+      '#55555555555555#########################',
+      '###555555555555#########################',
+      '#######^^^##############################',
+      '#######^^^##############################',
+      '#######^^^##############################',
+      '######33333#33333333333#3333333333333###',
+      '######33333,,,,,,,,,,,,,3333333333333###',
+      '###33333333,,,,,,,,,,,,,3333333333333###',
+      '###33333333,,,,,,,,,,,,,3333333333333###',
+      '###33333333,,,,,,,,,,,,,3333333333333###',
+      '###33333333#3333333333##3333333333333###',
+      '###333##################3333333333333###',
+      '########################3333333333333###',
+      '#################33333333333333333333###',
+      '#################33~~3333333333333333###',
+      '#################33~~33333333333333#####',
+      '######################3333333333333#####',
+      '################~~~~~~##^^^#############',
+      '################~~~~~~##^^^#############',
+      '################~~~~~~000000############',
+      '################~~~~~~000000############',
+      '##########0000000~~~000000000###########',
+      '##########0000000~~~000000000###########',
+      '########000000000~~~000000000###########',
+      '########000000000===000000000###########',
+      '########000000000===000000000###########',
+      '##########0000000~~~000000000###########',
+      '#####0000000000##~~~000000000###########',
+      '#####0000000000##~~~000000000###########',
+      '####0000000000000~~~000000####0000000###',
+      '####0000000000000~~~00000000000000000###',
+      '###00000000000000~~~00000000000000000###',
+      '###00000000000000~~~000000####0000000###',
+      '###00000000000000~~~000000####0000000###',
+      '###00000000000000~~~000000####0000000###',
+      '####0000000000000~~~##########0000000###',
+      '######00,,,000###~~~##########0000000###',
+      '######00,,,000###~~~###########00000####',
+      '########,,,######~~~###########00000####',
+      '########,,,######~~~####################',
+      '########sss######~~~####################',
+    ],
+    anchor: [17, 10], exits: [{ key: 's', to: 'valley' }, { key: 'n', to: 'ruins_out' }],
+    rubble: [{ id: 'oldRoadRock', at: [16, 44], r: 2.0, box: [1.2, 2.2], ry: Math.PI / 2, name: '落石の岩山', text: ['崩れた岩が、岩かげへの道をふさいでいる。……攻撃すれば、砕けそうだ。'] }],
+    notes: [{ at: [-15, 50], face: 0.4, post: ['↑ 苔むす古道', '古代遺跡へ'], title: '道しるべ', text: '「この先、古道。遺跡の外庭まで、ひと山こえて」……谷の猫の字で、そう書いてある。' },
+      { at: [-9, 25], title: 'ねこの手洗い滝', text: '「ねこの手洗い滝」……古道を行く猫は、ここで前足を洗ってから、遺跡へ向かったという。' },
+      { at: [14, 37], mark: 1.9, reach: 2.6, title: '爪あとの岩', text: '岩に、四本の爪あとが並んでいる。いちばん右の一本だけ、小さくて浅い。……いちばんあとから仲間になった、黒い子猫の爪あとだろうか。' },
+      { at: [24, -2], mark: [0, 3.4, -1.6], reach: 3.2, title: '古道の茶屋あと', text: '古びた茶屋。だれもいない。かまどの灰は、とうに冷えている。柱に「遺跡まで　あと半日」と彫ってある。' },
+      { at: [-31, 3], mark: [-1.6, 2.2, 0], reach: 2.6, title: '苔むしたほこら', text: '小さな石のほこら。中に、子猫を抱いて眠る、古い猫の像。……台座の文字は、遺跡の石像と同じ、古い文字だ。' },
+      { at: [-35, -21], mark: 1.4, title: '見晴らし岩', text: '南に、くろねこ谷が夕焼け色にかすんで見える。……北の木々のあいだに、白い石の屋根が、ちらりとのぞいている。' },
+      { at: [9, -40.5], mark: [-4, 3.6, 0.9], reach: 3, title: '崩れた石の門', text: '古い石の門。柱に、手をつなぐ猫の紋章が彫られている。……ここから先は、遺跡を建てた猫たちの土地だったのだろうか。' }],
+    map2d: [770, 164] },
+
   ruins_out: { ci: 4, name: '古代遺跡・外庭', w: 110, d: 102, stage: '5-1', arenas: [[-2, 6, 0]], build: 'ruinsOut', groups: 7, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-38, -20], [24, -36], [28, 22]],
     th: { path: '#b8b098' },
-    // 谷から北へ。森の小道を抜けると石像の広場と中庭。西は池のある庭と、苔むした庭（北のくぼみに宝箱）。東へ魔王領、その北に林の空き地。
+    // 苔むす古道から北へ。森の小道を抜けると石像の広場と中庭。西は池のある庭と、苔むした庭（北のくぼみに宝箱）。東へ魔王領、その北に林の空き地。
     // 広場の北の小道を上ると、見張り台の跡の空き地。さらに北が「石畳の丘」（大階段の上に遺跡の入口）
     map: [
       '##########################hhh##########################',
@@ -1747,7 +1831,7 @@ const FIELD_ZONES = {
       '##################,,,,#################################',
       '##################bbb##################################',
     ],
-    anchor: [-10, 24], exits: [{ key: 'b', to: 'valley' }, { key: 'h', to: 'ruins_hill' }, { key: 'e', to: 'demon_land' }],
+    anchor: [-10, 24], exits: [{ key: 'b', to: 'old_road' }, { key: 'h', to: 'ruins_hill' }, { key: 'e', to: 'demon_land' }],
     notes: [{ at: [8.95, 12], mark: 2.6, title: '倒れた石像', text: '四匹の猫が肩を寄せ合う石像。顔はすり減って、もう分からない。' },
       { at: [-4, -21], face: 0, post: ['↑ 石畳の丘', '遺跡の入口'], title: '道しるべ', text: '「この先、石畳の丘。遺跡の入口は、丘の上」……古い文字の下に、だれかが新しく書き足したらしい。' },
       { at: [-10, -38], mark: 1.6, title: '見張り台の跡', text: '崩れた石の台。……台の上には、四匹ぶんの肉球の跡が、うっすらと残っている。ここから、丘の上の遺跡を見張っていたのだろうか。' }],
@@ -2929,7 +3013,7 @@ const CHAPTER_ZONES = [
   ['road1', 'road1_hill', 'road_rest', 'woods', 'woods_valley', 'woods_deep', 'road2', 'road2_gate', 'sekisho'],
   ['nyahaha', 'castle', 'castle_in', 'tower', 'tower_2f', 'tower_3f', 'tower_top'],
   ['valley', 'valley_village', 'cave', 'cave_lake', 'cave_deep'],
-  ['ruins_out', 'ruins_hill', 'ruins_in', 'ruins_maze', 'ruins_seal'],
+  ['ruins_out', 'old_road', 'ruins_hill', 'ruins_in', 'ruins_maze', 'ruins_seal'],
   ['demon_land', 'demon_castle', 'demon_clinic', 'demon_barracks', 'demon_court', 'demon_cellar', 'demon_castle_2f', 'demon_throne'],
   ['tree_root', 'tree_under', 'tree_under_2', 'tree_under_3'],
   ['world_end'],
@@ -4194,6 +4278,7 @@ class ZoneKit {
     });
   }
   // zone.rubble：[{ id, at: [x, z], r }]：攻撃で砕ける落石の岩山（砕いたら Save.data.flags[id]）
+  //   box: [hw, hd]：四角い当たり（細い通路をふさぐとき。丸い当たりは、壁ぎわへ押し出すと取り消されて、すり抜けられる）。ry：岩の並びの向き
   //   look: 'jackbox' ＝ 笑顔の塔の大きなびっくり箱（姿は jackInTheBox）。たたいても開かない（FieldView.pokeJackbox）。openAfter のシーンで笑わせると、
   //   ばねの先のピエロの顔が飛び出して（o.pop。会話の舞台の演出 jackPop）、aside へぴょんと跳びのく（o.hop。演出 jackHop）。そのあとは aside に、開いたまま置いておく。
   //   name・text：調べたときの名前と文、poke：たたいたときの知らせ
@@ -4256,8 +4341,9 @@ class ZoneKit {
         };
         return o;
       }
+      if (R.ry) g.rotation.y = R.ry;
       for (let i = 0; i < 8; i++) { const s = 0.45 + this.r() * 0.55, m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), this.mat(i % 3 ? 'rockDark' : 'rock')); m.position.set((this.r() - 0.5) * r0 * 1.5, s * 0.55 + (i > 5 ? 0.8 : 0), (this.r() - 0.5) * r0 * 0.9); m.rotation.set(this.r() * 3, this.r() * 3, 0); m.castShadow = true; g.add(m); }
-      o.g = g; o.col = { x, z, r: r0, top: 2, y: o.pos.y }; this.v.colliders.push(o.col);
+      o.g = g; o.col = R.box ? { box: true, x, z, hw: R.box[0], hd: R.box[1], top: 2, y: o.pos.y } : { x, z, r: r0, top: 2, y: o.pos.y }; this.v.colliders.push(o.col);
       return o;
     }));
   }
@@ -8033,6 +8119,72 @@ const ZONE_BUILD = {
   },
 
   // ---------------- 第五章 ----------------
+  // 苔むす古道：下（谷の側）は枯れ木の崖、上（遺跡の側）は緑の森。小さな滝、爪あとの岩、茶屋あと、石灯籠の古道、ほこら、崩れた石の門
+  oldRoad(K) {
+    K.cragTop({ trees: [['dead', 2], ['round', 1]], leaf: ['#6a6a7a', '#7a6a8a'], density: 0.3, rock: '#6a6070', skip: (x, z) => z < -12 });
+    K.cragTop({ trees: [['round', 3], ['pine', 2]], leaf: ['#5a9a4a', '#6aa858', '#4a8a44'], density: 0.45, rock: '#8a8478', skip: (x, z) => z >= -12 });
+    // 入口の岩場：枯れ木と紫の花
+    for (const [x, z, s] of [[-31, 41, 1.1], [-9, 55, 0.9], [-30, 57, 1]]) K.deadTree(x, z, s);
+    K.flowers(-26, 50, 12, 2, ['#c8a8ff', '#ffffff']); K.flowers(-12, 40, 8, 1.5, ['#c8a8ff', '#ffffff']);
+    for (const [x, z] of [[-33, 47], [-12, 58], [-22, 35]]) K.rock(x, z, 0.7 + K.r() * 0.4, 'rockDark');
+    // ねこの手洗い滝：茶屋の段の湧き水の池から、崖をこえて滝つぼへ落ちる
+    const fallTex = (() => {
+      const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d');
+      for (let i = 0; i < 50; i++) { const x = Math.random() * 64, w = 1 + Math.random() * 3, y = Math.random() * 256, l = 30 + Math.random() * 90; g.fillStyle = `rgba(255,255,255,${0.25 + Math.random() * 0.5})`; g.fillRect(x, y, w, l); g.fillRect(x, y - 256, w, l); }
+      const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+    })();
+    const fallTop = 2.6, fallBot = -0.4, fallH = fallTop - fallBot;
+    K.mesh(new THREE.PlaneGeometry(2.6, fallH), new THREE.MeshBasicMaterial({ color: '#bfe6ff', transparent: true, opacity: 0.55, depthWrite: false }), 0, fallBot + fallH / 2, 16.08, { abs: true, noShadow: true });
+    const falls = [[0.9, 0.85, 1.6], [1.4, 0.6, 2.3]].map(([rep, op, sp], k) => {
+      const t = fallTex.clone(); t.repeat.set(rep, fallH / 3 * rep); t.needsUpdate = true;
+      const m = K.mesh(new THREE.PlaneGeometry(2.6, fallH), new THREE.MeshBasicMaterial({ map: t, color: '#ffffff', transparent: true, opacity: op, depthWrite: false }), 0, fallBot + fallH / 2, 16.12 + k * 0.03, { abs: true, noShadow: true });
+      m.renderOrder = 3;
+      return { t, sp };
+    });
+    const foam = K.mesh(new THREE.CircleGeometry(1.8, 24), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.4, depthWrite: false }), 0, -0.4, 17.4, { abs: true, rx: -Math.PI / 2, noShadow: true });
+    foam.scale.set(1.2, 0.7, 1);
+    K.tick((dt, t) => { for (const f of falls) f.t.offset.y += f.sp * dt; foam.material.opacity = 0.35 + Math.sin(t * 5) * 0.08; });
+    K.v.emitters.push(dt => {
+      if (Math.random() < dt * 26) K.v.p.emit(V3((Math.random() - 0.5) * 2.8, -0.3, 16.6 + Math.random() * 0.8), V3((Math.random() - 0.5) * 1.2, 1.4 + Math.random() * 1.2, 0.6 + Math.random() * 0.8), hdr('#e8f8ff', 1.3), { life: 0.6, size: 0.1, grav: 4, drag: 0.5 });
+      if (Math.random() < dt * 6) K.v.p.emit(V3((Math.random() - 0.5) * 3, 0.2, 17 + Math.random()), V3(0, 0.4, 0.3), hdr('#ffffff', 0.8), { life: 1.6, size: 0.3, drag: 0.2 });
+    });
+    for (const [x, z, s] of [[-5.6, 18.4, 0.6], [4.8, 18, 0.7], [-4.2, 23.6, 0.5], [3.6, 23.8, 0.55]]) K.rock(x, z, s, 'rock');
+    // 爪あとの岩：影の四剣の印。四本の爪あとのうち、いちばん右だけ小さくて浅い（クロの子猫のころ）
+    K.rock(14, 37, 1.3, 'rockDark');
+    [[-0.45, 0.85], [-0.15, 0.85], [0.15, 0.85], [0.42, 0.5]].forEach(([u, l]) => K.mesh(new THREE.BoxGeometry(0.06, l, 0.06), K.glow('#d8c8f0', 0.9), 14 + u, 0.55 + l / 2, 38.2, { rz: 0.22, rx: -0.35, noShadow: true }));
+    // 茶屋あと：屋根の傾いた茶屋と、縁台、割れたかめ。滝の落ち口の見おろしに柵
+    K.catHouse(24, -5.5, 7, 4, 3, 's', { roof: 'roofGray', wall: 'plaster2', chimney: false, sign: '茶屋', sub: 'ひと休み', signCol: '#c8b890' });
+    K.teaBench(19.5, -1.5, 0); K.teaBench(28.5, -1.2, 0.1);
+    K.barrel(29.6, -6.4); K.crate(18.6, -6.2);
+    for (let i = 0; i < 3; i++) K.mesh(new THREE.SphereGeometry(0.32, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.6), '#8a6a4a', 17.4 + i * 0.5, 0.05, -3.4 + (i % 2) * 0.4, { rx: Math.PI * (0.6 + i * 0.2), noShadow: true });
+    K.flowers(30, 6, 8, 1.6, ['#ffffff', '#ffe08a']); K.flowers(12, 2, 6, 1.2, ['#ffffff', '#ffe08a']);
+    // 石灯籠の古道（茶屋から西へ）。遺跡に近い古い灯籠は、遺跡と同じ青緑の光
+    for (const [x, z] of [[-24, -6.4], [-16, 2.6], [-8, -6.4], [0, 2.6], [6, -6.4]]) K.stoneLantern(x, z, '#8affe0');
+    for (const [x, z, h, fl] of [[-12, 2.8, 1.6, false], [2.5, -6.6, 3, true]]) K.pillarBroken(x, z, h, fl);
+    for (const [x, z] of [[-20, -5.4], [-4, 1.8], [-27, 0]]) K.flowers(x, z, 6, 1.0, ['#b8ffe8', '#ffffff']);
+    // 西のはしの、苔むしたほこら：子猫を抱いて眠る、古い猫の像
+    K.box(-33, 3, 2.2, 0.35, 2.2, 'stone2', { round: true });
+    K.catStatue(-33, 3, Math.PI / 2, 0.85, 'stone', '#8affe0'); K.catStatue(-32.2, 3.7, Math.PI / 2 - 0.3, 0.42, 'stone');
+    for (const sz of [-1, 1]) K.cyl(-33.9, 3 + sz * 0.95, 0.09, 2.5, 'wood2', { seg: 6, col: false });
+    { const rg = new THREE.ConeGeometry(1.7, 0.8, 4); rg.rotateY(Math.PI / 4); const r = K.mesh(rg, '#4a5a48', -33.2, 2.8, 3, { ry: Math.PI / 2 }); r.scale.set(1, 1, 0.85); }
+    K.flowers(-31, 0, 6, 1.0, ['#b8ffe8', '#8affe0']);
+    // 見晴らし岩（南の谷をながめる）
+    K.box(-37, -21, 1.6, 0.6, 2.4, 'stone2', { round: true });
+    K.flowers(-30, -17, 8, 1.6, ['#ffffff', '#ffe08a']); K.flowers(-14, -24, 8, 1.6, ['#ffffff', '#b8ffe8']);
+    for (const [x, z, h, fl] of [[-26, -24, 2.2, false], [-16, -16, 1.8, true], [20, -18, 2.4, false]]) K.pillarBroken(x, z, h, fl);
+    // 崩れた石の門：二本の柱（手をつなぐ猫の紋章）と、片側だけ残ったまぐさ。落ちたまぐさのかけらは、北の森に
+    for (const x of [5, 13]) {
+      K.column(x, -39.6, 6.2, 0.7, 'stone');
+      K.mesh(new THREE.CircleGeometry(0.34, 18), K.glow('#8affe0', 0.6), x, 3.3, -38.84, { noShadow: true });
+    }
+    K.box(7.6, -39.6, 5.4, 0.8, 1.4, 'stone', { y: 6.2, col: false, round: true });
+    K.box(16.5, -46, 4.2, 0.8, 1.3, 'stone', { ry: 0.4, round: true });
+    // 北の森：緑の草花と、ただよう古代ほたるの光
+    K.flowers(4, -52, 12, 2.2, ['#ffffff', '#ffe08a', '#b8ffe8']); K.flowers(22, -48, 10, 2, ['#ffffff', '#ffb8d8']); K.flowers(35, -50, 8, 1.4, ['#b8ffe8', '#ffffff']);
+    for (const [x, z] of [[-6, -56], [26, -56], [-6, -46]]) K.bush(x, z, 1.1, 'leaf2', '#ffe08a');
+    K.v.emitters.push(dt => { if (Math.random() < dt * 5) K.v.p.emit(V3(-4 + Math.random() * 40, K.gy(10, -50) + 0.6 + Math.random() * 2.4, -58 + Math.random() * 18), V3((Math.random() - 0.5) * 0.3, 0.12, (Math.random() - 0.5) * 0.3), hdr('#8affe0', 2), { life: 3, size: 0.07, drag: 0 }); });
+    K.rubbles();
+  },
   // 古代遺跡・外庭：倒れた柱、四匹の猫の像、池の庭、苔むした庭。北の空き地に見張り台の跡、東の林に崩れた柱の空き地
   ruinsOut(K) {
     K.flora({ trees: [['round', 3], ['pine', 1]], leaf: ['#5a9a4a', '#6aa858', '#4a8a44'], bush: 0.7, rocks: 0.4, rock: '#b0a890' });
