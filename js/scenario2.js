@@ -1259,8 +1259,9 @@ const STORY = [
     { t: 'field', zone: 'tree_under_3', at: [0, 2], scene: 'c7_03', battle: '7-3', after: 'c7_04', g: '広間の奥、樹の心臓のもとへ' },
     { t: 'reward', niboshi: 900, g: '第七章 おしまい' },
   ] },
-  // 第八章：よみがえったにゃんだーの樹（感情の実がなった姿。樹の根もとから見上げる。treeRevived の印で、組み立てるときから満開）
-  { title: '第八章　みんなのにゃん力', clearSet: { zone: 'tree_root', at: [0, 10], face: 180, fog: 0.08, bloom: 0.3, cam: { pos: [0, 1.5, -100], look: [0, 64, 66], fov: 66 } }, steps: [
+  // 第八章：よみがえったにゃんだーの樹（感情の実が光る姿。treeRevived の印で、組み立てるときから満開）を、
+  //   エピローグの樹の根もとの場面（c9_01 の tree の wide）と同じく、根のトンネルの手前から見上げる
+  { title: '第八章　みんなのにゃん力', clearSet: { zone: 'tree_root', at: [0, 26], face: 180, bloom: 0.45, cam: { pos: [-1.2, 1.4, 0], look: [0, 9.5, 12], fov: 56 } }, steps: [
     { t: 'scene', id: 'c8_01', g: 'ぽかぽか村の危機' },
     { t: 'battle', stage: '8-1', after: 'c8_02', g: '村を守る' },
     { t: 'field', zone: 'world_end', at: [0, 20], start: ['tree_root', 30, 14], near: ['tree_root', 'world_end'], scene: 'c8_03', battle: '8-2', g: '樹の根もとの東から、太い根をたどって世界の果てへ' },

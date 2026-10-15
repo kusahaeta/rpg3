@@ -1056,7 +1056,7 @@ class BattleView extends BaseView {
 // メニュー背景：ステージの風景をゆっくり周回（敵を並べることも可能）
 // loc：{ zone, at, face }。区画を組み立てて、その場所を背景にする（戦闘の背景と同じ。at に立ち、face の向きを見る）。なければ章の景色（theme）だけ。
 //   cam：{ pos: [右, 高さ, 前], look: [右, 高さ, 前], fov }（会話の舞台の shots と同じ向き）。カメラをそこに置いて、ゆっくりゆらす（なければ、まわりをゆっくり回る）。
-//   loc.full：軽い戦闘用の背景ではなく、区画をまるごと組み立てる。loc.fog：もやの濃さの倍率。loc.bloom：光のにじみの強さ
+//   loc.full：軽い戦闘用の背景ではなく、区画をまるごと組み立てる。loc.fog：もやの濃さの倍率。loc.bloom：光のにじみの強さ。loc.flags：区画の組み立ての印
 class SceneryView extends BaseView {
   constructor(theme = 'meadow', { screenX = 640, screenY = 360, radius = 13, height = 3.2, close = false, loc = null, lookY = null, cam = null } = {}) {
     const L = loc && typeof resolveBattleSet === 'function' ? resolveBattleSet(loc) : null;
