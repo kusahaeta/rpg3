@@ -70,7 +70,7 @@ const WEAPONS = {
 
   // ---------------- クロ（刀） ----------------
   kuro_black: { owner: 'kuro', name: '古びた黒刀', tier: 0, start: true,
-    desc: '空から落ちてきたときに持っていた刀。仲間を守ることを覚えると、技が変わる。' },
+    desc: '空から落ちてきたときに持っていた刀。ひとりで戦ってきた、するどい技が身についている。' },
   kuro_bokuto: { owner: 'kuro', name: 'まもりの木刀', tier: 1, get: { shop: true, price: 500 },
     desc: '道場で使う、かたい木刀。斬るより、受けとめるための刀。', look: { c: '#b08a5a', g: '#ffe0a0' },
     basic: { name: '受け流し', target: 'single', desc: '指定した敵単体に防御力100%の物理ダメージ。',
