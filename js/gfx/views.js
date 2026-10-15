@@ -1054,12 +1054,25 @@ class BattleView extends BaseView {
 }
 
 // メニュー背景：ステージの風景をゆっくり周回（敵を並べることも可能）
+// loc：{ zone, at, face }。区画を組み立てて、その場所を背景にする（戦闘の背景と同じ。at に立ち、face の向きを見る）。なければ章の景色（theme）だけ。
+//   cam：{ pos: [右, 高さ, 前], look: [右, 高さ, 前], fov }（会話の舞台の shots と同じ向き）。カメラをそこに置いて、ゆっくりゆらす（なければ、まわりをゆっくり回る）。
+//   loc.full：軽い戦闘用の背景ではなく、区画をまるごと組み立てる。loc.fog：もやの濃さの倍率。loc.bloom：光のにじみの強さ
 class SceneryView extends BaseView {
-  constructor(theme = 'meadow', { screenX = 640, screenY = 360, radius = 13, height = 3.2, close = false } = {}) {
-    super(theme, 40);
+  constructor(theme = 'meadow', { screenX = 640, screenY = 360, radius = 13, height = 3.2, close = false, loc = null, lookY = null, cam = null } = {}) {
+    const L = loc && typeof resolveBattleSet === 'function' ? resolveBattleSet(loc) : null;
+    super(L ? battleTheme(L, theme) : theme, 40, L ? { field: true, bare: true, zone: FIELD_ZONES[L.zone], turn: L.face * Math.PI / 180 } : {});
+    if (L) buildBattleSet(this, L);
+    if (L && L.fog != null && this.scene.fog) this.scene.fog.density *= L.fog;   // fog：もやの濃さの倍率（遠くの景色を見せるときにうすく）
+    if (L && L.bloom != null) this.bloomStrength = L.bloom;                       // bloom：光のにじみ（光る物の多い景色で、白くとばないように）
     this.bloomStrength = 0.8;
-    this.radius = radius; this.h = height; this.models = []; this.enemyKeys = ''; this.close = close;
+    this.radius = radius; this.h = height; this.models = []; this.enemyKeys = ''; this.close = close; if (lookY != null) this.lookY = lookY;
     this.camera.setViewOffset(1280, 720, 640 - screenX, 360 - screenY, 1280, 720);
+    if (cam) {
+      const V = p => V3(p[0], p[1], -p[2]);
+      this.fixedCam = { pos: V(cam.pos), look: V(cam.look) };
+      if (cam.fov) { this.camera.fov = cam.fov; this.camera.updateProjectionMatrix(); }
+      this.setCam(this.fixedCam.pos, this.fixedCam.look, { snap: true, speed: 2 }); return;
+    }
     this.setCam(V3(0, height, radius), V3(0, 1.4, 0), { snap: true, speed: 2 });
   }
   setEnemies(keys) {
@@ -1085,9 +1098,10 @@ class SceneryView extends BaseView {
   update(dt, t, rdt) {
     const a = t * 0.06;
     const sw = this.close ? 0.15 : 0.5;
-    this.camPos.set(Math.sin(a) * this.radius * sw, this.h + Math.sin(t * 0.2) * 0.3, Math.cos(a * 0.7) * (this.close ? 0.5 : 2) + this.radius);
-    this.camLook.set(0, this.lookY || 1.4, 0);
+    if (this.fixedCam) { const F = this.fixedCam; this.camPos.set(F.pos.x + Math.sin(t * 0.15) * 0.4, F.pos.y + Math.sin(t * 0.2) * 0.12, F.pos.z); this.camLook.copy(F.look); }
+    else { this.camPos.set(Math.sin(a) * this.radius * sw, this.h + Math.sin(t * 0.2) * 0.3, Math.cos(a * 0.7) * (this.close ? 0.5 : 2) + this.radius); this.camLook.set(0, this.lookY || 1.4, 0); }
     super.update(rdt, t);
+    if (this.set) this.set.update(rdt, t);
     for (const m of this.models) { m.update(rdt, t); if (m.emit) m.emit(this.p, m.group.position); }
   }
 }

@@ -1163,7 +1163,11 @@ const RECAP_2 = {
 //  away：その段階のあいだ、一行を離れている子（フィールドの隊列と戦闘に出ない。js/state.js の teamMembers）
 // ------------------------------------------------------------
 const STORY = [
-  { title: '第一章　勇者、拾われる', steps: [
+  // clearSet：章のおしまいの画面の背景（SceneryView の loc）。区画のその場所を中心に、face の向きを見る。
+  //   radius・height・lookY で、まわりを回るカメラ。cam：{ pos, look, fov } で決めたカメラ（会話の舞台の shots と同じ向き）。
+  //   full：区画をまるごと組み立てる（軽い戦闘用の背景を使わない）。fog：もやの倍率。bloom：光のにじみ。flags：区画の組み立ての印
+  // 第一章：ぽかぽか村の井戸の広場から、南の大きな木のほうを見る
+  { title: '第一章　勇者、拾われる', clearSet: { zone: 'pokapoka', at: [0, 4], face: 180, radius: 12, height: 4.5, lookY: 4 }, steps: [
     { t: 'scene', id: 'c1_01', g: '魚どろぼう' },
     { t: 'scene', id: 'c1_02', g: '流れ星の夜' },
     { t: 'field', zone: 'hill', at: [-1, -6.6], start: ['pokapoka', -17, -4], near: ['pokapoka', 'hill'], yaw: 1.3, scene: 'c1_03', g: '流れ星の落ちた、村はずれの丘へ行く' },
@@ -1174,7 +1178,8 @@ const STORY = [
     { t: 'field', zone: 'pokapoka', at: [0, 5], scene: 'c1_09', g: '村に帰って、村長に報告する' },
     { t: 'reward', niboshi: 300, g: '第一章 おしまい' },
   ] },
-  { title: '第二章　にゃんこ大集合', steps: [
+  // 第二章：切り通しの見晴らし台から、関所の砦のむこうの、ニャハハ王国のお城と笑顔の塔（つぎの章の行き先）を見る
+  { title: '第二章　にゃんこ大集合', clearSet: { zone: 'road2_gate', at: [-22, -26.5], face: 0, full: true, fog: 0.3, cam: { pos: [-1.5, 2.6, -3.6], look: [20, -22, 314], fov: 20 } }, steps: [
     { t: 'scene', id: 'c2_01', g: 'ミャオ街道へ' },
     { t: 'field', zone: 'road1', at: [9, 17], start: ['road1', -1, 68], near: ['road1', 'road1_hill', 'road_rest'], yaw: Math.PI, scene: 'c2_01b', g: '街道を北へ進む' },
     { t: 'field', zone: 'road_rest', at: [0, -1.5], scene: 'c2_02', battle: '2-1', after: 'c2_02b', g: '街道の宿場へ' },
@@ -1193,7 +1198,8 @@ const STORY = [
     { t: 'field', zone: 'sekisho', at: [0, -28], scene: 'c2_06', g: 'ゴン爺の仕事を手伝って関所の門を開け、北の大門へ' },
     { t: 'reward', niboshi: 400, g: '第二章 おしまい' },
   ] },
-  { title: '第三章　笑わない街', steps: [
+  // 第三章：城下町の噴水を中心に、南の広場から、北のお城と笑顔の塔のほうを見る
+  { title: '第三章　笑わない街', clearSet: { zone: 'nyahaha', at: [0, -8], face: 0, radius: 16, height: 6.5, lookY: 5.5 }, steps: [
     { t: 'field', zone: 'nyahaha', at: [0, 22], scene: 'c3_01', g: 'ニャハハ王国に入る' },
     { t: 'field', zone: 'castle_in', at: [0, -20], scene: 'c3_02', g: '町の北、ニャハハ城の玉座の間で王さまに会う' },
     { t: 'field', zone: 'tower', at: [0, 14], scene: 'c3_03', battle: '3-1', g: '町の北東、笑顔の塔へ' },
@@ -1202,10 +1208,12 @@ const STORY = [
     { t: 'field', zone: 'tower_2f', at: [0, 31], scene: 'c3_03e', g: '二階の南、上り階段の前へ' },
     { t: 'field', zone: 'tower_3f', at: [0, 6], scene: 'c3_03b', battle: '3-2', after: 'c3_03d', g: '笑ったびっくり箱の先、三階の空中ブランコの間へ' },
     { t: 'field', zone: 'tower_top', at: [0, -22], scene: 'c3_04', battle: '3-3', after: 'c3_05', g: '渡り板をこえて北の桟敷へ。塔の最上階・大舞台へ' },
-    { t: 'scene', id: 'c3_06', g: '笑顔のかけら' },
+    // 大舞台の会話（c3_05）のあと、一行は塔を下りる。城下町の塔の門の前から歩いて、広場で王さまと会う
+    { t: 'field', zone: 'nyahaha', at: [0, 8], start: ['nyahaha', 20, -28], near: ['nyahaha'], yaw: 0, scene: 'c3_06', g: '塔を下りて、城下町の広場へ' },
     { t: 'reward', niboshi: 500, g: '第三章 おしまい' },
   ] },
-  { title: '第四章　黒猫の過去', steps: [
+  // 第四章：谷の丘の墓標。三本の剣が立ち、名前のない石はもうない（夕焼けの空）
+  { title: '第四章　黒猫の過去', clearSet: { zone: 'valley', at: [-16, -9.5], face: 0, cam: { pos: [1.6, 1.6, -5.5], look: [-0.4, 3.6, 4] } }, steps: [
     { t: 'field', zone: 'valley_village', at: [-12, 1], scene: 'c4_01', g: '城下町の東、くろねこ谷を抜けて谷の集落へ' },
     { t: 'field', zone: 'valley', at: [-16, -8], scene: 'c4_02', battle: '4-1', after: 'c4_02b', g: '谷の丘の上の墓標へ' },
     { t: 'field', zone: 'valley', at: [18, -5], scene: 'c4_02c', g: '谷の北東、川のほとりの野営あとで、影の四剣の記録をさがす' },
@@ -1217,7 +1225,8 @@ const STORY = [
     { t: 'scene', id: 'c4_06', g: 'お別れ' },
     { t: 'reward', niboshi: 600, g: '第四章 おしまい' },
   ] },
-  { title: '第五章　眠れる子猫', steps: [
+  // 第五章：石畳の丘の、古代遺跡の神殿の正面（猫の紋章と、光る扉）
+  { title: '第五章　眠れる子猫', clearSet: { zone: 'ruins_hill', at: [0, -18], face: 0, fog: 0.6, cam: { pos: [3, 2.2, -12], look: [0, 7.5, 15] } }, steps: [
     // 第四章の終わりに谷の墓へ戻っているので、墓標の丘から歩き出す（谷や遺跡の外庭にいれば、その場から）
     { t: 'field', zone: 'ruins_out', at: [-6, 20], start: ['valley', -16, -8], near: ['valley', 'valley_village', 'ruins_out'], yaw: 0, scene: 'c5_01', battle: '5-1', g: '谷の北西、古代遺跡へ' },
     { t: 'field', zone: 'ruins_hill', at: [0, -12.5], scene: 'c5_01b', g: '外庭の北、石畳の丘を上って、遺跡の入口へ' },
@@ -1228,7 +1237,8 @@ const STORY = [
     { t: 'field', zone: 'ruins_out', at: [-6, 20], scene: 'c5_05', g: '遺跡を出て、外庭で野宿をする' },
     { t: 'reward', niboshi: 700, g: '第五章 おしまい' },
   ] },
-  { title: '第六章　魔王城へ', steps: [
+  // 第六章：魔王城の玉座の間（赤いじゅうたんの先の玉座と、シャンデリア）
+  { title: '第六章　魔王城へ', clearSet: { zone: 'demon_throne', at: [0, -6], face: 0, cam: { pos: [2, 3.4, -7], look: [0, 0.3, 9] } }, steps: [
     { t: 'field', zone: 'demon_land', at: [-2, 24], scene: 'c6_01', battle: '6-1', g: '遺跡の東、魔王領へ' },
     { t: 'field', zone: 'demon_castle', at: [1, 14.2], scene: 'c6_01b', g: '魔王城に入り、大広間の受付へ' },
     { t: 'field', zone: 'demon_clinic', at: [-12, 8], scene: 'c6_02', battle: '6-2', after: 'c6_02b', g: '面会許可証のハンコ（0/5）：大広間の西、保健の間で健康診断を受ける' },
@@ -1239,7 +1249,8 @@ const STORY = [
     { t: 'field', zone: 'demon_throne', at: [0, -11], scene: 'c6_03', battle: '6-3', after: 'c6_04', g: 'ハンコ（5/5）：三階の玉座の間で、魔王に会う' },
     { t: 'reward', niboshi: 800, g: '第六章 おしまい' },
   ] },
-  { title: '第七章　最後のにゃんこ', steps: [
+  // 第七章：樹の心臓の間（根のゆりかごの、光る心臓）
+  { title: '第七章　最後のにゃんこ', clearSet: { zone: 'tree_under_3', at: [0, 2], face: 180, cam: { pos: [3.5, 2.6, -7], look: [2.2, 0.8, 5] } }, steps: [
     { t: 'field', zone: 'tree_root', at: [0, -20], start: ['tree_root', 0, -38], near: ['tree_root', 'tree_under', 'forest_deep'], scene: 'c7_01', g: 'にゃんだーの樹の根もとへ' },
     { t: 'field', zone: 'tree_root', at: [0, 33], scene: 'c7_01b', battle: '7-1', g: '根もとの南、根のトンネルの奥の扉へ' },
     { t: 'field', zone: 'tree_under', at: [0, -45], scene: 'c7_02', battle: '7-2', g: '封印の扉の奥、樹の地下へ' },
@@ -1248,7 +1259,8 @@ const STORY = [
     { t: 'field', zone: 'tree_under_3', at: [0, 2], scene: 'c7_03', battle: '7-3', after: 'c7_04', g: '広間の奥、樹の心臓のもとへ' },
     { t: 'reward', niboshi: 900, g: '第七章 おしまい' },
   ] },
-  { title: '第八章　みんなのにゃん力', steps: [
+  // 第八章：よみがえったにゃんだーの樹（感情の実がなった姿。樹の根もとから見上げる。treeRevived の印で、組み立てるときから満開）
+  { title: '第八章　みんなのにゃん力', clearSet: { zone: 'tree_root', at: [0, 10], face: 180, fog: 0.08, bloom: 0.3, cam: { pos: [0, 1.5, -100], look: [0, 64, 66], fov: 66 } }, steps: [
     { t: 'scene', id: 'c8_01', g: 'ぽかぽか村の危機' },
     { t: 'battle', stage: '8-1', after: 'c8_02', g: '村を守る' },
     { t: 'field', zone: 'world_end', at: [0, 20], start: ['tree_root', 30, 14], near: ['tree_root', 'world_end'], scene: 'c8_03', battle: '8-2', g: '樹の根もとの東から、太い根をたどって世界の果てへ' },
@@ -1262,7 +1274,8 @@ const STORY = [
     { t: 'scene', id: 'c9_01', g: 'それから' },
     { t: 'ending', g: 'Fin' },
   ] },
-  { title: 'おまけ　ねこ神の夢', hidden: true, steps: [
+  // おまけ：ねこ神の寝所（雲のふとんと、光の輪）
+  { title: 'おまけ　ねこ神の夢', hidden: true, clearSet: { zone: 'dream_3', at: [0, -29], face: 0, cam: { pos: [1.5, 2.8, -8], look: [0, 0.4, 6] } }, steps: [
     { t: 'field', zone: 'dream', at: [0, 39], scene: 'c10_01', battle: '9-1', g: '猫神社の奥から、夢の世界へ' },
     { t: 'field', zone: 'dream_2', at: [0, -30], scene: 'c10_02', battle: '9-2', g: 'ちびクッキーとでかミルクで大きさを変えて、お菓子の庭の奥へ。へんてこ回廊は、へんなところがあれば引き返し、なければ進む' },
     { t: 'field', zone: 'dream_3', at: [0, -29], scene: 'c10_03', battle: '9-3', after: 'c10_04', g: '「ねこがころんだ」で、ねこ神がふりむいたら止まって、玉座の前へ' },

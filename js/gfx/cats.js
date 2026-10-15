@@ -612,20 +612,27 @@ function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow, G = {}) 
       tipAt(0.2); break;
     }
     case 'juggle': {  // ピエロのお手玉
+      // 三つの球は、右手 → 左手 → 右手と、両手のあいだを弧をえがいて行き来する。
+      //   両手を前に出していない（下ろしている・胸に当てている・ひざをついているなど）あいだは、球はしぼんで消える。
+      //   ex.off（会話の舞台の配役の juggle: false）なら、手を前に出しても出さない
       const balls = [0, 1, 2].map(i => { const b = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 10), glowMat(['#ff6a8a', '#ffd76a', '#6ad8ff'][i], 1.8)); hips.add(b); return b; });
       ex.tip = balls[0];
-      if (!G.juggleArms) { ex.update = (dt, t) => balls.forEach((b, i) => { const a = t * 3 + i * 2.1; b.position.set(Math.cos(a) * 0.18, 0.62 + Math.abs(Math.sin(a)) * 0.35, 0.22); }); break; }
-      // juggleArms：両腕を横に広げ、投げるたびに手を振り上げる。三つの球は、右手 → 左手 → 右手と、両手のあいだを弧をえがいて行き来する
+      // juggleArms：両腕を横に広げ、投げるたびに手を振り上げる（ポーズより優先。戦闘の泣き虫ピエロ）
       //   一周（右 → 左 → 右）は 1.8 秒、三つの球は 1/3 周ずつずらす → どちらの手も 0.6 秒ごとに投げる（左は右の 0.3 秒あと）。手は投げる直前に振り上がる
       const C = 1.8, hR = V3(), hL = V3(), toss = k => Math.max(0, Math.sin((k + 0.3) % 1 * Math.PI * 2)) ** 2;
-      ex.arms = t => {
+      if (G.juggleArms) ex.arms = t => {
         const kR = (t / (C / 3)) % 1, kL = ((t + C / 6) / (C / 3)) % 1, uR = toss(kR), uL = toss(kL);
         return [-0.65 - uR * 0.3, -1.1 + uR * 0.25, -0.65 - uL * 0.3, 1.1 - uL * 0.25, -0.6 - uR * 0.5, -0.6 - uL * 0.5];
       };
+      let show = 0;
       ex.update = (dt, t) => {
         hips.updateWorldMatrix(true, false);
         hips.worldToLocal(armR.grip.getWorldPosition(hR)); hips.worldToLocal(armL.grip.getWorldPosition(hL));
+        // 両手が体の前（z）で、胸より下へ下ろしておらず（y）、左右にはなれている（x）ときだけ、お手玉をする
+        const fwd = !ex.off && Math.min(hR.z, hL.z) >= 0.09 && Math.min(hR.y, hL.y) >= 0.12 && Math.abs(hR.x - hL.x) >= 0.3;
+        show += ((fwd ? 1 : 0) - show) * Math.min(1, dt * 8);
         balls.forEach((b, i) => {
+          b.visible = show > 0.03; b.scale.setScalar(show);
           const p = (t / C + i / 3) % 1, rl = p < 0.5, s = rl ? p * 2 : p * 2 - 1, [a, c] = rl ? [hR, hL] : [hL, hR];
           b.position.lerpVectors(a, c, s);
           // 顔とえりにかからないよう、低めの弧で、体の前へふくらませる

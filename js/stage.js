@@ -366,7 +366,8 @@ class StageView extends BaseView {
         if (o.scale) m.group.scale.multiplyScalar(o.scale);   // scale：その場面だけ大きく（探索で見る大きさにそろえる）
         this.scene.add(m.group);
         const a = new Actor(this, id, m, { foe, stance: o.stance, y: o.y, lie: o.lie });
-        if (o.carry === 'hammer') a.hammer = pikoHammer(m);   // carry：手のない敵の姿に持たせる物（ピコピコハンマー。演出 piko で振る）
+        if (o.carry === 'hammer') a.hammer = pikoHammer(m);
+        if (o.juggle === false && m.extras) m.extras.off = true;   // juggle: false：ピエロのお手玉の球を出さない（戦いのあとの会話など）   // carry：手のない敵の姿に持たせる物（ピコピコハンマー。演出 piko で振る）
         a.place(this.W(o.at[0], o.at[1]));
         a.faceT = face(o.face) ?? (foe ? this.O.clone() : this.W(0, 3));
         a.yaw = a.baseYaw = a.targetYaw(a.faceT);
@@ -1099,7 +1100,7 @@ function battleTheme(loc, fallback) {
 // 区画を組み立てて、戦場の中心が原点・敵の方向が -Z になるよう回して置く
 function buildBattleSet(view, loc) {
   const Z = FIELD_ZONES[loc.zone], [cx, cz] = loc.world ? loc.at : zonePoint(Z, loc.at);
-  if (Z.battleSet) return buildLightBattleSet(view, loc, Z, cx, cz);
+  if (Z.battleSet && !loc.full) return buildLightBattleSet(view, loc, Z, cx, cz);   // full：軽い背景を使わず、区画をまるごと組み立てる（章のおしまいの画面など、一度きりの景色）
   const root = new THREE.Group(); view.scene.add(root);
   const lp = new Particles(root, 1500);
   // 組み立て用の代理：部品は root に、区画の粒子は root の座標で出す
@@ -1143,4 +1144,5 @@ function buildLightBattleSet(view, loc, Z, cx, cz) {
   view.set = { root, pv, lp, hooks: {}, update(dt, t) { for (const f of pv.zoneTicks) f(dt, t); for (const f of pv.emitters) f(dt); lp.update(dt); } };
   return view.set;
 }
-for (const k of ['gy', 'hitsCol', 'blocked', 'freeSpot', 'safeAt', 'buildMapExits', 'makeBulkhead', 'makeCabin', 'makeGate', 'makeArchGate', 'makeFieldGate', 'makeStairGate', 'hideGateDoors', 'exitTop']) if (!BattleView.prototype[k]) BattleView.prototype[k] = FieldView.prototype[k];
+// 区画を背景に組み立てる画面（戦闘・章のおしまい）も、探索フィールドの部品を借りる
+for (const V of [BattleView, SceneryView]) for (const k of ['gy', 'hitsCol', 'blocked', 'freeSpot', 'safeAt', 'buildMapExits', 'makeBulkhead', 'makeCabin', 'makeGate', 'makeArchGate', 'makeFieldGate', 'makeStairGate', 'hideGateDoors', 'exitTop']) if (!V.prototype[k]) V.prototype[k] = FieldView.prototype[k];
