@@ -1228,7 +1228,7 @@ const STORY = [
   // 第五章：石畳の丘の、古代遺跡の神殿の正面（猫の紋章と、光る扉）
   { title: '第五章　眠れる子猫', clearSet: { zone: 'ruins_hill', at: [0, -18], face: 0, fog: 0.6, cam: { pos: [3, 2.2, -12], look: [0, 7.5, 15] } }, steps: [
     // 第四章の終わりに谷の墓へ戻っているので、墓標の丘から歩き出す（谷や遺跡の外庭にいれば、その場から）
-    { t: 'field', zone: 'ruins_out', at: [-6, 20], start: ['valley', -16, -8], near: ['valley', 'valley_village', 'ruins_out'], yaw: 0, scene: 'c5_01', battle: '5-1', g: '谷の北西、古代遺跡へ' },
+    { t: 'field', zone: 'ruins_out', at: [-6, 20], start: ['valley', -16, -8], near: ['valley', 'valley_village', 'old_road', 'ruins_out'], yaw: 0, scene: 'c5_01', battle: '5-1', g: '谷の北西から苔むす古道を上って、古代遺跡へ' },
     { t: 'field', zone: 'ruins_hill', at: [0, -12.5], scene: 'c5_01b', g: '外庭の北、石畳の丘を上って、遺跡の入口へ' },
     { t: 'field', zone: 'ruins_in', at: [0, -4], scene: 'c5_02', clear: '5-2', g: '高台の「つながりの石畳」をひと筆でつないで入口の結界を消し、遺跡の中へ' },
     { t: 'field', zone: 'ruins_maze', at: [-18, 35], scene: 'c5_02b', g: '大広間の奥、崩れた回廊へ。入口の間の、白く光る水晶のもとへ' },
