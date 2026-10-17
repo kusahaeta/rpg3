@@ -750,17 +750,18 @@ class BattleView extends BaseView {
   }
 
   // ---------- 必殺技の導入 ----------
-  async ultIntro(u) {
+  // 決めポーズ（キャラごとの ULT_POSES）：正面から寄って、光の柱・輪・渦巻く光
+  async ultPose(u) {
     const e = this.ent(u); if (!e) return;
-    const m = e.model, col = ELEMENTS[u.elem].color, h = e.home;
+    const m = e.model, col = ELEMENTS[u.elem].color, h = e.home, up = ULT_POSES[u.key];
     GFX.grade.uniforms.desat.value = 0.3;
     m.group.rotation.y = 0;
     // 他の味方は一時的に隠す（カメラの邪魔になるため）
-    const others = [...this.ents.values()].filter(x => x.ally && x !== e);
-    others.forEach(x => { x.model.group.visible = false; });
+    this.focus(e);
     this.setCam(V3(h.x + 0.25, 0.95, h.z + 1.15), V3(h.x, 0.88, h.z), { snap: true });
     this.setCam(V3(h.x + 0.9, 0.75, h.z + 2.5), V3(h.x, 0.75, h.z), { speed: 1.8 });
-    this.tweenPose(m, POSES.ult, 0.45);
+    this.tweenPose(m, up ? up.pose : POSES.ult, 0.45);
+    if (m.face && up) { e.ultFace = m.face.expr; m.face.set(up.face); }
     this.fx.pillar(h.clone().add(V3(0, 0, -1.2)), col, { h: 14, r: 0.7, life: 1.3, k: 1.2 });
     this.fx.ring(h.clone().add(V3(0, 0.05, 0)), col, { r: 3, life: 1.0 });
     m.flash(col, 0.45);
@@ -770,12 +771,35 @@ class BattleView extends BaseView {
         this.p.emit(V3(h.x + Math.cos(a) * r * 0.7, 0.15 + t * 1.2, h.z - 0.2 + Math.sin(a) * r * 0.5), V3(0, 0.9, 0), hdr(col, 2), { life: 0.45, size: 0.04 });
       }
     }, Ease.linear);
+  }
+  // 放つ：画面を光らせて、いつもの構えと引きのカメラへ
+  ultRelease(u) {
+    const e = this.ent(u); this.ultHold = null;
     GFX.grade.uniforms.desat.value = 0;
+    if (!e) return;
+    const col = ELEMENTS[u.elem].color;
     GFX.flash(col, 0.4, 0.3);
-    others.forEach(x => { x.model.group.visible = true; });
-    m.group.rotation.y = Math.PI;
-    this.tweenPose(m, POSES.ready, 0.2);
+    this.p.burst(this.hitPoint(u), col, 30, { speed: 3, up: 1, life: 0.8 });
+    this.unfocus();
+    this.ultEnd(e);
+    this.tweenPose(e.model, POSES.ready, 0.2);
     this.wide();
+    return GFX.delay(0.3);
+  }
+  // 決めポーズの後片付け：敵のほうへ向きなおし、表情を戻す
+  ultEnd(e) {
+    e.model.group.rotation.y = Math.PI;
+    if (e.model.face && e.ultFace) { e.model.face.set(e.ultFace); e.ultFace = null; }
+  }
+  // オート：ポーズしてそのまま放つ
+  async ultIntro(u) { await this.ultPose(u); this.ultRelease(u); }
+  // 発動を選ぶまで：決めポーズのあと、ふだんの技選択と同じ肩越し視点へ。まわりにオーラを出しつづける（update）
+  async ultReady(u) {
+    const e = this.ent(u); if (!e) return;
+    await this.ultPose(u);
+    this.ultHold = u;
+    GFX.grade.uniforms.desat.value = 0;
+    this.face(e, this.enemyCenter()); this.shoulder(e);
   }
 
   // ============================================================
@@ -786,18 +810,14 @@ class BattleView extends BaseView {
     let i = 0;
     return GFX.tween(dur, (_, p) => { const k = Math.floor(p * n); while (i < k) fn(i++); }, Ease.linear);
   }
-  hasUltCine() { return false; }
   ui(kind, u) { if (this.b.ultUi) this.b.ultUi(kind, u); }
   headPos(e) { e.model.group.updateMatrixWorld(true); return e.model.headPivot.getWorldPosition(V3()); }
-  ultAim(u) {
-    const e = this.ent(u); if (!e) return;
-    this.focus(e); this.face(e, this.enemyCenter()); this.shoulder(e);
-    e.model.flash(e.model.elemCol, 0.6);
-  }
   ultCancel(u) {
-    const e = this.ent(u); if (!e) return;
+    const e = this.ent(u); this.ultHold = null;
+    GFX.grade.uniforms.desat.value = 0;
+    if (!e) return;
+    this.ultEnd(e);
     this.tweenPose(e.model, POSES.ready, 0.3);
-    e.model.group.rotation.y = Math.PI;
     this.wide();
   }
 
@@ -1002,6 +1022,16 @@ class BattleView extends BaseView {
         e.ice.visible = m.group.visible;   // キャラを隠したカットでは氷も隠す
         if (!u.frozen || !u.alive) { this.fx.shards(e.ice.position, '#9fe6ff', 16, 4); this.scene.remove(e.ice); disposeTree(e.ice); e.ice = null; }
       }
+      // 必殺技の発動待ち：足もとから立ちのぼる光と、広がる輪
+      if (this.ultHold === u && m.group.visible) {
+        const col = ELEMENTS[u.elem].color, g = m.group.position;
+        for (let n = Math.floor(dt * 70 + Math.random()); n > 0; n--) {
+          const a = Math.random() * Math.PI * 2, r = 0.4 + Math.random() * 0.3;
+          this.p.emit(V3(g.x + Math.cos(a) * r, 0.05 + Math.random() * 0.3, g.z + Math.sin(a) * r), V3(-Math.sin(a) * 0.4, 1.2 + Math.random() * 0.8, Math.cos(a) * 0.4), hdr(col, 2.6), { life: 0.9, size: 0.08 });
+        }
+        if ((e.auraT = (e.auraT || 0) - dt) <= 0) { e.auraT = 0.7; this.fx.ring(V3(g.x, 0.05, g.z), col, { r: 1.4, life: 0.7, width: 0.08 }); }
+        m.flash(col, 0.15 + Math.sin(t * 6) * 0.1);
+      }
       // シールド
       if (e.ally) {
         if (u.shield > 0 && u.alive && !e.bubble) {
@@ -1025,7 +1055,7 @@ class BattleView extends BaseView {
       const tgt = el && el.classList.contains('tgt'), tgt2 = el && el.classList.contains('tgt2');
       const active = b.current === u && e.ally;
       const mk = e.mark;
-      const want = tgt ? 0.9 : tgt2 ? 0.45 : active ? 0.7 : 0;
+      const want = !m.group.visible ? 0 : tgt ? 0.9 : tgt2 ? 0.45 : active ? 0.7 : 0;
       mk.material.opacity += (want - mk.material.opacity) * Math.min(1, dt * 10);
       mk.material.color.copy(hdr(e.ally && tgt ? '#6dff9e' : '#e8c77a', 3));
       mk.position.set(m.group.position.x, 0.03, m.group.position.z);
