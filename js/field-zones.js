@@ -1766,6 +1766,11 @@ const FIELD_ZONES = {
       '########sss######~~~####################',
     ],
     anchor: [17, 10], exits: [{ key: 's', to: 'valley' }, { key: 'n', to: 'ruins_out' }],
+    // ねこの手洗い滝：滝つぼの水面は下の段（0）にそろえる（となりの茶屋の段 3 につられて、浮いた板にならないように）。
+    //   滝の上の崖には、西の岩場の湧き口から落ち口まで、川の溝（地図の 39 行め）を通す。溝の底は上流 9.4・下流 8.6 の二段で、両岸の岩はそれより高くそろえる
+    waterLv: [[16, 40, 21, 43, 0]],
+    lowRock: [[0, 39, 1, 39, 99, 11], [2, 39, 8, 39, 99, 9.4], [9, 39, 20, 39, 99, 8.6], [21, 39, 21, 39, 6.2],
+      [2, 38, 6, 38, 99, 11.2], [7, 38, 11, 38, 99, 10.4], [12, 38, 16, 38, 99, 11], [2, 40, 6, 40, 99, 10.8], [7, 40, 11, 40, 99, 11.4], [12, 40, 15, 40, 99, 10.2]],
     rubble: [{ id: 'oldRoadRock', at: [16, 44], r: 2.0, box: [1.2, 2.2], ry: Math.PI / 2, name: '落石の岩山', text: ['崩れた岩が、岩かげへの道をふさいでいる。……攻撃すれば、砕けそうだ。'] }],
     notes: [{ at: [-15, 50], face: 0.4, post: ['↑ 苔むす古道', '古代遺跡へ'], title: '道しるべ', text: '「この先、古道。遺跡の外庭まで、ひと山こえて」……谷の猫の字で、そう書いてある。' },
       { at: [-9, 25], title: 'ねこの手洗い滝', text: '「ねこの手洗い滝」……古道を行く猫は、ここで前足を洗ってから、遺跡へ向かったという。' },
@@ -8125,34 +8130,92 @@ const ZONE_BUILD = {
   // ---------------- 第五章 ----------------
   // 苔むす古道：下（谷の側）は枯れ木の崖、上（遺跡の側）は緑の森。小さな滝、爪あとの岩、茶屋あと、石灯籠の古道、ほこら、崩れた石の門
   oldRoad(K) {
-    K.cragTop({ trees: [['dead', 2], ['round', 1]], leaf: ['#6a6a7a', '#7a6a8a'], density: 0.3, rock: '#6a6070', skip: (x, z) => z < -12 });
+    K.cragTop({ trees: [['dead', 2], ['round', 1]], leaf: ['#6a6a7a', '#7a6a8a'], density: 0.3, rock: '#6a6070', skip: (x, z) => z < -12 || (x < 4 && z > 14 && z < 16) });   // 滝へ流れる崖の上の川の溝には生やさない
     K.cragTop({ trees: [['round', 3], ['pine', 2]], leaf: ['#5a9a4a', '#6aa858', '#4a8a44'], density: 0.45, rock: '#8a8478', skip: (x, z) => z >= -12 });
     // 入口の岩場：枯れ木と紫の花
     for (const [x, z, s] of [[-31, 41, 1.1], [-9, 55, 0.9], [-30, 57, 1]]) K.deadTree(x, z, s);
     K.flowers(-26, 50, 12, 2, ['#c8a8ff', '#ffffff']); K.flowers(-12, 40, 8, 1.5, ['#c8a8ff', '#ffffff']);
     for (const [x, z] of [[-33, 47], [-12, 58], [-22, 35]]) K.rock(x, z, 0.7 + K.r() * 0.4, 'rockDark');
-    // ねこの手洗い滝：茶屋の段の湧き水の池から、崖をこえて滝つぼへ落ちる
+    // ねこの手洗い滝：西の岩場の岩のあいだから湧いた水が、崖の上の川になって東へ流れ、崖のてっぺんの落ち口をこえて、下の滝つぼへ落ちる（落ち口の高さは崖の上面、滝つぼは地図の水面から）
+    //   水の筋は、細くて両はしがぼやけた線（上下につながるよう、はみ出した分は反対側にも描く）
     const fallTex = (() => {
-      const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d');
-      for (let i = 0; i < 50; i++) { const x = Math.random() * 64, w = 1 + Math.random() * 3, y = Math.random() * 256, l = 30 + Math.random() * 90; g.fillStyle = `rgba(255,255,255,${0.25 + Math.random() * 0.5})`; g.fillRect(x, y, w, l); g.fillRect(x, y - 256, w, l); }
+      const c = document.createElement('canvas'); c.width = 128; c.height = 256; const g = c.getContext('2d');
+      for (let i = 0; i < 110; i++) { const x = Math.random() * 128, w = 0.8 + Math.random() * 2.4, y = Math.random() * 256, l = 40 + Math.random() * 120, a = 0.2 + Math.random() * 0.55;
+        for (const oy of [0, -256]) { const gr = g.createLinearGradient(0, y + oy, 0, y + oy + l); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.3, `rgba(255,255,255,${a})`); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(x, y + oy, w, l); } }
       const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
     })();
-    const fallTop = 2.6, fallBot = -0.4, fallH = fallTop - fallBot;
-    K.mesh(new THREE.PlaneGeometry(2.6, fallH), new THREE.MeshBasicMaterial({ color: '#bfe6ff', transparent: true, opacity: 0.55, depthWrite: false }), 0, fallBot + fallH / 2, 16.08, { abs: true, noShadow: true });
-    const falls = [[0.9, 0.85, 1.6], [1.4, 0.6, 2.3]].map(([rep, op, sp], k) => {
-      const t = fallTex.clone(); t.repeat.set(rep, fallH / 3 * rep); t.needsUpdate = true;
-      const m = K.mesh(new THREE.PlaneGeometry(2.6, fallH), new THREE.MeshBasicMaterial({ map: t, color: '#ffffff', transparent: true, opacity: op, depthWrite: false }), 0, fallBot + fallH / 2, 16.12 + k * 0.03, { abs: true, noShadow: true });
-      m.renderOrder = 3;
-      return { t, sp };
+    const lipZ = 16, lipY = K.T.cap[K.T.at(0, lipZ - 1)] + 0.06, poolY = K.T.cap[K.T.at(0, lipZ + 2)], drop = lipY - poolY;
+    // 水の幕（落ち口を原点に、+z へ流れ落ちる形）：落ち口の手前の水面（back）から、ふちをこえて前へ張り出し（out）、放物線で h だけ下へ。
+    //   下へ行くほど広がって白くなり、両はしと水面の側は透ける
+    const sheetGeo = (w0, w1, out, back, dz0, h = drop) => {
+      const nu = 16, nv = 18, pos = [], uv = [], col = [], idx = [], c0 = new THREE.Color('#9fd8f8'), c1 = new THREE.Color('#ffffff'), c = new THREE.Color();
+      let len = 0, py = 0, pz = -back;
+      const rows = [...Array(nv + 1)].map((_, j) => { const t = j / nv, s = Math.max(0, (t - 0.15) / 0.85);
+        const z = t < 0.15 ? -back * (1 - t / 0.15) : out * s, y = t < 0.15 ? 0 : -h * s * s;
+        len += Math.hypot(z - pz, y - py); pz = z; py = y; return { t, s, z, y, len }; });
+      rows.forEach(({ t, s, z, y, len: l }, j) => {
+        const w = w0 + (w1 - w0) * s, a = Math.min(1, t / 0.15) * (1 - Math.max(0, s - 0.85) * 2.5);
+        c.copy(c0).lerp(c1, s * s);
+        for (let i = 0; i <= nu; i++) { const u = i / nu, e = Math.min(1, Math.min(u, 1 - u) / 0.14);
+          pos.push((u - 0.5) * w, y, z + dz0 + Math.sin(u * 9.4 + j * 0.7) * 0.05 * s); uv.push(u, (rows[nv].len - l) / 3); col.push(c.r, c.g, c.b, a * e * e);
+          if (i < nu && j < nv) { const k = j * (nu + 1) + i; idx.push(k, k + nu + 1, k + 1, k + 1, k + nu + 1, k + nu + 2); } }
+      });
+      const geo = new THREE.BufferGeometry(); geo.setIndex(idx);
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+      geo.computeVertexNormals(); return geo;
+    };
+    const fallM = o => new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, roughness: 0.3, side: THREE.DoubleSide, depthWrite: false, ...o });
+    // 流れる筋の模様（offset.y を sp ずつ動かして流す）
+    const flows = [], streak = (rx, ry, sp) => { const t = fallTex.clone(); t.repeat.set(rx, ry); t.needsUpdate = true; flows.push({ t, sp }); return t; };
+    K.mesh(sheetGeo(3.0, 4.2, 1.4, 1.2, 0), fallM({ color: '#e4f6ff', opacity: 0.62, emissive: '#6ab8e8', emissiveIntensity: 0.3 }), 0, lipY, lipZ, { abs: true, noShadow: true }).renderOrder = 2;
+    [[1.6, 0.95, 1.5, 0.03], [2.6, 0.7, 2.2, 0.06]].forEach(([rep, op, sp, dz], k) =>
+      K.mesh(sheetGeo(2.9, 4.2, 1.4, 1.2 - k * 0.3, dz), fallM({ color: '#ffffff', map: streak(rep, 1, sp), opacity: op, emissive: '#bfe6ff', emissiveIntensity: 0.35 }), 0, lipY, lipZ, { abs: true, noShadow: true }).renderOrder = 3 + k);
+    // 崖の上の川：西の岩場の湧き口から、溝を東へ流れて小さな段を一つ落ち、落ち口のよどみで南へ曲がって滝になる。
+    //   水面は、水の色の面と流れる筋の二枚（筋の面は、長さの向きが流れの向き。PlaneGeometry の +v が流れと逆を向くように回す）
+    const waterM = () => fallM({ vertexColors: false, color: '#8acff0', opacity: 0.85, roughness: 0.75, emissive: '#4a98c8', emissiveIntensity: 0.2 });
+    const flowM = t => new THREE.MeshBasicMaterial({ color: '#ffffff', map: t, transparent: true, opacity: 0.5, depthWrite: false });
+    const surf = (cx, cz, wd, len, y, ry, sp) => { const geo = () => { const g = new THREE.PlaneGeometry(wd, len); g.rotateX(-Math.PI / 2); g.rotateY(ry); return g; };
+      K.mesh(geo(), waterM(), cx, y - 0.01, cz, { abs: true, noShadow: true });
+      K.mesh(geo(), flowM(streak(wd / 1.6, len / 4, sp)), cx, y + 0.01, cz, { abs: true, noShadow: true }).renderOrder = 1; };
+    const upY = K.T.cap[K.T.at(-30, 15)] + 0.06, stepX = -22, srcX = -35;
+    surf((srcX + stepX) / 2, 15, 1.96, stepX - srcX, upY, Math.PI / 2, 0.45);   // 上流（湧き口から段まで）
+    surf((stepX - 1.6) / 2, 15, 1.96, -1.6 - stepX, lipY, Math.PI / 2, 0.5);     // 下流（段から落ち口のよどみまで）
+    surf(0, lipZ - 1, 4, 1.96, lipY + 0.005, 0, 0.6);                             // 落ち口のよどみ（南の落ち口へ）
+    // 川の小さな段：上流から下流へ、+x へ落ちる短い幕
+    K.mesh(sheetGeo(1.7, 1.9, 0.35, 0.4, 0, upY - lipY), fallM({ color: '#e4f6ff', opacity: 0.6, emissive: '#6ab8e8', emissiveIntensity: 0.3 }), stepX, upY, 15, { abs: true, ry: Math.PI / 2, noShadow: true }).renderOrder = 2;
+    K.mesh(sheetGeo(1.7, 1.9, 0.35, 0.3, 0.03, upY - lipY), fallM({ color: '#ffffff', map: streak(1.2, 0.4, 1.2), opacity: 0.9, emissive: '#bfe6ff', emissiveIntensity: 0.35 }), stepX, upY, 15, { abs: true, ry: Math.PI / 2, noShadow: true }).renderOrder = 3;
+    // 滝つぼ：落ちたところの白い泡と、広がる波紋
+    const foamT = (() => {
+      const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+      for (let i = 0; i < 90; i++) { const x = Math.random() * 128, y = Math.random() * 128, r = 3 + Math.random() * 9, gr = g.createRadialGradient(x, y, 0, x, y, r);
+        gr.addColorStop(0, `rgba(255,255,255,${0.35 + Math.random() * 0.4})`); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+      const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+    })();
+    const foamGeo = new THREE.CircleGeometry(1, 32); foamGeo.scale(2.6, 1.4, 1);
+    const foams = [[1, 1.5], [0.75, 2.3]].map(([op, rep], k) => { const t = foamT.clone(); t.repeat.set(rep, rep); t.needsUpdate = true;
+      const m = K.mesh(foamGeo, new THREE.MeshBasicMaterial({ color: '#ffffff', map: t, transparent: true, opacity: op, depthWrite: false }), 0, poolY + 0.03 + k * 0.01, lipZ + 1.3, { abs: true, rx: -Math.PI / 2, noShadow: true });
+      m.renderOrder = 1; return { t, m, op }; });
+    const rings = K.fountainRings([-1.4, -0.5, 0.4, 1.3].map((x, i) => [x, poolY + 0.05, lipZ + 1.2 + (i % 2) * 0.3]));
+    K.tick((dt, t) => {
+      for (const f of flows) f.t.offset.y += f.sp * dt;
+      foams.forEach((f, k) => { f.t.offset.x = Math.sin(t * 0.7 + k) * 0.1; f.t.offset.y -= (0.12 + k * 0.08) * dt; f.m.material.opacity = f.op * (0.85 + Math.sin(t * 4 + k * 2) * 0.15); });
+      rings(t);
     });
-    const foam = K.mesh(new THREE.CircleGeometry(1.8, 24), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.4, depthWrite: false }), 0, -0.4, 17.4, { abs: true, rx: -Math.PI / 2, noShadow: true });
-    foam.scale.set(1.2, 0.7, 1);
-    K.tick((dt, t) => { for (const f of falls) f.t.offset.y += f.sp * dt; foam.material.opacity = 0.35 + Math.sin(t * 5) * 0.08; });
+    // しぶき（落ちたところからはね上がる粒）と、ゆっくり立ちのぼる水けむり、落ち口からこぼれる粒
     K.v.emitters.push(dt => {
-      if (Math.random() < dt * 26) K.v.p.emit(V3((Math.random() - 0.5) * 2.8, -0.3, 16.6 + Math.random() * 0.8), V3((Math.random() - 0.5) * 1.2, 1.4 + Math.random() * 1.2, 0.6 + Math.random() * 0.8), hdr('#e8f8ff', 1.3), { life: 0.6, size: 0.1, grav: 4, drag: 0.5 });
-      if (Math.random() < dt * 6) K.v.p.emit(V3((Math.random() - 0.5) * 3, 0.2, 17 + Math.random()), V3(0, 0.4, 0.3), hdr('#ffffff', 0.8), { life: 1.6, size: 0.3, drag: 0.2 });
+      const p = K.v.p;
+      for (let i = 0; i < 60 * dt; i++) p.emit(V3((Math.random() - 0.5) * 3.6, poolY + 0.05, lipZ + 1.2 + Math.random() * 0.4), V3((Math.random() - 0.5) * 1.4, 1.2 + Math.random() * 1.6, 0.3 + Math.random() * 1.2), hdr('#e8f8ff', 1.3), { life: 0.6, size: 0.12, grav: 6, drag: 0.3 });
+      if (Math.random() < dt * 14) p.emit(V3((Math.random() - 0.5) * 3.4, poolY + 0.3, lipZ + 1 + Math.random() * 0.8), V3((Math.random() - 0.5) * 0.2, 0.45 + Math.random() * 0.3, 0.25), hdr('#ffffff', 0.7), { life: 2.2, size: 0.7, drag: 0.3 });
+      if (Math.random() < dt * 8) p.emit(V3((Math.random() - 0.5) * 3, lipY - 0.1, lipZ + 0.15), V3((Math.random() - 0.5) * 0.4, -0.5, 0.6), hdr('#e8f8ff', 1.2), { life: 0.5, size: 0.06, grav: 9, drag: 0 });
+      // 湧き口のあわと、川の段のしぶき
+      if (Math.random() < dt * 10) p.emit(V3(srcX + 0.4 + Math.random() * 0.8, upY + 0.02, 15 + (Math.random() - 0.5) * 1.2), V3(0, 0.3 + Math.random() * 0.3, 0), hdr('#e8f8ff', 1.1), { life: 0.6, size: 0.07, drag: 0.5 });
+      if (Math.random() < dt * 16) p.emit(V3(stepX + 0.4 + Math.random() * 0.3, lipY + 0.05, 15 + (Math.random() - 0.5) * 1.6), V3(0.4, 0.6 + Math.random() * 0.6, (Math.random() - 0.5) * 0.6), hdr('#e8f8ff', 1.2), { life: 0.45, size: 0.07, grav: 6, drag: 0.3 });
     });
-    for (const [x, z, s] of [[-5.6, 18.4, 0.6], [4.8, 18, 0.7], [-4.2, 23.6, 0.5], [3.6, 23.8, 0.55]]) K.rock(x, z, s, 'rock');
+    // 湧き口の岩（西のはし）、川の両岸の岩（茶屋の段と滝つぼの上は、岸の岩がないので石を並べる）、落ち口のよどみの奥の岩、滝つぼの岩
+    for (const [x, z, s] of [[-36.4, 14.6, 0.9], [-36, 15.8, 0.8], [-35.2, 14.1, 0.6], [-35, 16, 0.55], [-22.4, 14.2, 0.5], [-22.3, 15.9, 0.45]]) K.rock(x, z, s, 'rock');
+    for (const [x, z, s] of [[-7.4, 14.15, 0.5], [-5.4, 14.1, 0.55], [-3.4, 14.15, 0.45], [-7, 15.9, 0.4], [-4.4, 15.9, 0.45], [-2.4, 15.85, 0.35]]) K.rock(x, z, s, 'rock');
+    for (const [x, z, s] of [[-1.1, 14.1, 0.65], [0.9, 14.05, 0.7], [2.4, 14.6, 0.6], [2.3, 15.6, 0.45]]) K.rock(x, z, s, 'rock');
+    for (const [x, z, s] of [[-5.6, 18.4, 0.6], [-3, 19.6, 0.45], [4.8, 18, 0.7], [-4.2, 23.6, 0.5], [3.6, 23.8, 0.55]]) K.rock(x, z, s, 'rock');
     // 爪あとの岩：影の四剣の印。四本の爪あとのうち、いちばん右だけ小さくて浅い（クロの子猫のころ）
     K.rock(14, 37, 1.3, 'rockDark');
     [[-0.45, 0.85], [-0.15, 0.85], [0.15, 0.85], [0.42, 0.5]].forEach(([u, l]) => K.mesh(new THREE.BoxGeometry(0.06, l, 0.06), K.glow('#d8c8f0', 0.9), 14 + u, 0.55 + l / 2, 38.2, { rz: 0.22, rx: -0.35, noShadow: true }));
