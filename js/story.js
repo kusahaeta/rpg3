@@ -208,7 +208,7 @@ function DialogueScreen(id, done) {
       <div class="dl-skipbtns"><button class="btn gold" data-skip-yes>スキップする</button><button class="btn" data-skip-no>つづきを見る</button></div></div></div>
   </div>`);
   const queue = scene.lines.slice();
-  let typing = null, full = '', auto = false, autoTimer = null, waitingChoice = false, finished = false, currentChoice = null, holding = false, asking = false;
+  let typing = null, full = '', auto = false, autoTimer = null, waitingChoice = false, finished = false, currentChoice = null, holding = false, asking = false, locked = false, lockTimer = null;
   const nameEl = s.querySelector('.dl-name'), textEl = s.querySelector('.dl-text'), box = s.querySelector('.dl-box');
   const choicesEl = s.querySelector('.dl-choices'), portrait = s.querySelector('.dl-portrait');
   // 行の card: n で、ハンコ n 個の面会許可証を出す。card のない行で消える
@@ -241,7 +241,7 @@ function DialogueScreen(id, done) {
   };
   const finish = () => {
     if (finished) return; finished = true;
-    clearInterval(typing); clearTimeout(autoTimer);
+    clearInterval(typing); clearTimeout(autoTimer); clearTimeout(lockTimer);
     // 読み飛ばした行の仲間・フラグも反映
     const walk = ls => ls.forEach(l => { if (!Array.isArray(l) && (l.give || l.flag)) applyMeta(l); });
     walk(scene.lines);
@@ -258,6 +258,9 @@ function DialogueScreen(id, done) {
     box.style.setProperty('--c', speakerColor(speaker));
     showCard(dir && dir.card != null ? dir.card : null, dir && dir.stamp);
     if (dir && dir.meter != null) setMeter(dir.meter);
+    // lock：演出（流れ星が落ちるなど）を見せるあいだ、クリックやキーで先へ進めない。解けたら、オートの続きを
+    clearTimeout(lockTimer); locked = !!(dir && dir.lock);
+    if (locked) lockTimer = setTimeout(() => { locked = false; if (!typing) scheduleAuto(); }, dir.lock * 1000);
     if (v) { if (v.line) v.line(speaker, text, dir || {}); else speaker === 'n' ? v.wide() : v.focus(speaker); }
     else portrait.innerHTML = speaker === 'n' || speaker.startsWith('e:') ? '' : avatarSVG(speaker);
     let i = 0; textEl.textContent = '';
@@ -280,7 +283,7 @@ function DialogueScreen(id, done) {
     }, 550);
   };
   const advance = () => {
-    if (finished || waitingChoice || holding || asking) return;
+    if (finished || waitingChoice || holding || asking || locked) return;
     if (typing) { clearInterval(typing); typing = null; textEl.textContent = full; if (v && v.lineDone) v.lineDone(); scheduleAuto(); return; }
     const l = queue.shift();
     if (!l) { finish(); return; }
