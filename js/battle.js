@@ -4,7 +4,7 @@
 //  - 行動値（AV）：距離10000 / 速度
 //  - SP共有（最大5）、通常攻撃+1 / スキル-1
 //  - 必殺技はEP満タンでいつでも割り込み可能（1〜4キー）
-//  - 靭性・弱点撃破・撃破効果（裂創/燃焼/凍結/感電/風化/くらやみ/まぶしさ）
+//  - 靭性・弱点撃破・撃破効果（裂創/燃焼/凍結/感電/くらやみ/まぶしさ）
 //  - にゃんこファンタジー：どうぐ（ITEMS）、友情ゲージとコンボスキル、にゃんこオールスターズ
 // ============================================================
 const Game = { speed: 1, auto: false, activeBattle: null, activeField: null };
@@ -16,8 +16,8 @@ const MULT_STATS = new Set(['atk', 'def', 'maxHp', 'spd']);
 const STAT_LABEL = { atk: '攻撃', def: '防御', maxHp: 'HP', spd: '速度', crit: '会心', critDmg: '会ダメ', dmg: '与ダメ', be: '撃破',
   vuln: '被ダメ', defDown: '防御', resDown: '耐性', err: 'EP', dmg_dot: '持続', dmg_ult: '必殺' };
 const DOWN_STATS = new Set(['defDown', 'resDown']);
-const DOT_INFO = { burn: ['燃焼', 'fire'], shock: ['感電', 'lightning'], wind: ['風化', 'wind'], bleed: ['裂創', 'physical'] };
-const BREAK_COEF = { physical: 2, fire: 2, ice: 1, lightning: 1, wind: 1.5, quantum: 0.5, imaginary: 0.5 };
+const DOT_INFO = { burn: ['燃焼', 'fire'], shock: ['感電', 'lightning'], bleed: ['裂創', 'physical'] };
+const BREAK_COEF = { physical: 2, fire: 2, ice: 1, lightning: 1, quantum: 0.5, imaginary: 0.5 };
 const ENEMY_TARGETS = new Set(['single', 'blast', 'bounce', 'aoe']);
 const NEEDS_TARGET = new Set(['single', 'blast', 'bounce', 'ally', 'down']);
 
@@ -1187,7 +1187,6 @@ class Battle {
       case 'physical': this.setDot(t, { ...dotBase, type: 'bleed', elem, raw: Math.min(t.maxHp * 0.16, 2 * lvM * tm) * be }); break;
       case 'fire': this.setDot(t, { ...dotBase, type: 'burn', elem, raw: lvM * be }); break;
       case 'lightning': this.setDot(t, { ...dotBase, type: 'shock', elem, raw: 2 * lvM * be }); break;
-      case 'wind': { const st = t.def.boss || t.def.elite ? 3 : 1; this.setDot(t, { ...dotBase, type: 'wind', elem, raw: lvM * be * st, stacks: st }); break; }
       case 'ice': t.frozen = { raw: lvM * be, srcLv: src.level }; this.float(t, '凍結', 'info'); break;
       case 'quantum': t.gauge += 2000 * be; t.entangle = { raw: 0.6 * lvM * tm * be, srcLv: src.level, stacks: 1 }; this.float(t, 'くらやみ', 'info'); break;
       case 'imaginary': t.gauge += 3000 * be;

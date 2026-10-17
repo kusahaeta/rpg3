@@ -29,7 +29,7 @@ const WEAPONS = {
     desc: 'かつおぶしを削って作った剣。振るたびに、いいにおいがする。', look: { c: '#c8884a', g: '#ffd8a0' },
     basic: { name: 'ひとけずり', elem: 'physical', target: 'single', desc: '指定した敵単体に攻撃力100%の物理ダメージ。自身のHPを最大HP4%回復。',
       run: async (B, s, t) => { const r = await B.single(s, t, 1.0, 10, 'basic'); B.heal(s, s, s.maxHp * 0.04, true); return r; } },
-    skill: { name: 'けずり節', elem: 'wind', target: 'bounce', desc: 'ランダムな敵に攻撃力55%の風ダメージを4回。そのあと、だしの香りで味方全体のHPを最大HP5%回復。',
+    skill: { name: 'けずり節', elem: 'physical', target: 'bounce', desc: 'ランダムな敵に攻撃力55%の物理ダメージを4回。そのあと、だしの香りで味方全体のHPを最大HP5%回復。',
       run: async (B, s, t) => {
         const r = await B.bounce(s, 4, 0.55, 8, 'skill', {}, t);
         B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.05));
