@@ -638,7 +638,7 @@ class StageView extends BaseView {
     each(d.stance, (a, v) => { a.setStance(v === 'ready' ? (CHAR_ACT[a.base] || {}).ready || 'ready' : v); if (v === 'ready' && !a.foe) a.showWeapon(true); });
     each(d.move, (a, v) => { const pts = (Array.isArray(v[0]) ? v : [v]).map(p => this.W(p[0], p[1])); a.walkTo(pts, d.speed || 1.6); });
     each(d.hold, (a, v) => a.hold(v));
-    each(d.weapon, (a, v) => { a.showWeapon(v); if (v) { this.fx.sprite(a.m.handPos(), ELEMENTS[(CHARS[a.key] || NPCS[a.key] || {}).elem || 'physical'].color, 1.0, 0.5); Sfx.zap(); } });
+    each(d.weapon, (a, v) => { a.showWeapon(v); if (v) { this.fx.sprite(a.m.handPos(), (CHARS[a.key] || NPCS[a.key] || {}).color || ELEMENTS.physical.color, 1.0, 0.5); Sfx.zap(); } });
     each(d.meow, a => Sfx.meow(a.base));
     each(d.lift, (a, v) => { const y0 = a.lift; GFX.tween(0.5, e => { a.lift = lerp(y0, v, e); }); });
     if (d.enter) [].concat(d.enter).forEach(k => this.enter(k, d.enterFx));
@@ -662,7 +662,7 @@ class StageView extends BaseView {
       if (style === 'quiet') return;
       const p = a.pos.clone(); p.y += 1 + a.lift;
       if (a.foe) { this.fx.pillar(a.pos, a.m.color || '#ff4d6d', { h: 4, r: 0.8, life: 0.6 }); this.p.burst(p, a.m.color || '#ff4d6d', 40, { speed: 4, life: 0.8 }); a.roar(); }
-      else { const pp = a.pos.clone(); pp.y += 0.6 + a.lift; this.p.burst(pp, (CHARS[a.key] ? ELEMENTS[CHARS[a.key].elem].color : '#ffffff'), 40, { speed: 3, life: 0.9, up: 0.5 }); }
+      else { const pp = a.pos.clone(); pp.y += 0.6 + a.lift; this.p.burst(pp, (CHARS[a.key] ? CHARS[a.key].color : '#ffffff'), 40, { speed: 3, life: 0.9, up: 0.5 }); }
     });
     if (style === 'quiet') return;
     if (list.some(a => a.foe)) { Sfx.enemy(); GFX.flash('#ff3040', 0.35, 0.4); }

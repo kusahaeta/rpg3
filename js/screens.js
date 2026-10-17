@@ -30,9 +30,8 @@ function wireBack(node, fn = () => App.go(FieldScreen)) { const b = node.querySe
 
 function charChip(key, extra = '') {
   const c = CHARS[key], o = Save.data.owned[key];
-  return `<div class="chip r${c.rarity} ${extra}" data-key="${key}" style="--c:${ELEMENTS[c.elem].color}">
+  return `<div class="chip r${c.rarity} ${extra}" data-key="${key}" style="--c:${c.color}">
     <div class="chip-face">${avatarSVG(key)}</div>
-    <div class="chip-el">${elemIcon(c.elem)}</div>
     <div class="chip-name">${c.name}</div>
     ${o ? `<div class="chip-lv">Lv.${o.lv}</div>` : '<div class="chip-lv">？？？</div>'}
   </div>`;
@@ -143,7 +142,7 @@ function TeamScreen() {
       <div class="tm-slot ${i === slot ? 'on' : ''}" data-slot="${i}">
         <div class="tm-no">${i === lead ? '先頭' : i + 1}</div>
         ${t[i] ? charChip(t[i], 'big') + `<button class="tm-x" data-x="${i}">×</button>
-          <div class="tm-path">${PATHS[CHARS[t[i]].path].name}・${ELEMENTS[CHARS[t[i]].elem].name}</div>` : '<div class="tm-empty">あき</div>'}
+          <div class="tm-path">${PATHS[CHARS[t[i]].path].name}</div>` : '<div class="tm-empty">あき</div>'}
       </div>`).join('');
     s.querySelector('.tm-roster').innerHTML = Object.keys(CHARS).filter(k => Save.data.owned[k]).map(k => charChip(k, isAway(k) ? 'away' : t.includes(k) ? 'inteam' : '')).join('');
     on(s, '[data-slot]', 'click', (el, e) => {
@@ -166,7 +165,7 @@ function TeamScreen() {
 //  武器（なかま画面・武器屋で使う）
 // ------------------------------------------------------------
 function weaponIcon(id) {
-  const w = WEAPONS[id], c = (w.look && w.look.c) || ELEMENTS[CHARS[w.owner].elem].color, g = (w.look && w.look.g) || '#ffffff';
+  const w = WEAPONS[id], c = (w.look && w.look.c) || CHARS[w.owner].color, g = (w.look && w.look.g) || '#ffffff';
   return `<span class="wp-ic" style="--wc:${c};--wg:${g}">${WEAPON_GLYPH[CHARS[w.owner].gear.weapon]}</span>`;
 }
 const weaponTier = id => '★'.repeat(WEAPONS[id].tier + 1);
@@ -188,16 +187,16 @@ function CharScreen(sel) {
   sel = sel && Save.data.owned[sel] ? sel : Save.data.team[0];
   const v3 = GFX.show('chars', () => new ShowcaseView(sel, { screenX: 470 }));
   if (v3 && (!v3.model || v3.model.key !== sel)) v3.setChar(sel);
-  const c = charKit(sel), o = Save.data.owned[sel], col = ELEMENTS[c.elem].color, wid = equippedWeapon(sel);
+  const c = charKit(sel), o = Save.data.owned[sel], col = c.color, wid = equippedWeapon(sel);
   const st = charStats(sel, o.lv, o.eid);
-  const ab = (label, a) => `<div class="ck-ab"><div class="ck-ab-h"><span class="ck-kind">${label}</span><b>${a.name}</b>${a.target ? `<span class="ck-tg">${{ single: '単体', blast: '拡散', aoe: '全体', bounce: 'バウンド', ally: '味方単体', allies: '味方全体', self: '自分' }[a.target]}</span>` : ''}</div><p>${a.desc}</p></div>`;
+  const ab = (label, a) => `<div class="ck-ab"><div class="ck-ab-h"><span class="ck-kind">${label}</span>${abElems(a).map(el => elemIcon(el)).join('')}<b>${a.name}</b>${a.target ? `<span class="ck-tg">${{ single: '単体', blast: '拡散', aoe: '全体', bounce: 'バウンド', ally: '味方単体', allies: '味方全体', self: '自分' }[a.target]}</span>` : ''}</div><p>${a.desc}</p></div>`;
   const combos = COMBOS.filter(x => x.pair.includes(sel));
   const s = h(`<div class="screen chars">${topBar('なかま')}
     <div class="ck-list">${keys.map(k => charChip(k, k === sel ? 'on' : '')).join('')}</div>
     <div class="ck-art ${GFX.ok ? 'is3d' : ''}" style="--c:${col}">${GFX.ok ? '' : avatarSVG(sel)}</div>
     <div class="ck-info" style="--c:${col}">
       <div class="ck-head"><h2>${c.name}</h2><div class="ck-title">${c.title}</div>
-        <div class="ck-tags">${elemIcon(c.elem)}<span>${ELEMENTS[c.elem].name}</span><span class="ck-path">役割：${PATHS[c.path].name}</span><span class="ck-eid">武器：${weaponName(wid)}</span></div></div>
+        <div class="ck-tags"><span class="ck-path">役割：${PATHS[c.path].name}</span><span class="ck-eid">武器：${weaponName(wid)}</span></div></div>
       <div class="ck-lv"><b>Lv.${o.lv}</b><span>/80</span>
         <div class="bar exp"><i style="width:${o.lv >= 80 ? 100 : o.exp / expToNext(o.lv) * 100}%"></i></div>
         <div class="dim">${o.lv >= 80 ? 'レベル最大' : `次のレベルまで あと ${fmt(expToNext(o.lv) - o.exp)}`}</div></div>

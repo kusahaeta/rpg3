@@ -14,7 +14,7 @@ function speakerColor(key) {
   if (key === 'n') return '#ffd27a';
   if (key.startsWith('e:')) return ENEMIES[key.slice(2).split('#')[0]].color;
   const c = CHARS[key] || NPCS[key];
-  return (c.look && c.look.accent) || ELEMENTS[c.elem || 'physical'].color;
+  return (c.look && c.look.accent) || c.color || ELEMENTS.physical.color;
 }
 
 const Story = {

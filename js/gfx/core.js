@@ -227,7 +227,7 @@ const GFX = {
     r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
     for (const key of Object.keys(CHARS)) {
       const scene = new THREE.Scene();
-      const col = ELEMENTS[CHARS[key].elem].color;
+      const col = CHARS[key].color;
       addStudioLights(scene, '#fff0dc');
       const m = buildCharacter(key);
       m.group.rotation.y = -0.3;

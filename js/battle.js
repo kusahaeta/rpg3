@@ -37,12 +37,12 @@ class Unit {
       this.base = charStats(key, level, this.eid);
       this.energyMax = this.def.energyMax;
       this.energy = opts.energy != null ? opts.energy : this.energyMax * 0.5;
-      this.elem = this.def.elem; this.path = this.def.path;
+      this.color = this.def.color; this.path = this.def.path;
     } else {
       const d = this.def, f = lvFactor(level);
       this.base = { maxHp: d.hp * f * (d.boss ? 1.25 : 1), atk: d.atk * f * 1.4, def: 0, spd: d.spd, eres: d.eres || 0.1, ehr: 0.1 };
       this.maxTough = d.tough; this.toughness = d.tough; this.weak = [...d.weak];
-      this.broken = false; this.phase = 0; this.charging = null; this.elem = 'physical';
+      this.broken = false; this.phase = 0; this.charging = null; this.color = ELEMENTS.physical.color;
     }
     this.hp = this.maxHp;
   }
@@ -110,11 +110,11 @@ class Battle {
       <div class="announce"></div>
       <div class="ally-row"></div>
       <div class="panel idle">
-        <div class="ab-info"><div class="ab-kind"></div><div class="ab-name"></div><div class="ab-desc"></div></div>
+        <div class="ab-info"><div class="ab-kind"></div><div class="ab-name"><span class="ab-el"></span><b></b></div><div class="ab-desc"></div></div>
         <div class="sp"><div class="sp-delta"></div><div class="sp-gems"></div><div class="sp-num"></div></div>
         <div class="ab-btns">
-          <button class="ab-btn" data-ab="basic"><span class="ab-ic">⚔</span><span class="k">Q</span><span class="l">通常攻撃</span></button>
-          <button class="ab-btn" data-ab="skill"><span class="ab-ic">✦</span><span class="k">E</span><span class="l">戦闘スキル</span></button>
+          <button class="ab-btn" data-ab="basic"><span class="ab-ic">⚔</span><span class="ab-el"></span><span class="k">Q</span><span class="l">通常攻撃</span></button>
+          <button class="ab-btn" data-ab="skill"><span class="ab-ic">✦</span><span class="ab-el"></span><span class="k">E</span><span class="l">戦闘スキル</span></button>
           <button class="ab-btn item" data-ab="item"><span class="ab-ic">🎒</span><span class="k">R</span><span class="l">どうぐ</span></button>
         </div>
         <div class="ult-hint"><span class="pc-only">Space で発動　Esc でキャンセル</span><button class="ctl ult-go">発動</button><button class="ctl ult-cancel">キャンセル</button></div>
@@ -133,9 +133,9 @@ class Battle {
     this.allies.forEach((u, i) => {
       const c = document.createElement('div');
       c.className = 'ally';
-      c.style.setProperty('--c', ELEMENTS[u.elem].color);
+      c.style.setProperty('--c', u.color);
       c.innerHTML = `
-        <div class="a-face">${avatarSVG(u.key, { wide: true })}<div class="a-el">${elemIcon(u.elem)}</div></div>
+        <div class="a-face">${avatarSVG(u.key, { wide: true })}</div>
         <div class="ult" data-ult="${i}" title="${u.def.ult.name}"><div class="ult-ring"></div><div class="ult-face">${ultIcon(u.key)}</div><span class="ult-key">${i + 1}</span></div>
         <div class="a-name">${u.name}<span>Lv.${u.level}</span></div>
         <div class="bar hp"><i></i><s></s></div>
@@ -329,12 +329,12 @@ class Battle {
   ultBand(u, on) {
     const c = this.$('.cutin');
     if (!on) { c.classList.remove('show'); return; }
-    c.innerHTML = `<div class="ci-3d" style="--c:${ELEMENTS[u.elem].color}"><div class="ci-name">${u.name}</div><div class="ci-ult">${u.def.ult.name}</div></div>`;
+    c.innerHTML = `<div class="ci-3d" style="--c:${u.color}"><div class="ci-name">${u.name}</div><div class="ci-ult">${u.def.ult.name}</div></div>`;
     c.classList.remove('show'); void c.offsetWidth; c.classList.add('show');
   }
   // posed：発動を選ぶ前に決めポーズ（と技の帯）を済ませた（ここでは放つ演出だけ）
   async cutin(u, posed) {
-    const c = this.$('.cutin'), col = ELEMENTS[u.elem].color;
+    const c = this.$('.cutin'), col = u.color;
     if (this.v) {
       if (posed) { await this.v.ultRelease(u); return; }
       this.ultBand(u, true); Sfx.ult();
@@ -375,9 +375,11 @@ class Battle {
     for (const key of this.opts.techs || []) {
       const u = this.allies.find(a => a.key === key && a.alive);
       if (!u || !this.aliveEnemies().length) continue;
-      this.announce('初手技', `${u.name}「${u.def.technique.name}」`, ELEMENTS[u.elem].color);
+      this.announce('初手技', `${u.name}「${u.def.technique.name}」`, this.abColor(u, u.def.technique));
       await wait(500);
+      this.curAb = u.def.technique;
       await u.def.technique.run(this, u);
+      this.curAb = null;
       if (this.v) await this.v.attackEnd(u);
       await this.resolveDeaths(u, 'tech');
       this.renderAll();
@@ -504,7 +506,7 @@ class Battle {
       this.banter(u);
     } else {
       u.def.talent.onExtraStart && u.def.talent.onExtraStart(this, u);
-      this.announce('追加ターン', u.name, ELEMENTS[u.elem].color);
+      this.announce('追加ターン', u.name, u.color);
     }
     this.updateUnit(u);
 
@@ -528,7 +530,7 @@ class Battle {
     const ab = u.def[kind];
     this.lastSel[u.uid] = kind;
     if (kind === 'basic') this.addSp(1); else this.addSp(-1);
-    this.announce(kind === 'basic' ? '通常攻撃' : '戦闘スキル', ab.name, ELEMENTS[u.elem].color);
+    this.announce(kind === 'basic' ? '通常攻撃' : '戦闘スキル', ab.name, this.abColor(u, ab));
     if (target && target.side === 'enemy') this.lastTarget = target;
     this.curAb = ab;   // 技ごとのモーション（ab.anim）
     if (this.v && !ENEMY_TARGETS.has(ab.target)) await this.v.support(u, ab.target === 'ally' ? [target] : this.aliveAllies());
@@ -556,7 +558,7 @@ class Battle {
     const it = ITEMS[id];
     this.lastItem = id;
     if (!it.key) { Save.data.items[id] = Math.max(0, itemCount(id) - 1); Save.save(); }
-    this.announce('どうぐ', `${it.icon} ${it.name}`, ELEMENTS[u.elem].color);
+    this.announce('どうぐ', `${it.icon} ${it.name}`, u.color);
     if (this.v) {
       if (it.target === 'single') await this.v.waveFx(u, t);
       else await this.v.support(u, it.target === 'allies' ? this.aliveAllies() : [t]);
@@ -648,7 +650,7 @@ class Battle {
   }
   async comboCutin(c, mem) {
     const box = this.$('.cutin');
-    box.innerHTML = `<div class="ci-combo ${c.id === 'allstars' ? 'all' : ''}"><div class="ci-faces">${mem.map(m => `<div class="ci-f" style="--c:${ELEMENTS[m.elem].color}">${avatarSVG(m.key)}</div>`).join('')}</div><div class="ci-ult">${c.name}</div></div>`;
+    box.innerHTML = `<div class="ci-combo ${c.id === 'allstars' ? 'all' : ''}"><div class="ci-faces">${mem.map(m => `<div class="ci-f" style="--c:${m.color}">${avatarSVG(m.key)}</div>`).join('')}</div><div class="ci-ult">${c.name}</div></div>`;
     box.classList.remove('show'); void box.offsetWidth; box.classList.add('show');
     if (this.v) await this.v.comboIntro(mem, c);
     else await wait(1200);
@@ -665,10 +667,10 @@ class Battle {
     if (this.v) await this.v.allStarsFx(mem);
     const sum = mem.reduce((a, m) => a + m.stat('atk'), 0), lv = Math.max(...mem.map(m => m.level));
     for (const t of this.aliveEnemies()) {
-      const v = Math.max(sum * 3 * this.defResMult(lv, t, 'imaginary', mem[0]), t.maxHp * 0.62);
-      if (this.v) this.v.hit(t, 'imaginary', true, true);
-      this.applyDamage(t, v, mem[0], 'imaginary', 'crit');
-      if (!t.broken && t.alive) { t.toughness = 0; await this.doBreak(mem[0], t, 'imaginary'); }
+      const v = Math.max(sum * 3 * this.defResMult(lv, t, ALLSTARS.elem, mem[0]), t.maxHp * 0.62);
+      if (this.v) this.v.hit(t, ALLSTARS.elem, true, true);
+      this.applyDamage(t, v, mem[0], ALLSTARS.elem, 'crit');
+      if (!t.broken && t.alive) { t.toughness = 0; await this.doBreak(mem[0], t, ALLSTARS.elem); }
     }
     this.shake(true);
     await wait(500);
@@ -760,7 +762,7 @@ class Battle {
 
   // 専用演出の画面側（HUDを隠す・技名・光条・集中線）
   ultUi(kind, u) {
-    const fx = this.$('.ultfx'), col = ELEMENTS[u.elem].color;
+    const fx = this.$('.ultfx'), col = this.abColor(u, u.def.ult);
     const add = (cls, ms, html = '') => {
       const d = document.createElement('div'); d.className = cls; d.style.setProperty('--c', col); d.innerHTML = html; fx.appendChild(d);
       if (ms) setTimeout(() => d.remove(), ms);
@@ -781,7 +783,7 @@ class Battle {
   async castUlt(u, target, posed) {
     u.energy = 0; this.updateUnit(u); this.renderOrder();
     await this.cutin(u, posed);
-    this.announce('必殺技', u.def.ult.name, ELEMENTS[u.elem].color);
+    this.announce('必殺技', u.def.ult.name, this.abColor(u, u.def.ult));
     if (target && target.side === 'enemy') this.lastTarget = target;
     const ult = u.def.ult;
     this.curAb = ult;
@@ -935,13 +937,15 @@ class Battle {
     this.renderItemMenu();
     if (!inp) return;
     const ab = this.abilityOf(inp), u = inp.unit;
-    panel.style.setProperty('--c', ELEMENTS[u.elem].color);
+    panel.style.setProperty('--c', u.color);
     this.$('.ab-kind').textContent = inp.mode === 'ult' ? `${u.name}・必殺技` : `${u.name}・${inp.sel === 'basic' ? '通常攻撃' : inp.sel === 'item' ? 'どうぐ' : '戦闘スキル'}`;
-    this.$('.ab-name').textContent = ab.name;
+    this.$('.ab-name b').textContent = ab.name;
+    this.$('.ab-name .ab-el').innerHTML = abElems(ab).map(el => elemIcon(el)).join('');
     this.$('.ab-desc').textContent = ab.desc;
     this.root.querySelectorAll('.ab-btn').forEach(b => {
       b.classList.toggle('sel', inp.mode === 'turn' && b.dataset.ab === inp.sel);
       b.querySelector('.l').textContent = b.dataset.ab === 'item' ? 'どうぐ' : u.def[b.dataset.ab].name;
+      const el = b.querySelector('.ab-el'); if (el) el.innerHTML = abElems(u.def[b.dataset.ab]).map(x => elemIcon(x)).join('');
     });
     this.$('[data-ab=skill]').classList.toggle('disabled', this.sp < 1);
     this.$('[data-ab=item]').classList.toggle('disabled', !this.readyItems(u).length);
@@ -1022,7 +1026,7 @@ class Battle {
     if (ab.target === 'ally') return this.defaultTarget(u, ab);
     if (!ENEMY_TARGETS.has(ab.target)) return null;
     const en = this.aliveEnemies();
-    const score = e => (e.isWeak(u.elem) && !e.broken ? 1000 - e.toughness : 0) + (1 - e.hp / e.maxHp) * 100 + (e.def.boss ? 50 : 0);
+    const els = abElems(ab), score = e => (els.some(el => e.isWeak(el)) && !e.broken ? 1000 - e.toughness : 0) + (1 - e.hp / e.maxHp) * 100 + (e.def.boss ? 50 : 0);
     if (ab.target === 'blast') {
       return en.map(e => ({ e, s: score(e) + this.adjacent(e).reduce((a, x) => a + score(x) * 0.5 + 200, 0) }))
         .sort((a, b) => b.s - a.s)[0].e;
@@ -1044,8 +1048,18 @@ class Battle {
     return (1 - d / (d + 200 + 10 * srcLv)) * Math.max(0.1, 1 + t.stat('vuln'));
   }
 
+  // 技の属性：opt.elem（その一撃だけの属性）＞ 技の elem。敵の攻撃とどうぐは物理
+  elemOf(src, kind, opt = {}) {
+    if (opt.elem) return opt.elem;
+    if (src.side !== 'ally') return 'physical';
+    const ab = kind === 'combo' ? this.curAb : src.def[kind === 'tech' ? 'technique' : kind];
+    return abElem(ab) || 'physical';
+  }
+  // 技の色（属性の色。属性のない技は、その子の色）
+  abColor(u, ab = this.curAb) { const el = abElem(ab); return el ? ELEMENTS[el].color : u.color; }
+
   calcDamage(src, t, mult, kind, opt = {}) {
-    const elem = opt.elem || src.elem;
+    const elem = this.elemOf(src, kind, opt);
     const base = src.stat(opt.stat || 'atk') * mult;
     let bonus = 1 + src.stat('dmg') + src.stat('dmg_' + kind) + (opt.dmgBonus || 0);
     if (src.side === 'ally') {
@@ -1154,7 +1168,7 @@ class Battle {
     return { t, dmg: r.value, crit: r.crit, broke };
   }
 
-  async doBreak(src, t, elem = src.elem) {
+  async doBreak(src, t, elem) {
     t.broken = true;
     this.addBond(15);
     const lvM = lvMult(src.level), tm = 0.5 + t.maxTough / 120, be = 1 + src.stat('be');

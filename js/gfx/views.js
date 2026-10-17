@@ -65,7 +65,7 @@ class ShowcaseView extends BaseView {
     m.group.position.y = 0.11;
     m.setPose(POSES.idle); m.group.rotation.y = this.rotY; m.face.set('smile');
     if (burst) {
-      const col = ELEMENTS[CHARS[key].elem].color;
+      const col = CHARS[key].color;
       this.fx.ring(V3(0, 0.12, 0), col, { r: 2, life: 0.7 });
       this.p.burst(V3(0, 0.7, 0), col, 50, { speed: 3, life: 1, size: 0.07, up: 0.6 });
       m.flash('#ffffff', 1.2);
@@ -345,7 +345,7 @@ class BattleView extends BaseView {
       this.focus(e);
       this.face(e, this.enemyCenter());
       this.shoulder(e);
-      e.model.flash(e.model.elemCol, 0.5);
+      e.model.flash(e.model.charCol, 0.5);
     } else {
       this.unfocus(); this.sway = 0.4;
       this.setCam(V3(e.home.x * 0.4 - 1.2, 2.3, 8.6), V3(e.home.x * 0.5, 1.2, e.home.z * 0.5), { speed: 2.5 });
@@ -372,7 +372,7 @@ class BattleView extends BaseView {
   // ---------- 味方の攻撃 ----------
   async attack(src, targets, kind, opt = {}) {
     const e = this.ent(src); if (!e || !targets.length) return;
-    const m = e.model, col = ELEMENTS[opt.elem || src.elem].color;
+    const m = e.model, col = ELEMENTS[this.b.elemOf(src, kind, opt)].color;
     const tEnts = targets.map(t => this.ent(t)).filter(Boolean);
     const main = tEnts[0]; if (!main) return;
     const ult = kind === 'ult';
@@ -431,7 +431,7 @@ class BattleView extends BaseView {
   // 連続攻撃（bounce）の 2 発目から：近接は次の敵へ跳んで斬り、遠距離は弾を撃つ
   async quickShot(src, t, kind, opt = {}) {
     const e = this.ent(src), te = this.ent(t); if (!e || !te) return;
-    const col = ELEMENTS[opt.elem || src.elem].color, mv = MOVES[this.animOf(opt)];
+    const col = ELEMENTS[this.b.elemOf(src, kind, opt)].color, mv = MOVES[this.animOf(opt)];
     if (mv && mv.hop) return mv.hop.call(this, e, te, { col, ult: kind === 'ult', kind, opt });
     if (this.lastAttack && this.lastAttack.src === src && this.lastAttack.moved) {
       const dest = this.meleeSpot(te, 0.7);
@@ -447,7 +447,7 @@ class BattleView extends BaseView {
   // 同じ敵へ続けて斬る（二連・三連影）：2 太刀目からは、返す刀と振りかぶり直しをくり返す
   async restrike(src, t, i, kind, opt = {}) {
     const e = this.ent(src), te = this.ent(t); if (!e || !te) return;
-    const m = e.model, col = ELEMENTS[opt.elem || src.elem].color;
+    const m = e.model, col = ELEMENTS[this.b.elemOf(src, kind, opt)].color;
     if (!this.lastAttack || this.lastAttack.src !== src || !this.lastAttack.moved) { await this.fx.projectile(m.tipPos(), this.hitPoint(t), col, { dur: 0.2, size: 0.5, arc: 0.3 }); return; }
     this.face(e, te.home);
     if (i % 2) await this.tweenPose(m, POSES.strike2, 0.1);
@@ -457,7 +457,7 @@ class BattleView extends BaseView {
   // ダメージのない技の動き（技の run から B.motion で呼ぶ）
   async motion(src, anim, targets) {
     const e = this.ent(src), mv = MOVES[anim]; if (!e || !mv) return;
-    const ts = targets.map(t => this.ent(t)).filter(Boolean), col = ELEMENTS[src.elem].color;
+    const ts = targets.map(t => this.ent(t)).filter(Boolean), col = this.b.abColor(src);
     this.unfocus(); this.sway = 0;
     if (mv.attack) { this.lastAttack = { src, moved: this.recall(src) }; await mv.attack.call(this, e, ts, { col, ult: false, kind: 'skill', opt: {} }); }
     else if (mv.support) await mv.support.call(this, e, targets, { col });
@@ -501,7 +501,7 @@ class BattleView extends BaseView {
   // 味方対象のスキル（回復・シールド・バフ）
   async support(src, targets) {
     const e = this.ent(src); if (!e) return;
-    const col = ELEMENTS[src.elem].color;
+    const col = this.b.abColor(src);
     this.unfocus(); this.sway = 0;
     this.recall(src);
     const mv = MOVES[this.animOf()];
@@ -753,7 +753,7 @@ class BattleView extends BaseView {
   // 決めポーズ（キャラごとの ULT_POSES）：正面から寄って、光の柱・輪・渦巻く光
   async ultPose(u) {
     const e = this.ent(u); if (!e) return;
-    const m = e.model, col = ELEMENTS[u.elem].color, h = e.home, up = ULT_POSES[u.key];
+    const m = e.model, col = this.b.abColor(u, u.def.ult), h = e.home, up = ULT_POSES[u.key];
     GFX.grade.uniforms.desat.value = 0.3;
     m.group.rotation.y = 0;
     // 他の味方は一時的に隠す（カメラの邪魔になるため）
@@ -778,7 +778,7 @@ class BattleView extends BaseView {
     const e = this.ent(u); this.ultHold = null;
     GFX.grade.uniforms.desat.value = 0;
     if (!e) return;
-    const col = ELEMENTS[u.elem].color;
+    const col = this.b.abColor(u, u.def.ult);
     GFX.flash(col, 0.4, 0.3);
     this.p.burst(this.hitPoint(u), col, 30, { speed: 3, up: 1, life: 0.8 });
     this.unfocus();
@@ -799,7 +799,7 @@ class BattleView extends BaseView {
     const w = Ease.inOut(Math.min(1, s.t / 0.45)), off = ULT_MOVES[s.move](s.t, w);
     for (const k of POSE_KEYS) m.pose[k] = lerp(s.from[k] || 0, s.to[k] || 0, w) + (off[k] || 0);
     m.pose.headZ = off.headZ || 0;
-    if (off.sparkle && m.group.visible && m.tipPos) this.p.emit(m.tipPos(), V3(0, 0.15, 0), hdr(ELEMENTS[e.u.elem].color, 2.8), { life: 0.45, size: 0.05 });
+    if (off.sparkle && m.group.visible && m.tipPos) this.p.emit(m.tipPos(), V3(0, 0.15, 0), hdr(this.b.abColor(e.u, e.u.def.ult), 2.8), { life: 0.45, size: 0.05 });
   }
   // オート：ポーズしてそのまま放つ
   async ultIntro(u) { await this.ultPose(u); this.ultRelease(u); }
@@ -878,7 +878,7 @@ class BattleView extends BaseView {
     const cx = es.reduce((a, e) => a + e.home.x, 0) / es.length;
     this.setCam(V3(cx + 0.4, 1.0, 5.4), V3(cx, 0.7, 2.6), { snap: true });
     this.setCam(V3(cx + 0.9, 0.9, 4.6), V3(cx, 0.75, 2.6), { speed: 1.5 });
-    es.forEach((e, i) => { e.model.group.rotation.y = 0; if (e.model.face) e.model.face.set('joy'); GFX.delay(i * 0.08).then(() => this.tweenPose(e.model, POSES.ult, 0.35)); e.model.flash(ELEMENTS[e.u.elem].color, 0.5); this.fx.pillar(e.home, ELEMENTS[e.u.elem].color, { h: 6, r: 0.55, life: 1.1, k: 0.45 }); });
+    es.forEach((e, i) => { e.model.group.rotation.y = 0; if (e.model.face) e.model.face.set('joy'); GFX.delay(i * 0.08).then(() => this.tweenPose(e.model, POSES.ult, 0.35)); e.model.flash(e.u.color, 0.5); this.fx.pillar(e.home, e.u.color, { h: 6, r: 0.55, life: 1.1, k: 0.45 }); });
     if (es.length > 1) for (let i = 0; i < es.length - 1; i++) this.fx.beam(this.hitPoint(es[i].u), this.hitPoint(es[i + 1].u), '#ffcf4a', { life: 1.0, r: 0.03 });
     this.p.burst(V3(cx, 0.8, 2.6), '#ffcf4a', 80, { speed: 4, life: 1.2, size: 0.08, up: 0.8 });
     GFX.flash('#fff4c8', 0.2, 0.4);
@@ -1035,7 +1035,7 @@ class BattleView extends BaseView {
       }
       // 必殺技の発動待ち：足もとから立ちのぼる光と、広がる輪
       if (this.ultHold === u && m.group.visible) {
-        const col = ELEMENTS[u.elem].color, g = m.group.position;
+        const col = this.b.abColor(u, u.def.ult), g = m.group.position;
         for (let n = Math.floor(dt * 70 + Math.random()); n > 0; n--) {
           const a = Math.random() * Math.PI * 2, r = 0.4 + Math.random() * 0.3;
           this.p.emit(V3(g.x + Math.cos(a) * r, 0.05 + Math.random() * 0.3, g.z + Math.sin(a) * r), V3(-Math.sin(a) * 0.4, 1.2 + Math.random() * 0.8, Math.cos(a) * 0.4), hdr(col, 2.6), { life: 0.9, size: 0.08 });

@@ -932,7 +932,7 @@ class FieldView extends BaseView {
     if (this.team[i].hpRatio <= 0) { this.toast(`${CHARS[this.team[i].key].name}は戦闘不能です`); return; }
     this.leader = i;
     this.spawnPlayer(this.player.pos, this.player.yaw);
-    const col = ELEMENTS[CHARS[this.team[i].key].elem].color;
+    const col = CHARS[this.team[i].key].color;
     this.fx.ring(this.player.pos.clone().add(V3(0, 0.05, 0)), col, { r: 1.4, life: 0.6 });
     this.p.burst(this.player.pos.clone().add(V3(0, 0.6, 0)), col, 40, { speed: 3, life: 0.7 });
     Sfx.meow(this.team[i].key); this.renderTeam();
@@ -1057,7 +1057,7 @@ class FieldView extends BaseView {
   }
   attackHit() {
     const p = this.player, fwd = V3(Math.sin(p.yaw), 0, Math.cos(p.yaw));
-    const col = ELEMENTS[CHARS[this.team[this.leader].key].elem].color;
+    const col = CHARS[this.team[this.leader].key].color;
     const at = p.pos.clone().addScaledVector(fwd, 0.9).add(V3(0, 0.55, 0));
     this.fx.slash(at, col, { cam: this.camera, size: 1.6 });
     this.p.burst(at, col, 14, { speed: 3, life: 0.35, size: 0.08 });
@@ -1105,7 +1105,7 @@ class FieldView extends BaseView {
     if (Save.data.tp < 1) { this.toast('初手技ポイントが足りません（爪とぎの丸太で爪を研ぐと回復）'); return; }
     Save.data.tp--; Save.save();
     this.techs.add(key);
-    const col = ELEMENTS[c.elem].color, pos = this.player.pos;
+    const col = c.color, pos = this.player.pos;
     this.fx.pillar(pos, col, { h: 3.5, r: 0.5, life: 0.7, k: 1.5 });
     this.fx.ring(pos.clone().add(V3(0, 0.05, 0)), col, { r: 2, life: 0.6 });
     this.p.burst(pos.clone().add(V3(0, 0.6, 0)), col, 50, { speed: 4, life: 0.8, up: 0.8 });
@@ -2622,7 +2622,7 @@ class FieldView extends BaseView {
   renderTeam() {
     const el = this.root.querySelector('.fd-team');
     el.innerHTML = this.team.map((m, i) => `
-      <div class="fd-mem ${i === this.leader ? 'on' : ''} ${m.hpRatio <= 0 ? 'dead' : ''}" data-i="${i}" style="--c:${ELEMENTS[CHARS[m.key].elem].color}">
+      <div class="fd-mem ${i === this.leader ? 'on' : ''} ${m.hpRatio <= 0 ? 'dead' : ''}" data-i="${i}" style="--c:${CHARS[m.key].color}">
         <div class="fd-face">${avatarSVG(m.key)}</div>
         <span class="fd-key">${i + 1}</span>
         ${this.techs.has(m.key) ? '<span class="fd-tech">初手技</span>' : ''}
@@ -2647,7 +2647,7 @@ class FieldView extends BaseView {
     const item = (m, name, desc) => `<button class="fm" data-m="${m}"><b>${name}</b><em>${desc}</em></button>`;
     o.innerHTML = `<div class="ov-box fm-box"><h2>メニュー</h2>
       <div class="dim">${this.zone.name}：${this.siege ? '影の獣に囲まれている' : this.town ? '安全なところ' : `残りの敵 ${left}`} ／ まだ開けていない宝箱 ${chests}</div>
-      ${pout ? `<div class="fm-pout" style="--c:${ELEMENTS[CHARS[pout.k].elem].color}"><div class="hp-face">${avatarSVG(pout.k)}</div><div class="hp-say"><b>${CHARS[pout.k].name}</b>${pout.line}</div></div>` : ''}
+      ${pout ? `<div class="fm-pout" style="--c:${CHARS[pout.k].color}"><div class="hp-face">${avatarSVG(pout.k)}</div><div class="hp-say"><b>${CHARS[pout.k].name}</b>${pout.line}</div></div>` : ''}
       <button class="btn gold" data-m="resume">冒険を続ける</button>
       <div class="fm-grid">
         ${item('map', 'ワールドマップ', '行ったことのある場所へひとっとび')}
