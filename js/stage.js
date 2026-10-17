@@ -106,6 +106,9 @@ class Actor {
     this.gest = null; this.gi = 0; this.gt = 0; this.hopT = 1; this.hopH = 0; this.path = null; this.phase = 0; this.speed = 0;
     this.seed = Math.random() * 10; this.alpha = 1; this.lift = o.y || 0; this.dead = 0;
     this.lie = (o.lie || 0) * Math.PI / 180;   // 横になる（度）：体を前後の軸で倒す。-90 で頭が左、90 で頭が右（寝袋で眠るなど）
+    // still：骨組みの敵を、動かない石像として立たせる（目を閉じ、息づかいも止める）。enter で目をさまして身構える
+    this.still = !!(o.still && this.foe && m.critter); this.stillT = 0;
+    if (this.still) { m.critter.setPose(POSES.idle); m.critter.face.shut = true; }
     this.headH = this.foe ? m.height * 0.6 : m.height * 0.88;
     if (!this.foe && m.face) m.face.set(C.face || defaultFace(this.base));
   }
@@ -215,6 +218,8 @@ class Actor {
     }
     m.group.position.set(this.pos.x, this.pos.y + this.lift, this.pos.z);
     m.group.rotation.y = this.yaw;
+    // 石像のあいだは時間を止めて描く（はじめの少しだけ dt を進めて、ポーズと閉じた目をのせる）
+    if (this.still) { m.update((this.stillT += dt) < 0.6 ? dt : 0, 0); return; }
     m.update(dt, t);
     if (m.emit) m.emit(this.v.p, m.group.position);
   }
@@ -366,7 +371,7 @@ class StageView extends BaseView {
         const m = foe ? buildEnemy(key.slice(2)) : buildCharacter(key);
         if (o.scale) m.group.scale.multiplyScalar(o.scale);   // scale：その場面だけ大きく（探索で見る大きさにそろえる）
         this.scene.add(m.group);
-        const a = new Actor(this, id, m, { foe, stance: o.stance, y: o.y, lie: o.lie });
+        const a = new Actor(this, id, m, { foe, stance: o.stance, y: o.y, lie: o.lie, still: o.still });
         if (o.carry === 'hammer') a.hammer = pikoHammer(m);
         if (o.juggle === false && m.extras) m.extras.off = true;   // juggle: false：ピエロのお手玉の球を出さない（戦いのあとの会話など）   // carry：手のない敵の姿に持たせる物（ピコピコハンマー。演出 piko で振る）
         a.place(this.W(o.at[0], o.at[1]));
@@ -653,6 +658,7 @@ class StageView extends BaseView {
     const list = Object.values(this.actors).filter(a => a.key === k || a.base === k);
     list.forEach((a, i) => {
       a.m.group.visible = true; a.alpha = 1;
+      if (a.still) { a.still = false; a.m.critter.setPose(POSES.ready); a.m.critter.face.shut = false; }   // 石像が目をさます
       if (style === 'quiet') return;
       const p = a.pos.clone(); p.y += 1 + a.lift;
       if (a.foe) { this.fx.pillar(a.pos, a.m.color || '#ff4d6d', { h: 4, r: 0.8, life: 0.6 }); this.p.burst(p, a.m.color || '#ff4d6d', 40, { speed: 4, life: 0.8 }); a.roar(); }

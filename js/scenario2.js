@@ -5,16 +5,17 @@
 Object.assign(SCENES, {
   // ================= 第五章　眠れる子猫 =================
   c5_01: { title: '古代遺跡', cast: ['e:sekizou'], bgm: 'field',
-    stage: { zone: 'ruins_out', at: [-6, 20], face: 0, cast: { 'e:sekizou': [{ at: [-2.6, 5.4], hidden: true }, { at: [2.4, 5.8], hidden: true }] }, points: { ruins: [14.5, 1.6, 8.5] },
-      // 右前の、崩れた柱のあいだの四匹の猫の像（外庭の遺跡）。シロは、一行のうしろの高いところから、像のほうを指さすところを写す
-      shots: { ruins: { pos: [6, 3.2, -1], look: [14.5, 1.4, 8.5] }, shiro: { pos: [-5.5, 4.4, -6.5], look: [3.5, 0.3, 2.5] } } },
+    stage: { zone: 'ruins_out', at: [-6, 20], face: 0, cast: { 'e:sekizou': [{ at: [11.2, 6.4], still: true }, { at: [18.6, 6.4], still: true }] }, points: { ruins: [14.5, 1.6, 8.5] },
+      // 右前の、崩れた柱のあいだの四匹の猫の像（外庭の遺跡）。その両わきに、石のねこ像（敵）が二体、目を閉じた石像として立っていて（still）、動き出す行で目をさます。
+      //   シロは、一行のうしろの高いところから、像のほうを指さすところを写す
+      shots: { ruins: { pos: [4, 4.6, -4.5], look: [14.5, 1.0, 7.5] }, shiro: { pos: [-5.5, 4.4, -6.5], look: [3.5, 0.3, 2.5] } } },
     lines: [
       ['n', 'くろねこ谷の北。森に埋もれるように、古代の遺跡が眠っていた。倒れた柱のあいだに、猫の石像が並んでいる。', { cam: 'ruins', dur: 7, look: { all: 'ruins' } }],
       ['shiro', 'すごい……！　これ、何千年も前の猫たちの遺跡よ！', { f: 'joy', g: 'point', cam: 'shiro', dur: 5, look: { all: 'ruins' } }],
       ['tama', '……ここ、しってる……ような……。', { f: 'sleepy', g: 'tilt' }],
       ['kuro', '……タマ？', { f: 'serious', to: 'tama' }],
       ['tama', '……ううん。……ねむいだけ。', { f: 'sleepy', g: 'shake' }],
-      ['n', '石のねこ像が、ぎぎぎ……と動き出した！', { enter: 'e:sekizou', shake: 0.3, cam: 'wide', r: { all: 'surprise' }, stance: { all: 'ready' } }],
+      ['n', '柱のそばの石のねこ像が二体、ぎぎぎ……と動き出した！', { enter: 'e:sekizou', shake: 0.3, cam: 'ruins', r: { all: 'surprise' }, stance: { all: 'ready' } }],
       ['mike', 'わわっ、像が動いた！', { f: 'surprise', g: 'recoil' }],
     ] },
   // 石畳の丘の、大階段を上りきったところ：石の神殿（遺跡）と扉の結界、その前の「つながりの石畳」が見える
