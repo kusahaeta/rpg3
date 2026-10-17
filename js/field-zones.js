@@ -1696,7 +1696,7 @@ const FIELD_ZONES = {
   //   南の入口の岩場 → 小川の丸木橋 → 東岸の石段 → 茶屋あと（ねこ地蔵。西に小さな滝）→ 石灯籠の古道を西へ → 西のはしの石段 → 崖にかこまれた岩の段（腰かけ岩） → 崩れた石の門の石段 → 北の森から外庭へ。
   //   東岸の南の岩かげは、落石の岩山でふさがれている（攻撃で砕くと宝箱）。北の森の東の奥にも宝箱。下は谷の枯れ木、上へ行くほど緑の森
   old_road: { ci: 4, name: '苔むす古道', w: 80, d: 128, stage: '5-1', arenas: [[-20, 47, 0], [-22, -21, 0], [10, -50, 0], [8, 32, 0, 'battle'], [-4, -1, 0, 'battle'], [26, -1, 0, 'battle']],
-    build: 'oldRoad', groups: 6, chests: 3, crystals: 3, foes: ['kageneko', 'hotaru', 'sekizou'],
+    build: 'oldRoad', groups: 6, chests: 3, crystals: 3, foes: ['kageneko', 'hotaru', 'kokegame'],
     world: true, arch: 'crag', chestAt: [[27, 51], [21, -23], [35, -53]],
     th: { path: '#a89a7a' },
     map: [

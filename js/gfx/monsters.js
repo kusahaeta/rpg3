@@ -215,6 +215,38 @@ function buildEnemy(key) {
       emitFn = (p, pos) => { for (let i = 0; i < 2; i++) p.emit(V3(pos.x + (Math.random() - 0.5) * 0.3, pos.y + 1.0 + Math.random() * 0.3, pos.z), V3((Math.random() - 0.5) * 0.4, -0.3, 0), hdr(col, 2), { life: 0.8, size: 0.12, drag: 1 }); };
       float = 0.25; height = 1.5; radius = 0.4; break;
     }
+    case 'turtle': {   // こけむしガメ：苔の生えたこうら（草の芽と小さなきのこ）、首をのばして、むすっとした顔。短い四本足でのそのそ
+      const sk = tm('#a8b878'), shellM = tm('#6a7a48'), rim = tm('#4a5a34'), belly = tm('#e0d4a0'), moss = tm(col), moss2 = tm('#4f8a34');
+      add(P(new THREE.CylinderGeometry(0.62, 0.58, 0.12, 24), belly), 0, 0.3, 0).scale.z = 1.15;
+      const shell = add(P(new THREE.SphereGeometry(0.66, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), shellM), 0, 0.34, 0); shell.scale.set(1, 0.78, 1.15);
+      const ring = add(new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.05, 6, 32), rim), 0, 0.36, 0); ring.rotation.x = Math.PI / 2; ring.scale.y = 1.15;
+      // こうらの甲：上に六角の甲羅もよう、まわりを苔がおおう
+      const plate = add(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.02, 6), rim), 0, 0.855, 0); plate.scale.z = 1.15;
+      for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2 + 0.3, r = 0.38 + (i % 2) * 0.1; const m = add(P(new THREE.SphereGeometry(0.14 + (i % 3) * 0.03, 10, 8), i % 3 ? moss : moss2), Math.cos(a) * r, 0.34 + Math.sqrt(Math.max(0, 1 - (r / 0.66) ** 2)) * 0.5, Math.sin(a) * r * 1.15); m.scale.y = 0.45; }
+      // 草の芽と、小さなきのこ
+      const sprout = new THREE.Group(); sprout.position.set(0.05, 0.86, -0.05); inner.add(sprout);
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.2, 6), moss2), 0, 0.1, 0, sprout);
+      for (const s of [-1, 1]) { const lf = add(P(new THREE.SphereGeometry(0.08, 10, 6), moss), s * 0.07, 0.2, 0, sprout); lf.scale.set(1, 0.3, 0.55); lf.rotation.z = -s * 0.5; }
+      add(P(new THREE.CylinderGeometry(0.025, 0.03, 0.08, 8), tm('#f6ead2')), -0.32, 0.72, 0.28);
+      add(P(new THREE.SphereGeometry(0.07, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), tm('#e87a6a')), -0.32, 0.76, 0.28);
+      // 首と頭
+      const neck = new THREE.Group(); neck.position.set(0, 0.42, 0.66); inner.add(neck);
+      add(P(new THREE.CylinderGeometry(0.13, 0.16, 0.3, 14), sk), 0, 0.06, 0.06, neck).rotation.x = 0.9;
+      const head = add(P(new THREE.SphereGeometry(0.24, 18, 14), sk), 0, 0.22, 0.24, neck); head.scale.set(1, 0.85, 1.05);
+      eyes(0.1, 0.27, 0.42, 0.06, neck, { angry: true, lid: '#5a6a3a' });
+      const mo = add(new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 6, 12, Math.PI), new THREE.MeshBasicMaterial({ color: '#2a3a1a' })), 0, 0.14, 0.47, neck);
+      for (const s of [-1, 1]) add(new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshBasicMaterial({ color: '#ff8d9d', transparent: true, opacity: 0.5 })), s * 0.15, 0.17, 0.42, neck).scale.set(1, 0.6, 0.4);
+      // 足としっぽ
+      const legs = [[-0.42, 0.42], [0.42, 0.42], [-0.42, -0.42], [0.42, -0.42]].map(([x, z]) => { const g = new THREE.Group(); g.position.set(x, 0.3, z); inner.add(g); add(P(new THREE.CylinderGeometry(0.12, 0.13, 0.3, 12), sk), 0, -0.13, 0, g); return g; });
+      const tail = add(P(new THREE.ConeGeometry(0.07, 0.2, 8), sk), 0, 0.32, -0.8); tail.rotation.x = -Math.PI / 2 - 0.3;
+      update = (dt, t) => {
+        const ph = root.userData.ph;
+        neck.position.z = 0.66 + Math.sin(t * 1.6 + ph) * 0.04; neck.rotation.y = Math.sin(t * 0.7 + ph) * 0.25;
+        legs.forEach((g, i) => { g.rotation.x = Math.sin(t * 3 + ph + (i % 3 ? Math.PI : 0)) * 0.2; });
+        sprout.rotation.z = Math.sin(t * 2.2 + ph) * 0.15; inner.rotation.z = Math.sin(t * 1.5 + ph) * 0.03;
+      };
+      height = 1.05; radius = 0.75; scale = 1.15; break;
+    }
     case 'shard': {   // コドクのかけら：黒い結晶の群れに、さみしげな一つ目
       const cm = new THREE.MeshStandardMaterial({ color: '#1a1030', emissive: new THREE.Color(col), emissiveIntensity: 0.4, metalness: 0.4, roughness: 0.25, flatShading: true }); cm.userData.e0 = new THREE.Color(col); cm.userData.ei0 = 0.4; mats.push(cm);
       const cl = new THREE.Group(); cl.position.y = 1.0; inner.add(cl);
