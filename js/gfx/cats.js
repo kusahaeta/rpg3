@@ -553,13 +553,16 @@ function capeGeo(wt, wb, h, curve) {
 }
 
 // ---------- 武器（右手。持ち方は人型と同じ：腕を下ろすと先が前下を向く） ----------
-// G.tint：武器ごとの色（c＝本体、g＝光るところ。js/weapons.js の look）。G.shine：+5 まで鍛えた武器は先が光る
+// G.model：武器の id（形）。G.tint：武器ごとの色（c＝本体、g＝光るところ。js/weapons.js の look）。G.shine：+5 まで鍛えた武器は先が光る
 function buildCatWeapon(type, armR, armL, hips, L, charCol, P, T, glow, G = {}) {
   const tc = (G.tint && G.tint.c) || null, tg = (G.tint && G.tint.g) || null;
   const ex = {}, eg = glowMat(tg || charCol, 3);
   const hold = new THREE.Group(); hold.rotation.x = Math.PI - 0.55; armR.grip.add(hold);
   const tipAt = (y, parent = hold) => { ex.tip = new THREE.Object3D(); ex.tip.position.y = y; parent.add(ex.tip); };
-  switch (type) {
+  // G.model：武器ごとの形（js/gfx/weapon-models.js）。ない武器は、種類 type の形
+  const wm = G.model && typeof WEAPON_MODELS !== 'undefined' && WEAPON_MODELS[G.model];
+  if (wm) wm({ hold, armL, P, T, ex, tipAt, tc: tc || charCol, tg: tg || charCol });
+  else switch (type) {
     case 'sword': {   // 勇者の片手剣
       const bl = P(new THREE.BoxGeometry(0.045, 0.36, 0.012), T(tc || '#e8ecf4')); bl.position.y = 0.24; hold.add(bl);
       const tipM = P(new THREE.ConeGeometry(0.032, 0.06, 4), T(tc || '#e8ecf4')); tipM.scale.z = 0.3; tipM.position.y = 0.45; tipM.rotation.y = Math.PI / 4; hold.add(tipM);

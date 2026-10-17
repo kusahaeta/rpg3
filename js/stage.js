@@ -285,7 +285,7 @@ class Actor {
     if (item === 'letter') g.rotation.x = Math.PI / 2;   // 封筒の面を、手のひらの向き（見ている人の側）へ
     this.m.armL.grip.add(g); this.item = g;
   }
-  showWeapon(on) { if (this.m.armR && this.m.armR.grip) this.m.armR.grip.visible = on; }
+  showWeapon(on) { if (this.m.armR && this.m.armR.grip) this.m.armR.grip.visible = on; if (this.m.extras && this.m.extras.offhand) this.m.extras.offhand.visible = on; }   // offhand：左手の武器（双子の小太刀）
 }
 
 // ============================================================
