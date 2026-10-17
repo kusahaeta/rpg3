@@ -63,7 +63,7 @@ const FACE_EXPR = {
 // 表情・まばたき・口パクの制御（表情ごとのテクスチャは apply で差し替える）
 class FaceRig {
   constructor(key, L, hq, opt, mat) {
-    Object.assign(this, { key, L, hq, opt, mat, expr: 'neutral', closed: false, mouth: false, talking: false, blinkT: 1 + Math.random() * 3, mouthT: 0 });
+    Object.assign(this, { key, L, hq, opt, mat, expr: 'neutral', closed: false, shut: false, mouth: false, talking: false, blinkT: 1 + Math.random() * 3, mouthT: 0 });
     this.apply();
   }
   set(expr) { if (expr && FACE_EXPR[expr] && expr !== this.expr) { this.expr = expr; this.apply(); } }
@@ -71,7 +71,9 @@ class FaceRig {
   update(dt) {
     if (!dt) return;
     let ch = false;
-    if ((this.blinkT -= dt) <= 0) { this.closed = !this.closed; this.blinkT = this.closed ? 0.11 : 1.8 + Math.random() * 3.6; ch = true; }
+    // shut：眠っているあいだは、まばたきせずに目を閉じたまま
+    if (this.shut) { if (!this.closed) { this.closed = true; this.blinkT = 0.3; ch = true; } }
+    else if ((this.blinkT -= dt) <= 0) { this.closed = !this.closed; this.blinkT = this.closed ? 0.11 : 1.8 + Math.random() * 3.6; ch = true; }
     if (this.talking) { if ((this.mouthT -= dt) <= 0) { this.mouth = !this.mouth; this.mouthT = this.mouth ? 0.07 + Math.random() * 0.1 : 0.05 + Math.random() * 0.08; ch = true; } }
     else if (this.mouth) { this.mouth = false; ch = true; }
     if (ch) this.apply();
