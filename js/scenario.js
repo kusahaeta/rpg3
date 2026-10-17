@@ -47,7 +47,7 @@ const SCENES = {
       ['mike', '……今日も魚、おいしかった。……へへ。', { f: 'smile', look: { mike: 'sky' } }],
       ['n', 'ミケは、小さいころに両親をモンスターに奪われている。……そのことを思い出すと、胸の奥がちくりと痛む。だから、いつも笑っていることにしていた。', { cam: 'mike', close: true, dur: 8, r: { mike: 'sad' } }],
       ['n', 'そのとき——', { fx: 'meteor:crater', lock: 3.2, cam: 'look:crater', dur: 6, stance: { mike: 'idle' }, look: { mike: 'crater' } }],
-      ['mike', 'わっ、わわっ！？　流れ星が……落ちてくるーーっ！！', { f: 'surprise', g: 'recoil', cam: 'look:crater', dur: 6, later: [0.6, { shake: 0.4 }] }],
+      ['mike', 'わっ、わわっ！？　な、流れ星が……落ちたーーっ！！', { f: 'surprise', g: 'recoil', cam: 'look:crater', dur: 6, later: [0.6, { shake: 0.4 }] }],
       ['n', 'すさまじい光と音。……村はずれの丘のほうに、何かが落ちた。', { cam: 'wide', dur: 6, r: { mike: ['surprise', 'recoil'] } }],
       ['mike', '……こ、こわくないし！　明日の朝、ちょっと見に行くだけだし！', { f: 'worry', g: 'fist' }],
     ] },
