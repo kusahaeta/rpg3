@@ -562,10 +562,11 @@ const SCENES = {
       ['n', '朝日の畑に、四匹ぶんの影が、並んでのびていた。', { cam: 'wide', dur: 7, look: { all: 'mill' } }],
       ['n', '【目的】宿場の北、ニャハハ王国関所を越えて、ニャハハ王国へ。', { cam: 'wide', dur: 5 }],
     ] },
-  // ごろごろ切り通しの入口：宿場から石段を上ると、岩山の谷。目の前を、ハチマキの岩が爆走していく（ごろごろ団の前ふり）
+  // ごろごろ切り通しの入口：宿場から石段を上ると、岩山の谷。目の前を、ハチマキの岩が爆走していく（ごろごろ団の前ふり）。
+  // 岩は roll の画（x -10〜6 が映る）のすぐ外から走りだす。遠くからだと、画面に入るまで 2 秒ほど待たされる
   c2_03k: { title: 'ごろごろ切り通し', bgm: 'field',
     stage: { zone: 'road2', at: [0, 58], face: 0, points: { valley: [0, 0.8, 8] },
-      cast: { 'e:iwa': { at: [-29, 8], hidden: true, face: [29, 8], scale: 1.6 } },
+      cast: { 'e:iwa': { at: [-13, 8], hidden: true, face: [12, 8], scale: 1.6 } },
       shots: { pass: { pos: [2.2, 3.6, -5.5], look: [-0.5, 1.6, 14] }, roll: { pos: [2.6, 3.0, -4.5], look: [-1, 0.6, 9] } } },
     lines: [
       ['n', '宿場の北の石段を上ると、両がわに岩山のそびえる、細長い谷に出た。……ごろごろ切り通しだ。', { cam: 'pass', dur: 7, look: { all: 'valley' } }],
@@ -573,7 +574,7 @@ const SCENES = {
       ['shiro', '……浮かれてる場合じゃないわ。入口の立て札、読まなかったの？', { f: 'serious', g: 'hipHand', to: 'mike' }],
       ['shiro', '「この先、ごろごろ団が谷を爆走しています」……ですって。', { f: 'worry', g: 'explain' }],
       ['mike', 'ごろごろ団……？　岩が、走るの？', { f: 'surprise', g: 'tilt' }],
-      ['n', 'ごろごろごろ……！　そのとき、目の前の谷を、大きな岩が土けむりを上げて横切っていった！', { enter: 'e:iwa', enterFx: 'quiet', move: { 'e:iwa': [29, 8] }, speed: 9, sfx: 'slam', shake: 0.4, cam: 'roll', dur: 5, look: { all: 'e:iwa' }, r: { all: ['surprise', 'recoil'] }, later: [6.6, { exit: 'e:iwa' }] }],
+      ['n', 'ごろごろごろ……！　そのとき、目の前の谷を、大きな岩が土けむりを上げて横切っていった！', { enter: 'e:iwa', enterFx: 'quiet', move: { 'e:iwa': [12, 8] }, speed: 9, sfx: 'slam', shake: 0.4, cam: 'roll', dur: 5, look: { all: 'e:iwa' }, r: { all: ['surprise', 'recoil'] }, later: [3.0, { exit: 'e:iwa' }] }],
       ['shiro', 'ほ、ほんとに走ってる！？', { f: 'surprise', g: 'recoil' }],
       ['tama', '……いまの岩……はちまき、してた。', { f: 'sleepy', g: 'tilt' }],
       ['mike', 'えっ、ほんと！？　かっこいい……！', { f: 'joy', g: 'hop' }],
