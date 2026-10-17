@@ -488,7 +488,7 @@ const CHAPTERS = [
   { id: 'c5', name: '古代遺跡', bg: 'ruins', desc: 'クロの旧仲間の記録が示した場所。壁画が、世界の歴史を語る。',
     stages: [
       { id: '5-1', name: '遺跡の外庭',       lv: 35, waves: [['sekizou', 'hotaru'], ['hotaru', 'sekizou', 'hotaru']] },
-      { id: '5-2', name: '壁画の回廊',       lv: 38, waves: [['sekizou', 'sekizou'], ['hotaru', 'hotaru', 'hotaru']] },
+      { id: '5-2', name: '壁画の大広間',     lv: 38, waves: [['sekizou', 'sekizou'], ['hotaru', 'hotaru', 'hotaru']] },
       { id: '5-3', name: '封印の間',         lv: 41, boss: true, waves: [['hotaru', 'sekizou', 'hotaru'], ['guardian']] },
     ] },
   { id: 'c6', name: '魔王領', bg: 'demon', desc: '怖い場所のはずなのに、なんだか妙にコミカル。',
