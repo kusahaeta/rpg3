@@ -999,6 +999,7 @@ class BattleView extends BaseView {
       }
       if (e.ice) {
         e.ice.position.set(m.group.position.x, m.height * 0.5, m.group.position.z);
+        e.ice.visible = m.group.visible;   // キャラを隠したカットでは氷も隠す
         if (!u.frozen || !u.alive) { this.fx.shards(e.ice.position, '#9fe6ff', 16, 4); this.scene.remove(e.ice); disposeTree(e.ice); e.ice = null; }
       }
       // シールド
@@ -1015,6 +1016,7 @@ class BattleView extends BaseView {
         if (e.bubble) {
           e.bubble.position.set(m.group.position.x, 0.6, m.group.position.z);
           e.bubble.material.uniforms.time.value = t;
+          e.bubble.visible = m.group.visible;   // キャラを隠したカットではシールドも隠す
           if (!(u.shield > 0) || !u.alive) { this.scene.remove(e.bubble); disposeTree(e.bubble); e.bubble = null; }
         }
       }
