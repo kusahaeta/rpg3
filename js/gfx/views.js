@@ -760,7 +760,8 @@ class BattleView extends BaseView {
     this.focus(e);
     this.setCam(V3(h.x + 0.25, 0.95, h.z + 1.15), V3(h.x, 0.88, h.z), { snap: true });
     this.setCam(V3(h.x + 0.9, 0.75, h.z + 2.5), V3(h.x, 0.75, h.z), { speed: 1.8 });
-    this.tweenPose(m, up ? up.pose : POSES.ult, 0.45);
+    if (up && up.move) e.ultSway = { from: { ...m.pose }, to: up.pose, move: up.move, t: 0 };   // update で毎フレーム動かす
+    else this.tweenPose(m, up ? up.pose : POSES.ult, 0.45);
     if (m.face && up) { e.ultFace = m.face.expr; m.face.set(up.face); }
     this.fx.pillar(h.clone().add(V3(0, 0, -1.2)), col, { h: 14, r: 0.7, life: 1.3, k: 1.2 });
     this.fx.ring(h.clone().add(V3(0, 0.05, 0)), col, { r: 3, life: 1.0 });
@@ -788,8 +789,17 @@ class BattleView extends BaseView {
   }
   // 決めポーズの後片付け：敵のほうへ向きなおし、表情を戻す
   ultEnd(e) {
+    e.ultSway = null; e.model.group.rotation.z = 0;
     e.model.group.rotation.y = Math.PI;
     if (e.model.face && e.ultFace) { e.model.face.set(e.ultFace); e.ultFace = null; }
+  }
+  // 動きのある決めポーズ：0.45 秒でポーズへ寄せながら、ULT_MOVES の揺れを足しつづける
+  ultSwayStep(e, dt) {
+    const s = e.ultSway, m = e.model; s.t += dt;
+    const w = Ease.inOut(Math.min(1, s.t / 0.45)), off = ULT_MOVES[s.move](s.t, w);
+    for (const k of POSE_KEYS) m.pose[k] = lerp(s.from[k] || 0, s.to[k] || 0, w) + (off[k] || 0);
+    m.group.rotation.z = off.roll || 0;
+    if (off.sparkle && m.group.visible && m.tipPos) this.p.emit(m.tipPos(), V3(0, 0.15, 0), hdr(ELEMENTS[e.u.elem].color, 2.8), { life: 0.45, size: 0.05 });
   }
   // オート：ポーズしてそのまま放つ
   async ultIntro(u) { await this.ultPose(u); this.ultRelease(u); }
@@ -997,6 +1007,7 @@ class BattleView extends BaseView {
     if (this.set) this.set.update(dt, t);
     for (const e of this.ents.values()) {
       const u = e.u, m = e.model;
+      if (e.ultSway) this.ultSwayStep(e, dt);
       m.update(dt, t);
       if (!e.ally && P2_STYLES[u.key] && u.phase >= 1 && !(e.p2 && e.p2.dead)) this.updatePhase2(e, dt, t);
       // 状態の可視化
