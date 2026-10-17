@@ -78,6 +78,10 @@ class Terrain {
       }
     }
     for (let i = 0; i < n; i++) if (Number.isNaN(base[i])) base[i] = 0;
+    // 水面の高さ（zone.waterLv：[c0, r0, c1, r1, 床の段] のマスの範囲）：段の下の滝つぼのように、高さのちがう床にはさまれた池を、どちらかの段にそろえる
+    for (const [c0, r0, c1, r1, lv] of this.zone.waterLv || []) for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+      const i = this.idx(c, r); if (i >= 0 && this.water[i]) base[i] = lv * (this.zone.hScale || 1);
+    }
     this.base = base; this.dist = dist;
     // 川・池の水面
     this.cap = new Float32Array(n);
