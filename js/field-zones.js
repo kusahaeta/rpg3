@@ -97,7 +97,10 @@ const FIELD_ZONES = {
     notes: [{ at: [6.4, -11], face: 0, board: ['村の掲示板', '収穫祭は延期します　——村長'], title: '村の掲示板', text: '「にゃんだーの樹の実りが悪く、今年の収穫祭は延期します——村長」' },
       { at: [-21.8, -8], mark: [-0.9, 2.3, 0], title: 'ミケの家', text: '表札に「ミケ」。……窓辺に、食べかけの魚が干してある。' },
       { at: [24, -23], mark: [0, 2.6, 1.4], reach: 3.2, title: '猫神社', text: '世界を作った猫の神さまの社。お賽銭箱の上の絵の神さまは、大きなあくびをしている。' }],
-    map2d: [470, 380] },
+    map2d: [470, 380],
+    // 第八章「村を守る」：c8_01 を見てから c8_02 を見るまで、影の獣が広場を囲む（c8_01 の舞台と同じ場所に、一行のほうを向いて立つ）。
+    //   子猫たちと村人は家に隠れている。店の主人と村長は、いつもの場所でふんばっている
+    siege: { when: 'c8_01', until: 'c8_02', scene: 'c8_01', foe: 'kagejuu', face: [0, 13], hide: ['koneko_a', 'koneko_b', 'murabito_a', 'murabito_b'] } },
 
   hill: { ci: 0, name: '村はずれの丘', w: 52, d: 48, stage: '1-1', arenas: [[0, 10, 0]], build: 'hill', calm: true, groups: 0, chests: 2, crystals: 2,
     world: true, arch: 'woods', chestAt: [[21, -17], [21, 1]],
@@ -3041,8 +3044,10 @@ function zoneOpen(id) {
 // 区画の戦場（ワールド座標）。地形マップの区画はマス座標から直す
 //   [x, z, 向き, 'battle']：戦闘の背景にだけ使う戦場。フィールドでは場所を空けない（小部屋にも敵が出る・物が置ける）
 function zoneArenas(Z) { return (Z.arenas || []).map(([x, z, f, k]) => { const [wx, wz] = Z.map ? zonePoint(Z, [x, z]) : [x, z]; return { x: wx, z: wz, face: f || 0, battleOnly: k === 'battle' }; }); }
-// その区画に敵が出るか（calmAfter のステージを越えると静かになる）
-function zoneCalm(Z) { return !!(Z.town || Z.calm || (Z.calmAfter && Save.data.cleared[Z.calmAfter])); }
+// その区画に敵が出るか（calmAfter のステージを越えると静かになる）。物語で襲われているあいだ（zoneSiege）は、村でも安全なところではない
+function zoneCalm(Z) { return !zoneSiege(Z) && !!(Z.town || Z.calm || (Z.calmAfter && Save.data.cleared[Z.calmAfter])); }
+// 物語で区画が敵に囲まれているあいだ（siege：when のシーンを見てから until のシーンを見るまで）なら、その siege
+function zoneSiege(Z) { const S = Z.siege; return S && storyCond('scene:' + S.when) && !storyCond('scene:' + S.until) ? S : null; }
 // 樹の地下の根（zone.roots）：光る実（pts：光っている実の位置 [x, z] の並び）が根元の輪（半径 R.r）の中にある根は元気。
 //   橋は根元のどれかひとつ、茂みは根元に実があれば元気（橋は渡れる、茂みは道をふさぐ）。tools/check-maps.js の検査と共用
 function rootsLive(R, pts) {

@@ -1,6 +1,6 @@
 'use strict';
 // ============================================================
-//  3Dビュー：ショーケース（ハブ／キャラ）／ワープ／バトル
+//  3Dビュー：ショーケース（キャラ）／ワープ／バトル
 // ============================================================
 class BaseView {
   constructor(theme, fov = 38, envOpts = {}) {
@@ -33,7 +33,7 @@ class BaseView {
   }
 }
 
-// ふかふかの座布団に立つにゃんこ（ハブ・キャラ画面）。ドラッグで回せる
+// ふかふかの座布団に立つにゃんこ（なかまの画面）。ドラッグで回せる
 class ShowcaseView extends BaseView {
   constructor(key, { screenX = 640, dist = 3.1, height = 0.62, theme = 'meadow' } = {}) {
     super(theme, 32, { skyTree: true });

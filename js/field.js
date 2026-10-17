@@ -72,7 +72,12 @@ class FieldView extends BaseView {
     // 目的地の上から再開した場合は、一度離れるまで到着扱いにしない
     this.questHold = !!(this.quest && !this.quest.gate && Math.hypot(this.quest.pos.x - sp.x, this.quest.pos.z - sp.z) < 2.4);
     this.rememberPos();
-    Music.play(zone.bgm || (zone.town ? 'village' : ['cave', 'root', 'end'].includes(bg) ? 'dark' : 'field'));
+    this.playBgm();
+  }
+  // 区画の曲。敵に囲まれているあいだ（siege）は、村でも暗い曲
+  playBgm() {
+    const Z = this.zone;
+    Music.play(this.siege ? 'dark' : Z.bgm || (Z.town ? 'village' : ['cave', 'root', 'end'].includes(this.bg) ? 'dark' : 'field'));
   }
   // 探索を離れた位置を記録し、次に探索するときにそこから再開する
   rememberPos() {
@@ -183,7 +188,8 @@ class FieldView extends BaseView {
     const Z = this.zone, P = (a, r) => ({ x: a[0], z: a[1], r });
     // 物語でまだ出会っていない人物はいない
     // when / until：その条件を満たしてから出る／満たすと消える（storyCond の条件）
-    const npcDefs = (Z.npcs || []).filter(n => (!n.after || typeof Story === 'undefined' || Story.seen(n.after)) && storyCond(n.when) && !(n.until && storyCond(n.until)));
+    const siege = this.siege = zoneSiege(Z);
+    const npcDefs = (Z.npcs || []).filter(n => (!n.after || typeof Story === 'undefined' || Story.seen(n.after)) && storyCond(n.when) && !(n.until && storyCond(n.until)) && !(siege && siege.hide.includes(n.key)));
     const noteDefs = (Z.notes || []).filter(n => (!n.when || storyCond(n.when)) && !(n.until && storyCond(n.until)));
     this.reserved = [P(Z.anchor, 3.5), ...zoneArenas(Z).filter(a => !a.battleOnly).map(a => ({ x: a.x, z: a.z, r: 7 }))];
     if (Z.spawn) this.reserved.push(P(Z.spawn, 4));
@@ -270,6 +276,13 @@ class FieldView extends BaseView {
       const cx = ms.reduce((a, q) => a + q.pos.x, 0) / ms.length, cz = ms.reduce((a, q) => a + q.pos.z, 0) / ms.length, cy = this.gy(cx, cz);
       const aura = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(D.aura || '#ffd8f4', 0.5), blending: THREE.AdditiveBlending, depthWrite: false })); aura.position.set(cx, cy + 1.2, cz); aura.scale.setScalar(3 + ms.length); this.scene.add(aura);
       return { D, ms, aura, c: V3(cx, cy, cz) };
+    });
+    // 区画を囲む敵（zone.siege）：会話の舞台（siege.scene）の敵と同じ場所に立って、face のほうをにらむ。戦わない（物語の戦いは目的地の◆で）
+    this.besiegers = (siege ? SCENES[siege.scene].stage.cast['e:' + siege.foe] : []).map(({ at: [x, z] }) => {
+      const m = buildEnemy(siege.foe), y = this.gy(x, z);
+      m.group.position.set(x, y, z); m.group.rotation.y = Math.atan2(siege.face[0] - x, siege.face[1] - z); this.scene.add(m.group);
+      this.colliders.push({ x, z, r: m.radius * 0.8, y });
+      return m;
     });
     // 見張りの番犬（zone.guards）：見回りの道の最初の点から。眠らせた番犬は眠ったまま
     const gflags = Save.data.flags || {};
@@ -2486,7 +2499,7 @@ class FieldView extends BaseView {
     this.busy = false; this.grace = 2.5;
     this.spawnFollowers();
     if (this.timeObj) this.checkTimeTrap(this.timeObj);
-    Music.play(this.zone.bgm || (this.zone.town ? 'village' : ['cave', 'root', 'end'].includes(this.bg) ? 'dark' : 'field'));
+    this.playBgm();
     this.renderHud(); this.renderTeam();
     if (res.win && this.groups.every(x => !x.alive)) setTimeout(() => this.toast(`${this.zone.name}の敵をすべて倒した！`), 600);
   }
@@ -2612,7 +2625,8 @@ class FieldView extends BaseView {
       else if (a === 'tech') this.useTechnique();
     }));
     r.querySelector('.fd-prompt').onclick = () => this.interact();
-    r.addEventListener('wheel', e => { this.camDist = clamp(this.camDist + e.deltaY * 0.004, 2.4, 9); e.preventDefault(); }, { passive: false });
+    // メニュー・あらすじ・お店などの上では、ホイールは中の一覧のスクロールに使う
+    r.addEventListener('wheel', e => { if (e.target.closest('.overlay')) return; this.camDist = clamp(this.camDist + e.deltaY * 0.004, 2.4, 9); e.preventDefault(); }, { passive: false });
     r.querySelector('[data-menu]').onclick = () => this.menu();
     r.querySelector('[data-map]').onclick = () => this.mapMenu();
     r.querySelector('.fd-map').onclick = () => this.zoneMapMenu();
@@ -2650,18 +2664,41 @@ class FieldView extends BaseView {
     if (this.busy) return;
     this.busy = true; this.overlayOpen = true; this.keys.clear();
     const left = this.groups.filter(g => g.alive).length, chests = this.chests.filter(c => !c.opened).length;
-    o.innerHTML = `<div class="ov-box"><h2>メニュー</h2>
-      <div class="dim">${this.zone.name}：${this.town ? '安全なところ' : `残りの敵 ${left}`} ／ まだ開けていない宝箱 ${chests}</div>
+    const pout = sulkyCat();
+    const item = (m, name, desc) => `<button class="fm" data-m="${m}"><b>${name}</b><em>${desc}</em></button>`;
+    o.innerHTML = `<div class="ov-box fm-box"><h2>メニュー</h2>
+      <div class="dim">${this.zone.name}：${this.siege ? '影の獣に囲まれている' : this.town ? '安全なところ' : `残りの敵 ${left}`} ／ まだ開けていない宝箱 ${chests}</div>
+      ${pout ? `<div class="fm-pout" style="--c:${ELEMENTS[CHARS[pout.k].elem].color}"><div class="hp-face">${avatarSVG(pout.k)}</div><div class="hp-say"><b>${CHARS[pout.k].name}</b>${pout.line}</div></div>` : ''}
       <button class="btn gold" data-m="resume">冒険を続ける</button>
-      <button class="btn" data-m="map">ワールドマップ</button>
-      <button class="btn" data-m="recap">あらすじ</button>
-      <button class="btn" data-m="hub">おうちに帰る</button></div>`;
+      <div class="fm-grid">
+        ${item('map', 'ワールドマップ', 'ねこ地蔵へひとっとび')}
+        ${item('chars', 'なかま', 'ステータス・わざの確認')}
+        ${item('team', 'へんせい', '戦いに出る4匹を決める')}
+        ${item('bond', '友情', '一緒に旅をした時間')}
+        ${item('recap', 'あらすじ', 'これまでのお話')}
+        ${Debug.on ? item('debug', 'デバッグ：章へジャンプ', '選んだ段階の直前まで進める') : ''}
+      </div>
+      <div class="fm-foot">
+        <button class="link" data-bgm>BGM：${Music.on ? 'ON' : 'OFF'}</button>
+        <button class="link" data-eco>画質：${GFX.eco ? '省エネ（30fps）' : 'なめらか（60fps）'}</button>
+        <button class="link" data-reset>データを初期化</button>
+      </div>
+      <div class="fm-keys pc-only">戦闘：Q 通常攻撃 ／ E スキル ／ R はなす ／ 1〜4 必殺技 ／ C コンボ ／ Space 決定 ／ V オート ／ F 倍速</div></div>`;
     o.classList.remove('hidden');
-    o.querySelector('[data-m=resume]').onclick = () => this.closeOverlay();
-    o.querySelector('[data-m=map]').onclick = () => { this.closeOverlay(); this.mapMenu(); };
-    o.querySelector('[data-m=recap]').onclick = () => renderRecap(o, () => this.closeOverlay(),
-      id => this.leave(() => App.go(DialogueScreen, id, () => App.go(FieldScreen))));
-    o.querySelector('[data-m=hub]').onclick = () => this.leave(() => App.go(HubScreen));
+    const go = (m, fn) => { o.querySelector(`[data-m=${m}]`).onclick = () => { Sfx.click(); fn(); }; };
+    go('resume', () => this.closeOverlay());
+    go('map', () => { this.closeOverlay(); this.mapMenu(); });
+    go('recap', () => renderRecap(o, () => this.closeOverlay(),
+      id => this.leave(() => App.go(DialogueScreen, id, () => App.go(FieldScreen)))));
+    for (const [m, scr] of [['chars', CharScreen], ['team', TeamScreen], ['bond', BondScreen]]) go(m, () => this.leave(() => App.go(scr)));
+    // ジャンプ・セーブの差しもどしのあとは、いまの位置を記録しない（leave を通さない）
+    if (Debug.on) go('debug', () => Debug.render(o, () => { this.persist = false; Story.resume(); }, () => this.closeOverlay()));
+    o.querySelector('[data-bgm]').onclick = e => { Music.toggle(); e.currentTarget.textContent = `BGM：${Music.on ? 'ON' : 'OFF'}`; };
+    o.querySelector('[data-eco]').onclick = e => {
+      GFX.setEco(!GFX.eco); Save.data.eco = GFX.eco; Save.save();
+      e.currentTarget.textContent = `画質：${GFX.eco ? '省エネ（30fps）' : 'なめらか（60fps）'}`;
+    };
+    o.querySelector('[data-reset]').onclick = () => { if (confirm('セーブデータを初期化しますか？')) { this.persist = false; Save.reset(); App.go(TitleScreen); } };
   }
   // ワールドマップ：訪れた場所のねこ地蔵へひとっとび
   mapMenu() {
@@ -2943,6 +2980,9 @@ class FieldView extends BaseView {
     // 住人は近づくとこちらを向く
     this.updateNpcs(d, t);
     this.updateSleepers(d, t);
+    this.besiegers.forEach((m, i) => m.update(d, t + i * 0.9));
+    // 囲まれているあいだは、c8_01 の暗転（darkness）より少し浅く、画面を暗く色あせさせる（戦闘から戻ると色が戻されるので、毎フレーム）
+    if (this.siege && GFX.view === this) { const U = GFX.grade.uniforms; U.tint.value.setRGB(0.7, 0.66, 0.84); U.desat.value = 0.3; }
     for (const e of this.dreams) {
       e.ms.forEach((q, i) => q.m.update(d, t + i * 1.3));
       e.aura.material.opacity = 0.6 + Math.sin(t * 1.6) * 0.25;
@@ -3105,7 +3145,7 @@ function buildZoneSet(v, zoneId, o = {}) {
 // ------------------------------------------------------------
 // zoneId を指定すればその区画のねこ地蔵から。なければ前回の場所（なければ物語の場所か、ぽかぽか村）から
 function FieldScreen(zoneId) {
-  if (!GFX.ok) { alert('探索には WebGL（3D表示）が必要です。'); return HubScreen(); }
+  if (!GFX.ok) { alert('探索には WebGL（3D表示）が必要です。'); return TitleScreen(); }
   if (GFX.view && GFX.view.persist) GFX.view.persist = false;
   const s = new FieldSession();
   const r = Save.data.fieldResume;
@@ -3117,6 +3157,9 @@ function FieldScreen(zoneId) {
   GFX.setView(v);
   Game.activeField = v;
   if (v.timeObj) v.checkTimeTrap(v.timeObj);
+  // 戦闘の外で深まった友情（会話・宿・物語）の知らせ。戦闘で深まったぶんは、戦闘の結果に出る
+  const news = (Save.data.bondNews || []).splice(0); if (news.length) Save.save();
+  news.forEach((n, i) => setTimeout(() => { const [a, b] = n.k.split('|'); v.toast(`♥ ${CHARS[a].name}と${CHARS[b].name}の友情が Lv.${n.lv} に！ ${BOND_INFO[n.lv - 1]}`); }, 1600 + i * 900));
   setTimeout(() => { v.showZoneTitle(); if (!Save.data.fieldTips) { Save.data.fieldTips = true; Save.save(); v.toast(document.body.classList.contains('touch') ? '左側をなぞって移動。敵に先に「攻撃」を当てると「先制攻撃」！ 「調べる」で話す・調べる' : 'WASDで移動。敵に先にクリックで攻撃すると「先制攻撃」！ Fで話す・調べる'); } }, 300);
   return v.root;
 }

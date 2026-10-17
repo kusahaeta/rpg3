@@ -669,7 +669,7 @@ function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow, G = {}) 
   return ex;
 }
 
-// 2頭身の肖像を撮る（ハブ・戦闘の顔アイコン）
+// 2頭身の肖像を撮る（顔アイコン）
 function catPortraitCam(m) {
   m.group.updateMatrixWorld(true);
   const h = m.headPivot.getWorldPosition(V3()); h.y += 0.25 * (m.group.scale.y || 1);
