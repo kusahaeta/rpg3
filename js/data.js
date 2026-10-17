@@ -74,7 +74,6 @@ const CHARS = {
       dmgMod: B => (flag('mikeHero') ? 0.05 * B.aliveAllies().length : 0) },
     technique: { name: 'とびかかり', desc: '戦闘開始時、敵全体に攻撃力80%の炎ダメージ。',
       run: (B, s) => B.aoe(s, 0.8, 0, 'tech') },
-    talkName: '猫じゃらし',
   },
 
   kuro: {
@@ -116,7 +115,6 @@ const CHARS = {
       } },
     technique: { name: '影の足音', desc: '戦闘開始時、敵全体の行動順を20%遅らせる。',
       run: (B, s) => B.aliveEnemies().forEach(e => { B.delay(e, 0.2); B.float(e, '行動遅延', 'info'); }) },
-    talkName: '仲間の話',
   },
 
   shiro: {
@@ -174,7 +172,6 @@ const CHARS = {
       onKill(B, s) { B.buff(s, { key: 'shiro_t', name: 'プライド', stat: 'dmg', value: 0.1, turns: Infinity, max: 3 }); } },
     technique: { name: 'ヒール', desc: '戦闘開始時、味方全体のHPを15%回復する。（シロの毛が爆発する）',
       run: (B, s) => { B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.15)); B.float(s, '毛が爆発した！', 'info'); } },
-    talkName: '魔法のうんちく',
   },
 
   tama: {
@@ -208,7 +205,6 @@ const CHARS = {
       if (B.sp >= 1 && low && low.hp / low.maxHp < 0.65) return { kind: 'skill', target: low };
       return { kind: 'basic' };
     },
-    talkName: 'おひるねのさそい',
   },
 
   maou: {
@@ -240,7 +236,6 @@ const CHARS = {
       } },
     technique: { name: '威光', desc: '戦闘開始時、敵全体の攻撃力-15%（2ターン）。',
       run: (B, s) => B.aliveEnemies().forEach(e => B.debuff(s, e, 1, { key: 'maou_tech', name: '威光', stat: 'atk', value: -0.15, turns: 2 })) },
-    talkName: '尊大なひとこと',
   },
 };
 // 主人公（選択肢を選ぶと、この子の台詞になる）
@@ -378,85 +373,81 @@ const ENEMY_MOVES = {
 };
 
 // ------------------------------------------------------------
-//  敵（shape は js/gfx/monsters.js の形。talk は「話す」で聞ける気持ち）
+//  敵（shape は js/gfx/monsters.js の形）
 //  boss の山場：turn は HP が at を切ったとき一度だけ起きる（HP は戻らない）。phases は HP が戻る形態変化で、守護神・コドク・ねこ神だけ。
 //  turn の中身：summon 呼ぶ / buffs ずっと続く強化（debuff は弱体として表示）/ weak 弱点替え / moves 技の入れ替え / heal 回復 / guard 被ダメ減 / regen 毎ターン回復
 //  strip 味方の強化とバリアを消す / isolate 味方みなをひとりぼっちに。until（'break' 弱点撃破 / 'summon' 呼んだ仲間が全滅）で guard・regen・moves が解け、end を言う
 // ------------------------------------------------------------
 const ENEMIES = {
   // 第一章：ほしふる森
-  slime:    { name: 'ぷにスライム',   shape: 'slime',    color: '#7ee0a0', hp: 2800, atk: 900,  spd: 90,  tough: 20, weak: ['fire', 'lightning', 'physical'], moves: [['puni', 3], ['strike', 1]], talk: 'ぷに……（なでてほしいらしい）' },
-  kinoko:   { name: 'ねこまたきのこ', shape: 'mushroom', color: '#e87a9a', hp: 3200, atk: 950,  spd: 85,  tough: 30, weak: ['fire', 'wind', 'imaginary'], moves: [['strike', 2], ['spore', 1]], talk: '「しっぽが二本あるのが自慢なんだ……だれも見てくれないけど」' },
-  risu:     { name: 'おこりリス',     shape: 'squirrel', color: '#e0a060', hp: 2800, atk: 1000, spd: 115, tough: 20, weak: ['ice', 'physical', 'quantum'], moves: [['acorn', 2], ['bite', 1]], talk: '「冬のどんぐり、集めても集めても足りないの！」' },
-  nezumi:   { name: 'はぐれネズミ',   shape: 'rat',      color: '#a8a4b8', hp: 3000, atk: 1000, spd: 105, tough: 30, weak: ['fire', 'physical', 'imaginary'], moves: [['cheese', 2], ['bite', 1]], talk: '「王さまにごはんを持っていかないと……」' },
+  slime:    { name: 'ぷにスライム',   shape: 'slime',    color: '#7ee0a0', hp: 2800, atk: 900,  spd: 90,  tough: 20, weak: ['fire', 'lightning', 'physical'], moves: [['puni', 3], ['strike', 1]] },
+  kinoko:   { name: 'ねこまたきのこ', shape: 'mushroom', color: '#e87a9a', hp: 3200, atk: 950,  spd: 85,  tough: 30, weak: ['fire', 'wind', 'imaginary'], moves: [['strike', 2], ['spore', 1]] },
+  risu:     { name: 'おこりリス',     shape: 'squirrel', color: '#e0a060', hp: 2800, atk: 1000, spd: 115, tough: 20, weak: ['ice', 'physical', 'quantum'], moves: [['acorn', 2], ['bite', 1]] },
+  nezumi:   { name: 'はぐれネズミ',   shape: 'rat',      color: '#a8a4b8', hp: 3000, atk: 1000, spd: 105, tough: 30, weak: ['fire', 'physical', 'imaginary'], moves: [['cheese', 2], ['bite', 1]] },
   king_nezumi: { name: 'キングネズミ', shape: 'kingrat', color: '#d8a840', boss: true, hp: 31000, atk: 1150, spd: 100, tough: 110, eres: 0.25, weak: ['fire', 'physical', 'lightning'],
-    turn: { at: 0.5, name: '子分総動員', cry: 'キングネズミ「子分ども、集まれチュウ！」', summon: ['nezumi', 2], moves: [['kingPress', 2], ['ratCharge', 1], ['summon', 2]] }, summon: 'nezumi', moves: [['kingPress', 2], ['aoe', 1], ['ratCharge', 1], ['summon', 1]], talk: '「俺だって……食べたかったんだよ……」' },
+    turn: { at: 0.5, name: '子分総動員', cry: 'キングネズミ「子分ども、集まれチュウ！」', summon: ['nezumi', 2], moves: [['kingPress', 2], ['ratCharge', 1], ['summon', 2]] }, summon: 'nezumi', moves: [['kingPress', 2], ['aoe', 1], ['ratCharge', 1], ['summon', 1]] },
   // 第二章：ミャオ街道
-  karasu:   { name: 'いたずらカラス', shape: 'crow',     color: '#4a4a6a', hp: 3000, atk: 1050, spd: 125, tough: 20, weak: ['lightning', 'wind', 'fire'], moves: [['peck', 2], ['slow', 1]], talk: '「光るもの、ちょうだい！　……ひとりで集めるの、つまんないんだ」' },
-  iwa:      { name: 'ごろごろ岩',     shape: 'rock',     color: '#9a8a7a', hp: 5200, atk: 1000, spd: 75,  tough: 40, weak: ['physical', 'wind', 'ice'], moves: [['roll', 2], ['heavy', 1]], talk: '「総長のためなら、どこまでも転がるっス！　……ほんとは、ひとりで転がるのが、さみしいだけっス」' },
-  noraInu:  { name: 'のら犬',         shape: 'dog',      color: '#b08050', hp: 3600, atk: 1100, spd: 100, tough: 30, weak: ['fire', 'quantum', 'physical'], moves: [['bite', 2], ['howl', 1]], talk: '「群れからはぐれちまってよ……」' },
+  karasu:   { name: 'いたずらカラス', shape: 'crow',     color: '#4a4a6a', hp: 3000, atk: 1050, spd: 125, tough: 20, weak: ['lightning', 'wind', 'fire'], moves: [['peck', 2], ['slow', 1]] },
+  iwa:      { name: 'ごろごろ岩',     shape: 'rock',     color: '#9a8a7a', hp: 5200, atk: 1000, spd: 75,  tough: 40, weak: ['physical', 'wind', 'ice'], moves: [['roll', 2], ['heavy', 1]] },
+  noraInu:  { name: 'のら犬',         shape: 'dog',      color: '#b08050', hp: 3600, atk: 1100, spd: 100, tough: 30, weak: ['fire', 'quantum', 'physical'], moves: [['bite', 2], ['howl', 1]] },
   inoshishi:{ name: 'ばくそうイノシシ', shape: 'boar',   color: '#8a5a3a', boss: true, hp: 37000, atk: 1250, spd: 95, tough: 130, eres: 0.25, weak: ['ice', 'lightning', 'wind'],
-    turn: { at: 0.5, name: '暴走', cry: 'ばくそうイノシシは鼻息あらく地面をけった！「もう止まれねえブヒ！」', buffs: [{ stat: 'spd', value: 0.35 }, { stat: 'atk', value: 0.2 }, { stat: 'vuln', value: 0.25, debuff: true }] }, summon: 'iwa', moves: [['rush', 2], ['aoe', 1], ['boarCharge', 1], ['summon', 1]], talk: '「ハラが減っちゃ、走れねえんだブヒ……」' },
+    turn: { at: 0.5, name: '暴走', cry: 'ばくそうイノシシは鼻息あらく地面をけった！「もう止まれねえブヒ！」', buffs: [{ stat: 'spd', value: 0.35 }, { stat: 'atk', value: 0.2 }, { stat: 'vuln', value: 0.25, debuff: true }] }, summon: 'iwa', moves: [['rush', 2], ['aoe', 1], ['boarCharge', 1], ['summon', 1]] },
   // 第三章：笑顔の塔
-  ghost:    { name: 'ゲラゲラゴースト', shape: 'ghost',  color: '#e8e8ff', hp: 3800, atk: 1150, spd: 110, tough: 30, weak: ['imaginary', 'fire', 'wind'], moves: [['giggle', 2], ['strike', 1]], talk: '「ゲラ……ゲラ……。ほんとは、なにがおかしいのか、もうわからないんだ」' },
-  mimic:    { name: 'クスクスミミック', shape: 'mimic',  color: '#d8a040', elite: true, hp: 12000, atk: 1250, spd: 90, tough: 80, eres: 0.2, weak: ['lightning', 'physical', 'ice'], moves: [['chomp', 2], ['giggle', 1], ['heavy', 1]], talk: '「クスクス……開けてくれるの、待ってたんだよ。ずっと」' },
+  ghost:    { name: 'ゲラゲラゴースト', shape: 'ghost',  color: '#e8e8ff', hp: 3800, atk: 1150, spd: 110, tough: 30, weak: ['imaginary', 'fire', 'wind'], moves: [['giggle', 2], ['strike', 1]] },
+  mimic:    { name: 'クスクスミミック', shape: 'mimic',  color: '#d8a040', elite: true, hp: 12000, atk: 1250, spd: 90, tough: 80, eres: 0.2, weak: ['lightning', 'physical', 'ice'], moves: [['chomp', 2], ['giggle', 1], ['heavy', 1]] },
   piero:    { name: '泣き虫ピエロ',   shape: 'clown',    color: '#ff7aa8', boss: true, hp: 48000, atk: 1350, spd: 104, tough: 160, eres: 0.3, weak: ['imaginary', 'fire', 'lightning'],
-    turn: { at: 0.5, name: '泣き顔の仮面', cry: '泣き虫ピエロ「笑ってくれないなら……みんな泣かせてやる！」', weak: ['ice', 'wind', 'physical'], moves: [['tears', 2], ['laughgas', 1], ['juggle', 1], ['showtime', 1], ['summon', 1]] }, summon: 'ghost', moves: [['laughgas', 2], ['juggle', 2], ['tears', 1], ['showtime', 1], ['summon', 1]], talk: '「笑ってよ……ねえ、ぼくのショーで笑ってよ……！」' },
+    turn: { at: 0.5, name: '泣き顔の仮面', cry: '泣き虫ピエロ「笑ってくれないなら……みんな泣かせてやる！」', weak: ['ice', 'wind', 'physical'], moves: [['tears', 2], ['laughgas', 1], ['juggle', 1], ['showtime', 1], ['summon', 1]] }, summon: 'ghost', moves: [['laughgas', 2], ['juggle', 2], ['tears', 1], ['showtime', 1], ['summon', 1]] },
   // 第四章：くろねこ谷・黒影洞窟
-  kageneko: { name: 'かげねこ',       shape: 'shadowcat', color: '#6a5a9a', hp: 4200, atk: 1250, spd: 110, tough: 30, weak: ['imaginary', 'fire', 'physical'], moves: [['shade', 2], ['strike', 1]], talk: '「……ひとりでいれば、もう失わない」' },
-  yoroi:    { name: 'さまよう鎧',     shape: 'armor',    color: '#8a8aa8', elite: true, hp: 15000, atk: 1350, spd: 85, tough: 90, eres: 0.2, weak: ['lightning', 'imaginary', 'fire'], moves: [['cleave', 2], ['blast', 1], ['aoe', 1]], talk: '「守れなかった……守れなかった……」' },
+  kageneko: { name: 'かげねこ',       shape: 'shadowcat', color: '#6a5a9a', hp: 4200, atk: 1250, spd: 110, tough: 30, weak: ['imaginary', 'fire', 'physical'], moves: [['shade', 2], ['strike', 1]] },
+  yoroi:    { name: 'さまよう鎧',     shape: 'armor',    color: '#8a8aa8', elite: true, hp: 15000, atk: 1350, spd: 85, tough: 90, eres: 0.2, weak: ['lightning', 'imaginary', 'fire'], moves: [['cleave', 2], ['blast', 1], ['aoe', 1]] },
   kako_kuro:{ name: '過去の影クロ',   shape: 'shadowkuro', color: '#7a5aff', boss: true, hp: 56000, atk: 1450, spd: 105, tough: 170, eres: 0.3, weak: ['imaginary', 'fire', 'lightning'],
-    turn: { at: 0.5, name: '心の殻', cry: '過去の影クロ「近づくな……近づくなッ！」', guard: 0.6, until: 'break', end: ['殻が割れた！', '「……っ。なんで、そこまで……」'] }, summon: 'kageneko', moves: [['lonely', 2], ['pastEcho', 2], ['charge', 1], ['summon', 1]], talk: '「仲間なんか……いらない。失うくらいなら」' },
+    turn: { at: 0.5, name: '心の殻', cry: '過去の影クロ「近づくな……近づくなッ！」', guard: 0.6, until: 'break', end: ['殻が割れた！', '「……っ。なんで、そこまで……」'] }, summon: 'kageneko', moves: [['lonely', 2], ['pastEcho', 2], ['charge', 1], ['summon', 1]] },
   // 第五章：古代遺跡
-  sekizou:  { name: '石のねこ像',     shape: 'statue',   color: '#c8b890', hp: 5600, atk: 1250, spd: 80, tough: 40, weak: ['physical', 'lightning', 'wind'], moves: [['stoneGaze', 2], ['heavy', 1]], talk: '「……ずっと、ここで待っていた。最後の子を」' },
-  hotaru:   { name: '古代ほたる',     shape: 'wisp',     color: '#8affe0', hp: 4000, atk: 1300, spd: 120, tough: 30, weak: ['quantum', 'ice', 'fire'], moves: [['beam', 2], ['shock', 1]], talk: 'ほたるは、遠い昔の歌をうたっている……' },
+  sekizou:  { name: '石のねこ像',     shape: 'statue',   color: '#c8b890', hp: 5600, atk: 1250, spd: 80, tough: 40, weak: ['physical', 'lightning', 'wind'], moves: [['stoneGaze', 2], ['heavy', 1]] },
+  hotaru:   { name: '古代ほたる',     shape: 'wisp',     color: '#8affe0', hp: 4000, atk: 1300, spd: 120, tough: 30, weak: ['quantum', 'ice', 'fire'], moves: [['beam', 2], ['shock', 1]] },
   guardian: { name: '遺跡の守護神',   shape: 'guardian', color: '#e8c870', boss: true, hp: 52000, atk: 1500, spd: 100, tough: 180, eres: 0.3, weak: ['quantum', 'physical', 'wind'],
-    phases: [{ weak: ['fire', 'ice', 'lightning'], cry: '守護神の封印紋が、赤く燃えあがった！' }], summon: 'sekizou', moves: [['beam', 2], ['stoneGaze', 1], ['sealCharge', 1], ['summon', 1]], talk: '「封印を開けられるのは、最後のにゃんこだけ……」' },
+    phases: [{ weak: ['fire', 'ice', 'lightning'], cry: '守護神の封印紋が、赤く燃えあがった！' }], summon: 'sekizou', moves: [['beam', 2], ['stoneGaze', 1], ['sealCharge', 1], ['summon', 1]] },
   // 第六章：魔王領
-  mazoku:   { name: '魔族兵',         shape: 'imp',      color: '#9a7ae8', hp: 5000, atk: 1350, spd: 105, tough: 30, weak: ['imaginary', 'fire', 'physical'], moves: [['strike', 2], ['paperwork', 1]], talk: '「有給休暇の申請、通らないかなぁ……」' },
+  mazoku:   { name: '魔族兵',         shape: 'imp',      color: '#9a7ae8', hp: 5000, atk: 1350, spd: 105, tough: 30, weak: ['imaginary', 'fire', 'physical'], moves: [['strike', 2], ['paperwork', 1]] },
   // 保健係（ナース）は、魔王城の保健の間（6-2）にしか出ない
-  kangoshi: { name: '魔族の保健係',   shape: 'impnurse', color: '#ff9ac8', hp: 4600, atk: 1300, spd: 110, tough: 30, weak: ['quantum', 'ice', 'wind'], moves: [['checkup', 2], ['strike', 1]], talk: '「魔王城では、年に一度の健康診断をしております」' },
-  monban:   { name: '魔族の門番',     shape: 'impguard', color: '#c86a8a', hp: 6200, atk: 1300, spd: 90,  tough: 40, weak: ['wind', 'lightning', 'quantum'], moves: [['strike', 2], ['halt', 1], ['heavy', 1]], talk: '「門番は、門から一歩も動いちゃいけないんだ。……お昼ごはんにも、行けない」' },
-  jarashi:  { name: '魔界ねこじゃらし', shape: 'jarashi', color: '#c8a0ff', hp: 4200, atk: 1300, spd: 120, tough: 30, weak: ['fire', 'ice', 'physical'], moves: [['swish', 2], ['tickle', 1]], talk: '「ふりふり……。だれか、じゃれてくれないかなあ。魔王さまは、ひとりで遊んでばっかり」' },
-  souji:    { name: '魔族の掃除係',   shape: 'impmaid',  color: '#7ac8d8', hp: 4600, atk: 1300, spd: 115, tough: 30, weak: ['fire', 'imaginary', 'wind'], moves: [['sweep', 2], ['dust', 1]], talk: '「お城が広すぎて、掃除が終わらないの。終わるころには、最初の部屋がまたほこりだらけ」' },
-  ryouri:   { name: '魔族の料理番',   shape: 'impcook',  color: '#e8a050', hp: 5400, atk: 1400, spd: 100, tough: 30, weak: ['ice', 'wind', 'quantum'], moves: [['strike', 1], ['hotSoup', 2]], talk: '「グツグツさまのカレー、減塩にしてから、みんな残すんだよなあ……」' },
-  shokudai: { name: '生きている燭台', shape: 'candle',   color: '#ff8ad8', hp: 4000, atk: 1350, spd: 110, tough: 30, weak: ['ice', 'wind', 'imaginary'], moves: [['burn', 2], ['waxDrip', 1]], talk: '「夜どおし、ずっと灯っていたいんだ。……だれかが、まっくらで泣かないように」' },
-  keito:    { name: 'ころころ毛糸玉', shape: 'yarn',     color: '#ff7a9a', hp: 4400, atk: 1300, spd: 115, tough: 30, weak: ['fire', 'lightning', 'quantum'], moves: [['tangle', 2], ['roll', 1]], talk: '「魔王さまに、ころがしてもらうのを待ってたのに……。ずっと、ほどけたまま」' },
-  nuigurumi:{ name: 'マオウのぬいぐるみ', shape: 'maouplush', color: '#9a6ad8', hp: 5000, atk: 1350, spd: 100, tough: 30, weak: ['fire', 'wind', 'physical'], moves: [['plushHug', 2], ['strike', 1]], talk: '「……余と、あそべ……（録音）」' },
-  kacchu:   { name: '魔王城の飾り甲冑', shape: 'maouarmor', color: '#a890d0', elite: true, hp: 17000, atk: 1400, spd: 85, tough: 90, eres: 0.2, weak: ['lightning', 'quantum', 'wind'], moves: [['cleave', 2], ['blast', 1], ['halt', 1]], talk: '「……飾られて、百年。だれも、磨いてくれない」' },
-  kanbu:    { name: '魔族の中間管理職', shape: 'impboss', color: '#6a4ab8', elite: true, hp: 18000, atk: 1450, spd: 95, tough: 100, eres: 0.2, weak: ['imaginary', 'lightning', 'fire'], moves: [['paperwork', 2], ['cleave', 1], ['aoe', 1]], talk: '「上からも下からも……胃が痛い……」' },
-  // 魔王軍四天王。charm：「はなす」で一度だけ、話に夢中になって 1 ターン休む（act の {u} は話しかけた子）
+  kangoshi: { name: '魔族の保健係',   shape: 'impnurse', color: '#ff9ac8', hp: 4600, atk: 1300, spd: 110, tough: 30, weak: ['quantum', 'ice', 'wind'], moves: [['checkup', 2], ['strike', 1]] },
+  monban:   { name: '魔族の門番',     shape: 'impguard', color: '#c86a8a', hp: 6200, atk: 1300, spd: 90,  tough: 40, weak: ['wind', 'lightning', 'quantum'], moves: [['strike', 2], ['halt', 1], ['heavy', 1]] },
+  jarashi:  { name: '魔界ねこじゃらし', shape: 'jarashi', color: '#c8a0ff', hp: 4200, atk: 1300, spd: 120, tough: 30, weak: ['fire', 'ice', 'physical'], moves: [['swish', 2], ['tickle', 1]] },
+  souji:    { name: '魔族の掃除係',   shape: 'impmaid',  color: '#7ac8d8', hp: 4600, atk: 1300, spd: 115, tough: 30, weak: ['fire', 'imaginary', 'wind'], moves: [['sweep', 2], ['dust', 1]] },
+  ryouri:   { name: '魔族の料理番',   shape: 'impcook',  color: '#e8a050', hp: 5400, atk: 1400, spd: 100, tough: 30, weak: ['ice', 'wind', 'quantum'], moves: [['strike', 1], ['hotSoup', 2]] },
+  shokudai: { name: '生きている燭台', shape: 'candle',   color: '#ff8ad8', hp: 4000, atk: 1350, spd: 110, tough: 30, weak: ['ice', 'wind', 'imaginary'], moves: [['burn', 2], ['waxDrip', 1]] },
+  keito:    { name: 'ころころ毛糸玉', shape: 'yarn',     color: '#ff7a9a', hp: 4400, atk: 1300, spd: 115, tough: 30, weak: ['fire', 'lightning', 'quantum'], moves: [['tangle', 2], ['roll', 1]] },
+  nuigurumi:{ name: 'マオウのぬいぐるみ', shape: 'maouplush', color: '#9a6ad8', hp: 5000, atk: 1350, spd: 100, tough: 30, weak: ['fire', 'wind', 'physical'], moves: [['plushHug', 2], ['strike', 1]] },
+  kacchu:   { name: '魔王城の飾り甲冑', shape: 'maouarmor', color: '#a890d0', elite: true, hp: 17000, atk: 1400, spd: 85, tough: 90, eres: 0.2, weak: ['lightning', 'quantum', 'wind'], moves: [['cleave', 2], ['blast', 1], ['halt', 1]] },
+  kanbu:    { name: '魔族の中間管理職', shape: 'impboss', color: '#6a4ab8', elite: true, hp: 18000, atk: 1450, spd: 95, tough: 100, eres: 0.2, weak: ['imaginary', 'lightning', 'fire'], moves: [['paperwork', 2], ['cleave', 1], ['aoe', 1]] },
+  // 魔王軍四天王
   k_gutsu:  { name: '四天王 炎のグツグツ', shape: 'k_gutsu', color: '#ff8a4a', boss: true, hp: 42000, atk: 1450, spd: 100, tough: 150, eres: 0.25, weak: ['ice', 'wind', 'quantum'],
-    turn: { at: 0.5, name: '強火', cry: 'グツグツの大鍋が煮えたぎった！「ここからは強火だァ！」', moves: [['hotLadle', 2], ['spicyRain', 2], ['simmer', 1], ['summon', 1]] }, summon: 'mazoku', moves: [['ladlePoka', 2], ['curryRain', 2], ['simmer', 1], ['summon', 1]], talk: '「減塩カレー……どうしても味がぼやけるんだよなあ……」',
-    charm: { act: '{u}は、カレーのにおいをほめた', say: '「わ、わかる！？　じつは隠し味がさ……」', float: 'カレーの話に夢中', wait: '「……でな、玉ねぎは三時間いためて……」' } },
+    turn: { at: 0.5, name: '強火', cry: 'グツグツの大鍋が煮えたぎった！「ここからは強火だァ！」', moves: [['hotLadle', 2], ['spicyRain', 2], ['simmer', 1], ['summon', 1]] }, summon: 'mazoku', moves: [['ladlePoka', 2], ['curryRain', 2], ['simmer', 1], ['summon', 1]] },
   k_nemu:   { name: '四天王 眠りのネムネム', shape: 'k_nemu', color: '#8ab8ff', boss: true, hp: 40000, atk: 1450, spd: 92, tough: 150, eres: 0.25, weak: ['fire', 'lightning', 'physical'],
-    turn: { at: 0.5, name: '熟睡', cry: 'ネムネムは、すやすや眠りこんでしまった……「……むにゃ……あと五分……」', regen: 0.05, until: 'break', moves: [['snore', 2], ['nidone', 1], ['nemuCharge', 1]], end: ['目をさました！', '「……はっ！　寝てない、寝てないぞ！」'] }, summon: 'mazoku', moves: [['pillowSlam', 2], ['snore', 2], ['nidone', 1], ['nemuCharge', 1]], talk: '「……むにゃ……夜勤明けは……つらい……」',
-    charm: { act: '{u}は、子守歌を歌った', say: '「……あ……それ、すき……ぐう」', float: 'ぐっすり', wait: '「……すぴー……」', nap: true } },
+    turn: { at: 0.5, name: '熟睡', cry: 'ネムネムは、すやすや眠りこんでしまった……「……むにゃ……あと五分……」', regen: 0.05, until: 'break', moves: [['snore', 2], ['nidone', 1], ['nemuCharge', 1]], end: ['目をさました！', '「……はっ！　寝てない、寝てないぞ！」'] }, summon: 'mazoku', moves: [['pillowSlam', 2], ['snore', 2], ['nidone', 1], ['nemuCharge', 1]] },
   k_choki:  { name: '四天王 風のチョキチョキ', shape: 'k_choki', color: '#6ad88a', boss: true, hp: 45000, atk: 1500, spd: 104, tough: 160, eres: 0.25, weak: ['fire', 'quantum', 'physical'],
-    turn: { at: 0.5, name: '剪定', cry: 'チョキチョキ「ほっほっ、のびすぎた枝は、切りそろえんとな！」', strip: true, buffs: [{ stat: 'spd', value: 0.2 }] }, summon: 'mazoku', moves: [['snip', 2], ['leafStorm', 2], ['pruneCharge', 1], ['summon', 1]], talk: '「この猫じゃらし……魔王さまが、だれかと遊んでくれたらのう……」',
-    charm: { act: '{u}は、花壇の猫じゃらしをほめた', say: '「ほっほっ、わかるかね！　今年は穂のつやがちがうのじゃ」', float: '庭の話に夢中', wait: '「……でな、水やりは朝のうちに……」' } },
+    turn: { at: 0.5, name: '剪定', cry: 'チョキチョキ「ほっほっ、のびすぎた枝は、切りそろえんとな！」', strip: true, buffs: [{ stat: 'spd', value: 0.2 }] }, summon: 'mazoku', moves: [['snip', 2], ['leafStorm', 2], ['pruneCharge', 1], ['summon', 1]] },
   k_dodon:  { name: '四天王 大地のドドン', shape: 'k_dodon', color: '#c8884a', boss: true, hp: 44000, atk: 1500, spd: 98, tough: 170, eres: 0.25, weak: ['wind', 'ice', 'quantum'],
-    turn: { at: 0.5, name: 'ひとっ風呂', cry: 'ドドン「ちょいと、ひとっ風呂……ぬおお、のぼせてきたわい！」', heal: 0.2, buffs: [{ stat: 'atk', value: 0.35 }, { stat: 'spd', value: -0.2, debuff: true }] }, summon: 'mazoku', moves: [['yuagariPunch', 2], ['manjuToss', 2], ['onsenCharge', 1], ['summon', 1]], talk: '「温泉はいいぞ……肩こりも、腰痛も、ぜんぶ消える……」',
-    charm: { act: '{u}は、温泉の話を聞いてあげた', say: '「おお、聞いてくれるか！　露天風呂から見える山がな……」', float: '温泉の思い出にひたっている', wait: '「……湯上がりに飲む牛乳が、またうまくてな……」' } },
+    turn: { at: 0.5, name: 'ひとっ風呂', cry: 'ドドン「ちょいと、ひとっ風呂……ぬおお、のぼせてきたわい！」', heal: 0.2, buffs: [{ stat: 'atk', value: 0.35 }, { stat: 'spd', value: -0.2, debuff: true }] }, summon: 'mazoku', moves: [['yuagariPunch', 2], ['manjuToss', 2], ['onsenCharge', 1], ['summon', 1]] },
   boss_maou:{ name: '魔王マオウ',     shape: 'maou',     color: '#b04aff', boss: true, lure: true, hp: 84000, atk: 1600, spd: 108, tough: 190, eres: 0.35, weak: ['imaginary', 'fire', 'physical'],
-    turn: { at: 0.5, name: 'ぬいぐるみの守り', cry: '魔王マオウ「ぬいぐるみたちよ……余のそばにいろ！」', summon: ['nuigurumi', 2], guard: 0.5, until: 'summon', end: ['守りが消えた！', '「……みんな、いなくなった……」'] }, summon: 'mazoku', moves: [['darkPaw', 2], ['darkWave', 2], ['maouCharge', 1], ['summon', 1]], talk: '「……余と遊んでくれる者など、どこにもおらぬ」' },
+    turn: { at: 0.5, name: 'ぬいぐるみの守り', cry: '魔王マオウ「ぬいぐるみたちよ……余のそばにいろ！」', summon: ['nuigurumi', 2], guard: 0.5, until: 'summon', end: ['守りが消えた！', '「……みんな、いなくなった……」'] }, summon: 'mazoku', moves: [['darkPaw', 2], ['darkWave', 2], ['maouCharge', 1], ['summon', 1]] },
   // 第七章：にゃんだーの樹の根
-  kakera:   { name: 'コドクのかけら', shape: 'shard',    color: '#5a4a8a', hp: 6200, atk: 1500, spd: 110, tough: 40, weak: ['imaginary', 'fire', 'wind'], moves: [['hollow', 2], ['strike', 1]], talk: '「……だれも、わたしを見ない」' },
-  utsuro:   { name: '虚ろ',           shape: 'void',     color: '#3a2a5a', elite: true, hp: 22000, atk: 1600, spd: 100, tough: 110, eres: 0.25, weak: ['imaginary', 'lightning', 'physical'], moves: [['hollow', 2], ['despair', 1], ['cleave', 1]], talk: '（なにも聞こえない。ただ冷たい）' },
+  kakera:   { name: 'コドクのかけら', shape: 'shard',    color: '#5a4a8a', hp: 6200, atk: 1500, spd: 110, tough: 40, weak: ['imaginary', 'fire', 'wind'], moves: [['hollow', 2], ['strike', 1]] },
+  utsuro:   { name: '虚ろ',           shape: 'void',     color: '#3a2a5a', elite: true, hp: 22000, atk: 1600, spd: 100, tough: 110, eres: 0.25, weak: ['imaginary', 'lightning', 'physical'], moves: [['hollow', 2], ['despair', 1], ['cleave', 1]] },
   kodoku_kage: { name: 'コドクの影',  shape: 'kodoku',   color: '#2a1a4a', boss: true, hp: 100000, atk: 1700, spd: 105, tough: 200, eres: 0.35, weak: ['imaginary', 'fire', 'wind'],
-    turn: { at: 0.5, name: '孤独の闇', cry: 'コドクの影がふくれあがった！「……見るな。わたしを、見るな」', isolate: true, buffs: [{ stat: 'atk', value: 0.2 }] }, summon: 'kakera', moves: [['isolate', 2], ['despair', 2], ['erase', 1], ['kodokuCharge', 1], ['summon', 1]], talk: '「……ひとりでいれば、傷つかない」' },
+    turn: { at: 0.5, name: '孤独の闇', cry: 'コドクの影がふくれあがった！「……見るな。わたしを、見るな」', isolate: true, buffs: [{ stat: 'atk', value: 0.2 }] }, summon: 'kakera', moves: [['isolate', 2], ['despair', 2], ['erase', 1], ['kodokuCharge', 1], ['summon', 1]] },
   // 第八章：世界の果て
-  kagejuu:  { name: 'コドクの獣',     shape: 'shadowbeast', color: '#4a2a6a', hp: 7200, atk: 1650, spd: 108, tough: 40, weak: ['imaginary', 'fire', 'physical'], moves: [['bite', 2], ['despair', 1]], talk: '「……さみしい」' },
+  kagejuu:  { name: 'コドクの獣',     shape: 'shadowbeast', color: '#4a2a6a', hp: 7200, atk: 1650, spd: 108, tough: 40, weak: ['imaginary', 'fire', 'physical'], moves: [['bite', 2], ['despair', 1]] },
   kodoku:   { name: 'コドク',         shape: 'kodoku',   color: '#1a0a36', boss: true, final: true, hp: 80000, atk: 1800, spd: 112, tough: 220, eres: 0.4, weak: ['imaginary', 'fire', 'physical'],
-    phases: [{ weak: ['lightning', 'wind', 'quantum'], cry: 'コドク「まだ手を伸ばすか。ならば、闇の底まで沈めてやろう」' }, { weak: ['imaginary', 'ice', 'fire'], cry: 'コドク「消えろ……ひとりのほうが、楽だと言っている！」' }], summon: 'kakera', moves: [['isolate', 2], ['despair', 2], ['doubt', 1], ['erase', 1], ['kodokuCharge', 1], ['summon', 1]], talk: '「なぜ手を伸ばす。ひとりのほうが、楽だろう」' },
+    phases: [{ weak: ['lightning', 'wind', 'quantum'], cry: 'コドク「まだ手を伸ばすか。ならば、闇の底まで沈めてやろう」' }, { weak: ['imaginary', 'ice', 'fire'], cry: 'コドク「消えろ……ひとりのほうが、楽だと言っている！」' }], summon: 'kakera', moves: [['isolate', 2], ['despair', 2], ['doubt', 1], ['erase', 1], ['kodokuCharge', 1], ['summon', 1]] },
   // 隠しダンジョン：ねこ神の夢
-  purin:    { name: '超巨大プリン',   shape: 'pudding',  color: '#ffd27a', elite: true, hp: 30000, atk: 1600, spd: 80, tough: 120, eres: 0.2, weak: ['fire', 'lightning', 'wind'], moves: [['purin', 2], ['heavy', 1]], talk: '「たべて……ぷるん」' },
-  sakana:   { name: '喋る魚',         shape: 'fish',     color: '#6ac8ff', hp: 8000, atk: 1700, spd: 115, tough: 40, weak: ['fire', 'lightning', 'physical'], moves: [['splash', 2], ['chatter', 1]], talk: '「いいかい、そもそも魚というのはだね……（話が長い）」' },
-  tamas:    { name: '100匹のタマ',    shape: 'tamas',    color: '#fff4d8', elite: true, hp: 36000, atk: 1650, spd: 95, tough: 120, eres: 0.2, weak: ['quantum', 'fire', 'ice'], moves: [['swarm', 2], ['heavy', 1]], talk: '「「「すやすや……」」」' },
-  nisemike: { name: 'ミケそっくりの偽物', shape: 'fakemike', color: '#f29a3e', hp: 9000, atk: 1800, spd: 105, tough: 40, weak: ['ice', 'quantum', 'physical'], moves: [['copycat', 2], ['strike', 1]], talk: '「ぼくが本物のミケだよ！　……あれ？」' },
-  kuroPlush:{ name: 'クロのぬいぐるみ', shape: 'plush',  color: '#3a3844', hp: 9500, atk: 1650, spd: 100, tough: 40, weak: ['fire', 'wind', 'lightning'], moves: [['plushHug', 2], ['strike', 1]], talk: '「……めんどうだ（録音）」' },
+  purin:    { name: '超巨大プリン',   shape: 'pudding',  color: '#ffd27a', elite: true, hp: 30000, atk: 1600, spd: 80, tough: 120, eres: 0.2, weak: ['fire', 'lightning', 'wind'], moves: [['purin', 2], ['heavy', 1]] },
+  sakana:   { name: '喋る魚',         shape: 'fish',     color: '#6ac8ff', hp: 8000, atk: 1700, spd: 115, tough: 40, weak: ['fire', 'lightning', 'physical'], moves: [['splash', 2], ['chatter', 1]] },
+  tamas:    { name: '100匹のタマ',    shape: 'tamas',    color: '#fff4d8', elite: true, hp: 36000, atk: 1650, spd: 95, tough: 120, eres: 0.2, weak: ['quantum', 'fire', 'ice'], moves: [['swarm', 2], ['heavy', 1]] },
+  nisemike: { name: 'ミケそっくりの偽物', shape: 'fakemike', color: '#f29a3e', hp: 9000, atk: 1800, spd: 105, tough: 40, weak: ['ice', 'quantum', 'physical'], moves: [['copycat', 2], ['strike', 1]] },
+  kuroPlush:{ name: 'クロのぬいぐるみ', shape: 'plush',  color: '#3a3844', hp: 9500, atk: 1650, spd: 100, tough: 40, weak: ['fire', 'wind', 'lightning'], moves: [['plushHug', 2], ['strike', 1]] },
   nekogami: { name: 'ねこ神',         shape: 'nekogami', color: '#ffe08a', boss: true, hp: 110000, atk: 1900, spd: 112, tough: 240, eres: 0.4, weak: ['quantum', 'physical', 'ice'],
-    phases: [{ weak: ['fire', 'lightning', 'wind'], cry: 'ねこ神「ふむ。少しは本気で遊んでやろう」' }, { weak: ['imaginary', 'quantum', 'physical'], cry: 'ねこ神「よかろう。世界をもう一度作るつもりで、相手をしてやる！」' }], summon: 'sakana', moves: [['godPaw', 2], ['chatter', 1], ['purin', 1], ['godCharge', 1], ['summon', 1]], talk: '「世界を作るのは、案外めんどうなのだ」' },
+    phases: [{ weak: ['fire', 'lightning', 'wind'], cry: 'ねこ神「ふむ。少しは本気で遊んでやろう」' }, { weak: ['imaginary', 'quantum', 'physical'], cry: 'ねこ神「よかろう。世界をもう一度作るつもりで、相手をしてやる！」' }], summon: 'sakana', moves: [['godPaw', 2], ['chatter', 1], ['purin', 1], ['godCharge', 1], ['summon', 1]] },
 };
 
 // ------------------------------------------------------------
@@ -525,6 +516,38 @@ const CHAPTERS = [
       { id: '9-3', name: '夢の玉座',         lv: 80, boss: true, waves: [['nisemike', 'sakana', 'kuroPlush'], ['nekogami']] },
     ] },
 ];
+
+// ------------------------------------------------------------
+//  戦闘で使うどうぐ（R キー）。持っている数は Save.data.items。道具屋で買える（ひとつ ITEM_MAX こまで）
+//  target：ally 味方単体 / allies 味方全体 / down 戦闘不能の味方 / single 敵単体。
+//  key：だいじなもの（使ってもなくならない。has で持っているか決まる）。once：その敵には一戦闘に一度だけ
+// ------------------------------------------------------------
+const ITEM_MAX = 9;
+const ITEMS = {
+  onigiri:  { name: 'にぼしおにぎり', icon: '🍙', price: 40, target: 'ally', desc: '味方単体のHPを最大HPの40%回復する。',
+    run: (B, s, t) => B.heal(s, t, t.maxHp * 0.4) },
+  katsuo:   { name: 'かつおぶし', icon: '🪵', price: 100, target: 'allies', desc: '味方全体のHPを最大HPの25%回復する。',
+    run: (B, s) => B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.25)) },
+  matatabi: { name: 'またたびの実', icon: '🫐', price: 80, target: 'ally', byEnergy: true, desc: '味方単体の必殺技エネルギーを最大値の50%ためる。',
+    run: (B, s, t) => { B.gainEnergy(t, t.energyMax * 0.5); B.float(t, 'ごろごろ', 'info'); } },
+  nekokan:  { name: 'ねこ缶', icon: '🥫', price: 150, target: 'down', desc: '戦闘不能の味方単体を、HP40%で起こす。',
+    run: (B, s, t) => B.revive(t, 0.4) },
+  jarashi:  { name: '猫じゃらし', icon: '🌾', key: true, has: () => storyCond('scene:c6_k3b'), target: 'single',
+    desc: 'チョキチョキにもらった、だいじな猫じゃらし。敵の前で振る。猫じゃらしに目がない相手は、夢中になって1ターン行動できない（その敵には1戦闘に1回）。',
+    run: (B, s, t) => {
+      if (!t.def.lure || t.flags.lured) { B.float(t, 'みむきもしない', 'res'); return; }
+      t.flags.lured = true; t.flags.skip = 1;
+      B.announce(`${s.name}は猫じゃらしを振った！`, `${t.name}は夢中になっている……（1ターン行動できない）`, '#ffcf4a');
+      B.say(t, '「……！？　こ、これは……っ」');
+      if (B.v) B.v.lureFx(t);
+    } },
+};
+// いま持っている数（だいじなものは、持っていれば 1）
+function itemCount(id) {
+  const it = ITEMS[id];
+  if (it.key) return it.has() ? 1 : 0;
+  return (Save.data.items || {})[id] || 0;
+}
 
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 

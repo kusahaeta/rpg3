@@ -598,6 +598,12 @@ class BattleView extends BaseView {
     this.tweenPose(m, POSES.down, instant ? 0 : 0.5);
     this.p.burst(this.hitPoint(u), '#ff4d6d', instant ? 0 : 30, { speed: 2, life: 0.8 });
   }
+  // 戦闘不能から起きあがる（ねこ缶）
+  allyUp(u) {
+    const e = this.ent(u); if (!e) return;
+    this.tweenPose(e.model, POSES.ready, 0.4);
+    this.healFx(u);
+  }
   // ボスの山場（形態変化ではない）：閃光と衝撃波だけの短い演出
   async turnFx(t) {
     const e = this.ent(t); if (!e) return;
@@ -796,8 +802,8 @@ class BattleView extends BaseView {
   }
 
   // ---------- にゃんこファンタジーの演出 ----------
-  // 話す：敵のほうへ歩み寄って手を振る
-  async talkFx(u, t) {
+  // 敵にどうぐを使う（猫じゃらし）：敵のほうを向いて手を振る
+  async waveFx(u, t) {
     const e = this.ent(u), te = this.ent(t); if (!e || !te) return;
     this.unfocus(); this.sway = 0.2;
     const m = e.model;
@@ -820,15 +826,6 @@ class BattleView extends BaseView {
     const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), toon('#fff0a8')); tuft.scale.set(0.6, 1.4, 0.6); tuft.position.y = 0.05; g.add(tuft);
     this.fx.add(g, 2.2, (k, o) => { o.rotation.z = Math.sin(k * 30) * 0.6; o.position.x = p.x + Math.sin(k * 20) * 0.3; });
     for (let i = 0; i < 12; i++) GFX.delay(i * 0.12).then(() => this.p.emit(this.hitPoint(t).add(V3(0, 0.8, 0)), V3((Math.random() - 0.5), 1.2, 0), hdr('#ff8ab8', 2.4), { life: 0.9, size: 0.14 }));
-  }
-  // 話に夢中（四天王）：頭の上で、桃色と金のきらきらが弾む
-  charmFx(t) {
-    const te = this.ent(t); if (!te) return;
-    const m = te.model.critter || te.model; if (m.face) m.face.set('joy');
-    const h = this.hitPoint(t).add(V3(0, 0.7, 0));
-    this.fx.ring(h, '#ffb8d8', { r: 1.0, life: 0.7, face: this.camera.position });
-    for (let i = 0; i < 14; i++) GFX.delay(i * 0.1).then(() => this.p.emit(h.clone().add(V3((Math.random() - 0.5) * 0.8, 0, (Math.random() - 0.5) * 0.4)), V3((Math.random() - 0.5) * 0.8, 1.3, 0), hdr(i % 2 ? '#ff8ab8' : '#ffd76a', 2.4), { life: 1.0, size: 0.13 }));
-    GFX.delay(1.4).then(() => { if (t.alive && m.face) m.face.set('neutral'); });
   }
   // おひるね（タマ）：丸くなって Zzz
   napFx(u) {

@@ -1124,7 +1124,6 @@ const SCENES = {
       ['kuro', '……。', { f: 'shy', g: 'turnAway' }],
       ['piero_npc', '……ありがとう。笑うって、こういうことだったね。', { f: 'smile', g: 'handChest' }],
       ['mike', '戦うだけじゃなくて、ちゃんと話を聞くのも、大事なんだね。', { f: 'gentle', g: 'nod' }],
-      { flag: 'talk', say: '戦闘中に「はなす」ができるようになった！（Rキー）　敵に話しかけると、気持ちを聞いて、なごませられる。' },
       ['piero_npc', 'そうだ……笑いの実を盗んだ魔王軍の兵が、この塔を通っていったよ。「黒い谷を抜けて、北の魔王領へ」って……。', { f: 'serious', g: 'point' }],
       ['kuro', '……黒い谷。', { f: 'serious', cam: 'kuro', close: true }],
       ['piero_npc', '……王さまにも、知らせなきゃ。ぼく、ずっと心配をかけてたから。', { f: 'gentle', g: 'handChest', stance: { tama: 'idle' } }],

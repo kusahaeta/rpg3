@@ -779,6 +779,7 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .sh-face { width: 52px; height: 52px; border-radius: 50%; overflow: hidden; border: 2px solid #fff0dc; flex: none; background: #fff6ea; }
 .sh-icon { width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; font-size: 30px; flex: none; }
 .sh-info { flex: 1; } .sh-info b { display: block; } .sh-info small { color: var(--dim); }
+.sh-have { font-style: normal; font-weight: 400; font-size: 12px; color: var(--dim); margin-left: 10px; }
 .sh-foot { display: flex; justify-content: space-between; align-items: center; }
 .sh-tabs { display: flex; gap: 8px; margin-bottom: 8px; }
 .sh-row .wp-ic { width: 52px; height: 52px; font-size: 24px; }
@@ -829,7 +830,16 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 
 /* 戦闘：友情ゲージ・コンボ・吹き出し */
 .ab-btn { border-radius: 18px; }
-.ab-btn.talk .ab-ic { font-size: 22px; }
+.ab-btn.item .ab-ic { font-size: 26px; }
+/* どうぐ：操作パネルの上に、持っているどうぐを並べる */
+.item-menu { position: absolute; right: 20px; bottom: 300px; width: 420px; z-index: 8; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: rgba(20, 24, 50, .92); border: 2px solid var(--gold); border-radius: 18px; padding: 10px; }
+.item-menu button { display: flex; align-items: center; gap: 8px; text-align: left; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); padding: 7px 10px; color: var(--ink); }
+.item-menu button:hover:not([disabled]) { background: rgba(232, 199, 122, .2); }
+.item-menu button.sel { border-color: var(--gold); background: rgba(232, 199, 122, .28); box-shadow: 0 0 12px rgba(232, 199, 122, .4); }
+.item-menu button[disabled] { opacity: .4; cursor: default; }
+.item-menu .im-ic { font-size: 22px; line-height: 1; }
+.item-menu b { flex: 1; font-size: 13px; }
+.item-menu em { font-style: normal; font-size: 12px; color: var(--gold2); font-weight: 800; }
 .sp-gems i { border-radius: 50%; }
 .bond { position: absolute; left: 24px; bottom: 170px; width: 250px; z-index: 6; background: rgba(62, 40, 34, .78); border: 2px solid rgba(255, 180, 200, .45); border-radius: 16px; padding: 8px 12px; }
 .bond-l { font-size: 12px; color: #ffd0de; font-weight: 700; }

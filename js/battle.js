@@ -5,7 +5,7 @@
 //  - SP共有（最大5）、通常攻撃+1 / スキル-1
 //  - 必殺技はEP満タンでいつでも割り込み可能（1〜4キー）
 //  - 靭性・弱点撃破・撃破効果（裂創/燃焼/凍結/感電/風化/くらやみ/まぶしさ）
-//  - にゃんこファンタジー：「話す」（第三章から）、友情ゲージとコンボスキル、にゃんこオールスターズ
+//  - にゃんこファンタジー：どうぐ（ITEMS）、友情ゲージとコンボスキル、にゃんこオールスターズ
 // ============================================================
 const Game = { speed: 1, auto: false, activeBattle: null, activeField: null };
 const wait = ms => new Promise(r => setTimeout(r, ms / Game.speed));
@@ -19,10 +19,7 @@ const DOWN_STATS = new Set(['defDown', 'resDown']);
 const DOT_INFO = { burn: ['燃焼', 'fire'], shock: ['感電', 'lightning'], wind: ['風化', 'wind'], bleed: ['裂創', 'physical'] };
 const BREAK_COEF = { physical: 2, fire: 2, ice: 1, lightning: 1, wind: 1.5, quantum: 0.5, imaginary: 0.5 };
 const ENEMY_TARGETS = new Set(['single', 'blast', 'bounce', 'aoe']);
-const NEEDS_TARGET = new Set(['single', 'blast', 'bounce', 'ally']);
-// 「話す」：敵の気持ちを聞いて、なごませる
-const TALK_AB = { name: 'はなす', target: 'single', desc: '敵に話しかけて気持ちを聞く。はじめて話した敵は、なごんで攻撃力-20%（2ターン）・行動順が25%遅れる。SPは増減しない。' };
-const talkOn = () => !!(Save.data.flags && Save.data.flags.talk);
+const NEEDS_TARGET = new Set(['single', 'blast', 'bounce', 'ally', 'down']);
 
 let UID = 0;
 // 敵の体力の全体倍率（にゃんこの戦いは、テンポよく）
@@ -118,13 +115,14 @@ class Battle {
         <div class="ab-btns">
           <button class="ab-btn" data-ab="basic"><span class="ab-ic">⚔</span><span class="k">Q</span><span class="l">通常攻撃</span></button>
           <button class="ab-btn" data-ab="skill"><span class="ab-ic">✦</span><span class="k">E</span><span class="l">戦闘スキル</span></button>
-          <button class="ab-btn talk ${talkOn() ? '' : 'hidden'}" data-ab="talk"><span class="ab-ic">💬</span><span class="k">R</span><span class="l">はなす</span></button>
+          <button class="ab-btn item" data-ab="item"><span class="ab-ic">🎒</span><span class="k">R</span><span class="l">どうぐ</span></button>
         </div>
         <div class="ult-hint"><span class="pc-only">Space / クリックで発動　Esc でキャンセル</span><span class="touch-only">対象をタップで発動</span><button class="ctl ult-cancel">キャンセル</button></div>
       </div>
       <div class="bond hidden"><div class="bond-l">友情ゲージ</div><div class="bond-bar"><i></i></div><button class="bond-btn" data-combo disabled><span class="k">C</span><b>コンボ</b></button></div>
       <div class="combo-menu hidden"></div>
-      <div class="help">Q 通常攻撃 ／ E スキル${talkOn() ? ' ／ R はなす' : ''} ／ A・D 対象選択 ／ Space 決定 ／ 1〜4 必殺技 ／ C コンボ</div>
+      <div class="item-menu hidden"></div>
+      <div class="help">Q 通常攻撃 ／ E スキル ／ R どうぐ ／ A・D 対象選択 ／ Space 決定 ／ 1〜4 必殺技 ／ C コンボ</div>
       <div class="ultfx"></div>
       <div class="cutin"></div>
       <div class="overlay hidden"></div>`;
@@ -512,7 +510,7 @@ class Battle {
       const choice = Game.auto ? await this.aiChoice(u) : await this.awaitChoice(u);
       if (choice.kind === 'ult' || choice.kind === 'combo') continue;
       if (this.battleBlocked() || !u.alive) break;
-      if (choice.kind === 'talk') await this.useTalk(u, choice.target);
+      if (choice.kind === 'item') await this.useItem(u, choice.item, choice.target);
       else await this.useAbility(u, choice.kind, choice.target);
       break;
     }
@@ -539,37 +537,36 @@ class Battle {
     await wait(350);
   }
 
-  // ---------------- 話す ----------------
-  async useTalk(u, t) {
-    this.lastSel[u.uid] = 'basic';
-    if (!t || !t.alive) return;
-    if (this.v) await this.v.talkFx(u, t);
-    Sfx.meow(u.key);
-    const first = !t.flags.talked; t.flags.talked = true;
-    if (t.def.lure && !t.flags.lured) {
-      t.flags.lured = true; t.flags.skip = 1;
-      this.announce(`${u.name}は猫じゃらしを見せた！`, `${t.name}は夢中になっている……（1ターン行動できない）`, '#ffcf4a');
-      this.say(t, '「……！？　こ、これは……っ」');
-      if (this.v) this.v.lureFx(t);
-    } else if (t.def.charm && !t.flags.charmed) {
-      // 四天王：話に夢中になる（眠る）。一度だけ、1 ターン行動できない
-      const c = t.def.charm;
-      t.flags.charmed = true; t.flags.skip = 1; t.flags.skipFloat = c.float; t.flags.skipSay = c.wait;
-      this.announce(c.act.replace('{u}', u.name), `${t.name}は${c.float}……（1ターン行動できない）`, '#ffcf4a');
-      this.say(t, c.say);
-      if (this.v) c.nap ? this.v.napFx(t) : this.v.charmFx(t);
-    } else {
-      this.announce(`${u.name}は${t.name}に話しかけた`, t.def.talk || '……', ELEMENTS[u.elem].color);
-      this.say(t, t.def.talk || '……');
-      if (first) {
-        this.debuff(u, t, 1, { key: 'nagomi', name: 'なごみ', stat: 'atk', value: -0.2, turns: 2 }, true);
-        this.delay(t, 0.25); this.float(t, 'なごんだ', 'info');
-      } else this.float(t, 'もう聞いた', 'res');
+  // ---------------- どうぐ ----------------
+  // 持っていて、いま使う相手がいるどうぐ
+  itemReady(u, id) { const it = ITEMS[id]; return itemCount(id) > 0 && (it.target === 'allies' || this.targetList(u, it).length > 0); }
+  readyItems(u) { return Object.keys(ITEMS).filter(id => this.itemReady(u, id)); }
+  itemAb(id) {
+    const it = ITEMS[id];
+    return { ...it, name: `${it.icon} ${it.name}${it.key ? '（だいじなもの）' : `（のこり ${itemCount(id)}）`}`, desc: it.desc + '　SPは増減しない。' };
+  }
+  async useItem(u, id, t) {
+    const it = ITEMS[id];
+    this.lastItem = id;
+    if (!it.key) { Save.data.items[id] = Math.max(0, itemCount(id) - 1); Save.save(); }
+    this.announce('どうぐ', `${it.icon} ${it.name}`, ELEMENTS[u.elem].color);
+    if (this.v) {
+      if (it.target === 'single') await this.v.waveFx(u, t);
+      else await this.v.support(u, it.target === 'allies' ? this.aliveAllies() : [t]);
     }
-    this.gainEnergy(u, 15); this.addBond(8);
+    it.run(this, u, t);
+    this.addBond(6);
     this.renderAll();
-    await wait(1400);
-    if (this.v) await this.v.attackEnd(u);
+    await wait(it.target === 'single' ? 1400 : 700);
+    if (this.v && it.target === 'single') await this.v.attackEnd(u);
+  }
+  // 戦闘不能から起こす（ねこ缶）
+  revive(t, ratio) {
+    if (t.alive) return;
+    t.alive = true; t.hp = t.maxHp * ratio; t.gauge = 10000;
+    this.float(t, '復活', 'heal'); this.pulse(t, 'healed', 600); Sfx.heal();
+    if (this.v) this.v.allyUp(t);
+    this.updateUnit(t); this.renderOrder();
   }
 
   // ---------------- 友情ゲージとコンボ ----------------
@@ -799,9 +796,10 @@ class Battle {
   }
 
   // ---------------- 入力 ----------------
-  abilityOf(inp) { return inp.mode === 'ult' ? inp.unit.def.ult : inp.sel === 'talk' ? TALK_AB : inp.unit.def[inp.sel]; }
+  abilityOf(inp) { return inp.mode === 'ult' ? inp.unit.def.ult : inp.sel === 'item' ? this.itemAb(inp.item) : inp.unit.def[inp.sel]; }
 
   targetList(u, ab) {
+    if (ab.target === 'down') return this.allies.filter(a => !a.alive);
     if (ab.target === 'ally') return this.aliveAllies().filter(a => !(ab.notSelf && a === u));
     if (ENEMY_TARGETS.has(ab.target)) return this.aliveEnemies();
     return [];
@@ -811,8 +809,10 @@ class Battle {
     if (ab.target === 'ally') {
       const l = this.targetList(u, ab);
       if (ab.notSelf) return l.sort((a, b) => b.stat('atk') - a.stat('atk'))[0] || null;
+      if (ab.byEnergy) return l.sort((a, b) => a.energy / a.energyMax - b.energy / b.energyMax)[0] || null;
       return l.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0] || null;
     }
+    if (ab.target === 'down') return this.targetList(u, ab)[0] || null;
     if (NEEDS_TARGET.has(ab.target)) {
       if (this.lastTarget && this.lastTarget.alive && this.enemies.includes(this.lastTarget)) return this.lastTarget;
       const en = this.aliveEnemies();
@@ -840,6 +840,7 @@ class Battle {
   selectAbility(kind) {
     const inp = this.input;
     if (!inp || inp.mode !== 'turn') return;
+    if (kind === 'item') { this.selectItem(); return; }
     if (inp.sel === kind) { this.confirm(); return; }
     if (kind === 'skill' && this.sp < 1) { this.flashSp(); return; }
     Sfx.click();
@@ -851,6 +852,34 @@ class Battle {
     this.renderInput();
   }
 
+  // どうぐ：はじめは前に使ったどうぐ（なければ一つ目）。R をもう一度押すと次のどうぐへ。メニューで選んでいるどうぐをもう一度選ぶと決定
+  selectItem(id) {
+    const inp = this.input;
+    if (!inp || inp.mode !== 'turn') return;
+    const list = this.readyItems(inp.unit);
+    if (!list.length) { this.announce('どうぐ', 'いま使えるどうぐがない', '#ff6b6b'); return; }
+    if (id && inp.sel === 'item' && inp.item === id) { this.confirm(); return; }
+    if (!id) id = inp.sel === 'item' ? list[(list.indexOf(inp.item) + 1) % list.length] : list.includes(this.lastItem) ? this.lastItem : list[0];
+    if (!list.includes(id)) return;
+    Sfx.click();
+    const prev = this.abilityOf(inp).target;
+    inp.sel = 'item'; inp.item = id;
+    const ab = this.abilityOf(inp);
+    if (ab.target !== prev || !this.targetList(inp.unit, ab).includes(inp.target)) inp.target = this.defaultTarget(inp.unit, ab);
+    this.renderInput();
+  }
+  renderItemMenu() {
+    const m = this.$('.item-menu'), inp = this.input;
+    const open = !!inp && inp.mode === 'turn' && inp.sel === 'item';
+    m.classList.toggle('hidden', !open);
+    if (!open) return;
+    m.innerHTML = Object.keys(ITEMS).filter(id => itemCount(id) > 0).map(id => {
+      const it = ITEMS[id];
+      return `<button data-item="${id}" class="${id === inp.item ? 'sel' : ''}" ${this.itemReady(inp.unit, id) ? '' : 'disabled'}><span class="im-ic">${it.icon}</span><b>${it.name}</b><em>${it.key ? '' : '×' + itemCount(id)}</em></button>`;
+    }).join('');
+    m.querySelectorAll('[data-item]').forEach(b => b.onclick = e => { e.stopPropagation(); this.selectItem(b.dataset.item); });
+  }
+
   flashSp() {
     const s = this.$('.sp'); s.classList.remove('flash'); void s.offsetWidth; s.classList.add('flash');
     this.announce('にくきゅう不足', 'にくきゅうポイント（SP）が足りない', '#ff6b6b');
@@ -860,10 +889,10 @@ class Battle {
     const inp = this.input; if (!inp) return;
     const ab = this.abilityOf(inp);
     if (inp.mode === 'turn' && inp.sel === 'skill' && this.sp < 1) { this.flashSp(); return; }
-    if (NEEDS_TARGET.has(ab.target) && (!inp.target || !inp.target.alive)) return;
+    if (NEEDS_TARGET.has(ab.target) && !this.targetList(inp.unit, ab).includes(inp.target)) return;
     Sfx.select();
     this.input = null; this.renderInput();
-    inp.resolve({ kind: inp.mode === 'ult' ? 'ultgo' : inp.sel, target: inp.target });
+    inp.resolve({ kind: inp.mode === 'ult' ? 'ultgo' : inp.sel, target: inp.target, item: inp.item });
   }
 
   cancelUlt() {
@@ -884,8 +913,9 @@ class Battle {
   }
 
   clickUnit(u) {
-    const inp = this.input; if (!inp || !u.alive) return;
+    const inp = this.input; if (!inp) return;
     const ab = this.abilityOf(inp);
+    if (!u.alive && ab.target !== 'down') return;
     if (!this.targetList(inp.unit, ab).includes(u)) {
       if (!NEEDS_TARGET.has(ab.target) && ((ab.target === 'aoe' && u.side === 'enemy') || (ab.target !== 'aoe' && u.side === 'ally'))) this.confirm();
       return;
@@ -900,21 +930,23 @@ class Battle {
     panel.classList.toggle('idle', !inp);
     panel.classList.toggle('ultmode', !!inp && inp.mode === 'ult');
     this.renderSp();
+    this.renderItemMenu();
     if (!inp) return;
     const ab = this.abilityOf(inp), u = inp.unit;
     panel.style.setProperty('--c', ELEMENTS[u.elem].color);
-    this.$('.ab-kind').textContent = inp.mode === 'ult' ? `${u.name}・必殺技` : `${u.name}・${inp.sel === 'basic' ? '通常攻撃' : inp.sel === 'talk' ? 'はなす' : '戦闘スキル'}`;
+    this.$('.ab-kind').textContent = inp.mode === 'ult' ? `${u.name}・必殺技` : `${u.name}・${inp.sel === 'basic' ? '通常攻撃' : inp.sel === 'item' ? 'どうぐ' : '戦闘スキル'}`;
     this.$('.ab-name').textContent = ab.name;
     this.$('.ab-desc').textContent = ab.desc;
     this.root.querySelectorAll('.ab-btn').forEach(b => {
       b.classList.toggle('sel', inp.mode === 'turn' && b.dataset.ab === inp.sel);
-      b.querySelector('.l').textContent = b.dataset.ab === 'talk' ? TALK_AB.name : u.def[b.dataset.ab].name;
+      b.querySelector('.l').textContent = b.dataset.ab === 'item' ? 'どうぐ' : u.def[b.dataset.ab].name;
     });
     this.$('[data-ab=skill]').classList.toggle('disabled', this.sp < 1);
+    this.$('[data-ab=item]').classList.toggle('disabled', !this.readyItems(u).length);
 
     const t = inp.target;
     switch (ab.target) {
-      case 'single': case 'bounce': case 'ally': t && t.el.classList.add('tgt'); break;
+      case 'single': case 'bounce': case 'ally': case 'down': t && t.el.classList.add('tgt'); break;
       case 'blast': if (t) { t.el.classList.add('tgt'); this.adjacent(t).forEach(a => a.el.classList.add('tgt2')); } break;
       case 'aoe': this.aliveEnemies().forEach(e => e.el.classList.add('tgt')); break;
       case 'allies': this.aliveAllies().forEach(a => a.el.classList.add('tgt')); break;
@@ -927,7 +959,7 @@ class Battle {
     if (this.over) return;
     if (this.paused) { if (k === 'escape') this.togglePause(); return; }
     if (k === 'q') this.selectAbility('basic');
-    else if (k === 'r' && talkOn()) this.selectAbility('talk');
+    else if (k === 'r') this.selectAbility('item');
     else if (k === 'c') this.requestCombo();
     else if (k === 'e') this.selectAbility('skill');
     else if (k === ' ' || k === 'enter') { e.preventDefault(); this.confirm(); }
@@ -1383,10 +1415,8 @@ class Battle {
       return;
     }
     if (e.flags.skip) {
-      const custom = e.flags.skipFloat;
-      e.flags.skip = 0; this.float(e, custom ? custom + '……' : '猫じゃらしに夢中……', 'info'); this.say(e, custom ? e.flags.skipSay : '「ま、まて……もう少しだけ……」');
-      e.flags.skipFloat = null;
-      if (this.v) { if (!custom) this.v.lureFx(e); else if (e.def.charm && e.def.charm.nap) this.v.napFx(e); else this.v.charmFx(e); }
+      e.flags.skip = 0; this.float(e, '猫じゃらしに夢中……', 'info'); this.say(e, '「ま、まて……もう少しだけ……」');
+      if (this.v) this.v.lureFx(e);
       this.updateUnit(e); await wait(1100); return;
     }
     let mv;
