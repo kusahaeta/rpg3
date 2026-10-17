@@ -117,7 +117,7 @@ class Battle {
           <button class="ab-btn" data-ab="skill"><span class="ab-ic">✦</span><span class="k">E</span><span class="l">戦闘スキル</span></button>
           <button class="ab-btn item" data-ab="item"><span class="ab-ic">🎒</span><span class="k">R</span><span class="l">どうぐ</span></button>
         </div>
-        <div class="ult-hint"><span class="pc-only">Space / クリックで発動　Esc でキャンセル</span><span class="touch-only">対象をタップで発動</span><button class="ctl ult-cancel">キャンセル</button></div>
+        <div class="ult-hint"><span class="pc-only">Space で発動　Esc でキャンセル</span><button class="ctl ult-go">発動</button><button class="ctl ult-cancel">キャンセル</button></div>
       </div>
       <div class="bond hidden"><div class="bond-l">友情ゲージ</div><div class="bond-bar"><i></i></div><button class="bond-btn" data-combo disabled><span class="k">C</span><b>コンボ</b></button></div>
       <div class="combo-menu hidden"></div>
@@ -155,6 +155,7 @@ class Battle {
 
     r.querySelectorAll('.ab-btn').forEach(b => b.addEventListener('click', () => this.selectAbility(b.dataset.ab)));
     r.querySelector('[data-combo]').addEventListener('click', e => { e.stopPropagation(); this.requestCombo(); });
+    r.querySelector('.ult-go').addEventListener('click', () => { if (this.input && this.input.mode === 'ult') this.confirm(); });
     r.querySelector('.ult-cancel').addEventListener('click', () => this.cancelUlt());
     r.querySelector('.bf-ctrl').addEventListener('click', e => {
       const c = e.target.closest('[data-c]'); if (!c) return;
@@ -324,15 +325,21 @@ class Battle {
     a.style.setProperty('--c', color || '#e8c77a');
     a.classList.remove('show'); void a.offsetWidth; a.classList.add('show');
   }
-  async cutin(u, cine) {
+  // 技の帯（3D）：決めポーズのあいだ、キャラ名と必殺技名を出す
+  ultBand(u, on) {
+    const c = this.$('.cutin');
+    if (!on) { c.classList.remove('show'); return; }
+    c.innerHTML = `<div class="ci-3d" style="--c:${ELEMENTS[u.elem].color}"><div class="ci-name">${u.name}</div><div class="ci-ult">${u.def.ult.name}</div></div>`;
+    c.classList.remove('show'); void c.offsetWidth; c.classList.add('show');
+  }
+  // posed：発動を選ぶ前に決めポーズ（と技の帯）を済ませた（ここでは放つ演出だけ）
+  async cutin(u, posed) {
     const c = this.$('.cutin'), col = ELEMENTS[u.elem].color;
-    if (cine) return;   // 専用演出は対象選択の前に済んでいる
     if (this.v) {
-      c.innerHTML = `<div class="ci-3d" style="--c:${col}"><div class="ci-name">${u.name}</div><div class="ci-ult">${u.def.ult.name}</div></div>`;
-      c.classList.remove('show'); void c.offsetWidth; c.classList.add('show');
-      Sfx.ult();
+      if (posed) { await this.v.ultRelease(u); return; }
+      this.ultBand(u, true); Sfx.ult();
       await this.v.ultIntro(u);
-      c.classList.remove('show');
+      this.ultBand(u, false);
       return;
     }
     c.innerHTML = `<div class="ci-band" style="--c:${col}"><div class="ci-lines"></div>
@@ -711,8 +718,8 @@ class Battle {
 
   requestUlt(i) {
     const u = this.allies[i];
+    if (this.input && this.input.mode === 'ult' && this.input.unit === u) { this.confirm(); return; }   // 構えている子をもう一度押すと発動
     if (!u || !u.alive || this.over || u.energy < u.energyMax || this.ultQueue.includes(u)) return;
-    if (this.input && this.input.mode === 'ult' && this.input.unit === u) return;
     this.ultQueue.push(u);
     Sfx.select();
     this.updateUnit(u); this.renderOrder();
@@ -735,22 +742,17 @@ class Battle {
       if (!u.alive || u.energy < u.energyMax) { this.ultQueue.shift(); continue; }
       handled = true;
       const ult = u.def.ult;
-      // 専用演出のあるキャラは、発動演出 → 肩越し視点で対象選択（本家の流れ）
-      const cine = this.v && this.v.hasUltCine(u);
-      if (cine) { Sfx.ult(); await this.v.ultReady(u); }
-      let target = null;
-      // 専用演出のある全体攻撃も、本家同様に確認（決定）を挟む
-      if (NEEDS_TARGET.has(ult.target) || (cine && ult.target === 'aoe')) {
-        if (Game.auto) target = this.aiTarget(u, ult);
-        else {
-          if (this.v && !cine) this.v.ultAim(u);
-          const r = await this.awaitUltTarget(u);
-          if (r.kind === 'cancel') { this.ultQueue.shift(); if (this.v) this.v.ultCancel(u); this.updateUnit(u); this.renderOrder(); continue; }
-          target = r.target;
-        }
+      let target = null, posed = false;
+      if (Game.auto) { if (NEEDS_TARGET.has(ult.target)) target = this.aiTarget(u, ult); }
+      else {
+        // 押したらまず決めポーズとオーラ。そのあと肩越し視点で、対象を選んで発動かキャンセルを選ぶ
+        if (this.v) { Sfx.ult(); this.ultBand(u, true); await this.v.ultReady(u); this.ultBand(u, false); posed = true; }
+        const r = Game.auto ? { kind: 'ultgo', target: NEEDS_TARGET.has(ult.target) ? this.aiTarget(u, ult) : null } : await this.awaitUltTarget(u);
+        if (r.kind === 'cancel') { this.ultQueue.shift(); if (this.v) this.v.ultCancel(u); this.updateUnit(u); this.renderOrder(); continue; }
+        target = r.target;
       }
       this.ultQueue.shift();
-      await this.castUlt(u, target, cine);
+      await this.castUlt(u, target, posed);
       if (this.battleBlocked()) break;
     }
     return handled;
@@ -776,9 +778,9 @@ class Battle {
     }
   }
 
-  async castUlt(u, target, cine) {
+  async castUlt(u, target, posed) {
     u.energy = 0; this.updateUnit(u); this.renderOrder();
-    await this.cutin(u, cine);
+    await this.cutin(u, posed);
     this.announce('必殺技', u.def.ult.name, ELEMENTS[u.elem].color);
     if (target && target.side === 'enemy') this.lastTarget = target;
     const ult = u.def.ult;

@@ -494,7 +494,7 @@ function buildCat(key, opt = {}) {
       hips.position.y = CAT.HIP + pose.hipsY * CAT.HIPK + br * 0.004;
       hips.rotation.x = pose.lean; hips.rotation.y = pose.twist;
       headPivot.rotation.x = pose.headX + br * 0.025; headPivot.rotation.y = pose.headY;
-      headPivot.rotation.z = Math.sin(t * 0.7 + this.seed) * 0.03;
+      headPivot.rotation.z = (pose.headZ || 0) + Math.sin(t * 0.7 + this.seed) * 0.03;   // headZ：首をかしげる（POSE_KEYS の外。動きのある決めポーズが直接入れる）
       // 武器が腕の動きを決めるもの（お手玉の腕）は、ポーズより優先する
       const ja = extras.arms && extras.arms(t);
       if (ja) { setArm(armR, ja[0], ja[1], -1); setArm(armL, ja[2], ja[3], 1); armR.el.rotation.x = ja[4] * 0.8; armL.el.rotation.x = ja[5] * 0.8; }

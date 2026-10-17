@@ -43,6 +43,30 @@ const POSES = {
   open:    { headX: -0.2, lean: -0.08, armLx: -1.3, armLz: 1.25, elbowL: 0, armRx: -1.3, armRz: -1.25, elbowR: 0 },   // 腕を大きく広げる
 };
 
+// 必殺技の決めポーズ（正面から映す。キャラごとに個性を出す）。face：表情。ないキャラは POSES.ult
+//   腕は頭より上へは上がらない。持ち物は前腕にほぼ直角につくので、前腕を前へ出すと立ち、腕を横へ伸ばすと横を向く
+const ULT_POSES = {
+  // ミケ：剣を斜め上へ掲げ、もう片手を広げて大きく踏みこむ（勇者）
+  mike:  { face: 'joy', pose: { hipsY: -0.1, lean: -0.05, twist: -0.15, headX: -0.2, headY: 0.15, armRx: -0.3, armRz: -2.4, elbowR: -0.1, armLx: -0.4, armLz: 1.3, elbowL: -0.3, legLx: -0.6, kneeL: 0.6, legRx: 0.5, kneeR: 0.3 } },
+  // クロ：腰を落とし、刀を低く横へ払ったまま、そっぽを向く（斬ったあとの残心）
+  kuro:  { face: 'serious', pose: { hipsY: -0.12, lean: 0.1, twist: -0.3, headY: -0.4, armRx: -0.4, armRz: -1.0, elbowR: 0, armLx: -0.3, armLz: 0.3, elbowL: -0.6, legLx: -0.6, kneeL: 0.6, legRx: 0.5, kneeR: 0.5 } },
+  // シロ：楽しそうに顔を揺らしながら、斜め前へ伸ばした杖の先でくるくる円を描く（move: twirl。腕を真横にすると円が正面から線に見える）
+  shiro: { face: 'joy', move: 'twirl', pose: { lean: -0.1, headX: -0.15, armRx: -1.5, armRz: -0.9, elbowR: 0, armLx: 0.3, armLz: 0.6, elbowL: -1.9, legLx: -0.2, legRx: 0.25, kneeR: 0.15 } },
+  // タマ：まくらを抱きしめて、にっこり（片足をうしろへ上げる）
+  tama:  { face: 'joy', pose: { headX: -0.25, lean: -0.08, armLx: -0.9, armLz: 0.45, elbowL: -1.5, armRx: -0.9, armRz: -0.45, elbowR: -1.5, legLx: 0.1, legRx: -0.5, kneeR: 0.9 } },
+  // マオウ：笏を斜めに立て、片手は腰。あごを上げて見くだす（元・魔王）
+  maou:  { face: 'smug', pose: { lean: -0.25, headX: -0.35, armRx: -0.3, armRz: -0.4, elbowR: -1.3, armLx: 0.2, armLz: 0.7, elbowL: -1.9, legLx: -0.3, legRx: 0.3 } },
+};
+// 動きのある決めポーズ（ULT_POSES の move）：t 秒目にポーズへ足す揺れ。w はポーズへの寄り（0→1）
+//   headZ：首を左右にかしげる。sparkle：持ち物の先に光を残す（軌跡が見える）
+const ULT_MOVES = {
+  // 杖の先で円を描きながら、顔だけ左右に揺らす
+  twirl: (t, w) => {
+    const a = t * 7, b = t * 4.2;
+    return { armRx: Math.sin(a) * 0.4 * w, armRz: Math.cos(a) * 0.4 * w, headZ: Math.sin(b) * 0.25 * w, headY: Math.sin(b + 0.6) * 0.12 * w, sparkle: w > 0.6 };
+  },
+};
+
 // 表情の定義：tilt = 眉の傾き（+ で困り顔、- で怒り顔）、browY = 眉の上下、
 // lidIn / lidOut = 上まぶたの下がり（目頭／目尻）、low = 下まぶたの持ち上がり（笑み）、
 // arc = 笑って閉じた目、squint = ぎゅっと閉じた目、iris = 瞳の大きさ、scale = 目の大きさ、mouth = 口の形
