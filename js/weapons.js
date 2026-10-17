@@ -27,9 +27,9 @@ const WEAPONS = {
     desc: '村で拾った木のつるぎ。勇者の技は、旅とともに育っていく。' },
   mike_katsuo: { owner: 'mike', name: 'かつおぶしソード', tier: 1, get: { shop: true, price: 500 },
     desc: 'かつおぶしを削って作った剣。振るたびに、いいにおいがする。', look: { c: '#c8884a', g: '#ffd8a0' },
-    basic: { name: 'ひとけずり', elem: 'physical', target: 'single', desc: '指定した敵単体に攻撃力100%の物理ダメージ。自身のHPを最大HP4%回復。',
+    basic: { name: 'ひとけずり', elem: 'physical', target: 'single', anim: 'shave', desc: '指定した敵単体に攻撃力100%の物理ダメージ。自身のHPを最大HP4%回復。',
       run: async (B, s, t) => { const r = await B.single(s, t, 1.0, 10, 'basic'); B.heal(s, s, s.maxHp * 0.04, true); return r; } },
-    skill: { name: 'けずり節', elem: 'physical', target: 'bounce', desc: 'ランダムな敵に攻撃力55%の物理ダメージを4回。そのあと、だしの香りで味方全体のHPを最大HP5%回復。',
+    skill: { name: 'けずり節', elem: 'physical', target: 'bounce', anim: 'flakes', desc: 'ランダムな敵に攻撃力55%の物理ダメージを4回。そのあと、だしの香りで味方全体のHPを最大HP5%回復。',
       run: async (B, s, t) => {
         const r = await B.bounce(s, 4, 0.55, 8, 'skill', {}, t);
         B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.05));
@@ -43,9 +43,9 @@ const WEAPONS = {
       } } },
   mike_flame: { owner: 'mike', name: 'ほのおのつるぎ', tier: 2, get: { chest: ['woods_deep', 0] },
     desc: '大樹のうろで眠っていた、刃が燃えているつるぎ。', look: { c: '#ff9a6a', g: '#ff5a2a' },
-    basic: { name: '火の粉', elem: 'fire', target: 'single', desc: '指定した敵単体に攻撃力100%の炎ダメージ。40%の基礎確率で燃焼（攻撃力30%、2ターン）。',
+    basic: { name: '火の粉', elem: 'fire', target: 'single', anim: 'ember', desc: '指定した敵単体に攻撃力100%の炎ダメージ。40%の基礎確率で燃焼（攻撃力30%、2ターン）。',
       run: async (B, s, t) => { const r = await B.single(s, t, 1.0, 10, 'basic'); B.dot(s, t, { type: 'burn', mult: 0.3, turns: 2, chance: 0.4, quiet: true }); return r; } },
-    skill: { name: '燃えうつり', elem: 'fire', target: 'blast', desc: '指定した敵単体に攻撃力120%、隣接する敵に攻撃力50%の炎ダメージ。指定した敵を燃焼（攻撃力50%、2ターン）、隣接する敵も50%の基礎確率で燃焼。',
+    skill: { name: '燃えうつり', elem: 'fire', target: 'blast', anim: 'spread', desc: '指定した敵単体に攻撃力120%、隣接する敵に攻撃力50%の炎ダメージ。指定した敵を燃焼（攻撃力50%、2ターン）、隣接する敵も50%の基礎確率で燃焼。',
       run: async (B, s, t) => {
         const adj = B.adjacent(t);
         const r = await B.blast(s, t, 1.2, 0.5, 20, 10, 'skill');
@@ -62,11 +62,11 @@ const WEAPONS = {
       } } },
   mike_big: { owner: 'mike', name: 'ねこじゃらしの大剣', tier: 3, get: { chest: ['tree_under_2', 0] }, mod: { atk: 1.08, def: 0.94 }, energyMax: 140,
     desc: 'にゃんだーの樹の根にからまっていた大剣。ふさふさの先っぽが、つい気になる。', look: { c: '#f4e8b0', g: '#ffe07a' },
-    basic: { name: 'ぶんまわし', elem: 'physical', target: 'blast', desc: '指定した敵単体に攻撃力90%、隣接する敵に攻撃力30%の物理ダメージ。',
+    basic: { name: 'ぶんまわし', elem: 'physical', target: 'blast', anim: 'bigSwing', desc: '指定した敵単体に攻撃力90%、隣接する敵に攻撃力30%の物理ダメージ。',
       run: (B, s, t) => B.blast(s, t, 0.9, 0.3, 10, 5, 'basic') },
     skill: { name: 'ためぎり', elem: 'physical', target: 'single', anim: 'charge', desc: '指定した敵単体に攻撃力300%の物理ダメージ。大きく振りかぶるので、自身の行動順が20%遅れる。',
       run: async (B, s, t) => { const r = await B.single(s, t, 3.0, 30, 'skill', { heavy: true }); B.delay(s, 0.2); return r; } },
-    ult: { name: 'にゃんだー斬り', elem: 'imaginary', target: 'single', anim: 'charge', desc: '指定した敵単体に攻撃力550%の光ダメージ。弱点撃破されている敵には、与ダメージ+50%。',
+    ult: { name: 'にゃんだー斬り', elem: 'imaginary', target: 'single', anim: 'nyander', desc: '指定した敵単体に攻撃力550%の光ダメージ。弱点撃破されている敵には、与ダメージ+50%。',
       run: (B, s, t) => B.single(s, t, 5.5, 40, 'ult', { heavy: true, dmgBonus: t.broken ? 0.5 : 0 }) } },
 
   // ---------------- クロ（刀） ----------------

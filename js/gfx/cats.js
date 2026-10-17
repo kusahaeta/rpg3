@@ -558,6 +558,7 @@ function buildCatWeapon(type, armR, armL, hips, L, charCol, P, T, glow, G = {}) 
   const tc = (G.tint && G.tint.c) || null, tg = (G.tint && G.tint.g) || null;
   const ex = {}, eg = glowMat(tg || charCol, 3);
   const hold = new THREE.Group(); hold.rotation.x = Math.PI - 0.55; armR.grip.add(hold);
+  ex.hold = hold;   // 右手の持ち物の根もと（技のあいだ、武器を大きくするとき）
   const tipAt = (y, parent = hold) => { ex.tip = new THREE.Object3D(); ex.tip.position.y = y; parent.add(ex.tip); };
   // G.model：武器ごとの形（js/gfx/weapon-models.js）。ない武器は、種類 type の形
   const wm = G.model && typeof WEAPON_MODELS !== 'undefined' && WEAPON_MODELS[G.model];
