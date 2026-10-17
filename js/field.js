@@ -98,9 +98,9 @@ class FieldView extends BaseView {
       if (g && g.phys && g.phys.cabin) return { x: g.phys.cx, z: g.phys.cz, yaw: Math.atan2(g.nx, g.nz) };
       if (g) return { x: g.x + g.nx * 3.5, z: g.z + g.nz * 3.5, yaw: Math.atan2(g.nx, g.nz) };
     }
-    // 前回の位置（地形が変わって立てない場所になっていたら時空アンカーから）
+    // 前回の位置（地形が変わって立てない場所になっていたら、ひとっとびの着く場所から）
     if (a.pos && (!this.T || this.T.fits(a.pos.x, a.pos.z, this.bodyR(), undefined, this.moveOpts()))) return a.pos;
-    // ねこ地蔵のそばに、区画の中ほどを向いて立つ（カメラが地蔵にかからないよう少し横へ）
+    // ひとっとびの着く場所（anchor）のそばに、区画の中ほどを向いて立つ
     if (a.anchor) {
       const [ax, az] = Z.anchor, l = Math.hypot(ax, az), dx = l > 1 ? -ax / l : 0, dz = l > 1 ? -az / l : 1;
       const x = ax + dx * 5 + dz * 0.6, z = az + dz * 5 - dx * 0.6;
@@ -225,8 +225,8 @@ class FieldView extends BaseView {
     });
     const put = (g, x, z) => { const y = this.gy(x, z); g.position.set(x, y, z); return y; };
     const col = (x, z, r) => this.colliders.push({ x, z, r, y: this.gy(x, z) });
-    // 時空アンカー
-    if (!Z.noAnchor) { this.anchor = this.makeAnchor(); put(this.anchor.g, Z.anchor[0], Z.anchor[1]); this.scene.add(this.anchor.g); col(Z.anchor[0], Z.anchor[1], 0.7); }
+    // もとの大きさにもどる光の輪（ねこ神の夢だけ）
+    if (Z.sizes) { this.resetRing = this.makeResetRing(); put(this.resetRing, Z.anchor[0], Z.anchor[1]); this.scene.add(this.resetRing); }
     // 住人
     this.npcs = npcDefs.map(n => {
       const m = buildCharacter(n.key); m.setPose(POSES[n.pose || 'idle']); if (m.face) m.face.set(n.pose === 'sleep' ? 'sleepy' : n.play ? 'joy' : defaultFace(n.key));
@@ -531,23 +531,12 @@ class FieldView extends BaseView {
     const setUsed = ang => { marks.visible = true; marks.rotation.y = ang; gem.visible = false; sp.visible = false; };
     return { g, gem, sp, marks, setUsed };
   }
-  // ねこ地蔵（近づくとHPが回復する。赤いよだれかけ）
-  makeAnchor() {
-    const g = new THREE.Group();
-    const stone = toon('#b8b4a8'), red = toon('#e0453a');
-    const base = outlined(new THREE.CylinderGeometry(0.7, 0.8, 0.35, 10), toon('#8a847a')); base.position.y = 0.17; g.add(base);
-    const body = outlined(new THREE.SphereGeometry(0.42, 16, 12), stone); body.scale.set(1, 1.2, 0.9); body.position.y = 0.8; g.add(body);
-    const head = outlined(new THREE.SphereGeometry(0.4, 16, 12), stone); head.scale.set(1.12, 0.95, 1); head.position.y = 1.45; g.add(head);
-    for (const sd of [-1, 1]) { const eg = new THREE.ConeGeometry(0.13, 0.26, 4); eg.rotateY(Math.PI / 4); const e = outlined(eg, stone); e.scale.z = 0.5; e.position.set(sd * 0.24, 1.8, 0); e.rotation.z = -sd * 0.35; g.add(e); }
-    for (const sd of [-1, 1]) { const ey = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 6, 12, Math.PI), new THREE.MeshBasicMaterial({ color: '#3a3430' })); ey.position.set(sd * 0.15, 1.5, 0.37); g.add(ey); }
-    const bib = new THREE.Mesh(new THREE.CircleGeometry(0.34, 16, Math.PI, Math.PI), red); bib.position.set(0, 1.17, 0.36); bib.rotation.x = -0.25; g.add(bib);
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), glowMat('#8affc8', 2.6)); core.position.set(0, 2.35, 0); g.add(core);
-    const rings = [0.3, 0.45].map(r => { const t = new THREE.Mesh(new THREE.TorusGeometry(r, 0.018, 8, 40), glowMat('#8affc8', 2.2)); t.position.y = 2.35; g.add(t); return t; });
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#8affc8', 0.7), blending: THREE.AdditiveBlending, depthWrite: false }));
-    sp.scale.setScalar(1.8); sp.position.y = 2.35; g.add(sp);
+  // ねこ神の夢：もとの大きさにもどる光の輪（床に置く）
+  makeResetRing() {
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.5, 64), glowMat('#8affc8', 1.6, { side: THREE.DoubleSide, transparent: true, opacity: 0.6 }));
-    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; g.add(ring);
-    return { g, core, rings };
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02;
+    const g = new THREE.Group(); g.add(ring);
+    return g;
   }
 
   // ============================================================
@@ -1184,7 +1173,6 @@ class FieldView extends BaseView {
     }
     for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
     for (const c of this.crystals) if (c.pos.distanceTo(p) < 1.8) return { type: 'post', c, text: c.broken ? '調べる：爪とぎの丸太' : '爪を研ぐ：爪とぎの丸太' };
-    if (!Z.noAnchor && Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && Math.abs(this.gy(Z.anchor[0], Z.anchor[1]) - p.y) < 1.5) return { type: 'anchor', text: '調べる：ねこ地蔵' };
     if (this.T) {
       const i = this.T.at(p.x, p.z);
       // 区画間エレベーターの籠の中
@@ -1274,25 +1262,14 @@ class FieldView extends BaseView {
         this.startTalk('宝箱', [`「${w.name}」を手に入れた！`, w.desc, own ? `${CHARS[w.owner].name}の${WEAPON_KIND[CHARS[w.owner].gear.weapon]}だ。メニューの「なかま」で装備すると、技がまるごと変わる。` : 'いまの仲間には、使えそうな子がいない……。いつか、使える子に出会えるかもしれない。'], null, true);
       } else this.toast(`宝箱：にぼし +${nib}`);
       this.renderHud();
-    } else if (it.type === 'anchor') {
-      this.startTalk('ねこ地蔵', ['赤いよだれかけの、ねこ地蔵だ。そばにいると、みんなのHPが回復する。', 'MAP（M）を開くと、行ったことのある場所のねこ地蔵へ、いつでもひとっとびできる。'], null, true);
     } else if (it.type === 'lift') this.rideLift(it.L);
     else if (it.type === 'call') { this.moveLift(it.L, it.lv); this.toast('エレベーターを呼んだ'); }
     else if (it.type === 'cabin') this.cabinMenu(it.g);
   }
-  // ねこ地蔵に近づくと、みんなのHPが回復する
-  updateAnchorHeal() {
+  // ねこ神の夢：光の輪の上では、もとの大きさにもどる
+  updateSizeReset() {
     const Z = this.zone, p = this.player.pos;
-    if (Z.sizes && this.size !== 1 && Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && this.sizeFits(1)) { this.changeSize(1, null); this.toast('ねこ地蔵のそばで、もとの大きさにもどった'); return; }
-    if (Z.noAnchor || !this.team.some(m => m.hpRatio < 1)) return;
-    if (Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) >= 2.6 || Math.abs(this.gy(Z.anchor[0], Z.anchor[1]) - p.y) >= 1.5) return;
-    this.team.forEach(m => { m.hpRatio = 1; });
-    this.fx.ring(V3(Z.anchor[0], this.gy(Z.anchor[0], Z.anchor[1]) + 0.05, Z.anchor[1]), '#6fd6ff', { r: 3, life: 0.8 });
-    this.p.burst(p.clone().add(V3(0, 1, 0)), '#6dff9e', 50, { speed: 2, up: 2, life: 1 });
-    Sfx.heal();
-    this.toast('ねこ地蔵のそばで、みんなのHPが回復した');
-    this.spawnFollowers();
-    this.renderTeam();
+    if (Z.sizes && this.size !== 1 && Math.hypot(p.x - Z.anchor[0], p.z - Z.anchor[1]) < 2.6 && this.sizeFits(1)) { this.changeSize(1, null); this.toast('光の輪の上で、もとの大きさにもどった'); }
   }
   // ============================================================
   //  ねこ神の夢：ちびクッキーとでかミルク（zone.sizes。部品は ZoneKit.sizeStands）
@@ -2080,7 +2057,7 @@ class FieldView extends BaseView {
   checkTimeTrap(o) {
     const p = this.player.pos;
     if (this.trapWait || !o.trapped || !o.trapped(p.x, p.z)) return;
-    // もどす場所：ねこ地蔵（anchor）のそばの、区画の中ほど寄り（地蔵に重ならないように）
+    // もどす場所：入口（anchor）のそばの、区画の中ほど寄り
     const [ax, az] = zonePoint(this.zone, this.zone.anchor), l = Math.hypot(ax, az), dx = l > 1 ? -ax / l : 0, dz = l > 1 ? -az / l : 1;
     const bx = ax + dx * 5 + dz * 0.6, bz = az + dz * 5 - dx * 0.6;
     this.trapWait = true;
@@ -2454,7 +2431,7 @@ class FieldView extends BaseView {
 
   battleResult(g, res) {
     res.team.forEach((t, i) => { this.team[i].hpRatio = t.hpRatio; this.team[i].energy = t.energy; });
-    if (!res.win) return '<div class="dim">時空アンカーまで撤退する…</div>';
+    if (!res.win) return '';
     const d = Save.data, exp = Math.round((60 + g.lv * 28) * g.waves.length);
     let html = '';
     const nib = 10 + g.lv * 2 + (g.elite ? 40 : 0); d.niboshi += nib;
@@ -2481,7 +2458,7 @@ class FieldView extends BaseView {
       this.team.forEach(m => { m.hpRatio = 1; m.energy = null; });
       const a = this.zone.anchor, sp = this.T ? this.T.nearestStandable(a[0], a[1] + 2, 0.5) : { x: a[0], z: a[1] + 2 };
       this.player.pos.set(sp.x, 0, sp.z);
-      setTimeout(() => this.toast('やられちゃった……ねこ地蔵のところで目を覚ました'), 400);
+      setTimeout(() => this.toast('やられちゃった……ひと休みして、目を覚ました'), 400);
     }
     if (this.team[this.leader].hpRatio <= 0) {
       const i = this.team.findIndex(m => m.hpRatio > 0);
@@ -2671,7 +2648,7 @@ class FieldView extends BaseView {
       ${pout ? `<div class="fm-pout" style="--c:${ELEMENTS[CHARS[pout.k].elem].color}"><div class="hp-face">${avatarSVG(pout.k)}</div><div class="hp-say"><b>${CHARS[pout.k].name}</b>${pout.line}</div></div>` : ''}
       <button class="btn gold" data-m="resume">冒険を続ける</button>
       <div class="fm-grid">
-        ${item('map', 'ワールドマップ', 'ねこ地蔵へひとっとび')}
+        ${item('map', 'ワールドマップ', '行ったことのある場所へひとっとび')}
         ${item('chars', 'なかま', 'ステータス・わざの確認')}
         ${item('team', 'へんせい', '戦いに出る4匹を決める')}
         ${item('bond', '友情', '一緒に旅をした時間')}
@@ -2700,13 +2677,13 @@ class FieldView extends BaseView {
     };
     o.querySelector('[data-reset]').onclick = () => { if (confirm('セーブデータを初期化しますか？')) { this.persist = false; Save.reset(); App.go(TitleScreen); } };
   }
-  // ワールドマップ：訪れた場所のねこ地蔵へひとっとび
+  // ワールドマップ：訪れた場所へひとっとび
   mapMenu() {
     const o = this.root.querySelector('.overlay');
     if (this.overlayOpen) { this.closeOverlay(); return; }
     if (this.busy) return;
     this.busy = true; this.overlayOpen = true; this.keys.clear();
-    o.innerHTML = worldMapHTML(this.zoneId) + '<div class="wm-foot"><span class="dim">行ったことのある場所の「ねこ地蔵」へ、ひとっとびできる</span><button class="btn gold" data-close>閉じる</button></div></div>';
+    o.innerHTML = worldMapHTML(this.zoneId) + '<div class="wm-foot"><span class="dim">行ったことのある場所へ、ひとっとびできる</span><button class="btn gold" data-close>閉じる</button></div></div>';
     o.classList.remove('hidden');
     o.querySelector('[data-close]').onclick = () => this.closeOverlay();
     o.querySelectorAll('[data-z]').forEach(b => b.onclick = () => { this.closeOverlay(); this.gotoZone(b.dataset.z, { anchor: true }); });
@@ -2810,7 +2787,7 @@ class FieldView extends BaseView {
     }
     const dot = (x, z, col, r, sq) => { const [px, py] = P(x, z); g.fillStyle = col; if (sq) g.fillRect(px - r, py - r, r * 2, r * 2); else { g.beginPath(); g.arc(px, py, r, 0, Math.PI * 2); g.fill(); } };
     for (const gt of this.gates) { const [x, y] = P(gt.x, gt.z); g.fillStyle = gt.locked ? '#ff4d6d' : '#8ae0ff'; g.save(); g.translate(x, y); g.rotate(Math.atan2(-gt.nx, gt.nz)); g.beginPath(); g.moveTo(0, 5); g.lineTo(5, -3); g.lineTo(-5, -3); g.fill(); g.restore(); }
-    if (!this.zone.noAnchor) dot(this.zone.anchor[0], this.zone.anchor[1], '#6fd6ff', 4, true);
+    if (this.zone.sizes) dot(this.zone.anchor[0], this.zone.anchor[1], '#8affc8', 4, true);
     if (this.zone.portal) dot(this.zone.portal[0], this.zone.portal[1], '#e8c77a', 5);
     this.npcs.forEach(n => dot(n.pos.x, n.pos.z, '#6dff9e', 3));
     this.notes.forEach(n => dot(n.pos.x, n.pos.z, '#ffffff', 2.5, true));
@@ -2875,7 +2852,7 @@ class FieldView extends BaseView {
       g.globalAlpha = 1;
     };
     const Z = this.zone;
-    if (!Z.noAnchor) dot(Z.anchor[0], this.gy(Z.anchor[0], Z.anchor[1]), Z.anchor[1], '#6fd6ff', 4, true);
+    if (Z.sizes) dot(Z.anchor[0], this.gy(Z.anchor[0], Z.anchor[1]), Z.anchor[1], '#8affc8', 4, true);
     if (Z.portal) dot(Z.portal[0], this.gy(Z.portal[0], Z.portal[1]), Z.portal[1], '#e8c77a', 5);
     this.npcs.forEach(n => dot(n.pos.x, n.pos.y, n.pos.z, '#6dff9e', 3));
     this.notes.forEach(n => dot(n.pos.x, n.pos.y, n.pos.z, '#ffffff', 2.5, true));
@@ -2971,7 +2948,7 @@ class FieldView extends BaseView {
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
     this.updateRoots(d, t); this.updateShadows(d, t); this.updateNap(d, t);
     this.updateNemuri(t);
-    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); this.updateAnchorHeal(); this.updateLoop(); }
+    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); this.updateSizeReset(); this.updateLoop(); }
     this.updateGuards(d, t); this.updateRollers(d, t);
     if (this.followers && !this.flight) this.updateFollowers(d, t);
     this.updateEnemies(d, t);
@@ -2990,7 +2967,6 @@ class FieldView extends BaseView {
     }
     this.updateSafe(); this.updateArea();
     this.notes.forEach((n, i) => { n.mark.material.opacity = 0.5 + Math.sin(t * 3 + i) * 0.4; });
-    if (this.anchor) { this.anchor.rings.forEach((r, i) => { r.rotation.x = t * (0.8 + i * 0.5); r.rotation.y = t * (0.5 + i * 0.3); }); this.anchor.core.rotation.y = t; }
     const cam = this.camera.position;
     (this.T ? this.exitsPhys.filter(g => g.arrows) : this.gates).forEach(g => {
       g.arrows.forEach((a, i) => { a.scale.setScalar(0.8 + ((t * 1.5 + i * 0.33) % 1) * 0.4); });
@@ -3143,7 +3119,7 @@ function buildZoneSet(v, zoneId, o = {}) {
 // ------------------------------------------------------------
 //  画面
 // ------------------------------------------------------------
-// zoneId を指定すればその区画のねこ地蔵から。なければ前回の場所（なければ物語の場所か、ぽかぽか村）から
+// zoneId を指定すればその区画のひとっとびの着く場所（anchor）から。なければ前回の場所（なければ物語の場所か、ぽかぽか村）から
 function FieldScreen(zoneId) {
   if (!GFX.ok) { alert('探索には WebGL（3D表示）が必要です。'); return TitleScreen(); }
   if (GFX.view && GFX.view.persist) GFX.view.persist = false;
@@ -3170,7 +3146,7 @@ function worldMapHTML(here) {
   let qz = cur && cur.step.t === 'field' ? cur.step.zone : null;
   // 塔・城などの上の階（parent のある区画）は、入口の階にまとめて表示する
   const ids = Object.keys(FIELD_ZONES).filter(id => !FIELD_ZONES[id].parent && (!CHAPTERS[FIELD_ZONES[id].ci].hidden || zoneOpen(id)));
-  // real = 本当にいる区画。上の階・奥の区画にいるときは、入口の区画のねこ地蔵へひとっとびできる
+  // real = 本当にいる区画。上の階・奥の区画にいるときは、入口の区画へひとっとびできる
   const real = here;
   if (here && FIELD_ZONES[here] && FIELD_ZONES[here].parent) here = FIELD_ZONES[here].parent;
   if (qz && FIELD_ZONES[qz].parent) qz = FIELD_ZONES[qz].parent;
@@ -3191,7 +3167,7 @@ function worldMapHTML(here) {
       <circle cx="470" cy="522" r="70" fill="url(#wmtree)" opacity=".35"/>${lines.join('')}</svg>
     ${ids.map(id => { const Z = FIELD_ZONES[id], open = zoneOpen(id), vis = floorsOf(id).some(k => visited[k]), h = id === here;
       return `<button class="wm-node ${h ? 'here' : ''} ${open ? '' : 'locked'} ${vis ? 'vis' : ''} ${Z.town ? 'town' : ''}" data-z="${id}" style="left:${Z.map2d[0]}px;top:${Z.map2d[1]}px" ${open && vis && id !== real && !Z.noAnchor ? '' : 'disabled'}>
-        ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${open ? Z.mapName || Z.name : '？？？'}</b><small>${id === real ? '現在地' : !open ? 'まだ行けない' : !vis ? 'まだ行ってない' : Z.noAnchor ? 'ねこ地蔵なし' : h ? '現在地・ひとっとび' : 'ひとっとび'}${open ? `　宝箱 ${chestsLeft(id)}` : ''}</small></button>`; }).join('')}
+        ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${open ? Z.mapName || Z.name : '？？？'}</b><small>${id === real ? '現在地' : !open ? 'まだ行けない' : !vis ? 'まだ行ってない' : Z.noAnchor ? 'ひとっとびできない' : h ? '現在地・ひとっとび' : 'ひとっとび'}${open ? `　宝箱 ${chestsLeft(id)}` : ''}</small></button>`; }).join('')}
     </div>`;
 }
 

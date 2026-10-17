@@ -77,7 +77,7 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
     const r = solveSizes(T, Z);
     if (r.n < 0) bad.push('sizes: no solution');
     else if (r.n === 0) bad.push('sizes: solved without changing size（歩くだけで出口へ行ける）');
-    if (r.stuck) bad.push(`sizes: ${r.stuck} state(s) cannot get back to the entrance（ねこ地蔵）`);
+    if (r.stuck) bad.push(`sizes: ${r.stuck} state(s) cannot get back to the entrance（光の輪）`);
     T.reach = r.reach;
     if (verbose) { console.log(`   sizes: solved with ${r.n} size change(s), ${r.states} state(s)`); r.path.forEach(s => console.log('     ' + s)); r.stuckAt.forEach(s => console.log('     stuck: ' + s)); }
   }
@@ -225,16 +225,16 @@ function solveRoots(T, Z, bad) {
 }
 // 大きさの変わる区画（zone.sizes）：0.5m ずつの格子の点と、大きさ（0 小さい・1 ふつう・2 大きい）の組を状態にして、
 //   ちびクッキー・でかミルク（stands）を使う回数の少ない順にたどる（FieldView の動き方と同じ：Terrain.move の段差の決まり、キャンディの柵は小さいときだけ）。
-//   ねこ地蔵（anchor）のそばでは、ふつうの大きさにもどる。出口（d）のマスに着ければ解けた。
-//   stuck：たどりつける状態のうち、ねこ地蔵へもどれないもの（大きさを変えても、どこへも行けなくなる）の数
+//   光の輪（anchor）の上では、ふつうの大きさにもどる。出口（d）のマスに着ければ解けた。
+//   stuck：たどりつける状態のうち、光の輪へもどれないもの（大きさを変えても、どこへも行けなくなる）の数
 function solveSizes(T, Z) {
   const SZ = Z.sizes, R = G('SIZE_R'), K4 = 4, NX = T.cols * K4, NZ = T.rows * K4, N = NX * NZ;
   const opt = s => ({ small: s === 0, up: s === 2 ? SZ.climb : G('STEP'), down: SZ.drop });
   const O = [0, 1, 2].map(opt);
   const px = k => -T.hw + 0.25 + (k % NX) * 0.5, pz = k => -T.hd + 0.25 + Math.floor(k / NX) * 0.5;
   const g = new Float32Array(N); for (let k = 0; k < N; k++) g[k] = T.groundAt(px(k), pz(k));
-  // 動かない小物（ねこ地蔵・宝箱・石碑・クッキーとミルクの台）は、円の当たり
-  const obst = [[...Z.anchor, 0.7], ...(Z.chestAt || []).map(p => [...p, 0.6]), ...(Z.notes || []).filter(n => !n.post && !n.board && n.mark == null).map(n => [...n.at, 0.5]), ...SZ.stands.map(st => [...st.at, 0.6])];
+  // 動かない小物（宝箱・石碑・クッキーとミルクの台）は、円の当たり
+  const obst = [...(Z.chestAt || []).map(p => [...p, 0.6]), ...(Z.notes || []).filter(n => !n.post && !n.board && n.mark == null).map(n => [...n.at, 0.5]), ...SZ.stands.map(st => [...st.at, 0.6])];
   const hit = (x, z, r) => obst.some(([ox, oz, or]) => Math.hypot(ox - x, oz - z) < or + r);
   const fit = (k, s, h0) => { const x = px(k), z = pz(k); return T.walkable(T.at(x, z), O[s]) && !hit(x, z, R[s]) && T.misfits(x, z, R[s], h0, O[s]) === 0; };
   // 一歩（遊ぶときの Terrain.move と同じ：めり込んでいるときは、めり込みが増えない向きへなら動ける）
@@ -286,7 +286,7 @@ function solveSizes(T, Z) {
     states++; const k = Math.floor(st / 3), x = px(k), z = pz(k), r = R[st % 3] + 0.3;
     for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) { const i = T.at(x + dx, z + dz); if (i >= 0 && T.isWalkKind(T.kind[i]) && Math.abs(T.groundAt(x + dx, z + dz) - g[k]) < 0.7) reach[i] = 1; }
   }
-  // ねこ地蔵へもどれるか：逆向きにたどる
+  // 光の輪へもどれるか：逆向きにたどる
   const radj = new Map();
   for (let st = 0; st < N * 3; st++) if (dist[st] >= 0) for (const [nx] of moves(st)) { if (!radj.has(nx)) radj.set(nx, []); radj.get(nx).push(st); }
   const okBack = new Uint8Array(N * 3), stk = [];
