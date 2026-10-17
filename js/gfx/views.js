@@ -789,7 +789,7 @@ class BattleView extends BaseView {
   }
   // 決めポーズの後片付け：敵のほうへ向きなおし、表情を戻す
   ultEnd(e) {
-    e.ultSway = null; e.model.group.rotation.z = 0;
+    e.ultSway = null; e.model.pose.headZ = 0;
     e.model.group.rotation.y = Math.PI;
     if (e.model.face && e.ultFace) { e.model.face.set(e.ultFace); e.ultFace = null; }
   }
@@ -798,7 +798,7 @@ class BattleView extends BaseView {
     const s = e.ultSway, m = e.model; s.t += dt;
     const w = Ease.inOut(Math.min(1, s.t / 0.45)), off = ULT_MOVES[s.move](s.t, w);
     for (const k of POSE_KEYS) m.pose[k] = lerp(s.from[k] || 0, s.to[k] || 0, w) + (off[k] || 0);
-    m.group.rotation.z = off.roll || 0;
+    m.pose.headZ = off.headZ || 0;
     if (off.sparkle && m.group.visible && m.tipPos) this.p.emit(m.tipPos(), V3(0, 0.15, 0), hdr(ELEMENTS[e.u.elem].color, 2.8), { life: 0.45, size: 0.05 });
   }
   // オート：ポーズしてそのまま放つ
