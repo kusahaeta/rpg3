@@ -86,14 +86,14 @@ const CHARS = {
     look: { fur: '#3d3b4a', pattern: 'solid', eye: '#ffd24a', muzzle: '#4a4858', paws: '#3d3b4a', earIn: '#8a6a78',
       scarf: '#8a2f3c', armor: '#5d6a86', accent: '#b8c6e8' },
     gear: { weapon: 'blade', style: 'melee' },
-    basic: { name: '黒爪', elem: 'physical', target: 'single', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
+    basic: { name: '黒爪', elem: 'physical', target: 'single', anim: 'claw', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
-    skill: { name: '孤高の剣', elem: 'physical', target: 'single', desc: '指定した敵単体に攻撃力200%の物理ダメージ。自身は敵に狙われやすくなる（2ターン）。',
+    skill: { name: '孤高の剣', elem: 'physical', target: 'single', anim: 'lone', desc: '指定した敵単体に攻撃力200%の物理ダメージ。自身は敵に狙われやすくなる（2ターン）。',
       run: async (B, s, t) => {
         B.buff(s, { key: 'kuro_aggro', name: '挑発', stat: 'aggro', value: 3, turns: 2 });
         return B.single(s, t, 2.0, 20, 'skill');
       } },
-    ult: { name: '月影一閃', elem: 'physical', target: 'aoe', desc: '敵全体に攻撃力150%の物理ダメージ。自身に防御力80%のシールド（3ターン）。',
+    ult: { name: '月影一閃', elem: 'physical', target: 'aoe', anim: 'issen', desc: '敵全体に攻撃力150%の物理ダメージ。自身に防御力80%のシールド（3ターン）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 1.5, 20, 'ult', { heavy: true });
         B.shield(s, s, s.stat('def') * 0.8, 3);

@@ -447,7 +447,8 @@ class BattleView extends BaseView {
   // 同じ敵へ続けて斬る（二連・三連影）：2 太刀目からは、返す刀と振りかぶり直しをくり返す
   async restrike(src, t, i, kind, opt = {}) {
     const e = this.ent(src), te = this.ent(t); if (!e || !te) return;
-    const m = e.model, col = ELEMENTS[this.b.elemOf(src, kind, opt)].color;
+    const m = e.model, col = ELEMENTS[this.b.elemOf(src, kind, opt)].color, mv = MOVES[this.animOf(opt)];
+    if (mv && mv.restrike) return mv.restrike.call(this, e, te, i, { col, ult: kind === 'ult', kind, opt });
     if (!this.lastAttack || this.lastAttack.src !== src || !this.lastAttack.moved) { await this.fx.projectile(m.tipPos(), this.hitPoint(t), col, { dur: 0.2, size: 0.5, arc: 0.3 }); return; }
     this.face(e, te.home);
     if (i % 2) await this.tweenPose(m, POSES.strike2, 0.1);

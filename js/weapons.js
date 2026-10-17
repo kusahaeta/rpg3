@@ -74,7 +74,7 @@ const WEAPONS = {
     desc: '空から落ちてきたときに持っていた刀。ひとりで戦ってきた、するどい技が身についている。' },
   kuro_bokuto: { owner: 'kuro', name: 'まもりの木刀', tier: 1, get: { shop: true, price: 500 },
     desc: '道場で使う、かたい木刀。斬るより、受けとめるための刀。', look: { c: '#b08a5a', g: '#ffe0a0' },
-    basic: { name: '受け流し', elem: 'physical', target: 'single', desc: '指定した敵単体に防御力100%の物理ダメージ。',
+    basic: { name: '受け流し', elem: 'physical', target: 'single', anim: 'parry', desc: '指定した敵単体に防御力100%の物理ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic', { stat: 'def' }) },
     skill: { name: 'かばう構え', target: 'allies', anim: 'guard', desc: '自身は敵に狙われやすくなり（2ターン）、防御力80%+300のシールドを得る。味方全体の被ダメージ-15%（2ターン）。',
       run: (B, s) => {
@@ -84,7 +84,7 @@ const WEAPONS = {
         B.float(s, 'まかせろ', 'info');
         return [];
       } },
-    ult: { name: '不動の壁', elem: 'physical', target: 'aoe', desc: '味方全体に防御力60%+300のシールド（3ターン）。敵全体に防御力120%の物理ダメージ。',
+    ult: { name: '不動の壁', elem: 'physical', target: 'aoe', anim: 'wall', desc: '味方全体に防御力60%+300のシールド（3ターン）。敵全体に防御力120%の物理ダメージ。',
       run: async (B, s) => {
         const v = s.stat('def') * 0.6 + 300 * lvFactor(s.level);
         B.aliveAllies().forEach(a => B.shield(s, a, v, 3));
@@ -97,9 +97,9 @@ const WEAPONS = {
     } },
   kuro_twin: { owner: 'kuro', name: '双子の小太刀', tier: 1, get: { chest: ['forest_deep', 0] }, mod: { atk: 1.06, def: 0.95 },
     desc: 'ほしふる森に落ちていた、二本ひと組の小太刀。すばやく何度も斬る。', look: { c: '#8a96b8', g: '#d8e4ff' },
-    basic: { name: '二連', elem: 'physical', target: 'single', desc: '指定した敵単体に攻撃力55%の物理ダメージを2回。',
+    basic: { name: '二連', elem: 'physical', target: 'single', anim: 'twin', desc: '指定した敵単体に攻撃力55%の物理ダメージを2回。',
       run: (B, s, t) => B.doHits(s, [{ t, mult: 0.55, tough: 5 }, { t, mult: 0.55, tough: 5 }], 'basic') },
-    skill: { name: '三連影', elem: 'physical', target: 'single', desc: '指定した敵単体に攻撃力75%の物理ダメージを3回。自身の速度+15%（2ターン）。',
+    skill: { name: '三連影', elem: 'physical', target: 'single', anim: 'triple', desc: '指定した敵単体に攻撃力75%の物理ダメージを3回。自身の速度+15%（2ターン）。',
       run: async (B, s, t) => {
         const r = await B.doHits(s, [0, 1, 2].map(() => ({ t, mult: 0.75, tough: 7 })), 'skill');
         B.buff(s, { key: 'kuro_twin', name: '身軽', stat: 'spd', value: 0.15, turns: 2 });
@@ -113,16 +113,16 @@ const WEAPONS = {
       } } },
   kuro_moon: { owner: 'kuro', name: '月影の刀', tier: 2, get: { chest: ['cave_deep', 0] },
     desc: '黒影洞窟の奥にしまわれていた刀。むかし、だれかがクロのために打ったものらしい。', look: { c: '#2a2840', g: '#c8b8ff' },
-    basic: { name: '月の爪', elem: 'physical', target: 'single', desc: '指定した敵単体に攻撃力100%の物理ダメージ。40%の基礎確率で裂創（攻撃力40%、2ターン）。',
+    basic: { name: '月の爪', elem: 'physical', target: 'single', anim: 'moonClaw', desc: '指定した敵単体に攻撃力100%の物理ダメージ。40%の基礎確率で裂創（攻撃力40%、2ターン）。',
       run: async (B, s, t) => { const r = await B.single(s, t, 1.0, 10, 'basic'); B.dot(s, t, { type: 'bleed', mult: 0.4, turns: 2, chance: 0.4, quiet: true }); return r; } },
-    skill: { name: '月影斬り', elem: 'physical', target: 'single', desc: '指定した敵単体に攻撃力170%の物理ダメージ、裂創（攻撃力60%、2ターン）。自身は敵に狙われやすくなる（2ターン）。',
+    skill: { name: '月影斬り', elem: 'physical', target: 'single', anim: 'moonCut', desc: '指定した敵単体に攻撃力170%の物理ダメージ、裂創（攻撃力60%、2ターン）。自身は敵に狙われやすくなる（2ターン）。',
       run: async (B, s, t) => {
         B.buff(s, { key: 'kuro_aggro', name: '挑発', stat: 'aggro', value: 3, turns: 2 });
         const r = await B.single(s, t, 1.7, 20, 'skill');
         B.dot(s, t, { type: 'bleed', mult: 0.6, turns: 2 });
         return r;
       } },
-    ult: { name: '満月', elem: 'imaginary', target: 'aoe', desc: '敵全体に攻撃力140%の光ダメージ、80%の基礎確率で裂創（攻撃力50%、2ターン）。持続ダメージを受けている敵は、それがその場でもう一度発生する。',
+    ult: { name: '満月', elem: 'imaginary', target: 'aoe', anim: 'fullMoon', desc: '敵全体に攻撃力140%の光ダメージ、80%の基礎確率で裂創（攻撃力50%、2ターン）。持続ダメージを受けている敵は、それがその場でもう一度発生する。',
       run: async (B, s) => {
         const r = await B.aoe(s, 1.4, 20, 'ult', { heavy: true });
         for (const e of B.aliveEnemies()) { B.dot(s, e, { type: 'bleed', mult: 0.5, turns: 2, chance: 0.8 }); if (e.dots.length) await B.detonate(e, 1); }
