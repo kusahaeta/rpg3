@@ -1839,7 +1839,8 @@ const FIELD_ZONES = {
       '##################bbb##################################',
     ],
     anchor: [-10, 24], exits: [{ key: 'b', to: 'old_road' }, { key: 'h', to: 'ruins_hill' }, { key: 'e', to: 'demon_land' }],
-    notes: [{ at: [8.95, 12], mark: 2.6, title: '倒れた石像', text: '四匹の猫が肩を寄せ合う石像。顔はすり減って、もう分からない。' },
+    notes: [{ at: [-10.45, 12.5], mark: 2.6, title: '倒れた石像', text: '四匹の猫が肩を寄せ合う石像。顔はすり減って、もう分からない。' },
+      { at: [8.8, 12], mark: 1.4, title: '石像の台座', text: '石の台座が二つ、並んでいる。……上に立っていた石のねこ像は、もう動かない。' },
       { at: [-4, -21], face: 0, post: ['↑ 石畳の丘', '遺跡の入口'], title: '道しるべ', text: '「この先、石畳の丘。遺跡の入口は、丘の上」……古い文字の下に、だれかが新しく書き足したらしい。' },
       { at: [-10, -38], mark: 1.6, title: '見張り台の跡', text: '崩れた石の台。……台の上には、四匹ぶんの肉球の跡が、うっすらと残っている。ここから、丘の上の遺跡を見張っていたのだろうか。' }],
     map2d: [770, 95] },
@@ -8248,11 +8249,20 @@ const ZONE_BUILD = {
     K.v.emitters.push(dt => { if (Math.random() < dt * 5) K.v.p.emit(V3(-4 + Math.random() * 40, K.gy(10, -50) + 0.6 + Math.random() * 2.4, -58 + Math.random() * 18), V3((Math.random() - 0.5) * 0.3, 0.12, (Math.random() - 0.5) * 0.3), hdr('#8affe0', 2), { life: 3, size: 0.07, drag: 0 }); });
     K.rubbles();
   },
-  // 古代遺跡・外庭：倒れた柱、四匹の猫の像、池の庭、苔むした庭。北の空き地に見張り台の跡、東の林に崩れた柱の空き地
+  // 古代遺跡・外庭：倒れた柱、石のねこ像の台座、四匹の猫の像、池の庭、苔むした庭。北の空き地に見張り台の跡、東の林に崩れた柱の空き地
   ruinsOut(K) {
     K.flora({ trees: [['round', 3], ['pine', 1]], leaf: ['#5a9a4a', '#6aa858', '#4a8a44'], bush: 0.7, rocks: 0.4, rock: '#b0a890' });
-    // 四匹の猫の像
-    for (let i = 0; i < 4; i++) K.catStatue(7 + i * 1.3, 12, Math.PI + (i - 1.5) * 0.2, i === 3 ? 0.7 : 1, 'stone');
+    // 四匹の猫の像（広場の西。石畳の丘で、クロが「外庭の石像の四匹」の話をする）
+    for (let i = 0; i < 4; i++) K.catStatue(-12.4 + i * 1.3, 12.5, Math.PI + (i - 1.5) * 0.2, i === 3 ? 0.7 : 1, 'stone');
+    // 石のねこ像の台座（広場の東）：外庭に入ったときの会話 c5_01 で、台座の上の石のねこ像（敵）が二体、目をさまして動き出す。
+    //   像は探索で、その会話の前だけ立たせる（会話の舞台では、配役の石のねこ像が台座に乗る）
+    const guardRy = -0.5, guards = [[7.4, 12], [10.2, 12]];
+    for (const [x, z] of guards) K.box(x, z, 1.4, 0.6, 1.4, 'stone2', { ry: guardRy, round: true });
+    if (typeof buildEnemy === 'function' && typeof FieldView !== 'undefined' && K.v instanceof FieldView && !storyCond('scene:c5_01'))
+      for (const [x, z] of guards) {
+        const m = buildEnemy('sekizou'); m.group.position.set(x, K.gy(x, z) + 0.6, z); m.group.rotation.y = guardRy; K.scene.add(m.group);
+        m.critter.setPose(POSES.idle); m.critter.face.shut = true; m.update(0.4, 0); m.update(0.4, 0);   // 目を閉じて、動かない石像のまま
+      }
     // 崩れた柱（道ばたと、木立の中）
     for (const [x, z, h, f] of [[-16, 6, 4, false], [14, 0, 5, false], [20, 20, 3, true], [-18, 30, 2.5, false], [30, 24, 2, true]]) K.pillarBroken(x, z, h, f);
     for (const [x, z] of [[-26, -4], [-30, -8]]) K.flowers(x, z, 10, 1.6, ['#ffffff', '#b8ffe8']);
@@ -8267,7 +8277,7 @@ const ZONE_BUILD = {
     // 東の林の空き地：崩れた柱と、倒れた猫の像
     for (const [x, z, h, fl] of [[36, -2, 3, false], [42, 2, 2.4, false], [33, 3, 2, true]]) K.pillarBroken(x, z, h, fl);
     K.catStatue(40, -4, 2.4, 1.2, 'stone');
-    // 四匹の猫の像のまわりの崩れた柱（外庭に入ったときの会話 c5_01 で、石像といっしょに映る。乱数の並びを変えないよう最後に置く）
+    // 石のねこ像の台座のまわりの崩れた柱（外庭に入ったときの会話 c5_01 で、石像といっしょに映る。乱数の並びを変えないよう最後に置く）
     for (const [x, z, h, fl] of [[4.8, 11, 3.4, false], [10.6, 9, 4.2, false], [6.5, 15.4, 3, true]]) K.pillarBroken(x, z, h, fl);
   },
   // 石畳の丘：大階段の上の高台に、つながりの石畳と遺跡の入口（門構えと猫の像、結界）。ふもとに光の庭と崩れた塔
