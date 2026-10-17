@@ -558,6 +558,8 @@ class FieldView extends BaseView {
         : st.exit === 'bulkhead' ? this.makeBulkhead(ph) : this.makeGate(ph, st));
       if (!ph.apply) ph.apply = o => ph.panels.forEach(q => { q.p.position.x = q.s * o * (ph.width / 2 - 0.3); });
       if (list.some(e => e.sealed)) this.hideGateDoors(ph);
+      // 開く音は扉が見えている出入口だけ（野外のアーチ・階段・封印された門には扉がない）
+      ph.hasDoor = (ph.panels || []).some(q => q.p.visible);
       if (!E.cabin) ph.camTop = ph.h + Math.max(6.4, this.exitTop(ph) + 0.3);
       this.exitsPhys.push(ph);
       for (const d of dests) this.gates.push({ exit: d.exit, x: ph.x, z: ph.z, nx: ph.nx, nz: ph.nz, locked: d.locked, phys: ph });
@@ -810,7 +812,7 @@ class FieldView extends BaseView {
       let want;
       if (ph.cabin) want = !ph.closing && (ph.cells.includes(T.at(pp.x, pp.z)) || (along > -0.5 && along < 4 && lat < ph.width / 2 + 1.5));
       else want = !ph.locked && along > -0.5 && along < 7 && lat < ph.width / 2 + 2.5 && Math.abs(pp.y - ph.h) < 2;
-      if (want && !ph.was) Sfx.door();
+      if (want && !ph.was && ph.hasDoor) Sfx.door();
       ph.was = want;
       ph.open += ((want ? 1 : 0) - ph.open) * (1 - Math.exp(-7 * d));
       ph.apply(ph.open);
