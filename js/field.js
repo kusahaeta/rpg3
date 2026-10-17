@@ -249,7 +249,7 @@ class FieldView extends BaseView {
     const sceneNow = cur && cur.step.t === 'field' && cur.step.zone === this.zoneId ? cur.step.scene : null;
     // when：その場面のあとも、条件を満たすあいだは眠っている
     this.naps = (Z.naps || []).filter(n => n.scene === sceneNow || (n.when && storyCond(n.when) && !(n.until && storyCond(n.until)))).map(n => {
-      const m = buildCharacter(n.key); m.setPose(POSES.sleep); if (m.face) m.face.set('sleepy');
+      const m = buildCharacter(n.key); m.setPose(POSES.sleep); if (m.face) { m.face.set('sleepy'); m.face.shut = true; }
       const y = this.gy(n.at[0], n.at[1]) + (n.y || 0);
       m.group.position.set(n.at[0], y, n.at[1]); m.group.rotation.y = n.face || 0; this.scene.add(m.group);
       return { ...n, m, pos: V3(n.at[0], y, n.at[1]), zt: 0 };

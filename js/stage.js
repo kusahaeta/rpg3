@@ -163,6 +163,7 @@ class Actor {
     }
     if (this.item && this.item.userData.swing) this.item.rotation.z = Math.sin(t * 7) * 0.45;
     if (this.foe) { this.updateFoe(dt, t); return; }
+    if (m.face) m.face.shut = this.stance === 'sleep';   // 眠っているあいだは目を閉じる
     // 姿勢：立ち方 + 身振り（なめらかに移る）
     const tgt = { ...POSES.idle, ...(POSES[this.stance] || {}) };
     if (this.gest) {

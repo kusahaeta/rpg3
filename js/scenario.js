@@ -333,7 +333,7 @@ const SCENES = {
       ['shiro', '綿毛ごと、花の上に落ちたのね。……ふう、ケガはないみたい。', { f: 'worry', g: 'handChest', move: { shiro: [1.2, 1.9] } }],
       ['tama', '……すぴー……。', { f: 'sleepy', fx: 'zzz:tama', cam: 'bed', dur: 4 }],
       ['kuro', '……待て。この花……どこかで聞いた気がする。', { f: 'serious', g: 'think', look: { kuro: 'flower' } }],
-      ['n', 'そのとき、大きな花が、ふくらむように息を吸いこみ——', { cam: 'bed', dur: 4, r: { all: 'surprise' } }],
+      ['n', 'そのとき、大きな花が、ふくらむように息を吸いこみ——', { cam: 'bed', dur: 4, r: { mike: 'surprise', shiro: 'surprise', kuro: 'surprise' } }],
       ['n', 'ふわぁ〜〜っ……と、桃色の粉をはき出した。', { fx: 'pollen:flower', cam: 'wide', dur: 5 }],
       ['mike', 'けほっ……なんだか……あまい……におい……ふあ……。', { f: 'sleepy', g: 'tilt' }],
       ['shiro', 'ちょっと、ミケ……こんなところで……寝たら……だめ……すぅ……。', { f: 'sleepy', stance: { mike: 'sleep' } }],
