@@ -35,7 +35,7 @@ const WEAPONS = {
         B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.05));
         return r;
       } },
-    ult: { name: 'だしの大波', elem: 'fire', target: 'aoe', anim: 'wave', desc: '敵全体に攻撃力170%の炎ダメージ。味方全体のHPを最大HP15%回復。',
+    ult: { name: 'だしの大波', elem: 'fire', target: 'aoe', anim: 'dashi', desc: '敵全体に攻撃力170%の炎ダメージ。味方全体のHPを最大HP15%回復。',
       run: async (B, s) => {
         const r = await B.aoe(s, 1.7, 20, 'ult', { heavy: true });
         B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.15));
