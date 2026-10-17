@@ -71,6 +71,13 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
     else if (r.n === 0) bad.push('roots: already solved at start');
     T.reach = r.reach;
     if (verbose) { console.log(`   roots: solved in ${r.n} move(s)（実を持つ・置く）, ${r.states} state(s)`); r.path.forEach(s => console.log('     ' + s)); }
+    // 石碑（rootReset）で実をはじめのゆりかごへもどしたあとも、石碑の前から解けるか（光った実・ほどけた根の扉は、どの組み合わせでも）
+    for (const nt of (Z.notes || []).filter(x => x.rootReset)) {
+      const s = T.at(nt.at[0], nt.at[1]), memo = new Map();
+      if (!T.reach[s]) bad.push(`roots: reset note ${nt.title} is not reachable`);
+      for (let lit = 0; lit < 1 << Z.roots.fruits.length; lit++) for (let km = 0; km < 1 << Z.roots.knots.length; km++)
+        if (solveRoots(T, Z, [], { lit, km, s, memo }).n < 0) bad.push(`roots: no solution after reset at ${nt.title} (lit ${lit}, knots ${km})`);
+    }
   }
   // 大きさの変わる区画：ちびクッキーとでかミルクで大きさを変えながら、出口（d）まで行けるか。行ける場所は、どれかの大きさで立てるマス
   if (Z.sizes) {
@@ -158,7 +165,7 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
 // 樹の地下の光る実（zone.roots）を、実を持つ・置く回数の少ない順に調べる。実は一つずつしか持てず、ゆりかごにだけ置ける。はじめは灰色で、一度持つと光る。
 //   歩くときは、持っている実はプレイヤーといっしょに動く：となりのマスへの一歩は、境目と行き先のマスの中心の両方で、根の状態が通れること。
 //   根の扉（knots）は、ゆりかごすべてに光る実がそろうと開いたまま。出口（下の階への階段）まで行ければ解けた
-function solveRoots(T, Z, bad) {
+function solveRoots(T, Z, bad, from = {}) {
   const R = Z.roots, live = G('rootsLive'), cellsOf = G('rectCells'), STEP = G('STEP'), n = T.kind.length;
   const bOf = new Int16Array(n).fill(-1), tOf = new Int16Array(n).fill(-1), kOf = new Int16Array(n).fill(-1);
   R.bridges.forEach((b, k) => cellsOf(T, b.cells).forEach(i => { if (!T.rootBridge[i]) bad.push(`roots: bridge ${b.id} cell ${T.colOf(i)},${T.rowOf(i)} is not %`); bOf[i] = k; }));
@@ -191,12 +198,20 @@ function solveRoots(T, Z, bad) {
     }
     return q;
   };
+  // 歩ける範囲は、根の状態（置いてある光る実の場所・持っているか・開いた扉）が同じなら、範囲の中のどこから歩いても同じ。from.memo で、ほかの解き方とも分け合う
+  const memo = from.memo || new Map();
+  const regionOf = (s, P, carry, km) => {
+    const k = `${P.map(p => p.join(',')).join(';')}|${carry ? 1 : 0}|${km}`;
+    let m = memo.get(k); if (!m) memo.set(k, m = new Map());
+    let r = m.get(s); if (!r) { r = region(s, P, carry, km); r.forEach(i => m.set(i, r)); }
+    return r;
+  };
   const placed = (fr, lit) => fr.map((c, f) => (c >= 0 && (lit >> f) & 1 ? R.cradles[c] : null)).filter(Boolean);
   const goal = new Set(T.exits.d ? T.exits.d.cells : []);
   const near = R.cradles.map(([x, z]) => Array.from(T.kind, (_, i) => i).filter(i => T.isWalkKind(T.kind[i]) && Math.hypot(cpt(i)[0] - x, cpt(i)[1] - z) < 2.1));
-  const start = { fr: R.fruits.map(f => f.at), lit: 0, km: 0, s: T.at(Z.anchor[0], Z.anchor[1]), n: 0, prev: null, act: '' };
+  const start = { fr: R.fruits.map(f => f.at), lit: from.lit || 0, km: from.km || 0, s: from.s ?? T.at(Z.anchor[0], Z.anchor[1]), n: 0, prev: null, act: '' };
   const reachAll = new Uint8Array(n), seen = new Set(), q = [start];
-  const key = st => { const reg = region(st.s, placed(st.fr, st.lit), st.fr.includes(-1), st.km); st.reg = reg; return `${st.fr.join(',')}|${st.lit}|${st.km}|${Math.min(...reg)}`; };
+  const key = st => { const reg = regionOf(st.s, placed(st.fr, st.lit), st.fr.includes(-1), st.km); st.reg = reg; return `${st.fr.join(',')}|${st.lit}|${st.km}|${Math.min(...reg)}`; };
   seen.add(key(start));
   const name = c => `cradle${c}(${R.cradles[c].join(',')})`;
   for (let qi = 0; qi < q.length && qi < 200000; qi++) {
