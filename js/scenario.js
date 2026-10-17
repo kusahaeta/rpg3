@@ -703,7 +703,7 @@ const SCENES = {
   c2_06: { title: 'ニャハハ王国関所、通ってよし', extra: ['gonji'], bgm: 'hope',
     stage: { zone: 'sekisho', at: [0, -28], face: 0, cast: { gonji: { at: [-3.2, -1.4], face: 'mike' } }, points: { gate: [0, 3, 12] } },
     lines: [
-      ['n', '大門の鉄格子が上がると、北の広場のむこうに、ニャハハ王国の旗が見えた。', { cam: 'look:gate', dur: 6 }],
+      ['n', '大門の鉄格子が上がり、北への道が開いた。……この先が、ニャハハ王国だ。', { cam: 'look:gate', dur: 6 }],
       ['gonji', '……見事じゃ。おかげで、きょうの関所の仕事が、ぜんぶ片付いたわい。', { f: 'gentle', g: 'nod', to: 'mike' }],
       ['mike', 'えへへ！　みんなのおかげ！', { f: 'joy', g: 'cheer' }],
       ['shiro', '……ま、まあ、天才のわたしがいたんだから、当然よね！', { f: 'smug', g: 'hipHand' }],
