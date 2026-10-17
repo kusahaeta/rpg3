@@ -658,7 +658,7 @@ class StageView extends BaseView {
     const list = Object.values(this.actors).filter(a => a.key === k || a.base === k);
     list.forEach((a, i) => {
       a.m.group.visible = true; a.alpha = 1;
-      if (a.still) { a.still = false; a.m.critter.setPose(POSES.ready); a.m.critter.face.shut = false; }   // 石像が目をさます
+      if (a.still) { a.still = false; a.m.critter.setPose(POSES.ready); a.m.critter.face.shut = false; a.faceT = this.O.clone(); }   // 石像が目をさまして、一行のほうを向く
       if (style === 'quiet') return;
       const p = a.pos.clone(); p.y += 1 + a.lift;
       if (a.foe) { this.fx.pillar(a.pos, a.m.color || '#ff4d6d', { h: 4, r: 0.8, life: 0.6 }); this.p.burst(p, a.m.color || '#ff4d6d', 40, { speed: 4, life: 0.8 }); a.roar(); }
