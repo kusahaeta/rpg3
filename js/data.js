@@ -316,6 +316,8 @@ const ENEMY_MOVES = {
   pastEcho:{ name: 'あの日の記憶', anim: 'shout', obj: 'dark', elem: 'quantum',   type: 'aoe',    mult: 0.8, eff: { kind: 'buff', chance: 0.5, buff: { key: 'e_past', name: '後悔', stat: 'atk', value: -0.15, turns: 2 } } },
   stoneGaze: { name: '石のまなざし', anim: 'beam', glyph: 'gaze', type: 'single', mult: 1.0, eff: { kind: 'buff', chance: 0.6, buff: { key: 'e_stone', name: 'かちこち', stat: 'spd', value: -0.2, turns: 1 } } },
   beam:    { name: '古代ビーム', anim: 'beam',     type: 'blast',  mult: 1.2, adj: 0.6 },
+  mossDust:{ name: 'こけのこな', anim: 'breath', obj: 'moss', elem: 'wind', type: 'blast', mult: 0.8, adj: 0.4, eff: { kind: 'buff', chance: 0.6, buff: { key: 'e_moss', name: 'こけまみれ', stat: 'def', value: -0.2, turns: 2 } } },
+  shellDrop:{ name: 'こうらおとし', anim: 'press', type: 'single', mult: 1.7 },
   sealCharge: { name: '封印の光が集まっている…', type: 'charge', next: 'sealBurst' },
   sealBurst: { name: '封印の光', anim: 'pillars', elem: 'imaginary',     type: 'aoe', mult: 1.5 },
   paperwork: { name: '書類の山', anim: 'toss', obj: 'paper',     type: 'single', mult: 0.9, eff: { kind: 'buff', chance: 0.6, buff: { key: 'e_paper', name: '事務作業', stat: 'spd', value: -0.15, turns: 2 } } },
@@ -404,6 +406,8 @@ const ENEMIES = {
     turn: { at: 0.5, name: '心の殻', cry: '過去の影クロ「近づくな……近づくなッ！」', guard: 0.6, until: 'break', end: ['殻が割れた！', '「……っ。なんで、そこまで……」'] }, summon: 'kageneko', moves: [['lonely', 2], ['pastEcho', 2], ['charge', 1], ['summon', 1]] },
   // 第五章：古代遺跡
   sekizou:  { name: '石のねこ像',     shape: 'statue',   color: '#c8b890', hp: 5600, atk: 1250, spd: 80, tough: 40, weak: ['physical', 'lightning', 'wind'], moves: [['stoneGaze', 2], ['heavy', 1]] },
+  // 苔むす古道にだけ出る（石のねこ像は、外庭で目をさますまで古道には出ない）
+  kokegame: { name: 'こけむしガメ',   shape: 'turtle',   color: '#7aa860', hp: 6000, atk: 1200, spd: 70, tough: 40, weak: ['fire', 'wind', 'lightning'], moves: [['mossDust', 2], ['shellDrop', 1]] },
   hotaru:   { name: '古代ほたる',     shape: 'wisp',     color: '#8affe0', hp: 4000, atk: 1300, spd: 120, tough: 30, weak: ['quantum', 'ice', 'fire'], moves: [['beam', 2], ['shock', 1]] },
   guardian: { name: '遺跡の守護神',   shape: 'guardian', color: '#e8c870', boss: true, hp: 52000, atk: 1500, spd: 100, tough: 180, eres: 0.3, weak: ['quantum', 'physical', 'wind'],
     phases: [{ weak: ['fire', 'ice', 'lightning'], cry: '守護神の封印紋が、赤く燃えあがった！' }], summon: 'sekizou', moves: [['beam', 2], ['stoneGaze', 1], ['sealCharge', 1], ['summon', 1]] },

@@ -118,7 +118,7 @@ const FOE_MOVES = {
       this.p.burst(this.hitPoint(t.u), c.col, 14, { speed: 3, life: 0.4, size: 0.08 });
     })));
   },
-  // 吐く（ほのお・こおり・胞子・ガス・ほこり・湯気）：口もとから、ねらった子へ流れていく
+  // 吐く（ほのお・こおり・胞子・ガス・ほこり・湯気・こけのこな）：口もとから、ねらった子へ流れていく
   async breath(e, ts, c) {
     const o = c.mv.obj || 'fire', from = this.foeMouth(e), big = o === 'gas' || o === 'dust';
     this.foeFlash(e, c.col);
@@ -126,7 +126,7 @@ const FOE_MOVES = {
     this.foeLean(e, -0.15, 0.2);
     this.foePose(e, { ...POSES.cast, lean: 0.25, headX: 0.15 }, 0.12);
     this.foeLean(e, 0.2, 0.12);
-    const cols = { fire: ['#ff6a3c', '#ffd23c'], ice: ['#6fd6f5', '#ffffff'], spore: ['#ff9ad8', '#fff0a8'], gas: ['#9aff8a', '#ff9ad8'], dust: ['#b8b0a0', '#e8e0d0'], steam: ['#ffffff', '#ffb87a'] }[o] || [c.col, '#ffffff'];
+    const cols = { fire: ['#ff6a3c', '#ffd23c'], ice: ['#6fd6f5', '#ffffff'], spore: ['#ff9ad8', '#fff0a8'], gas: ['#9aff8a', '#ff9ad8'], dust: ['#b8b0a0', '#e8e0d0'], moss: ['#7ad84a', '#e8ffa8'], steam: ['#ffffff', '#ffb87a'] }[o] || [c.col, '#ffffff'];
     const to = ts.map(t => this.hitPoint(t.u));
     await this.every(0.55, 44, i => {
       const p = to[i % to.length], d = p.clone().sub(from), dur = big ? 0.75 : 0.45;
