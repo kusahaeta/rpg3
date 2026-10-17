@@ -833,7 +833,7 @@ class BattleView extends BaseView {
 
   // ---------- にゃんこファンタジーの演出 ----------
   // 敵にどうぐを使う（猫じゃらし）：敵のほうを向いて手を振る
-  async waveFx(u, t) {
+  async teaseFx(u, t) {
     const e = this.ent(u), te = this.ent(t); if (!e || !te) return;
     this.unfocus(); this.sway = 0.2;
     const m = e.model;
