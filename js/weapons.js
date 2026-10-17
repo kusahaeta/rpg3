@@ -27,9 +27,9 @@ const WEAPONS = {
     desc: '村で拾った木のつるぎ。勇者の技は、旅とともに育っていく。' },
   mike_katsuo: { owner: 'mike', name: 'かつおぶしソード', tier: 1, get: { shop: true, price: 500 },
     desc: 'かつおぶしを削って作った剣。振るたびに、いいにおいがする。', look: { c: '#c8884a', g: '#ffd8a0' },
-    basic: { name: 'ひとけずり', elem: 'fire', target: 'single', desc: '指定した敵単体に攻撃力100%の炎ダメージ。自身のHPを最大HP4%回復。',
+    basic: { name: 'ひとけずり', elem: 'physical', target: 'single', desc: '指定した敵単体に攻撃力100%の物理ダメージ。自身のHPを最大HP4%回復。',
       run: async (B, s, t) => { const r = await B.single(s, t, 1.0, 10, 'basic'); B.heal(s, s, s.maxHp * 0.04, true); return r; } },
-    skill: { name: 'けずり節', elem: 'fire', target: 'bounce', desc: 'ランダムな敵に攻撃力55%の炎ダメージを4回。そのあと、だしの香りで味方全体のHPを最大HP5%回復。',
+    skill: { name: 'けずり節', elem: 'physical', target: 'bounce', desc: 'ランダムな敵に攻撃力55%の物理ダメージを4回。そのあと、だしの香りで味方全体のHPを最大HP5%回復。',
       run: async (B, s, t) => {
         const r = await B.bounce(s, 4, 0.55, 8, 'skill', {}, t);
         B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.05));
@@ -62,11 +62,11 @@ const WEAPONS = {
       } } },
   mike_big: { owner: 'mike', name: 'ねこじゃらしの大剣', tier: 3, get: { chest: ['tree_under_2', 0] }, mod: { atk: 1.08, def: 0.94 }, energyMax: 140,
     desc: 'にゃんだーの樹の根にからまっていた大剣。ふさふさの先っぽが、つい気になる。', look: { c: '#f4e8b0', g: '#ffe07a' },
-    basic: { name: 'ぶんまわし', elem: 'fire', target: 'blast', desc: '指定した敵単体に攻撃力90%、隣接する敵に攻撃力30%の炎ダメージ。',
+    basic: { name: 'ぶんまわし', elem: 'physical', target: 'blast', desc: '指定した敵単体に攻撃力90%、隣接する敵に攻撃力30%の物理ダメージ。',
       run: (B, s, t) => B.blast(s, t, 0.9, 0.3, 10, 5, 'basic') },
-    skill: { name: 'ためぎり', elem: 'fire', target: 'single', anim: 'charge', desc: '指定した敵単体に攻撃力300%の炎ダメージ。大きく振りかぶるので、自身の行動順が20%遅れる。',
+    skill: { name: 'ためぎり', elem: 'physical', target: 'single', anim: 'charge', desc: '指定した敵単体に攻撃力300%の物理ダメージ。大きく振りかぶるので、自身の行動順が20%遅れる。',
       run: async (B, s, t) => { const r = await B.single(s, t, 3.0, 30, 'skill', { heavy: true }); B.delay(s, 0.2); return r; } },
-    ult: { name: 'にゃんだー斬り', elem: 'fire', target: 'single', anim: 'charge', desc: '指定した敵単体に攻撃力550%の炎ダメージ。弱点撃破されている敵には、与ダメージ+50%。',
+    ult: { name: 'にゃんだー斬り', elem: 'imaginary', target: 'single', anim: 'charge', desc: '指定した敵単体に攻撃力550%の光ダメージ。弱点撃破されている敵には、与ダメージ+50%。',
       run: (B, s, t) => B.single(s, t, 5.5, 40, 'ult', { heavy: true, dmgBonus: t.broken ? 0.5 : 0 }) } },
 
   // ---------------- クロ（刀） ----------------
@@ -105,7 +105,7 @@ const WEAPONS = {
         B.buff(s, { key: 'kuro_twin', name: '身軽', stat: 'spd', value: 0.15, turns: 2 });
         return r;
       } },
-    ult: { name: '影分身', elem: 'physical', target: 'bounce', anim: 'shadow', desc: 'ランダムな敵に攻撃力60%の物理ダメージを8回。自身に防御力50%のシールド（2ターン）。',
+    ult: { name: '影分身', elem: 'quantum', target: 'bounce', anim: 'shadow', desc: 'ランダムな敵に攻撃力60%の闇ダメージを8回。自身に防御力50%のシールド（2ターン）。',
       run: async (B, s, t) => {
         const r = await B.bounce(s, 8, 0.6, 5, 'ult', { heavy: true }, t);
         B.shield(s, s, s.stat('def') * 0.5, 2);
@@ -122,7 +122,7 @@ const WEAPONS = {
         B.dot(s, t, { type: 'bleed', mult: 0.6, turns: 2 });
         return r;
       } },
-    ult: { name: '満月', elem: 'physical', target: 'aoe', desc: '敵全体に攻撃力140%の物理ダメージ、80%の基礎確率で裂創（攻撃力50%、2ターン）。持続ダメージを受けている敵は、それがその場でもう一度発生する。',
+    ult: { name: '満月', elem: 'imaginary', target: 'aoe', desc: '敵全体に攻撃力140%の光ダメージ、80%の基礎確率で裂創（攻撃力50%、2ターン）。持続ダメージを受けている敵は、それがその場でもう一度発生する。',
       run: async (B, s) => {
         const r = await B.aoe(s, 1.4, 20, 'ult', { heavy: true });
         for (const e of B.aliveEnemies()) { B.dot(s, e, { type: 'bleed', mult: 0.5, turns: 2, chance: 0.8 }); if (e.dots.length) await B.detonate(e, 1); }
@@ -163,17 +163,17 @@ const WEAPONS = {
       } } },
   shiro_boom: { owner: 'shiro', name: '大ばくはつの杖', tier: 3, get: { chest: ['ruins_maze', 0] }, mod: { atk: 1.1, hp: 0.92 },
     desc: '古代の魔法使いが「危ないので封印」と書き残した杖。シロは大よろこび。', look: { c: '#4a2a3a', g: '#ff8a3a' },
-    basic: { name: 'ぼんっ', elem: 'lightning', target: 'blast', desc: '指定した敵単体に攻撃力80%、隣接する敵に攻撃力30%の雷ダメージ。',
+    basic: { name: 'ぼんっ', elem: 'fire', target: 'blast', desc: '指定した敵単体に攻撃力80%、隣接する敵に攻撃力30%の炎ダメージ。',
       run: (B, s, t) => B.blast(s, t, 0.8, 0.3, 10, 5, 'basic') },
-    skill: { name: 'ばくはつ魔法', elem: 'lightning', target: 'aoe', desc: '敵全体に攻撃力150%の雷ダメージ。25%の確率で大成功（与ダメージ+60%）、25%の確率で自分もまきこまれる（最大HP10%のダメージ）。',
+    skill: { name: 'ばくはつ魔法', elem: 'fire', target: 'aoe', desc: '敵全体に攻撃力150%の炎ダメージ。25%の確率で大成功（与ダメージ+60%）、25%の確率で自分もまきこまれる（最大HP10%のダメージ）。',
       run: async (B, s) => {
         const roll = Math.random();
-        if (roll < 0.25) B.announce('ばくはつ魔法', '大成功！', '#ffd23c');
+        if (roll < 0.25) B.announce('ばくはつ魔法', '大成功！', ELEMENTS.fire.color);
         const r = await B.aoe(s, 1.5, 15, 'skill', { dmgBonus: roll < 0.25 ? 0.6 : 0 });
         if (roll >= 0.75) { B.float(s, 'けほっ', 'info'); selfHurt(B, s, 0.1); }
         return r;
       } },
-    ult: { name: 'ちょう大ばくはつ', elem: 'lightning', target: 'aoe', desc: '敵全体に攻撃力300%の雷ダメージ。自身も最大HP15%のダメージを受ける（倒れはしない）。',
+    ult: { name: 'ちょう大ばくはつ', elem: 'fire', target: 'aoe', desc: '敵全体に攻撃力300%の炎ダメージ。自身も最大HP15%のダメージを受ける（倒れはしない）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 3.0, 25, 'ult', { heavy: true });
         selfHurt(B, s, 0.15); B.float(s, '毛が爆発した！', 'info');
@@ -185,7 +185,7 @@ const WEAPONS = {
     desc: 'いつも抱えているまくら。なでなでと、おひさまのうたで仲間をいやす。' },
   tama_soba: { owner: 'tama', name: 'そばがらまくら', tier: 1, get: { shop: true, price: 500 },
     desc: 'かためのまくら。ふかふかではないけれど、しっかり支えてくれる。', look: { c: '#e8d0a0', g: '#a07840' },
-    basic: { name: 'ざくっ', elem: 'imaginary', target: 'single', anim: 'bonk', desc: '指定した敵単体に攻撃力100%の光ダメージ。',
+    basic: { name: 'ざくっ', elem: 'physical', target: 'single', anim: 'bonk', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
     skill: { name: 'しっかり支える', target: 'ally', anim: 'pat', desc: '味方単体にタマの最大HP22%+300のシールド（2ターン）、HPを最大HP10%回復。',
       run: (B, s, t) => {
@@ -201,7 +201,7 @@ const WEAPONS = {
     } },
   tama_cushion: { owner: 'tama', name: 'ねこ型クッション', tier: 2, get: { chest: ['tower_2f', 0] },
     desc: '笑顔の塔の楽屋に置いてあったクッション。抱きしめると、元気が出る。', look: { c: '#ffb870', g: '#ff8ab8' },
-    basic: { name: 'もふっ', elem: 'imaginary', target: 'single', anim: 'bonk', desc: '指定した敵単体に攻撃力100%の光ダメージ。',
+    basic: { name: 'もふっ', elem: 'physical', target: 'single', anim: 'bonk', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
     skill: { name: 'もふもふ応援', target: 'ally', anim: 'cheer', notSelf: true, desc: '自分以外の味方単体の攻撃力+35%（2ターン）、行動順を25%早める。',
       run: (B, s, t) => {
@@ -248,13 +248,13 @@ const WEAPONS = {
     desc: '魔王の座についたときから持っている笏。' },
   maou_toy: { owner: 'maou', name: 'おもちゃの笏', tier: 2, get: { shop: true, price: 900 },
     desc: 'ふると「ピコッ」と鳴る笏。なにが起きるかは、ふってみるまでわからない。', look: { c: '#ff8ab8', g: '#6ad8ff' },
-    basic: { name: 'ピコッ', elem: 'quantum', target: 'single', anim: 'bonk', desc: '指定した敵単体に攻撃力100%の闇ダメージ。',
+    basic: { name: 'ピコッ', elem: 'physical', target: 'single', anim: 'bonk', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
-    skill: { name: 'なにが出るかな', elem: 'quantum', target: 'aoe', desc: '次のどれかが起きる：敵全体に攻撃力130%の闇ダメージ／ランダムな敵単体に攻撃力320%の闇ダメージ／敵全体の防御力-30%（2ターン）／味方全体の攻撃力+25%（2ターン）。',
+    skill: { name: 'なにが出るかな', elem: 'physical', target: 'aoe', desc: '次のどれかが起きる：敵全体に攻撃力130%の物理ダメージ／ランダムな敵単体に攻撃力320%の物理ダメージ／敵全体の防御力-30%（2ターン）／味方全体の攻撃力+25%（2ターン）。',
       run: async (B, s) => {
         const n = Math.floor(Math.random() * 4);
         await B.motion(s, 'surprise');
-        B.announce('なにが出るかな', ['ピコピコハンマー！', 'おおきなパンチ！', 'こちょこちょ！', 'がんばれの旗！'][n], ELEMENTS.quantum.color);
+        B.announce('なにが出るかな', ['ピコピコハンマー！', 'おおきなパンチ！', 'こちょこちょ！', 'がんばれの旗！'][n], B.abColor(s));
         if (n === 0) return B.aoe(s, 1.3, 15, 'skill', { anim: 'hammer' });
         if (n === 1) return B.single(s, pick(B.aliveEnemies()), 3.2, 25, 'skill', { heavy: true, anim: 'glove' });
         if (n === 2) { await B.motion(s, 'tickle', B.aliveEnemies()); B.aliveEnemies().forEach(e => B.debuff(s, e, 1, { key: 'maou_koch', name: 'こちょこちょ', stat: 'defDown', value: 0.3, turns: 2 })); return []; }
@@ -262,7 +262,7 @@ const WEAPONS = {
         B.aliveAllies().forEach(a => B.buff(a, { key: 'maou_flag', name: 'がんばれ', stat: 'atk', value: 0.25, turns: 2 }));
         return [];
       } },
-    ult: { name: 'びっくり箱の行進', elem: 'quantum', target: 'bounce', anim: 'box', desc: 'ランダムな敵に攻撃力50%の闇ダメージを10回。味方全体のEP+15。',
+    ult: { name: 'びっくり箱の行進', elem: 'physical', target: 'bounce', anim: 'box', desc: 'ランダムな敵に攻撃力50%の物理ダメージを10回。味方全体のEP+15。',
       run: async (B, s, t) => {
         const r = await B.bounce(s, 10, 0.5, 5, 'ult', { heavy: true }, t);
         B.aliveAllies().filter(a => a !== s).forEach(a => B.gainEnergy(a, 15));
