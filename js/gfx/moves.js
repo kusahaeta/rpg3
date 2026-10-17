@@ -10,6 +10,7 @@
 //  ダメージのない技は、技の run から B.motion(s, anim) で動きだけを出す（attack か support を使う）
 //    keep：友情技で、先に持ち場をはなれた相方を戻さずに残す（最後の attackEnd でみんな戻る）
 // ============================================================
+const DASHI = '#d8943c';   // だしの色（だしの大波）
 const MOVES = {
   // ねこパンチ：剣を持たない左の手で、ぽかっと
   punch: {
@@ -335,6 +336,50 @@ const MOVES = {
       GFX.shake(0.15);
       await GFX.delay(0.5);
       this.unfocus();
+    },
+  },
+  // だしの大波：剣を立てると足もとにだしがわき、振りおろすと、削りぶしを乗せたこはく色の大波が巻きながら敵へ押しよせる
+  dashi: {
+    async attack(e, ts, c) {
+      const m = e.model, h = e.home, cen = this.enemyCenter();
+      this.focus(e); this.face(e, cen);
+      // 足もとに、だしがわく（湯気と削りぶしが舞いあがる）
+      this.setCam(V3(h.x + 2.6, 0.9, h.z + 1.3), V3(h.x - 0.1, 0.9, h.z - 0.6), { snap: true });
+      await this.tweenPose(m, POSES.swordUp, 0.22);
+      m.flash(DASHI, 1);
+      Sfx.puff();
+      this.fx.ring(h.clone().add(V3(0, 0.04, 0)), DASHI, { r: 1.6, life: 0.7, width: 0.5, k: 1.6 });
+      await this.every(0.6, 12, i => {
+        const a = Math.random() * Math.PI * 2, q = Math.random() * 1.1, p = h.clone().add(V3(Math.cos(a) * q, 0.05, Math.sin(a) * q));
+        this.p.emit(p, V3(0, 1.4 + Math.random(), 0), hdr('#ffffff', 1.2), { life: 0.9, size: 0.22, drag: 1.5 });
+        this.p.emit(p, V3(0, 0.8, 0), hdr(DASHI, 2), { life: 0.4, size: 0.1 });
+        if (i % 3 === 0) this.katsuoFlakes(p.clone().add(V3(0, 0.2, 0)), 3, { speed: 1.6, size: 0.18 });
+      });
+      // 振りおろすと、大波が立ちあがって敵へ
+      const xs = ts.map(t => t.home.x), w = Math.max(...xs) - Math.min(...xs) + 4, H = Math.max(2.4, ...ts.map(t => t.model.height * 1.4));
+      const z0 = h.z - 0.6, z1 = Math.min(...ts.map(t => t.home.z)) - 0.2, midZ = (z0 + z1) / 2;
+      // 敵の右前から低く見上げて：押しよせてくる波の正面（巻いた波がしら）と、のみこまれる敵を映す
+      this.setCam(V3(cen.x + 5.2, 0.8, z1 - 4.2), V3(cen.x - 0.6, 1.5, midZ + 0.6), { snap: true });
+      Sfx.swing();
+      await this.sweep(m, POSES.cleave, 0.12, DASHI, { n: 6, size: 0.18 });
+      Sfx.fire(); GFX.shake(0.15);
+      const hit = new Set();
+      await this.dashiWave(V3(cen.x * 0.5, 0, z0), z1, w, H, 0.85, z => {
+        for (const t of ts) {
+          if (hit.has(t) || z > t.home.z + t.model.radius * 0.5) continue;
+          hit.add(t);
+          const p = this.hitPoint(t.u);
+          this.squash(t, 0.3);
+          this.p.burst(p, hdr(DASHI, 2), 30, { speed: 4.5, up: 2, life: 0.8, size: 0.12, grav: 7 });
+          this.katsuoFlakes(p.clone().add(V3(0, 0.4, 0)), 6, { size: 0.2 });
+          for (let i = 0; i < 6; i++) this.p.emit(p.clone().add(V3((Math.random() - 0.5) * 0.8, 0, (Math.random() - 0.5) * 0.4)), V3(0, 1.5 + Math.random(), 0), hdr('#ffffff', 1.2), { life: 1.0, size: 0.28, drag: 1.2 });
+        }
+      });
+      GFX.shake(0.2);
+      await GFX.delay(0.25);
+      // 敵のむこうからの画なので、引きの画へは切りかえて戻す（なめらかに戻すと、敵の体を通りぬける）
+      const boss = this.b.enemies.some(x => x.def.boss);
+      this.setCam(V3(0, boss ? 2.8 : 2.1, boss ? 10.2 : 8.2), V3(0, boss ? 2.1 : 1.0, -2.5), { snap: true });
     },
   },
   // 漆黒の帳：まっ黒な帳が敵を包み、内側から裂ける
@@ -1079,6 +1124,58 @@ Object.assign(BattleView.prototype, {
       mat.opacity = 0.55 * (1 - k * k); cmat.opacity = 1 - k * k;
       for (let i = 0; i < 10; i++) { const a = Math.PI + (Math.random() - 0.5) * arc; this.p.emit(V3(at.x + Math.sin(a) * r, hh, at.z + Math.cos(a) * r), V3(0, 2.2, 0), hdr(col, 3), { life: 0.4, size: 0.14 }); }
     });
+  },
+  // だしの大波：幅 w・高さ H の、前へ巻いた波の壁。at から z1 まで dur 秒ですべり、波の前の z を onZ に知らせる
+  //   断面（z・y）を巻いた形に作って横（x）へ押し出し、横にうねらせる。色は根もとが濃いだし、上ほど明るく、波がしらは泡の白
+  dashiWave(at, z1, w, H, dur, onZ) {
+    const s = new THREE.Shape();
+    s.moveTo(0.8, 0);
+    s.quadraticCurveTo(0.75, 0.75, 0.15, 1.0);
+    s.quadraticCurveTo(-0.45, 1.15, -0.78, 0.72);   // 波がしらが前へ巻き出す
+    s.quadraticCurveTo(-0.5, 0.8, -0.34, 0.6);
+    s.quadraticCurveTo(-0.1, 0.35, -0.35, 0);
+    const geo = new THREE.ExtrudeGeometry(s, { depth: w, steps: Math.ceil(w * 3), bevelEnabled: false, curveSegments: 10 });
+    geo.translate(0, 0, -w / 2); geo.rotateY(-Math.PI / 2);   // 断面の +x が うしろ（+z）、押し出しが横（x）
+    const pos = geo.attributes.position, base = pos.array.slice(), n = pos.count, col = new Float32Array(n * 3);
+    const deep = new THREE.Color('#a8601c'), light = new THREE.Color('#f2be6a'), foamC = new THREE.Color('#fff6e4'), cc = new THREE.Color();
+    for (let i = 0; i < n; i++) {
+      const x = base[i * 3], y = base[i * 3 + 1], pz = base[i * 3 + 2];   // pz：断面の前後（- が前）
+      cc.copy(deep).lerp(light, Math.min(1, y) ** 1.4).multiplyScalar(0.9 + 0.1 * Math.sin(x * 3 + y * 7));   // 水のすじ
+      const f = Math.max(y > 0.95 ? (y - 0.95) / 0.12 : 0, pz < -0.5 ? (-0.5 - pz) / 0.22 : 0);   // 泡は頂と、巻いた先だけ
+      if (f > 0) cc.lerp(foamC, Math.min(1, f) * 0.9);
+      col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    // 光を受ける材質で、巻いた形に陰影をつける（暗くなりすぎないよう、だしの色で少し自ら光らせる）
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: new THREE.Color('#6a3a10'), transparent: true, opacity: 0.75, depthWrite: false, side: THREE.DoubleSide });
+    const body = new THREE.Mesh(geo, mat); body.renderOrder = 11; body.frustumCulled = false;
+    const g = new THREE.Group(); g.add(body); g.position.copy(at);
+    const foam = hdr('#fff4e0', 1.6), drop = hdr(DASHI, 2), steam = hdr('#ffffff', 1.1), life = dur + 0.35;
+    return new Promise(res => this.fx.add(g, life, (k, o) => {
+      const s = k * life, t = Math.min(1, s / dur), up = Ease.out(Math.min(1, t * 2.5)), fall = s > dur ? (s - dur) / 0.35 : 0;
+      // 横にうねる（x にそって高さと前後がゆれる）。両端は低く細くしぼる
+      for (let i = 0; i < n; i++) {
+        const x = base[i * 3], y = base[i * 3 + 1], tp = Math.max(0.08, 1 - Math.abs(2 * x / w) ** 5);
+        pos.array[i * 3 + 1] = y * tp * (1 + (Math.sin(x * 1.3 + s * 7) * 0.07 + Math.sin(x * 0.55 - s * 4) * 0.06));
+        pos.array[i * 3 + 2] = base[i * 3 + 2] * (0.35 + 0.65 * tp) + Math.sin(x * 0.9 + s * 5) * 0.08 * y;
+      }
+      pos.needsUpdate = true; geo.computeVertexNormals();
+      const z = lerp(at.z, z1, Ease.inOut(t)), top = H * up * (1 - fall * 0.85);
+      o.position.z = z;
+      o.scale.set(1, Math.max(0.05, top), H * 0.75);
+      mat.opacity = 0.75 * (1 - fall);
+      if (fall < 1) {
+        // 波がしらの泡・しぶき、乗っている削りぶし、湯気
+        for (let i = 0; i < 14; i++) this.p.emit(V3(at.x + (Math.random() - 0.5) * w, top * (0.85 + Math.random() * 0.15), z - H * 0.6 * (0.2 + Math.random() * 0.4)), V3((Math.random() - 0.5) * 0.8, 0.6 + Math.random() * 1.2, -1.2 - Math.random()), Math.random() < 0.7 ? foam : drop, { life: 0.5, size: 0.15, grav: 3 });
+        for (let i = 0; i < 4; i++) this.p.emit(V3(at.x + (Math.random() - 0.5) * w, 0.1, z - H * 0.75 * 0.3), V3((Math.random() - 0.5) * 1.5, 1 + Math.random(), -2), foam, { life: 0.4, size: 0.13, grav: 4 });
+        // 巻いた先から、だしが幕のように流れおちる
+        for (let i = 0; i < 10; i++) this.p.emit(V3(at.x + (Math.random() - 0.5) * w * 0.85, top * 0.72, z - H * 0.75 * 0.76), V3(0, -0.3, -0.8), Math.random() < 0.5 ? foam : drop, { life: 0.45, size: 0.12, grav: 7 });
+        if (Math.random() < 0.5) this.katsuoFlakes(V3(at.x + (Math.random() - 0.5) * w, top, z), 1, { speed: 1.4, size: 0.22 });
+        if (Math.random() < 0.35) this.p.emit(V3(at.x + (Math.random() - 0.5) * w, top, z + 0.3), V3(0, 1.2, 0), steam, { life: 0.9, size: 0.3, drag: 1.2 });
+      }
+      if (t < 1) onZ(z - H * 0.75 * 0.6);
+      else if (!o.userData.done) { o.userData.done = true; onZ(-Infinity); res(); }
+    }));
   },
   // 光の壁（かばう構え）
   barrier(at, width, col) {
