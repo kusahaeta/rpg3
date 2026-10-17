@@ -1,6 +1,7 @@
 'use strict';
 // ============================================================
-//  画面：タイトル／おうち（ハブ）／思い出のたたかい／へんせい／なかま／友情／お店
+//  画面：タイトル／へんせい／なかま／友情／お店
+//  （おうちの画面はない。それぞれの画面へは探索のメニューから行き、戻ると探索の続きから）
 // ============================================================
 const App = {
   el: null,
@@ -25,7 +26,7 @@ function topBar(title, back = true) {
       <span class="c-item" title="初手技ポイント（初手技に使う）"><i class="ic-tp"></i>${d.tp}/5</span>
     </div></div>`;
 }
-function wireBack(node, fn = () => App.go(HubScreen)) { const b = node.querySelector('[data-back]'); if (b) b.onclick = () => { Sfx.click(); fn(); }; }
+function wireBack(node, fn = () => App.go(FieldScreen)) { const b = node.querySelector('[data-back]'); if (b) b.onclick = () => { Sfx.click(); fn(); }; }
 
 function charChip(key, extra = '') {
   const c = CHARS[key], o = Save.data.owned[key];
@@ -51,58 +52,11 @@ function TitleScreen() {
     <div class="t-start">— <span class="pc-only">クリック</span><span class="touch-only">タップ</span>して はじめる —</div>
     <div class="t-note">3D コマンドRPG ／ にゃんこはみんな2頭身</div>
   </div>`);
-  s.onclick = () => { Sfx.init(); Sfx.meow('mike'); Music.play('village'); App.go(Story.state.ch === 0 && Story.state.step === 0 ? StoryScreen : HubScreen); };
+  s.onclick = () => { Sfx.init(); Sfx.meow('mike'); Music.play('village'); Story.resume(); };
   return s;
 }
 
-// ------------------------------------------------------------
-//  おうち（ハブ）：先頭の子が座布団の上に。出番の少ない子がすねることも
-// ------------------------------------------------------------
-function HubScreen() {
-  const lead = Save.data.team[0];
-  const v3 = GFX.show('hub', () => new ShowcaseView(lead, { screenX: 330 }));
-  if (v3 && (!v3.model || v3.model.key !== lead)) v3.setChar(lead);
-  Music.play('village');
-  const cur = Story.current();
-  const pout = sulkyCat();
-  const news = (Save.data.bondNews || []).splice(0); Save.save();
-  const s = h(`<div class="screen hub">
-    ${topBar('ミケのおうち', false)}
-    <div class="hub-hero" style="--c:${ELEMENTS[CHARS[lead].elem].color}">
-      ${GFX.ok ? '<div class="hero-drag" title="ドラッグで回転"></div>' : `<div class="hero-art">${avatarSVG(lead)}</div>`}
-      <div class="hero-cap"><div class="hero-name">${CHARS[lead].name}</div><div class="hero-title">${CHARS[lead].title}</div></div>
-      ${pout ? `<div class="hub-pout" style="--c:${ELEMENTS[CHARS[pout.k].elem].color}"><div class="hp-face">${avatarSVG(pout.k)}</div><div class="hp-say"><b>${CHARS[pout.k].name}</b>${pout.line}</div></div>` : ''}
-    </div>
-    ${cur ? `<div class="hub-quest" data-quest><small>ぼうけん｜${cur.ch.title}</small><b>◆ ${cur.step.g}</b></div>` : ''}
-    ${news.length ? `<div class="hub-news">${news.map(n => { const [a, b] = n.k.split('|'); return `<div>♥ ${CHARS[a].name}と${CHARS[b].name}の友情が <b>Lv.${n.lv}</b> に！<small>${BOND_INFO[n.lv - 1]}</small></div>`; }).join('')}</div>` : ''}
-    <div class="hub-menu">
-      <button class="hm gold" data-go="story"><b>ぼうけんの書</b><small>STORY</small><em>物語を進める</em></button>
-      <button class="hm" data-go="field"><b>冒険に出る</b><small>EXPLORE</small><em>ミャオニアを歩いて、敵や宝箱をさがす</em></button>
-      <button class="hm" data-go="chars"><b>なかま</b><small>PARTY</small><em>ステータス・わざの確認</em></button>
-      <button class="hm" data-go="team"><b>へんせい</b><small>TEAM</small><em>戦いに出る4匹を決める</em></button>
-      <button class="hm" data-go="bond"><b>友情</b><small>FRIENDSHIP</small><em>一緒に旅をした時間</em></button>
-      <button class="hm" data-go="stages"><b>思い出のたたかい</b><small>BATTLES</small><em>これまでの戦いにもう一度</em></button>
-    </div>
-    <div class="hub-foot">
-      <button class="link" data-bgm>BGM：${Music.on ? 'ON' : 'OFF'}</button>
-      <button class="link" data-eco>画質：${GFX.eco ? '省エネ（30fps）' : 'なめらか（60fps）'}</button>
-      <button class="link" data-reset>データを初期化</button>
-      <span class="pc-only">戦闘：Q 通常攻撃 ／ E スキル ／ R はなす ／ 1〜4 必殺技 ／ C コンボ ／ Space 決定 ／ V オート ／ F 倍速</span>
-    </div>
-  </div>`);
-  const map = { story: () => App.go(StoryScreen), field: () => App.go(FieldScreen), chars: () => App.go(CharScreen), team: () => App.go(TeamScreen), bond: () => App.go(BondScreen), stages: () => App.go(StageScreen) };
-  on(s, '[data-go]', 'click', el => map[el.dataset.go]());
-  const q = s.querySelector('[data-quest]'); if (q) q.onclick = () => { Sfx.select(); Story.run(); };
-  if (v3) v3.bindDrag(s.querySelector('.hero-drag'));
-  s.querySelector('[data-bgm]').onclick = e => { Music.toggle(); e.currentTarget.textContent = `BGM：${Music.on ? 'ON' : 'OFF'}`; };
-  s.querySelector('[data-eco]').onclick = e => {
-    GFX.setEco(!GFX.eco); Save.data.eco = GFX.eco; Save.save();
-    e.currentTarget.textContent = `画質：${GFX.eco ? '省エネ（30fps）' : 'なめらか（60fps）'}`;
-  };
-  s.querySelector('[data-reset]').onclick = () => { if (confirm('セーブデータを初期化しますか？')) { Save.reset(); App.go(TitleScreen); } };
-  return s;
-}
-// 出番の少ない子（仲間が3匹以上で、ほかの子の1/3以下しか戦っていない）
+// 出番の少ない子（仲間が3匹以上で、ほかの子の1/3以下しか戦っていない）。探索のメニューで、すねてみせる
 const SULK_LINES = {
   shiro: '……最近、私の出番少なくない？',
   kuro: '……別に、呼ばれなくても気にしていない。……本当だ。',
@@ -119,68 +73,13 @@ function sulkyCat() {
 }
 
 // ------------------------------------------------------------
-//  思い出のたたかい（ステージ一覧）
+//  物語の戦い
 // ------------------------------------------------------------
 function allStages() { return CHAPTERS.flatMap((c, ci) => c.stages.map(s => ({ ...s, ci }))); }
 // ひとつ前のステージをクリアすると開く。あとから台本にステージが加わっても、それより先をクリアしていれば開いている
 function stageUnlocked(id) {
   const list = allStages(), i = list.findIndex(s => s.id === id);
   return i === 0 || list.slice(i - 1).some(s => Save.data.cleared[s.id]);
-}
-
-function StageScreen(ci, sid) {
-  const list = allStages();
-  if (ci == null) {
-    const next = list.filter(s => Save.data.cleared[s.id]).pop() || list[0];
-    ci = next.ci; sid = next.id;
-  }
-  const ch = CHAPTERS[ci];
-  const st = ch.stages.find(s => s.id === sid) || ch.stages[0];
-  const techs = new Set();
-  const played = s => Save.data.cleared[s.id];
-  const enemyKeys = [...new Set(st.waves.flat())];
-  const v3 = GFX.show('stage:' + ch.bg, () => new SceneryView(ch.bg, { screenX: 936, screenY: 250, close: true }));
-  if (v3) v3.setEnemies(played(st) ? enemyKeys : []);
-  Music.play('village');
-  const s = h(`<div class="screen stages">
-    ${topBar('思い出のたたかい')}
-    <div class="st-chapters">${CHAPTERS.map((c, i) => (c.hidden && !stageUnlocked(c.stages[0].id)) ? '' : `
-      <button class="st-ch ${i === ci ? 'on' : ''} ${c.stages.some(played) ? '' : 'locked'}" data-ci="${i}">
-        <small>${c.hidden ? 'おまけ' : `第${i + 1}章`}</small><b>${c.name}</b></button>`).join('')}</div>
-    <div class="st-list">
-      <div class="st-desc">${ch.desc}</div>
-      ${ch.stages.map(x => `
-        <button class="st-item ${x.id === st.id ? 'on' : ''} ${played(x) ? '' : 'locked'} ${x.boss ? 'boss' : ''}" data-sid="${x.id}">
-          <span class="st-id">${x.id}</span><span class="st-nm">${played(x) ? x.name : '？？？'}</span>
-          <span class="st-lv">Lv.${x.lv}</span>${played(x) ? '<span class="st-ok">✓</span>' : ''}
-        </button>`).join('')}
-    </div>
-    <div class="st-detail">
-      <div class="sd-head"><span class="st-id">${st.id}</span><h2>${played(st) ? st.name : '？？？'}</h2><span class="sd-lv">推奨Lv.${st.lv}</span></div>
-      ${played(st) ? `<div class="sd-sec">出てくる敵</div>
-      ${GFX.ok ? `<div class="sd-stage3d"></div><div class="sd-weakrow">${enemyKeys.map(k => `<span style="--c:${ENEMIES[k].color}"><b>${ENEMIES[k].name}</b>${ENEMIES[k].weak.map(w => elemIcon(w)).join('')}</span>`).join('')}</div>` : ''}
-      <div class="sd-sec">ごほうび</div>
-      <div class="sd-rew"><span><i class="ic-exp"></i>なかまの経験値 ${fmt((80 + st.lv * 30) * st.waves.length)}</span><span><i class="ic-jade"></i>にぼし ${10 + st.lv * 3}</span></div>
-      <div class="sd-sec">出るメンバー <small>クリックで初手技を使う（初手技ポイント1）</small></div>
-      <div class="sd-team">${Save.data.team.map(k => `
-        <div class="sd-mem" data-k="${k}" title="${CHARS[k].technique.name}：${CHARS[k].technique.desc}">
-          ${charChip(k)}<div class="tech-tag">初手技</div></div>`).join('')}
-        <button class="btn small" data-edit>へんせい</button>
-      </div>
-      <div class="sd-tech"></div>
-      <button class="btn gold big" data-start>たたかう</button>` : '<div class="dim sd-locked">物語で出会った戦いに、ここで何度でも挑める。</div>'}
-    </div>
-  </div>`);
-  wireBack(s);
-  on(s, '[data-ci]', 'click', el => { const i = +el.dataset.ci; if (!el.classList.contains('locked')) App.go(StageScreen, i, CHAPTERS[i].stages[0].id); });
-  on(s, '[data-sid]', 'click', el => { if (!el.classList.contains('locked')) App.go(StageScreen, ci, el.dataset.sid); });
-  const ed = s.querySelector('[data-edit]'); if (ed) ed.onclick = () => { Sfx.click(); App.go(TeamScreen, () => App.go(StageScreen, ci, st.id)); };
-  const techInfo = s.querySelector('.sd-tech');
-  const refreshTech = () => { if (techInfo) techInfo.innerHTML = techs.size ? [...techs].map(k => `<div><b>${CHARS[k].name}「${CHARS[k].technique.name}」</b> ${CHARS[k].technique.desc}</div>`).join('') : '<div class="dim">初手技は使わない</div>'; };
-  refreshTech();
-  on(s, '.sd-mem', 'click', el => { const k = el.dataset.k; if (techs.has(k)) techs.delete(k); else if (techs.size < Save.data.tp) techs.add(k); el.classList.toggle('tech', techs.has(k)); refreshTech(); });
-  const go = s.querySelector('[data-start]'); if (go) go.onclick = () => { Sfx.select(); startStage(ci, st, [...techs]); };
-  return s;
 }
 
 // 戦いに出る子：編成＋guests（物語で、まだ仲間になる前や、一行を離れている間にいっしょに戦う子。編成に空きがあれば加わる）
@@ -192,6 +91,7 @@ function battleTeam(st) {
   }
   return team;
 }
+// after(res)：戦いを終えたあと（負けて「もどる」を選んだときも）
 function startStage(ci, st, techs, after) {
   Save.data.tp -= techs.length; Save.save();
   const first = !Save.data.cleared[st.id];
@@ -211,8 +111,7 @@ function startStage(ci, st, techs, after) {
     },
     onExit: (res, act) => {
       if (act === 'retry') startStage(ci, st, [], after);
-      else if (after) after(res);
-      else App.go(StageScreen, ci, st.id);
+      else after(res);
     },
   });
   b.start();
@@ -221,7 +120,7 @@ function startStage(ci, st, techs, after) {
 // ------------------------------------------------------------
 //  へんせい
 // ------------------------------------------------------------
-function TeamScreen(backFn) {
+function TeamScreen() {
   let slot = 0;
   const v3 = GFX.show('scene:team', () => new SceneryView('meadow'));
   if (v3) v3.setEnemies([]);
@@ -229,7 +128,7 @@ function TeamScreen(backFn) {
     <div class="tm-slots"></div>
     <div class="tm-hint">枠を選んでから、下のにゃんこをクリック。先頭の子が、冒険でみんなを連れて歩きます。</div>
     <div class="tm-roster"></div></div>`);
-  wireBack(s, backFn || (() => App.go(HubScreen)));
+  wireBack(s);
   // 物語の都合で一行を離れている子（awayNow）は、枠をとったまま動かせない
   const away = awayNow(), isAway = k => away.includes(k);
   const free = i => !isAway(Save.data.team[i]);

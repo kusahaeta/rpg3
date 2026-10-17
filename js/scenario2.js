@@ -1263,7 +1263,8 @@ const STORY = [
   //   エピローグの樹の根もとの場面（c9_01 の tree の wide）と同じく、根のトンネルの手前から見上げる
   { title: '第八章　みんなのにゃん力', clearSet: { zone: 'tree_root', at: [0, 26], face: 180, bloom: 0.45, cam: { pos: [-1.2, 1.4, 0], look: [0, 9.5, 12], fov: 56 } }, steps: [
     { t: 'scene', id: 'c8_01', g: 'ぽかぽか村の危機' },
-    { t: 'battle', stage: '8-1', after: 'c8_02', g: '村を守る' },
+    // c8_01 の一行の場所（広場の南の入口）から歩き出し、広場へ踏みこむと戦闘。負けたら、もう一度広場へ歩けば挑みなおせる
+    { t: 'field', zone: 'pokapoka', at: [0, 10], start: ['pokapoka', 0, 16], near: ['pokapoka'], yaw: Math.PI, battle: '8-1', after: 'c8_02', g: '村を守る' },
     { t: 'field', zone: 'world_end', at: [0, 20], start: ['tree_root', 30, 14], near: ['tree_root', 'world_end'], scene: 'c8_03', battle: '8-2', g: '樹の根もとの東から、太い根をたどって世界の果てへ' },
     { t: 'field', zone: 'world_end', at: [0, -30], scene: 'c8_04', battle: '8-3', after: 'c8_05', g: 'コドクと決着をつける' },
     { t: 'scene', id: 'c8_05t', g: 'よみがえる樹' },

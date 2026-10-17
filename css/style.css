@@ -81,25 +81,6 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .t-note { position: absolute; bottom: 24px; font-size: 12px; color: var(--dim); }
 @keyframes blink { 50% { opacity: .3; } }
 
-/* ---------- ハブ ---------- */
-.hub { background: linear-gradient(100deg, rgba(20, 16, 50, .7), rgba(5, 8, 20, .2) 60%); }
-.hub-hero { position: absolute; left: 60px; top: 70px; width: 560px; height: 600px; }
-.hero-art { position: absolute; inset: 0 40px 60px 0; clip-path: polygon(0 0, 100% 6%, 92% 100%, 0 94%);
-  box-shadow: 0 0 60px var(--c); border: 1px solid rgba(255, 255, 255, .15); }
-.hero-cap { position: absolute; left: 30px; bottom: 20px; }
-.hero-name { font-size: 44px; font-weight: 900; letter-spacing: .1em; text-shadow: 0 2px 20px #000; }
-.hero-title { color: var(--gold); letter-spacing: .2em; }
-.hub-menu { position: absolute; right: 70px; top: 110px; display: flex; flex-direction: column; gap: 14px; width: 440px; }
-.hm { position: relative; text-align: left; padding: 16px 26px; border: 1px solid var(--line); background: linear-gradient(90deg, rgba(30, 36, 70, .85), rgba(15, 18, 40, .6));
-  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px); transition: .2s; }
-.hm:hover { transform: translateX(-10px); border-color: var(--gold); background: linear-gradient(90deg, rgba(60, 56, 110, .9), rgba(25, 28, 60, .7)); }
-.hm b { font-size: 24px; letter-spacing: .15em; display: block; }
-.hm small { position: absolute; right: 24px; top: 20px; color: var(--dim); letter-spacing: .2em; font-size: 11px; }
-.hm em { font-style: normal; color: var(--dim); font-size: 13px; }
-.hm.gold { border-color: rgba(232, 199, 122, .6); }
-.hm.gold b { color: var(--gold2); }
-.hub-foot { position: absolute; left: 24px; right: 24px; bottom: 12px; display: flex; gap: 20px; align-items: center; font-size: 12px; color: var(--dim); }
-
 /* ---------- キャラチップ ---------- */
 .chip { position: relative; width: 104px; height: 132px; border-radius: 6px; overflow: hidden; background: #111629; border: 1px solid var(--line); cursor: pointer; transition: .15s; flex: none; }
 .chip:hover { transform: translateY(-3px); border-color: var(--c); }
@@ -118,44 +99,6 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .chip.big { width: 150px; height: 190px; }
 .chip.big .chip-face { height: 140px; }
 
-/* ---------- 冒険 ---------- */
-.stages { background: linear-gradient(90deg, rgba(6, 8, 20, .9), rgba(6, 8, 20, .5)); }
-.st-chapters { position: absolute; left: 24px; top: 72px; width: 230px; display: flex; flex-direction: column; gap: 8px; }
-.st-ch { text-align: left; padding: 12px 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, .04); }
-.st-ch small { color: var(--gold); display: block; font-size: 11px; letter-spacing: .1em; }
-.st-ch b { font-size: 14px; }
-.st-ch.on { border-color: var(--gold); background: rgba(232, 199, 122, .12); }
-.st-ch.locked, .st-item.locked { opacity: .35; cursor: not-allowed; }
-.st-list { position: absolute; left: 270px; top: 72px; width: 330px; display: flex; flex-direction: column; gap: 8px; }
-.st-desc { font-size: 13px; color: var(--dim); line-height: 1.6; margin-bottom: 6px; }
-.st-item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); background: rgba(20, 26, 50, .7); text-align: left; }
-.st-item.on { border-color: var(--gold); background: rgba(232, 199, 122, .14); }
-.st-item.boss { border-left: 3px solid #ff4d6d; }
-.st-id { font-weight: 800; color: var(--gold); font-size: 14px; }
-.st-nm { flex: 1; }
-.st-lv { font-size: 12px; color: var(--dim); }
-.st-ok { color: #5fe38c; font-weight: 800; }
-.st-detail { position: absolute; right: 24px; top: 72px; bottom: 20px; width: 640px; padding: 18px 22px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; }
-.sd-head { display: flex; align-items: baseline; gap: 12px; }
-.sd-head h2 { margin: 0; font-size: 26px; }
-.sd-lv { margin-left: auto; color: var(--gold); }
-.sd-sec { margin: 14px 0 8px; color: var(--gold); font-size: 13px; letter-spacing: .15em; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
-.sd-sec small { color: var(--dim); letter-spacing: 0; margin-left: 8px; }
-.sd-enemies { display: flex; gap: 12px; }
-.sd-en { width: 110px; text-align: center; background: rgba(0, 0, 0, .3); padding: 6px; border: 1px solid var(--line); }
-.sd-en.elite { border-color: rgba(255, 180, 80, .5); } .sd-en.boss { border-color: #ff4d6d; }
-.sd-sprite { height: 70px; } .sd-sprite svg { height: 100%; filter: drop-shadow(0 0 4px var(--c)); }
-.sd-ename { font-size: 11px; margin: 4px 0; }
-.sd-weak { display: flex; justify-content: center; }
-.sd-rew { display: flex; gap: 20px; font-size: 14px; }
-.sd-team { display: flex; gap: 10px; align-items: center; }
-.sd-mem { position: relative; }
-.tech-tag { position: absolute; left: 0; right: 0; bottom: -6px; text-align: center; font-size: 11px; background: rgba(0, 0, 0, .7); color: var(--dim); border: 1px solid var(--line); pointer-events: none; }
-.sd-mem.tech .tech-tag { background: #7d6bff; color: #fff; border-color: #b4a9ff; }
-.sd-mem.tech .chip { box-shadow: 0 0 0 2px #7d6bff, 0 0 18px #7d6bff; }
-.sd-tech { font-size: 12px; margin-top: 12px; line-height: 1.7; min-height: 40px; }
-.sd-tech b { color: #b4a9ff; }
-.st-detail [data-start] { margin-top: auto; align-self: flex-end; }
 
 /* ---------- 編成 ---------- */
 .team { background: rgba(6, 8, 20, .7); }
@@ -455,15 +398,6 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 img.avatar { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; pointer-events: none; }
 .title { background: radial-gradient(ellipse at 50% 60%, rgba(40, 20, 90, .25), transparent 70%); }
 .t-rings { opacity: .45; }
-.hub { background: linear-gradient(90deg, rgba(5, 8, 20, 0) 35%, rgba(5, 8, 20, .6) 70%); }
-.hero-drag { position: absolute; inset: 0 60px 90px 0; cursor: grab; }
-.stages { background: linear-gradient(90deg, rgba(6, 8, 20, .88) 0, rgba(6, 8, 20, .7) 47%, rgba(6, 8, 20, .1) 60%, rgba(6, 8, 20, .25)); }
-.st-detail { background: linear-gradient(180deg, rgba(10, 14, 32, .7), rgba(10, 14, 32, 0) 18%, rgba(10, 14, 32, 0) 40%, rgba(10, 14, 32, .88) 52%); border-color: rgba(255, 255, 255, .08); }
-.sd-stage3d { height: 175px; flex: none; }
-.sd-weakrow { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; }
-.sd-weakrow > span { display: flex; align-items: center; gap: 4px; background: rgba(0, 0, 0, .55); padding: 3px 8px; border-left: 2px solid var(--c); }
-.sd-weakrow b { font-weight: 400; margin-right: 4px; }
-.sd-weakrow .el-icon { width: 17px; height: 17px; font-size: 10px; margin: 0; }
 .team { background: rgba(6, 8, 20, .45); }
 .chars { background: linear-gradient(90deg, rgba(6, 8, 20, .9) 0, rgba(6, 8, 20, .75) 20%, rgba(6, 8, 20, 0) 30%, rgba(6, 8, 20, 0) 50%, rgba(6, 8, 20, .8) 58%); }
 .ck-art.is3d { clip-path: none; box-shadow: none; cursor: grab; }
@@ -509,21 +443,11 @@ img.avatar { display: block; width: 100%; height: 100%; object-fit: cover; objec
 @keyframes ci3d { 0% { opacity: 0; transform: translateX(-80px); } 15% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(30px); } }
 .is3d .order { z-index: 6; }
 .is3d .announce { top: 62px; }
-.st-detail .sd-sec { margin: 10px 0 6px; }
-.sd-team .chip { width: 92px; height: 116px; }
-.sd-team .chip-face { height: 78px; }
-.st-detail [data-start] { position: absolute; right: 22px; bottom: 18px; margin: 0; }
-.sd-tech { min-height: 0; margin-top: 10px; max-width: 380px; }
 .warp.warping > *:not(.warp-ov) { visibility: hidden; }
 
 /* ============================================================
    探索（フィールド）
    ============================================================ */
-.hub-menu { top: 86px; gap: 10px; }
-.hm { padding: 12px 26px; }
-.hm b { font-size: 22px; }
-.hm small { top: 16px; }
-.st-explore { margin: -2px 0 6px; align-self: flex-start; }
 .field { cursor: grab; }
 .field:active { cursor: grabbing; }
 .fd-world { position: absolute; inset: 0; pointer-events: none; }
@@ -601,11 +525,6 @@ kbd { display: inline-block; font-family: inherit; font-size: 11px; background: 
 /* ============================================================
    開拓任務・会話
    ============================================================ */
-.hub-quest { position: absolute; left: 24px; top: 60px; background: linear-gradient(90deg, rgba(0, 0, 0, .6), transparent); padding: 8px 40px 8px 14px;
-  border-left: 3px solid var(--gold); cursor: pointer; z-index: 3; }
-.hub-quest small { display: block; font-size: 11px; color: var(--gold); letter-spacing: .1em; }
-.hub-quest b { font-size: 15px; }
-.hub-quest:hover { background: linear-gradient(90deg, rgba(232, 199, 122, .25), transparent); }
 .fd-quest { position: absolute; left: 24px; top: 74px; background: linear-gradient(90deg, rgba(0, 0, 0, .6), transparent); padding: 6px 40px 6px 12px; border-left: 3px solid var(--gold); }
 .fd-quest small { font-size: 11px; color: var(--gold); letter-spacing: .1em; }
 .fd-quest div { font-size: 15px; font-weight: 700; }
@@ -672,26 +591,6 @@ kbd { display: inline-block; font-family: inherit; font-size: 11px; background: 
 .dl-choice kbd { background: var(--gold); color: #000; font-weight: 800; }
 .dl-skipbtns { display: flex; gap: 12px; margin-top: 4px; }
 
-.story { background: linear-gradient(90deg, rgba(6, 8, 20, .88) 0, rgba(6, 8, 20, .7) 35%, rgba(6, 8, 20, .25) 60%, rgba(6, 8, 20, .6)); }
-.sy-chapters { position: absolute; left: 24px; top: 76px; width: 300px; display: flex; flex-direction: column; gap: 10px; }
-.sy-ch { padding: 12px 14px; border: 1px solid var(--line); background: rgba(20, 26, 50, .7); }
-.sy-ch small { display: block; font-size: 11px; color: var(--dim); letter-spacing: .1em; }
-.sy-ch b { font-size: 16px; }
-.sy-ch .bar { margin-top: 8px; height: 4px; }
-.sy-ch.now { border-color: var(--gold); background: rgba(232, 199, 122, .12); }
-.sy-ch.now small { color: var(--gold); }
-.sy-ch.done small { color: #5fe38c; }
-.sy-ch.locked { opacity: .4; }
-.sy-main { position: absolute; left: 360px; top: 76px; width: 560px; }
-.sy-chtitle { font-size: 30px; font-weight: 900; letter-spacing: .12em; }
-.sy-goal { margin-top: 14px; font-size: 20px; font-weight: 700; color: var(--gold2); display: flex; gap: 10px; align-items: center; }
-.sy-desc { margin: 8px 0 16px; color: #c9cee6; font-size: 14px; line-height: 1.7; }
-.sy-steps { display: flex; flex-direction: column; gap: 4px; margin-bottom: 22px; max-height: 330px; overflow-y: auto; }
-.sy-step { font-size: 13px; padding: 5px 10px; background: rgba(0, 0, 0, .35); color: var(--dim); display: flex; gap: 8px; }
-.sy-step span { width: 20px; text-align: center; }
-.sy-step.done { color: #9aa3c8; text-decoration: line-through; opacity: .7; }
-.sy-step.now { color: #fff; border-left: 3px solid var(--gold); background: rgba(232, 199, 122, .15); }
-.sy-sub { display: flex; gap: 10px; margin-top: 16px; }
 
 /* ---------- 探索：区画 ---------- */
 .fd-quest em { display: block; font-style: normal; font-size: 12px; color: #8ae0ff; margin-top: 2px; }
@@ -774,7 +673,6 @@ kbd { display: inline-block; font-family: inherit; font-size: 11px; background: 
 .fd-floor:disabled small { color: #ff8a9a; }
 
 /* デバッグ：章へジャンプ */
-.sy-sub .dbg-btn { border-color: #ff8a5a; color: #ffb89a; }
 .ov-box.dbg { width: 640px; max-width: calc(100vw - 32px); max-height: 640px; }
 .dbg-note { font-size: 12px; color: var(--dim); line-height: 1.7; margin: 8px 0; text-align: left; }
 .dbg-opt { display: flex; align-items: center; gap: 8px; font-size: 13px; align-self: flex-start; cursor: pointer; }
@@ -829,26 +727,22 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .t-start { color: #fff; text-shadow: 0 2px 8px rgba(80, 40, 20, .8); font-weight: 700; bottom: 90px; }
 .t-note { color: #fff4e0; text-shadow: 0 1px 4px #000; }
 
-/* ハブ */
-.hub { background: linear-gradient(90deg, rgba(62, 40, 34, 0) 38%, rgba(62, 40, 34, .55) 70%); }
-.hm { clip-path: none; border-radius: 20px; border: 2px solid rgba(255, 236, 214, .35); background: linear-gradient(135deg, rgba(90, 58, 48, .9), rgba(62, 40, 34, .78)); padding: 11px 24px; }
-.hm:hover { transform: translateX(-8px) scale(1.01); border-color: #ffd98a; background: linear-gradient(135deg, rgba(120, 76, 60, .95), rgba(80, 50, 42, .85)); }
-.hm.gold { border-color: #ffd98a; background: linear-gradient(135deg, rgba(200, 110, 70, .9), rgba(120, 60, 40, .85)); }
-.hm b { font-size: 21px; letter-spacing: .08em; }
-.hm em { color: #f0dcc8; font-size: 12px; }
-.hub-menu { top: 78px; gap: 9px; }
-.hero-name { text-shadow: 0 3px 0 #c8603a, 0 4px 18px rgba(0, 0, 0, .5); }
-.hero-title { color: #fff4d8; text-shadow: 0 1px 6px #000; }
-.hub-quest { border-radius: 0 16px 16px 0; background: linear-gradient(90deg, rgba(62, 40, 34, .85), rgba(62, 40, 34, .2)); border-left: 4px solid #ffb07a; }
-.hub-pout { position: absolute; right: 30px; top: 60px; display: flex; align-items: center; gap: 8px; animation: fadeIn .6s ease; }
-.hp-face { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; border: 3px solid var(--c); background: #fff6ea; flex: none; }
-.hp-say { background: #fff6ea; color: #4a2c20; border-radius: 16px; padding: 8px 14px; font-size: 14px; max-width: 250px; position: relative; box-shadow: 0 4px 12px rgba(0, 0, 0, .3); }
-.hp-say::before { content: ''; position: absolute; left: -8px; top: 22px; border: 8px solid transparent; border-right-color: #fff6ea; border-left: 0; }
+/* 探索のメニュー（おうちの画面にあった一覧も、ここにまとめる） */
+.ov-box.fm-box { width: 640px; padding: 22px 34px 16px; gap: 12px; }
+.fm-box > .btn.gold { width: 100%; }
+.fm-grid { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.fm { text-align: left; padding: 9px 20px; border-radius: 18px; border: 2px solid rgba(255, 236, 214, .35); background: linear-gradient(135deg, rgba(90, 58, 48, .9), rgba(62, 40, 34, .78)); transition: .15s; }
+.fm:hover { transform: translateY(-2px); border-color: #ffd98a; background: linear-gradient(135deg, rgba(120, 76, 60, .95), rgba(80, 50, 42, .85)); }
+.fm b { display: block; font-size: 18px; letter-spacing: .08em; }
+.fm em { font-style: normal; color: #f0dcc8; font-size: 12px; }
+.fm-pout { display: flex; align-items: center; gap: 8px; align-self: flex-start; text-align: left; animation: fadeIn .6s ease; }
+.hp-face { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; border: 3px solid var(--c); background: #fff6ea; flex: none; }
+.hp-say { background: #fff6ea; color: #4a2c20; border-radius: 16px; padding: 8px 14px; font-size: 14px; max-width: 480px; position: relative; box-shadow: 0 4px 12px rgba(0, 0, 0, .3); }
+.hp-say::before { content: ''; position: absolute; left: -8px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-right-color: #fff6ea; border-left: 0; }
 .hp-say b { display: block; font-size: 11px; color: #c8603a; }
-.hub-news { position: absolute; left: 24px; top: 118px; display: flex; flex-direction: column; gap: 6px; z-index: 3; }
-.hub-news div { background: rgba(255, 154, 184, .85); color: #4a1a2a; border-radius: 14px; padding: 6px 14px; font-size: 14px; animation: fadeIn .6s ease; box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
-.hub-news small { margin-left: 8px; font-size: 11px; }
-.hub-foot .link { color: #f0dcc8; }
+.fm-foot { display: flex; gap: 20px; justify-content: center; }
+.fm-foot .link { color: #f0dcc8; }
+.fm-keys { font-size: 11px; color: var(--dim); }
 
 /* チップ */
 .chip { border-radius: 16px; background: linear-gradient(180deg, #fff3e2, #f0d8c0 70%); border: 2px solid rgba(255, 236, 214, .5); color: #4a2c20; }
@@ -858,11 +752,8 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .chip.on { border-color: #ff9a6a; box-shadow: 0 0 0 3px #ff9a6a; }
 .chip.inteam::before { content: 'へんせい中'; background: #ff9a6a; color: #fff; border-radius: 0 0 0 8px; }
 
-/* 思い出のたたかい・へんせい・なかま */
-.stages, .team, .chars, .story, .bondscr { background: linear-gradient(90deg, rgba(62, 40, 34, .88), rgba(62, 40, 34, .55)); }
-.st-ch, .st-item { border-radius: 14px; border-width: 2px; }
-.st-detail { border-radius: 20px; }
-.sd-locked { margin-top: 30px; }
+/* へんせい・なかま・友情 */
+.team, .chars, .bondscr { background: linear-gradient(90deg, rgba(62, 40, 34, .88), rgba(62, 40, 34, .55)); }
 .tm-slot { border-radius: 18px; }
 .ck-ab { border-radius: 14px; }
 
@@ -934,7 +825,7 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .fd-toast { border-radius: 14px; }
 .fd-talk { border-radius: 20px; }
 .fd-banner.zone { text-shadow: 0 3px 0 #c8603a, 0 0 20px rgba(0, 0, 0, .6); }
-.fd-quest, .hub-quest { border-left-color: #ffb07a; }
+.fd-quest { border-left-color: #ffb07a; }
 
 /* 戦闘：友情ゲージ・コンボ・吹き出し */
 .ab-btn { border-radius: 18px; }
@@ -1004,7 +895,7 @@ body.touch .pc-only { display: none; }
 @media (orientation: portrait) { body.touch #rotate { display: flex; } }
 
 /* ホバーの動きはタッチでは付けたままになるので消す */
-body.touch .hm:hover { transform: none; }
+body.touch .fm:hover { transform: none; }
 body.touch .chip:hover { transform: none; }
 
 /* 探索：キーの説明を消して、スティックとボタンを出す */

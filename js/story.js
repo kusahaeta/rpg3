@@ -1,6 +1,6 @@
 'use strict';
 // ============================================================
-//  物語（ぼうけんの書）
+//  物語
 //  会話シーン → フィールドの目的地へ → 戦闘 … を順に進める。
 //  台本・人物・舞台は js/npcs.js と js/scenario*.js
 // ============================================================
@@ -57,11 +57,16 @@ const Story = {
   battle(id, next) {
     if (Save.data.cleared[id]) { next(); return; }
     const st = this.stageById(id);
-    startStage(st.ci, st, [], res => { if (res.win) next(); else App.go(StoryScreen); });
+    startStage(st.ci, st, [], res => { if (res.win) next(); else App.go(FieldScreen); });
+  },
+  // 続きから：探索の段階なら前回の場所から歩き、ほかの段階（会話・戦闘など）ならその段階を始める
+  resume() {
+    const cur = this.current();
+    if (cur && cur.step.t !== 'field') this.run(); else App.go(FieldScreen);
   },
   run() {
     const cur = this.current();
-    if (!cur) { App.go(StoryScreen); return; }
+    if (!cur) { App.go(FieldScreen); return; }
     const step = cur.step;
     const next = () => { this.advance(); this.run(); };
     switch (step.t) {
@@ -408,7 +413,7 @@ const Debug = {
     Save.load();
     return true;
   },
-  render(o, onDone) {
+  render(o, onDone, onClose = () => o.classList.add('hidden')) {
     const cur = Story.current(), icon = { scene: '💬', battle: '⚔', field: '◆', reward: '★', ending: '✿' };
     const btn = (ci, si, label, now) => `<button class="dbg-step ${now ? 'now' : ''}" data-j="${ci},${si}">${label}</button>`;
     o.innerHTML = `<div class="ov-box dbg"><h2>デバッグ：章へジャンプ</h2>
@@ -420,7 +425,7 @@ const Debug = {
       <div class="dbg-foot">${this.hasBackup ? '<button class="btn small" data-restore>ジャンプ前のセーブに戻す</button>' : ''}<button class="btn gold" data-close>閉じる</button></div></div>`;
     o.classList.remove('hidden');
     const now = o.querySelector('.dbg-step.now'); if (now) now.scrollIntoView({ block: 'center' });
-    o.querySelector('[data-close]').onclick = () => { Sfx.click(); o.classList.add('hidden'); };
+    o.querySelector('[data-close]').onclick = () => { Sfx.click(); onClose(); };
     o.querySelectorAll('[data-j]').forEach(b => b.onclick = () => { const [ci, si] = b.dataset.j.split(',').map(Number); Sfx.select(); this.jump(ci, si, { level: o.querySelector('[data-lv]').checked }); onDone(); });
     const r = o.querySelector('[data-restore]');
     if (r) r.onclick = () => { Sfx.click(); if (this.restore()) onDone(); };
@@ -429,51 +434,8 @@ const Debug = {
 Debug.init();
 
 // ============================================================
-//  ぼうけんの書・章クリア・エンディング
+//  章クリア・エンディング
 // ============================================================
-function StoryScreen() {
-  const cur = Story.current();
-  const v3 = GFX.show('stage:book', () => new SceneryView(cur ? (CHAPTERS[Math.min(cur.chIdx, CHAPTERS.length - 1)] || CHAPTERS[0]).bg : 'meadow'));
-  if (v3) v3.setEnemies([]);
-  Music.play('village');
-  const icon = { scene: '💬', battle: '⚔', field: '◆', reward: '★', ending: '✿' };
-  const s = h(`<div class="screen story">${topBar('ぼうけんの書')}
-    <div class="sy-chapters">${STORY.map((c, i) => {
-      const p = Story.progress(i), hidden = c.hidden && p === 0 && !(cur && cur.chIdx === i);
-      return hidden ? '' : `<div class="sy-ch ${p >= 1 ? 'done' : p > 0 || (cur && cur.chIdx === i) ? 'now' : 'locked'}">
-        <small>${p >= 1 ? '読んだ' : cur && cur.chIdx === i ? 'いまここ' : 'まだ'}</small><b>${c.title}</b>
-        <div class="bar exp"><i style="width:${p * 100}%"></i></div></div>`;
-    }).join('')}</div>
-    <div class="sy-main">
-      ${cur ? `
-        <div class="sy-chtitle">${cur.ch.title}</div>
-        <div class="sy-goal"><span>${icon[cur.step.t]}</span>${cur.step.g}</div>
-        <div class="sy-desc">${{ scene: () => '物語の続きを見る。', battle: () => `戦闘「${Story.stageById(cur.step.stage).name}」が始まる。`,
-          field: () => `「${FIELD_ZONES[cur.step.zone].name}」の目的地（◆）へ向かう。着くと物語が進む。`, reward: () => '章のごほうびを受け取る。', ending: () => '物語のしめくくり。' }[cur.step.t]()}</div>
-        <div class="sy-steps">${cur.ch.steps.map((st, i) => `<div class="sy-step ${i < Story.state.step ? 'done' : i === Story.state.step ? 'now' : ''}">
-          <span>${icon[st.t]}</span>${i <= Story.state.step ? st.g : '？？？'}</div>`).join('')}</div>
-        <button class="btn gold big" data-go>続きから</button>`
-      : `<div class="sy-chtitle">すべてのお話を見終えました</div><div class="sy-desc">ミャオニアを自由に歩いたり、思い出のたたかいに挑んだりできます。</div>`}
-      <div class="sy-sub">
-        <button class="btn small" data-stages>思い出のたたかい</button>
-        <button class="btn small" data-field>冒険に出る</button>
-        <button class="btn small" data-recap>あらすじ</button>
-        ${Debug.on ? '<button class="btn small dbg-btn" data-debug>デバッグ：章へジャンプ</button>' : ''}
-      </div>
-    </div>
-    <div class="overlay hidden"></div></div>`);
-  wireBack(s);
-  const go = s.querySelector('[data-go]');
-  if (go) go.onclick = () => { Sfx.select(); Story.run(); };
-  s.querySelector('[data-stages]').onclick = () => { Sfx.click(); App.go(StageScreen); };
-  s.querySelector('[data-field]').onclick = () => { Sfx.click(); App.go(FieldScreen); };
-  const ov = s.querySelector('.overlay');
-  s.querySelector('[data-recap]').onclick = () => { Sfx.click(); renderRecap(ov, () => ov.classList.add('hidden'), id => App.go(DialogueScreen, id, () => App.go(StoryScreen))); };
-  const dbg = s.querySelector('[data-debug]');
-  if (dbg) dbg.onclick = () => { Sfx.click(); Debug.render(ov, () => App.go(StoryScreen)); };
-  return s;
-}
-
 function ChapterClearScreen(ci, niboshi) {
   const ch = STORY[ci], [a, b] = ch.title.split('　'), nx = STORY[ci + 1];
   // 背景：章の clearSet（区画のその場所）があれば、その景色。なければ章の空と地面だけの景色（同じ鍵だと、前の章の景色が残ってしまうので章ごとに）
@@ -485,9 +447,9 @@ function ChapterClearScreen(ci, niboshi) {
     <div class="res-sub">${b || ''}</div>
     <div class="res-info">${niboshi ? `<div class="rw"><i class="ic-jade"></i>章のごほうび　にぼし +${niboshi}</div>` : ''}
     ${nx && !nx.hidden ? `<div class="dim">次のお話「${nx.title}」</div>` : ''}</div>
-    <button class="btn gold" data-ok>${nx && !nx.hidden ? '次のお話へ' : 'おうちに帰る'}</button></div></div>`);
+    <button class="btn gold" data-ok>${nx && !nx.hidden ? '次のお話へ' : '冒険にもどる'}</button></div></div>`);
   Save.save(); Sfx.win(); Music.play('hope');
-  s.querySelector('[data-ok]').onclick = () => { Sfx.click(); nx && !nx.hidden ? Story.run() : App.go(HubScreen); };
+  s.querySelector('[data-ok]').onclick = () => { Sfx.click(); nx && !nx.hidden ? Story.run() : App.go(FieldScreen); };
   return s;
 }
 
@@ -501,7 +463,7 @@ function EndingScreen() {
       <h1>Fin</h1>
       <p class="dim">クリアおめでとう！　村の猫神社の奥で、ふしぎな夢の世界への道が開いたらしい……</p>
     </div>
-    <button class="btn gold" data-ok>おうちに帰る</button></div>`);
-  s.querySelector('[data-ok]').onclick = () => { Sfx.click(); App.go(HubScreen); };
+    <button class="btn gold" data-ok>冒険にもどる</button></div>`);
+  s.querySelector('[data-ok]').onclick = () => { Sfx.click(); App.go(FieldScreen); };
   return s;
 }

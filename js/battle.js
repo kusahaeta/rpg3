@@ -1494,7 +1494,7 @@ class Battle {
     if (win) {
       const before = (Save.data.bondNews || []).length;
       afterBattleBonds(this.allies.map(a => a.key), this.opts.waves.some(w => w.some(e => ENEMIES[e.key].boss)));
-      const news = (Save.data.bondNews || []).slice(before);
+      const news = (Save.data.bondNews || []).splice(before); Save.save();
       if (news.length) info += news.map(n => { const [a, b] = n.k.split('|'); return `<div class="rw bondup">♥ ${CHARS[a].name}と${CHARS[b].name}の友情が Lv.${n.lv} になった！<small>${BOND_INFO[n.lv - 1]}</small></div>`; }).join('');
     }
     const o = this.$('.overlay');
