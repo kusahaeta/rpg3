@@ -1129,7 +1129,7 @@ const SCENES = {
       ['kuro', '……。', { f: 'shy', g: 'turnAway' }],
       ['piero_npc', '……ありがとう。笑うって、こういうことだったね。', { f: 'smile', g: 'handChest' }],
       ['mike', '戦うだけじゃなくて、ちゃんと話を聞くのも、大事なんだね。', { f: 'gentle', g: 'nod' }],
-      ['piero_npc', 'そうだ……笑いの実を盗んだ魔王軍の兵が、この塔を通っていったよ。「黒い谷を抜けて、北の魔王領へ」って……。', { f: 'serious', g: 'point' }],
+      ['piero_npc', 'そうだ……笑いの実が盗まれた夜、ここから見えたんだ。実をかかえた魔王軍の兵が、町を出て、北の黒い谷へ走っていくのが。……あの谷を抜けると、魔王領だよ。', { f: 'serious', g: 'point' }],
       ['kuro', '……黒い谷。', { f: 'serious', cam: 'kuro', close: true }],
       ['piero_npc', '……王さまにも、知らせなきゃ。ぼく、ずっと心配をかけてたから。', { f: 'gentle', g: 'handChest', stance: { tama: 'idle' } }],
       ['mike', 'うん！　みんなで、お城の下の広場へ行こう！', { f: 'joy', g: 'cheer' }],
