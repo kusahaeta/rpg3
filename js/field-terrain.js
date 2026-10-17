@@ -613,7 +613,7 @@ const ARCH_STYLES = {
   demoncourt: { look: 'palace', heavy: true, roof: false, skyline: 'town', wallH: 12, wall: '#6a5a80', wall2: '#54466a', trim: '#2a1a3a', cliff: '#5a4a70', cap: '#8a6aa8', step: '#7a6a90', glass: '#d8b0ff', glow: '#ff8ad8', light: '#ffd8f8', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // ニャハハ城の中：クリーム色の大理石、金の縁取りと灯り、格天井
   nyapalace: { look: 'palace', heavy: 'royal', roof: true, wallH: 8, wall: '#f6eee2', wall2: '#e6d6c0', trim: '#8a6a3a', cliff: '#eadfce', ceil: '#f2e6d4', step: '#efe6d8', glass: '#ffe8c0', glow: '#ffd27a', light: '#fff4dc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
-  // 古代遺跡の中（壁画の大広間・崩れた回廊・封印の間）：苔むした古い石の壁（天井あり、青緑に光る縁取り）
+  // 古代遺跡の中（壁画の大広間・崩れた迷宮・封印の間）：苔むした古い石の壁（天井あり、青緑に光る縁取り）
   ruin: { look: 'palace', roof: true, wallH: 8, wall: '#c8c0a4', wall2: '#a8a088', trim: '#5a5a48', cliff: '#b0aa90', ceil: '#6a6a58', step: '#b8b098', glass: '#bfffe8', glow: '#8affe0', light: '#e8fff4', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // ねこ神の夢・うとうとの庭：お菓子の木立と、ケーキの段（cake：段の側面はスポンジとクリームの層で、なめらか。柵は立てない）
   dreamgarden: { look: 'cliff', outdoor: 'flora', roof: false, canopy: 3, cake: true, rock: '#e8b8d8', cap: '#ffd8e8', path: '#fff0c8', trim: '#c88ab8', cliff: '#ffffff', step: '#ffe8f0', glass: '#bfe8ff', glow: '#ff9ad8', rail: 'none', door: 'swing', lift: 'cage', exit: 'arch' },
