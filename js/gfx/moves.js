@@ -710,7 +710,7 @@ Object.assign(BattleView.prototype, {
   },
   // 立ち位置へ跳んでいく（攻撃のあとは attackEnd で戻る）
   async dashTo(e, dest, { pose = POSES.windup, dur = 0.3, hop = 0.35, trail = true } = {}) {
-    const m = e.model, from = m.group.position.clone(), col = ELEMENTS[e.u.elem].color;
+    const m = e.model, from = m.group.position.clone(), col = this.b.abColor(e.u);
     this.face(e, dest);
     this.tweenPose(m, pose, Math.min(0.22, dur));
     await GFX.tween(dur, t => {

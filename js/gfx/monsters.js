@@ -402,7 +402,7 @@ function buildEnemy(key) {
 // 骨組みの敵：にゃんこの体を内側に入れ、構えて立たせる
 function critterEnemy(key, d, C) {
   const base = C.key ? CHARS[C.key] || NPCS[C.key] : null;
-  const def = { look: { ...(base ? base.look : {}), ...(C.look || {}) }, gear: { ...(base ? base.gear : {}), ...(C.gear || {}) }, elem: base ? base.elem : 'physical', scale: C.scale || 1 };
+  const def = { look: { ...(base ? base.look : {}), ...(C.look || {}) }, gear: { ...(base ? base.gear : {}), ...(C.gear || {}) }, color: base ? base.color : undefined, scale: C.scale || 1 };
   const m = buildCat(key, { def });
   m.setPose(POSES.ready);
   if (C.expr) m.face.set(C.expr);

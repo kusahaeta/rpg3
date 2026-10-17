@@ -13,6 +13,9 @@ const ELEMENTS = {
   quantum:   { name: '闇',   color: '#a07bff', glyph: '闇' },
   imaginary: { name: '光',   color: '#fff0a8', glyph: '光' },
 };
+// 属性は技がもつ（elem）。いくつかの属性を使い分ける技は配列で書き、ふだんは先頭の属性になる
+const abElems = ab => (ab && ab.elem ? [].concat(ab.elem) : []);
+const abElem = ab => abElems(ab)[0] || null;
 
 // 役割（aggro＝敵に狙われやすさ）
 const PATHS = {
@@ -44,23 +47,24 @@ function charStats(key, lv, eid) {
 
 // ------------------------------------------------------------
 //  にゃんこ（仲間）
+//  color：その子の色（画面やオーラ）。属性はその子ではなく、技ごとの elem
 //  look：2頭身のにゃんこの見た目（js/gfx/cats.js）。gear：武器の種類と戦い方
 //  basic / skill / ult：はじめの武器の技（ほかの武器は js/weapons.js）
 //  target: single / blast / aoe / bounce / ally / allies / self
 // ------------------------------------------------------------
 const CHARS = {
   mike: {
-    name: 'ミケ', title: '拾われ勇者の三毛猫', rarity: 5, elem: 'fire', path: 'destruction',
+    name: 'ミケ', title: '拾われ勇者の三毛猫', rarity: 5, color: '#ff6a3c', path: 'destruction',
     base: { hp: 3800, atk: 1450, def: 1050, spd: 102, crit: 0.18, critDmg: 0.7, be: 0.3 },
     energyMax: 120,
     look: { fur: '#fffaf2', pattern: 'calico', patches: ['#f29a3e', '#3b302c'], eye: '#f2a91e', muzzle: '#ffffff', paws: '#ffffff', earIn: '#f7b3bd',
       cape: '#e0453a', capeIn: '#ffd76a', accent: '#ffd76a', band: '#e0453a' },
     gear: { weapon: 'sword', style: 'melee' },
-    basic: { name: 'ねこパンチ', target: 'single', anim: 'punch', desc: '指定した敵単体に攻撃力100%の炎ダメージ。',
+    basic: { name: 'ねこパンチ', elem: 'fire', target: 'single', anim: 'punch', desc: '指定した敵単体に攻撃力100%の炎ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
-    skill: { name: '勇者のつるぎ', target: 'blast', desc: '指定した敵単体に攻撃力130%、隣接する敵に攻撃力50%の炎ダメージ。',
+    skill: { name: '勇者のつるぎ', elem: 'fire', target: 'blast', desc: '指定した敵単体に攻撃力130%、隣接する敵に攻撃力50%の炎ダメージ。',
       run: (B, s, t) => B.blast(s, t, 1.3, 0.5, 20, 10, 'skill') },
-    ult: { name: '流星ねこぎり', target: 'single', desc: '指定した敵単体に攻撃力400%の炎ダメージ。味方全体の攻撃力+15%（2ターン）。',
+    ult: { name: '流星ねこぎり', elem: 'fire', target: 'single', desc: '指定した敵単体に攻撃力400%の炎ダメージ。味方全体の攻撃力+15%（2ターン）。',
       run: async (B, s, t) => {
         const r = await B.single(s, t, 4.0, 30, 'ult', { heavy: true });
         B.aliveAllies().forEach(a => B.buff(a, { key: 'mike_u', name: '勇者の背中', stat: 'atk', value: 0.15, turns: 2 }));
@@ -72,25 +76,25 @@ const CHARS = {
         s.flags.ate = true; B.float(s, 'もぐもぐ', 'info'); B.heal(s, s, s.maxHp * 0.3);
       },
       dmgMod: B => (flag('mikeHero') ? 0.05 * B.aliveAllies().length : 0) },
-    technique: { name: 'とびかかり', desc: '戦闘開始時、敵全体に攻撃力80%の炎ダメージ。',
+    technique: { name: 'とびかかり', elem: 'fire', desc: '戦闘開始時、敵全体に攻撃力80%の炎ダメージ。',
       run: (B, s) => B.aoe(s, 0.8, 0, 'tech') },
   },
 
   kuro: {
-    name: 'クロ', title: '空から落ちてきた黒猫', rarity: 5, elem: 'physical', path: 'preservation',
+    name: 'クロ', title: '空から落ちてきた黒猫', rarity: 5, color: '#e2dccf', path: 'preservation',
     base: { hp: 4600, atk: 1250, def: 1500, spd: 96, crit: 0.1, critDmg: 0.6, eres: 0.2 },
     energyMax: 120,
     look: { fur: '#3d3b4a', pattern: 'solid', eye: '#ffd24a', muzzle: '#4a4858', paws: '#3d3b4a', earIn: '#8a6a78',
       scarf: '#8a2f3c', armor: '#5d6a86', accent: '#b8c6e8' },
     gear: { weapon: 'blade', style: 'melee' },
-    basic: { name: '黒爪', target: 'single', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
+    basic: { name: '黒爪', elem: 'physical', target: 'single', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
-    skill: { name: '孤高の剣', target: 'single', desc: '指定した敵単体に攻撃力200%の物理ダメージ。自身は敵に狙われやすくなる（2ターン）。',
+    skill: { name: '孤高の剣', elem: 'physical', target: 'single', desc: '指定した敵単体に攻撃力200%の物理ダメージ。自身は敵に狙われやすくなる（2ターン）。',
       run: async (B, s, t) => {
         B.buff(s, { key: 'kuro_aggro', name: '挑発', stat: 'aggro', value: 3, turns: 2 });
         return B.single(s, t, 2.0, 20, 'skill');
       } },
-    ult: { name: '月影一閃', target: 'aoe', desc: '敵全体に攻撃力150%の物理ダメージ。自身に防御力80%のシールド（3ターン）。',
+    ult: { name: '月影一閃', elem: 'physical', target: 'aoe', desc: '敵全体に攻撃力150%の物理ダメージ。自身に防御力80%のシールド（3ターン）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 1.5, 20, 'ult', { heavy: true });
         B.shield(s, s, s.stat('def') * 0.8, 3);
@@ -118,15 +122,15 @@ const CHARS = {
   },
 
   shiro: {
-    name: 'シロ', title: '自称・天才魔法使い', rarity: 5, elem: 'lightning', path: 'erudition',
+    name: 'シロ', title: '自称・天才魔法使い', rarity: 5, color: '#ffd23c', path: 'erudition',
     base: { hp: 3200, atk: 1750, def: 750, spd: 104, crit: 0.3, critDmg: 0.9, ehr: 0.15 },
     energyMax: 130,
     look: { fur: '#ffffff', pattern: 'solid', eye: '#4aa8ff', eye2: '#f2c84a', muzzle: '#ffffff', paws: '#ffffff', earIn: '#ffb8c8',
       hat: '#6a4ad8', hatBand: '#ffd76a', cape: '#6a4ad8', capeIn: '#c9b8ff', accent: '#ffd76a', ribbon: '#ff8ab8' },
     gear: { weapon: 'wand', style: 'ranged' },
-    basic: { name: 'マジックアロー', target: 'single', desc: '指定した敵単体に攻撃力100%の雷ダメージ。',
+    basic: { name: 'マジックアロー', elem: 'lightning', target: 'single', desc: '指定した敵単体に攻撃力100%の雷ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
-    skill: { name: '天才魔法', target: 'single',
+    skill: { name: '天才魔法', elem: ['fire', 'lightning', 'ice'], target: 'single',
       desc: 'ファイア（敵全体に炎110%）・サンダー（単体に雷240%）・ブリザド（単体に氷140%、隣接に60%、凍結）のどれかを唱える。ただし25%の確率で失敗する（魚が降ってきたり、静電気が起きたりする）。',
       run: async (B, s, t) => {
         const spells = ['fire', 'thunder', 'blizzard'];
@@ -158,11 +162,11 @@ const CHARS = {
         }
         if (flag('shiroGrow') && B.aliveEnemies().length) {
           B.float(s, '失敗は成功のもと！', 'info');
-          r = r.concat(await B.aoe(s, 0.9, 10, 'skill'));
+          r = r.concat(await B.aoe(s, 0.9, 10, 'skill', { elem: 'lightning' }));
         }
         return r;
       } },
-    ult: { name: 'ちょう天才メテオ', target: 'aoe', desc: '敵全体に攻撃力230%の雷ダメージ、100%の基礎確率で感電（攻撃力40%、2ターン）。',
+    ult: { name: 'ちょう天才メテオ', elem: 'lightning', target: 'aoe', desc: '敵全体に攻撃力230%の雷ダメージ、100%の基礎確率で感電（攻撃力40%、2ターン）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 2.3, 20, 'ult', { heavy: true });
         B.aliveEnemies().forEach(e => B.dot(s, e, { type: 'shock', mult: 0.4, turns: 2, chance: 1 }));
@@ -175,13 +179,13 @@ const CHARS = {
   },
 
   tama: {
-    name: 'タマ', title: 'のんびり屋のふしぎな子', rarity: 5, elem: 'imaginary', path: 'abundance',
+    name: 'タマ', title: 'のんびり屋のふしぎな子', rarity: 5, color: '#fff0a8', path: 'abundance',
     base: { hp: 4300, atk: 1050, def: 950, spd: 100, crit: 0.05, critDmg: 0.5 },
     energyMax: 100,
     look: { fur: '#fff4d8', pattern: 'point', patches: ['#e8c890'], eye: '#7ad07a', muzzle: '#fffaf0', paws: '#fffaf0', earIn: '#ffc8c8',
       sleepy: true, sprout: '#7ad86a', scarf: '#9ad88a', accent: '#fff0a8' },
     gear: { weapon: 'pillow', style: 'ranged' },
-    basic: { name: 'ぽふっ', target: 'single', anim: 'bonk', desc: '指定した敵単体に攻撃力100%の光ダメージ。',
+    basic: { name: 'ぽふっ', elem: 'imaginary', target: 'single', anim: 'bonk', desc: '指定した敵単体に攻撃力100%の光ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
     skill: { name: 'なでなで', target: 'ally', anim: 'pat', desc: '味方単体のHPをタマの最大HP25%+250回復し、他の味方は8%回復。',
       run: (B, s, t) => {
@@ -208,22 +212,22 @@ const CHARS = {
   },
 
   maou: {
-    name: 'マオウ', title: '尊大な元・魔王', rarity: 5, elem: 'quantum', path: 'nihility',
+    name: 'マオウ', title: '尊大な元・魔王', rarity: 5, color: '#a07bff', path: 'nihility',
     base: { hp: 3900, atk: 1600, def: 1000, spd: 108, crit: 0.2, critDmg: 0.8, ehr: 0.3 },
     energyMax: 120,
     look: { fur: '#352c44', pattern: 'solid', eye: '#ff4a5a', muzzle: '#43385a', paws: '#352c44', earIn: '#7a4a6a',
       cape: '#3a1850', capeIn: '#d8303c', collar: true, horns: '#f0e6d0', crown: '#ffcf4a', accent: '#ffcf4a' },
     gear: { weapon: 'scepter', style: 'ranged' },
     scale: 1.08,
-    basic: { name: '魔王のしっぽ', target: 'single', anim: 'tail', desc: '指定した敵単体に攻撃力100%の闇ダメージ。',
+    basic: { name: '魔王のしっぽ', elem: 'quantum', target: 'single', anim: 'tail', desc: '指定した敵単体に攻撃力100%の闇ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
-    skill: { name: '魔王のいあつ', target: 'aoe', anim: 'aura', desc: '敵全体に攻撃力90%の闇ダメージ。70%の基礎確率で防御力-25%（2ターン）。',
+    skill: { name: '魔王のいあつ', elem: 'quantum', target: 'aoe', anim: 'aura', desc: '敵全体に攻撃力90%の闇ダメージ。70%の基礎確率で防御力-25%（2ターン）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 0.9, 10, 'skill');
         B.aliveEnemies().forEach(e => B.debuff(s, e, 0.7, { key: 'maou_def', name: '威圧', stat: 'defDown', value: 0.25, turns: 2 }));
         return r;
       } },
-    ult: { name: '暗黒ねこ波', target: 'aoe', anim: 'wave', desc: '敵全体に攻撃力200%の闇ダメージ。味方全体の与ダメージ+25%（2ターン）。',
+    ult: { name: '暗黒ねこ波', elem: 'quantum', target: 'aoe', anim: 'wave', desc: '敵全体に攻撃力200%の闇ダメージ。味方全体の与ダメージ+25%（2ターン）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 2.0, 20, 'ult', { heavy: true });
         B.aliveAllies().forEach(a => B.buff(a, { key: 'maou_u', name: '余に続け', stat: 'dmg', value: 0.25, turns: 2 }));
@@ -245,18 +249,18 @@ const HERO = 'mike';
 //  コンボスキル（友情Lv3で解禁）と、最終スキル
 // ------------------------------------------------------------
 const COMBOS = [
-  { id: 'nyankoBreak', pair: ['mike', 'kuro'], name: 'にゃんこブレイク', desc: 'ミケとクロの連携。指定した敵単体にミケの攻撃力250%＋クロの攻撃力250%の物理ダメージ。靭性を大きく削る。', target: 'single',
-    run: async (B, a, t) => { const [m, k] = a; let r = await B.single(m, t, 2.5, 30, 'combo', { heavy: true, elem: 'physical', anim: 'pairIn' }); if (t.alive) r = r.concat(await B.single(k, t, 2.5, 30, 'combo', { heavy: true, anim: 'pairX' })); return r; } },
-  { id: 'fireball', pair: ['mike', 'shiro'], name: 'ファイアボール', desc: 'ミケが投げた魚にシロが火をつける。敵全体にシロの攻撃力180%の炎ダメージ、燃焼（2ターン）。', target: 'aoe',
-    run: async (B, a) => { const [, s] = a; const r = await B.aoe(s, 1.8, 20, 'combo', { heavy: true, elem: 'fire', anim: 'fireball' }); B.aliveEnemies().forEach(e => B.dot(s, e, { type: 'burn', mult: 0.5, turns: 2, chance: 1 })); return r; } },
-  { id: 'kokubyaku', pair: ['kuro', 'shiro'], name: '黒白連撃', desc: 'クロとシロの交互攻撃。ランダムな敵に、クロとシロが交互に攻撃力80%のダメージを計6回。', target: 'aoe',
-    run: async (B, a) => { const [k, s] = a; let r = []; for (let i = 0; i < 6 && B.aliveEnemies().length; i++) r = r.concat(await B.bounce(i % 2 ? s : k, 1, 0.8, 8, 'combo', { anim: 'kokubyaku' })); return r; } },
+  { id: 'nyankoBreak', pair: ['mike', 'kuro'], name: 'にゃんこブレイク', elem: 'physical', desc: 'ミケとクロの連携。指定した敵単体にミケの攻撃力250%＋クロの攻撃力250%の物理ダメージ。靭性を大きく削る。', target: 'single',
+    run: async (B, a, t) => { const [m, k] = a; let r = await B.single(m, t, 2.5, 30, 'combo', { heavy: true, anim: 'pairIn' }); if (t.alive) r = r.concat(await B.single(k, t, 2.5, 30, 'combo', { heavy: true, anim: 'pairX' })); return r; } },
+  { id: 'fireball', pair: ['mike', 'shiro'], name: 'ファイアボール', elem: 'fire', desc: 'ミケが投げた魚にシロが火をつける。敵全体にシロの攻撃力180%の炎ダメージ、燃焼（2ターン）。', target: 'aoe',
+    run: async (B, a) => { const [, s] = a; const r = await B.aoe(s, 1.8, 20, 'combo', { heavy: true, anim: 'fireball' }); B.aliveEnemies().forEach(e => B.dot(s, e, { type: 'burn', mult: 0.5, turns: 2, chance: 1 })); return r; } },
+  { id: 'kokubyaku', pair: ['kuro', 'shiro'], name: '黒白連撃', elem: ['physical', 'lightning'], desc: 'クロとシロの交互攻撃。ランダムな敵に、クロ（物理）とシロ（雷）が交互に攻撃力80%のダメージを計6回。', target: 'aoe',
+    run: async (B, a) => { const [k, s] = a; let r = []; for (let i = 0; i < 6 && B.aliveEnemies().length; i++) r = r.concat(await B.bounce(i % 2 ? s : k, 1, 0.8, 8, 'combo', { anim: 'kokubyaku', elem: i % 2 ? 'lightning' : 'physical' })); return r; } },
   { id: 'nyanHeal', pair: ['tama', '*'], name: 'にゃんにゃんヒール', desc: 'タマとみんなで声を合わせる。味方全体のHPを最大HP40%回復し、デバフを解除、シールドを付与。', target: 'allies', anim: 'chorus',
     run: async (B, a) => { const t = a[0]; B.aliveAllies().forEach(x => { B.heal(t, x, x.maxHp * 0.4); B.cleanse(x); B.cleanse(x); B.shield(t, x, x.maxHp * 0.12, 2); }); return []; } },
-  { id: 'gorei', pair: ['maou', '*'], name: '元魔王の号令', desc: 'マオウの号令で全員が奮い立つ。味方全体の行動順を50%早め、攻撃力+30%（2ターン）。敵全体にマオウの攻撃力120%の闇ダメージ。', target: 'aoe',
+  { id: 'gorei', pair: ['maou', '*'], name: '元魔王の号令', elem: 'quantum', desc: 'マオウの号令で全員が奮い立つ。味方全体の行動順を50%早め、攻撃力+30%（2ターン）。敵全体にマオウの攻撃力120%の闇ダメージ。', target: 'aoe',
     run: async (B, a) => { const m = a[0]; const r = await B.aoe(m, 1.2, 20, 'combo', { heavy: true, anim: 'gorei' }); B.aliveAllies().forEach(x => { B.buff(x, { key: 'gorei', name: '号令', stat: 'atk', value: 0.3, turns: 2 }); B.advance(x, 0.5); }); return r; } },
 ];
-const ALLSTARS = { id: 'allstars', name: 'にゃんこオールスターズ', desc: '世界中の猫たちの「つながり」が力になる。敵全体に全員の攻撃力の合計300%のダメージ。', target: 'aoe' };
+const ALLSTARS = { id: 'allstars', name: 'にゃんこオールスターズ', elem: 'imaginary', desc: '世界中の猫たちの「つながり」が力になる。敵全体に全員の攻撃力の合計300%の光ダメージ。', target: 'aoe' };
 
 // 友情（2匹の組み合わせごと）：一緒に旅をした時間
 const BOND_LV = [0, 30, 80, 150, 250];   // Lv1〜5 に必要な友情値

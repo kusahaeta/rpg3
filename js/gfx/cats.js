@@ -201,7 +201,7 @@ function buildCat(key, opt = {}) {
   const c = opt.def || CHARS[key] || NPCS[key];
   const L = { ...c.look, ...(opt.look || {}) }, G = { ...(c.gear || {}), ...(opt.gear || {}) };
   const sp = L.species || 'cat';
-  const elemCol = ELEMENTS[c.elem || 'physical'].color;
+  const charCol = c.color || ELEMENTS.physical.color;
   const root = new THREE.Group();
   const mats = [];
   const T = (col, ex = {}, fb = 0) => { const m = toon(col, ex, fb); m.userData.e0 = (m.emissive || new THREE.Color()).clone(); m.userData.ei0 = m.emissiveIntensity || 0; mats.push(m); return m; };
@@ -209,7 +209,7 @@ function buildCat(key, opt = {}) {
   const P = (geo, mat, o = {}) => outlined(geo, mat, { thick: 0.0026, oc: o.oc || dark(mat.color ? '#' + mat.color.getHexString() : '#000'), ...o });
   const furM = T(L.fur), pawM = T(L.paws || L.fur), accM = T(L.accent || '#ffd76a', { emissive: new THREE.Color(L.accent || '#ffd76a'), emissiveIntensity: 0.15 });
   accM.userData.e0 = new THREE.Color(L.accent || '#ffd76a'); accM.userData.ei0 = 0.15;
-  const glow = glowMat(L.accent || elemCol, 2.4);
+  const glow = glowMat(L.accent || charCol, 2.4);
   const lineCol = dark(L.fur);
   const stone = L.material === 'stone', ghost = L.material === 'ghost', plush = L.material === 'plush';
 
@@ -453,7 +453,7 @@ function buildCat(key, opt = {}) {
   if (L.scar) { const sc = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.012, 0.01), new THREE.MeshBasicMaterial({ color: '#5a3438' })); sc.position.set(0.2, 0.08, 0.26); sc.rotation.set(0, 0.6, 0.6); headG.add(sc); }
 
   // ---------- 武器 ----------
-  const extras = buildCatWeapon(G.weapon, armR, armL, hips, L, elemCol, P, T, glow, G);
+  const extras = buildCatWeapon(G.weapon, armR, armL, hips, L, charCol, P, T, glow, G);
 
   if (c.scale) root.scale.setScalar(c.scale);
   // 素材の特殊な見た目（石像・幽霊・ぬいぐるみ）
@@ -486,7 +486,7 @@ function buildCat(key, opt = {}) {
   let mood = 0, earT = 2 + Math.random() * 4, earFlick = 0;
   const model = {
     group: root, hips, headPivot, armR, armL, legR, legL, mats, pose, height: CAT.H * (c.scale || 1), radius: 0.4 * (c.scale || 1), key,
-    style: G.style || 'melee', elemCol, idleAmp: 1, flashAmt: 0, flashCol: new THREE.Color(1, 1, 1), extras, face, cat: true, tail, ears,
+    style: G.style || 'melee', charCol, idleAmp: 1, flashAmt: 0, flashCol: new THREE.Color(1, 1, 1), extras, face, cat: true, tail, ears,
     setPose(p) { POSE_KEYS.forEach(k => pose[k] = p[k] || 0); },
     update(dt, t) {
       face.update(dt);
@@ -554,9 +554,9 @@ function capeGeo(wt, wb, h, curve) {
 
 // ---------- 武器（右手。持ち方は人型と同じ：腕を下ろすと先が前下を向く） ----------
 // G.tint：武器ごとの色（c＝本体、g＝光るところ。js/weapons.js の look）。G.shine：+5 まで鍛えた武器は先が光る
-function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow, G = {}) {
+function buildCatWeapon(type, armR, armL, hips, L, charCol, P, T, glow, G = {}) {
   const tc = (G.tint && G.tint.c) || null, tg = (G.tint && G.tint.g) || null;
-  const ex = {}, eg = glowMat(tg || elemCol, 3);
+  const ex = {}, eg = glowMat(tg || charCol, 3);
   const hold = new THREE.Group(); hold.rotation.x = Math.PI - 0.55; armR.grip.add(hold);
   const tipAt = (y, parent = hold) => { ex.tip = new THREE.Object3D(); ex.tip.position.y = y; parent.add(ex.tip); };
   switch (type) {
@@ -579,7 +579,7 @@ function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow, G = {}) 
     case 'wand': {    // シロの星の杖
       const st = P(new THREE.CylinderGeometry(0.012, 0.016, 0.42, 8), T(tc || '#f4ecd8')); st.position.y = 0.18; hold.add(st);
       const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.05, 0), glowMat(tg || '#ffe07a', 3)); star.position.y = 0.42; star.scale.set(1, 1, 0.45); hold.add(star);
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.008, 6, 20), glowMat(elemCol, 2.4)); ring.position.y = 0.42; hold.add(ring);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.008, 6, 20), glowMat(charCol, 2.4)); ring.position.y = 0.42; hold.add(ring);
       ex.tip = star; ex.update = (dt, t) => { star.rotation.y = t * 2; ring.rotation.x = t * 1.5; }; break;
     }
     case 'pillow': {  // タマのまくら（左手で抱える）
@@ -663,7 +663,7 @@ function buildCatWeapon(type, armR, armL, hips, L, elemCol, P, T, glow, G = {}) 
     default: ex.tip = armR.grip;
   }
   if (G.shine && ex.tip) {
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(tg || elemCol, 0.7), blending: THREE.AdditiveBlending, depthWrite: false }));
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(tg || charCol, 0.7), blending: THREE.AdditiveBlending, depthWrite: false }));
     sp.scale.setScalar(0.32); ex.tip.add(sp);
   }
   return ex;

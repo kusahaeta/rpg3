@@ -9,7 +9,7 @@ let SVG_SEQ = 0;
 function avatarSVG(key, opts = {}) {
   if (opts.wide && typeof GFX !== 'undefined' && GFX.portraitsWide[key]) return `<img class="avatar" src="${GFX.portraitsWide[key]}" alt="" draggable="false">`;
   if (typeof GFX !== 'undefined' && GFX.portraits[key]) return `<img class="avatar" src="${GFX.portraits[key]}" alt="" draggable="false">`;
-  const c = CHARS[key] || NPCS[key], L = c.look || {}, col = (L.accent) || ELEMENTS[c.elem || 'physical'].color;
+  const c = CHARS[key] || NPCS[key], L = c.look || {}, col = (L.accent) || c.color || ELEMENTS.physical.color;
   const id = 'av' + (++SVG_SEQ), fur = L.fur || '#f4e8d8', P = L.patches || [], mouse = L.species === 'mouse';
   const bg = opts.noBg ? '' : `<rect width="100" height="100" fill="url(#${id}b)"/>`;
   const ears = mouse ? `<circle cx="26" cy="30" r="15" fill="${fur}" stroke="#3a2a2a" stroke-width="2"/><circle cx="74" cy="30" r="15" fill="${fur}" stroke="#3a2a2a" stroke-width="2"/><circle cx="26" cy="30" r="9" fill="${L.earIn || '#f2b8c0'}"/><circle cx="74" cy="30" r="9" fill="${L.earIn || '#f2b8c0'}"/>`
@@ -150,7 +150,7 @@ function enemyMini(key) {
   return `<div class="mini-enemy" style="--c:${d.color}">${d.name.replace(/^.*[・ ]/, '').slice(0, 1)}</div>`;
 }
 
-// 必殺技のしるし（戦闘の丸い必殺技ボタン）。色は属性の色（currentColor）
+// 必殺技のしるし（戦闘の丸い必殺技ボタン）。色は必殺技の属性の色（currentColor）
 const ULT_ICONS = {
   // 流星ねこぎり：流れ星の尾を引く剣
   mike: `<path d="M28 6 L16 18 M44 20 L32 32" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
@@ -174,9 +174,9 @@ const ULT_ICONS = {
     <circle cx="20" cy="18" r="1.8" fill="#fff"/><circle cx="28" cy="18" r="1.8" fill="#fff"/>`,
 };
 function ultIcon(key) {
-  const c = CHARS[key], col = ELEMENTS[c.elem].color;
+  const ult = charKit(key).ult, col = abElem(ult) ? ELEMENTS[abElem(ult)].color : CHARS[key].color;
   const body = ULT_ICONS[key] || `<path d="M24 4 L29 18 L44 18 L32 27 L36 42 L24 33 L12 42 L16 27 L4 18 L19 18Z" fill="currentColor" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>`;
-  return `<svg class="ult-icon" viewBox="0 0 48 48" style="color:${col}" aria-label="${charKit(key).ult.name}">${body}</svg>`;
+  return `<svg class="ult-icon" viewBox="0 0 48 48" style="color:${col}" aria-label="${ult.name}">${body}</svg>`;
 }
 
 function elemIcon(el, extra = '') {
