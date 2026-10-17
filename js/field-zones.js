@@ -8267,6 +8267,8 @@ const ZONE_BUILD = {
     // 東の林の空き地：崩れた柱と、倒れた猫の像
     for (const [x, z, h, fl] of [[36, -2, 3, false], [42, 2, 2.4, false], [33, 3, 2, true]]) K.pillarBroken(x, z, h, fl);
     K.catStatue(40, -4, 2.4, 1.2, 'stone');
+    // 四匹の猫の像のまわりの崩れた柱（外庭に入ったときの会話 c5_01 で、石像といっしょに映る。乱数の並びを変えないよう最後に置く）
+    for (const [x, z, h, fl] of [[4.8, 11, 3.4, false], [10.6, 9, 4.2, false], [6.5, 15.4, 3, true]]) K.pillarBroken(x, z, h, fl);
   },
   // 石畳の丘：大階段の上の高台に、つながりの石畳と遺跡の入口（門構えと猫の像、結界）。ふもとに光の庭と崩れた塔
   ruinsHill(K) {
