@@ -2634,7 +2634,7 @@ const FIELD_ZONES = {
       knots: [{ id: 'treeKnot1', cells: [-1, 25, -1, 25], cradles: [5] }, { id: 'treeKnot2', cells: [-1, 51, 1, 51], cradles: [9, 10] }],
     },
     notes: [{ at: [-19, -41], mark: [-0.6, 3.6, 0], title: '光る樹液', text: 'かすかに光る樹液が、根を伝って流れている。……まるで、泣いているみたいに。' },
-      { at: [7, -25], title: '古い石碑', text: '「実は、樹のぬくもり。根元の輪に光る実があれば、根は目をさます。輪を出れば、根はまた眠る」' }],
+      { at: [7, -25], title: '古い石碑', text: '「実は、樹のぬくもり。根元の輪に光る実があれば、根は目をさます。輪を出れば、根はまた眠る」', rootReset: true }],
     map2d: [330, 540] },
 
   tree_under_2: { ci: 6, name: '樹の地下・影の回廊', floor: 'B2', parent: 'tree_under', w: 52, d: 92, stage: '7-2', arenas: [[0, -25, 0], [-4, -1, 0], [-2, 15, 0]], build: 'treeUnder2', bg: 'root', groups: 3, chests: 2, crystals: 2, calmAfter: '7-3', skyTree: false,
@@ -4135,7 +4135,7 @@ class ZoneKit {
   }
   // 樹の地下の光る実と、しおれた根（zone.roots）。根のゆりかご・実・根元の輪・根の橋・根の茂み・根の扉を置く。
   //   根が元気かどうかは、FieldView.updateRoots が、光る実の位置から毎フレーム決める（rootsLive）。
-  //   実の置き場所は Save.data.flags[区画 + '_fruit']（ゆりかごの番号）、光った実は flags[区画 + '_lit']（ビット）、開いた根の扉は flags[扉の id]
+  //   実の置き場所は Save.data.flags[区画 + '_fruit']（ゆりかごの番号。持っている実は -1）、光った実は flags[区画 + '_lit']（ビット）、開いた根の扉は flags[扉の id]
   roots() {
     const R = this.zone.roots; if (!R) return;
     const v = this.v, T = this.T, flags = (typeof Save !== 'undefined' && Save.data && Save.data.flags) || {}, zid = v.zoneId;
@@ -4168,6 +4168,7 @@ class ZoneKit {
       const halo = new THREE.Mesh(new THREE.CircleGeometry(0.9, 24), new THREE.MeshBasicMaterial({ color: hdr(K.col, 1.2), transparent: true, opacity: lit ? 0.35 : 0, depthWrite: false, blending: THREE.AdditiveBlending }));
       halo.rotation.x = -Math.PI / 2; this.scene.add(halo);
       o.fruits.push({ i, F, K, at, lit, g, mat, halo, bob: Math.random() * 6 });
+      if (at < 0) o.carry = i;   // 持ったまま探索を離れた実は、持ったまま
     });
     // 根元の節と輪：輪の中に光る実があると、その根は元気になる（節は床にうまった根のこぶ。踏んで通れる）
     const node = ([x, z]) => {

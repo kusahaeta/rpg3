@@ -99,6 +99,7 @@ class FieldView extends BaseView {
       if (g) return { x: g.x + g.nx * 3.5, z: g.z + g.nz * 3.5, yaw: Math.atan2(g.nx, g.nz) };
     }
     // 前回の位置（地形が変わって立てない場所になっていたら、ひとっとびの着く場所から）
+    if (a.pos && this.rootObj) this.primeRoots(a.pos);
     if (a.pos && (!this.T || this.T.fits(a.pos.x, a.pos.z, this.bodyR(), undefined, this.moveOpts()))) return a.pos;
     // ひとっとびの着く場所（anchor）のそばに、区画の中ほどを向いて立つ
     if (a.anchor) {
@@ -1204,6 +1205,7 @@ class FieldView extends BaseView {
       const n = it.n; this.startTalk(speakerName(n.key), npcLines(n), n);
     } else if (it.type === 'note') {
       this.startTalk(it.n.title, [it.n.text], null, true);
+      if (it.n.rootReset && this.rootObj && !this.fruitsAtStart()) this.talk.after = () => this.fruitResetMenu(it.n.title);
     } else if (it.type === 'lamp') {
       this.lightLamp(it.o, it.L);
     } else if (it.type === 'rubble') {
@@ -1514,9 +1516,14 @@ class FieldView extends BaseView {
   //  樹の地下：光る実と、しおれた根（zone.roots。部品は ZoneKit.roots）
   //   光る実が根元の輪の中にある根は元気（rootsLive）。持っている実は、先頭の子の頭の上にある
   // ============================================================
-  rootPts() {
-    const o = this.rootObj, p = this.player.pos;
+  rootPts(p = this.player.pos) {
+    const o = this.rootObj;
     return o.fruits.filter(f => f.lit).map(f => (f.i === o.carry ? [p.x, p.z] : [o.cradles[f.at].pos.x, o.cradles[f.at].pos.z]));
+  }
+  // 再開する場所（p）で、根の橋を先にかけておく（組み立てたときは、橋はみんなしおれている。橋の上から再開しても、入口へもどされないように）
+  primeRoots(p) {
+    const o = this.rootObj, L = rootsLive(o.R, this.rootPts(p));
+    o.bridges.forEach((b, k) => { b.on = L.bridges[k]; b.k = b.on ? 1 : 0; b.cells.forEach(i => this.T.setRootBridge(i, b.on)); });
   }
   updateRoots(d, t) {
     const o = this.rootObj; if (!o) return;
@@ -1605,10 +1612,11 @@ class FieldView extends BaseView {
   // 根のゆりかごの実を持ち上げる。灰色の実は、はじめて持ち上げたときに光る（みんなといっしょだから）
   takeFruit(f) {
     const o = this.rootObj, flags = Save.data.flags || (Save.data.flags = {}), first = !f.lit;
-    o.carry = f.i;
+    o.carry = f.i; f.at = -1;
+    if (first) { f.lit = true; flags[this.zoneId + '_lit'] = (flags[this.zoneId + '_lit'] || 0) | (1 << f.i); }
+    this.saveFruits();
     Sfx.select();
     if (!first) return;
-    f.lit = true; flags[this.zoneId + '_lit'] = (flags[this.zoneId + '_lit'] || 0) | (1 << f.i); Save.save();
     f.mat.color.set(f.K.col); f.mat.emissiveIntensity = 1.1;
     this.fx.pillar(this.player.pos, f.K.col, { h: 4, r: 0.5, life: 0.8 });
     this.p.burst(this.player.pos.clone().add(V3(0, 1.5, 0)), f.K.col, 50, { speed: 3, up: 1.2, life: 1 });
@@ -1618,11 +1626,39 @@ class FieldView extends BaseView {
   }
   // 持っている実を、空の根のゆりかごに置く
   putFruit(c) {
-    const o = this.rootObj, f = o.fruits[o.carry], flags = Save.data.flags || (Save.data.flags = {});
+    const o = this.rootObj, f = o.fruits[o.carry];
     f.at = c.i; o.carry = -1;
-    flags[this.zoneId + '_fruit'] = o.fruits.map(x => x.at); Save.save();
+    this.saveFruits();
     Sfx.tone(523, 0.18, 'triangle', 0.05); Sfx.tone(784, 0.22, 'sine', 0.03, 0, 0.07);
     this.p.burst(c.pos.clone().add(V3(0, 0.8, 0)), f.K.col, 24, { speed: 2, up: 0.8, life: 0.7, size: 0.08 });
+  }
+  // 実の置き場所を保存する（持っている実は -1。タイトルにもどっても、持ったまま再開する）
+  saveFruits() {
+    (Save.data.flags || (Save.data.flags = {}))[this.zoneId + '_fruit'] = this.rootObj.fruits.map(x => x.at); Save.save();
+  }
+  fruitsAtStart() { const o = this.rootObj; return o.carry < 0 && o.fruits.every(f => f.at === f.F.at); }
+  // 入口の部屋の古い石碑：実を、はじめのゆりかごへもどす（光った実と、ほどけた根の扉はそのまま）。
+  //   入口へもどされたとき（ひとっとび・戦闘に負けたとき）、実が谷の向こうにあると橋をかけられないので、ここからやりなおせる
+  fruitResetMenu(title) {
+    const o = this.root.querySelector('.overlay');
+    if (this.overlayOpen || this.busy) return;
+    this.busy = true; this.overlayOpen = true; this.keys.clear();
+    o.innerHTML = `<div class="ov-box fd-liftbox"><h2>${title}</h2><div class="dim">石碑にふれると、実を、はじめのゆりかごへもどせるようだ。<br>（光った実と、ほどけた根の扉は、そのまま）</div>
+      <div class="fd-floors"><button class="fd-floor" data-reset><b>実を、はじめのゆりかごへもどす</b><small>▶ もどす</small></button></div>
+      <button class="btn" data-close>やめる</button></div>`;
+    o.classList.remove('hidden');
+    Sfx.select();
+    o.querySelector('[data-close]').onclick = () => this.closeOverlay();
+    o.querySelector('[data-reset]').onclick = () => { this.closeOverlay(); this.resetFruits(); };
+  }
+  resetFruits() {
+    const o = this.rootObj;
+    o.carry = -1; o.fruits.forEach(f => { f.at = f.F.at; });
+    this.saveFruits();
+    for (const f of o.fruits) this.p.burst(o.cradles[f.at].pos.clone().add(V3(0, 0.8, 0)), f.lit ? f.K.col : '#c8c0a8', 30, { speed: 2, up: 1, life: 0.8, size: 0.08 });
+    this.fx.pillar(this.player.pos, '#b8ff8a', { h: 3, r: 0.6, life: 0.7 });
+    Sfx.tone(392, 0.3, 'triangle', 0.05, -120); Sfx.tone(523, 0.35, 'sine', 0.03, 0, 0.1);
+    this.toast('石碑がぽうっと光って、実が、はじめのゆりかごへもどった');
   }
   // 根の扉がほどける（開いたまま。そなえた実は、あとで持っていってもいい）
   openKnot(kn) {
