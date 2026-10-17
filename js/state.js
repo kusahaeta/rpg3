@@ -12,7 +12,8 @@ const Save = {
       owned: { mike: { lv: 1, exp: 0, eid: 0 } },
       team: ['mike'],
       cleared: {},
-      flags: {},          // 物語の進み具合で変わること（talk＝「話す」解禁、kuroGuard＝守護 など）
+      flags: {},          // 物語の進み具合で変わること（kuroGuard＝守護 など）
+      items: { onigiri: 3, nekokan: 1 },   // 戦闘で使うどうぐの数（ITEMS。はじめから少し持っている）
       bond: {},           // 友情値（2匹の組み合わせごと）
       bondNews: [],       // 友情レベルが上がった知らせ（戦闘の結果か、探索に出たときに表示）
       bondSeen: {},       // 見た特別イベント

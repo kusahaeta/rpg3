@@ -279,7 +279,12 @@ function renderShop(o, kind, name, close, field) {
           ? `<div class="dim">にぼしで武器を鍛えると（+1〜+${WEAPON_MAX}）、その武器を持ったときのHP・攻撃力・防御力が上がる。</div><div class="sh-list">${forge}</div>`
           : `<div class="dim">買った武器は「なかま」の画面で装備できる。武器を替えると、技がまるごと変わる。</div><div class="sh-list">${sale || '<div class="dim">いまは、売れる武器がないな。</div>'}</div>`);
     } else if (kind === 'item') {
-      body = `<div class="sh-list">
+      const goods = Object.keys(ITEMS).filter(id => !ITEMS[id].key).map(id => {
+        const it = ITEMS[id], n = itemCount(id), full = n >= ITEM_MAX;
+        return `<div class="sh-row"><div class="sh-icon">${it.icon}</div><div class="sh-info"><b>${it.name}<em class="sh-have">持っている数 ${n}</em></b><small>${it.desc}</small></div><button class="btn small" data-ibuy="${id}" ${full || d.niboshi < it.price ? 'disabled' : ''}>${full ? 'もう持てない' : `にぼし ${it.price}`}</button></div>`;
+      }).join('');
+      body = `<div class="dim">どうぐは、戦闘中に「どうぐ」（Rキー）で使える。ひとつにつき ${ITEM_MAX} こまで持てる。</div><div class="sh-list">
+        ${goods}
         <div class="sh-row"><div class="sh-icon">🌿</div><div class="sh-info"><b>またたびの小袋</b><small>初手技ポイントが満タンになる</small></div><button class="btn small" data-item="tp" ${d.niboshi < 60 || d.tp >= 5 ? 'disabled' : ''}>にぼし 60</button></div>
       </div>`;
     } else if (kind === 'fish') {
@@ -309,6 +314,12 @@ function renderShop(o, kind, name, close, field) {
       const id = b.dataset.wbuy, w = WEAPONS[id];
       d.niboshi -= w.get.price; gainWeapon(id); Save.save(); Sfx.win(); Sfx.meow(w.owner);
       field && field.toast(`「${w.name}」を買った！（なかまの画面で${CHARS[w.owner].name}に装備できる）`);
+      draw();
+    });
+    o.querySelectorAll('[data-ibuy]').forEach(b => b.onclick = () => {
+      const id = b.dataset.ibuy, it = ITEMS[id];
+      d.niboshi -= it.price; d.items[id] = itemCount(id) + 1; Save.save(); Sfx.select();
+      field && field.toast(`${it.icon} ${it.name}を買った！（持っている数 ${d.items[id]}）`);
       draw();
     });
     o.querySelectorAll('[data-item]').forEach(b => b.onclick = () => {
