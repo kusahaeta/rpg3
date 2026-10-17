@@ -560,7 +560,7 @@ class Battle {
     if (!it.key) { Save.data.items[id] = Math.max(0, itemCount(id) - 1); Save.save(); }
     this.announce('どうぐ', `${it.icon} ${it.name}`, u.color);
     if (this.v) {
-      if (it.target === 'single') await this.v.waveFx(u, t);
+      if (it.target === 'single') await this.v.teaseFx(u, t);
       else await this.v.support(u, it.target === 'allies' ? this.aliveAllies() : [t]);
     }
     it.run(this, u, t);
