@@ -6,7 +6,7 @@
 //  鍛冶屋で +1〜+5 に鍛えると、HP・攻撃力・防御力が上がる
 //  start：はじめから持っている武器。技は CHARS のもの（物語とともに育つ）
 //  tier：段（0〜3）。段が高いほど素の力が強く、鍛えるのに にぼしがかかる
-//  look：見た目の色（c＝本体、g＝光るところ。js/gfx/cats.js の buildCatWeapon）
+//  look：見た目の色（c＝本体、g＝光るところ）。形は武器ごと（js/gfx/weapon-models.js）
 //  get：手に入れ方（shop＝武器屋で price で買う、chest＝zone の宝箱 i 番）
 // ============================================================
 const WEAPON_MAX = 5;
@@ -348,9 +348,9 @@ function charKit(key) {
   return k;
 }
 
-// 3Dモデルの武器（種類はその子のもの、色は武器ごと）
+// 3Dモデルの武器（形と色は武器ごと。js/gfx/weapon-models.js にない武器は、その子の種類の形）
 function weaponGear(key) {
   const c = CHARS[key]; if (!c) return null;
-  const w = WEAPONS[equippedWeapon(key)];
-  return { ...c.gear, tint: w.look || null, shine: weaponPlus(equippedWeapon(key)) >= WEAPON_MAX };
+  const id = equippedWeapon(key), w = WEAPONS[id];
+  return { ...c.gear, model: id, tint: w.look || null, shine: weaponPlus(id) >= WEAPON_MAX };
 }

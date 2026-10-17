@@ -1080,13 +1080,13 @@ class FieldView extends BaseView {
   scratch(c) {
     if (this.busy) return;
     if (Save.data.tp >= 5) { this.toast('爪はもう、じゅうぶんとがっている（初手技ポイントは満タン）'); return; }
-    const p = this.player, grip = p.m.armR && p.m.armR.grip;
+    const p = this.player, grip = p.m.armR && p.m.armR.grip, off = p.m.extras && p.m.extras.offhand;   // off：左手の武器（双子の小太刀）
     // 丸太のすぐ前へ寄り、持ち物はしまう
     const away = V3(p.pos.x - c.pos.x, 0, p.pos.z - c.pos.z); if (away.lengthSq() < 1e-4) away.set(0, 0, 1);
     away.normalize(); p.pos.x = c.pos.x + away.x * 0.66; p.pos.z = c.pos.z + away.z * 0.66;
     p.yaw = Math.atan2(c.pos.x - p.pos.x, c.pos.z - p.pos.z); p.scratch = 0.9; this.busy = true;
     this.placePlayer(0);   // 動けないあいだは位置の更新が止まるので、ここでモデルを寄せる
-    if (grip) grip.visible = false;
+    if (grip) grip.visible = false; if (off) off.visible = false;
     for (let k = 0; k < 4; k++) Sfx.noise(0.07, 0.16, 4200 + k * 300, k * 0.18);
     setTimeout(() => {
       c.broken = true; this.s.set(this.s.broken, this.zoneId).add(c.id);
@@ -1095,7 +1095,7 @@ class FieldView extends BaseView {
       Sfx.meow(this.team[this.leader].key);
       Save.data.tp++; Save.save(); this.toast('バリバリッ！　爪がとがった。初手技ポイント +1');
       this.renderHud(); this.busy = false;
-      if (grip) grip.visible = true;
+      if (grip) grip.visible = true; if (off) off.visible = true;
     }, 900);
   }
   useTechnique() {
