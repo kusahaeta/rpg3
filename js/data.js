@@ -60,9 +60,9 @@ const CHARS = {
     look: { fur: '#fffaf2', pattern: 'calico', patches: ['#f29a3e', '#3b302c'], eye: '#f2a91e', muzzle: '#ffffff', paws: '#ffffff', earIn: '#f7b3bd',
       cape: '#e0453a', capeIn: '#ffd76a', accent: '#ffd76a', band: '#e0453a' },
     gear: { weapon: 'sword', style: 'melee' },
-    basic: { name: 'ねこパンチ', elem: 'fire', target: 'single', anim: 'punch', desc: '指定した敵単体に攻撃力100%の炎ダメージ。',
+    basic: { name: 'ねこパンチ', elem: 'physical', target: 'single', anim: 'punch', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
-    skill: { name: '勇者のつるぎ', elem: 'fire', target: 'blast', desc: '指定した敵単体に攻撃力130%、隣接する敵に攻撃力50%の炎ダメージ。',
+    skill: { name: '勇者のつるぎ', elem: 'physical', target: 'blast', desc: '指定した敵単体に攻撃力130%、隣接する敵に攻撃力50%の物理ダメージ。',
       run: (B, s, t) => B.blast(s, t, 1.3, 0.5, 20, 10, 'skill') },
     ult: { name: '流星ねこぎり', elem: 'fire', target: 'single', desc: '指定した敵単体に攻撃力400%の炎ダメージ。味方全体の攻撃力+15%（2ターン）。',
       run: async (B, s, t) => {
@@ -76,7 +76,7 @@ const CHARS = {
         s.flags.ate = true; B.float(s, 'もぐもぐ', 'info'); B.heal(s, s, s.maxHp * 0.3);
       },
       dmgMod: B => (flag('mikeHero') ? 0.05 * B.aliveAllies().length : 0) },
-    technique: { name: 'とびかかり', elem: 'fire', desc: '戦闘開始時、敵全体に攻撃力80%の炎ダメージ。',
+    technique: { name: 'とびかかり', elem: 'physical', desc: '戦闘開始時、敵全体に攻撃力80%の物理ダメージ。',
       run: (B, s) => B.aoe(s, 0.8, 0, 'tech') },
   },
 
@@ -166,10 +166,10 @@ const CHARS = {
         }
         return r;
       } },
-    ult: { name: 'ちょう天才メテオ', elem: 'lightning', target: 'aoe', desc: '敵全体に攻撃力230%の雷ダメージ、100%の基礎確率で感電（攻撃力40%、2ターン）。',
+    ult: { name: 'ちょう天才メテオ', elem: 'fire', target: 'aoe', desc: '敵全体に攻撃力230%の炎ダメージ、100%の基礎確率で燃焼（攻撃力40%、2ターン）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 2.3, 20, 'ult', { heavy: true });
-        B.aliveEnemies().forEach(e => B.dot(s, e, { type: 'shock', mult: 0.4, turns: 2, chance: 1 }));
+        B.aliveEnemies().forEach(e => B.dot(s, e, { type: 'burn', mult: 0.4, turns: 2, chance: 1 }));
         return r;
       } },
     talent: { name: 'プライド', desc: '敵を倒すと与ダメージ+10%（最大3層）。第七章からは、魔法の失敗が「成功のもと」になり追撃する。',
@@ -185,7 +185,7 @@ const CHARS = {
     look: { fur: '#fff4d8', pattern: 'point', patches: ['#e8c890'], eye: '#7ad07a', muzzle: '#fffaf0', paws: '#fffaf0', earIn: '#ffc8c8',
       sleepy: true, sprout: '#7ad86a', scarf: '#9ad88a', accent: '#fff0a8' },
     gear: { weapon: 'pillow', style: 'ranged' },
-    basic: { name: 'ぽふっ', elem: 'imaginary', target: 'single', anim: 'bonk', desc: '指定した敵単体に攻撃力100%の光ダメージ。',
+    basic: { name: 'ぽふっ', elem: 'physical', target: 'single', anim: 'bonk', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
     skill: { name: 'なでなで', target: 'ally', anim: 'pat', desc: '味方単体のHPをタマの最大HP25%+250回復し、他の味方は8%回復。',
       run: (B, s, t) => {
@@ -219,7 +219,7 @@ const CHARS = {
       cape: '#3a1850', capeIn: '#d8303c', collar: true, horns: '#f0e6d0', crown: '#ffcf4a', accent: '#ffcf4a' },
     gear: { weapon: 'scepter', style: 'ranged' },
     scale: 1.08,
-    basic: { name: '魔王のしっぽ', elem: 'quantum', target: 'single', anim: 'tail', desc: '指定した敵単体に攻撃力100%の闇ダメージ。',
+    basic: { name: '魔王のしっぽ', elem: 'physical', target: 'single', anim: 'tail', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
     skill: { name: '魔王のいあつ', elem: 'quantum', target: 'aoe', anim: 'aura', desc: '敵全体に攻撃力90%の闇ダメージ。70%の基礎確率で防御力-25%（2ターン）。',
       run: async (B, s) => {
