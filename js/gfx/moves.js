@@ -69,6 +69,203 @@ const MOVES = {
       GFX.tween(0.25, k => { m.tailOut = 1 - k; });
     },
   },
+  // ---------------- ミケ（剣）：技ごとに、剣のふるい方を変える ----------------
+  // 勇者のつるぎ：敵の前へ駆けこみ、かかげた切っ先がきらり。横一文字に、となりの敵ごとなぎ払う
+  hero: {
+    async attack(e, ts, c) {
+      const t = ts[0], m = e.model, dest = this.meleeSpot(t, 0.8);
+      const cx = ts.reduce((a, x) => a + x.home.x, 0) / ts.length;
+      this.setCam(V3(cx + 2.4, 2.3, dest.z + 3.4), V3(cx - 0.2, 0.7, t.home.z), { speed: 5 });
+      await this.dashTo(e, dest, { pose: POSES.dash, dur: 0.26, hop: 0.15 });
+      this.face(e, t.home);
+      await this.tweenPose(m, POSES.raise, 0.14);
+      this.glint(m.tipPos(), '#fff4c8', 1.1);
+      await GFX.delay(0.18);
+      await this.tweenPose(m, POSES.strike2, 0.08);
+      await this.sweep(m, POSES.strike, 0.16, c.col, { twist: -0.9 });
+      // 横一文字：剣をふった向き（右から左）へ、細い光が敵の列をなぞっていく
+      const ps = ts.map(x => this.hitPoint(x.u)), mid = ps.reduce((a, p) => a.add(p), V3()).multiplyScalar(1 / ps.length);
+      const span = Math.max(...ps.map(p => Math.abs(p.x - mid.x))) * 2, n = Math.max(2, Math.round(span / 1.1) + 2);
+      for (let i = 0; i < n; i++) GFX.delay(i * 0.025).then(() => this.fx.slash(V3(mid.x + span / 2 + 0.6 - i * (span + 1.2) / (n - 1), mid.y, mid.z + 0.3), c.col, { cam: this.camera, size: 2.0, angle: 0.04, life: 0.36 }));
+      for (const x of ts) this.squash(x, 0.15);
+      // 勇者の光：金の星が散る
+      for (let i = 0; i < 5; i++) GFX.delay(0.06 + i * 0.05).then(() => this.glint(mid.clone().add(V3((Math.random() - 0.5) * (span + 1.6), (Math.random() - 0.3) * 0.9, 0.3)), '#ffd76a', 0.5));
+    },
+  },
+  // 流星ねこぎり：空高く跳びあがり、炎をまとって流れ星のように斬りおろす
+  meteor: {
+    async attack(e, ts, c) {
+      const t = ts[0], m = e.model, h = e.home;
+      this.focus(e); this.face(e, t.home);
+      const cam = V3(h.x + 1.5, 0.45, h.z + 2.3), look = V3(h.x, 0.9, h.z - 0.4);
+      this.setCam(cam, look, { snap: true });
+      await this.tweenPose(m, POSES.slam, 0.16);
+      Sfx.fire();
+      this.fx.ring(h.clone().add(V3(0, 0.05, 0)), c.col, { r: 1.8, life: 0.45, width: 0.2 });
+      this.p.burst(h.clone().add(V3(0, 0.1, 0)), '#d8c8a8', 24, { speed: 3.5, up: 0.8, life: 0.6, size: 0.12, drag: 4 });
+      // 地面をけって、画面の上へ消える（カメラは見上げて追う）
+      this.tweenPose(m, POSES.jump, 0.1);
+      await GFX.tween(0.42, k => {
+        m.group.position.y = k * 13;
+        this.setCam(cam, V3(look.x, look.y + k * 9, look.z), { snap: true });
+        for (let i = 0; i < 3; i++) this.p.emit(this.hitPoint(e.u), V3((Math.random() - 0.5) * 0.6, -1.5, (Math.random() - 0.5) * 0.6), hdr(c.col, 3), { life: 0.45, size: 0.14 });
+      }, Ease.in);
+      this.lastAttack.moved = true;
+      // 敵のほうへ切りかえ。右上の空から、炎をまとって落ちてくる（落ちる道すじが画面に入るよう、左手前から引いて映す）
+      const dest = this.meleeSpot(t, 0.55), top = dest.clone().add(V3(3.6, 6.5, 1.0));
+      this.setCam(V3(t.home.x - 4.5, 1.4, dest.z + 5.5), V3(t.home.x + 0.6, 2.2, t.home.z), { snap: true });
+      m.group.position.copy(top);
+      m.group.rotation.y = Math.atan2(dest.x - top.x, dest.z - top.z);
+      this.tweenPose(m, POSES.charge, 0.08);
+      const glow = this.fx.sprite(this.hitPoint(e.u), c.col, 1.8, 0.6, { k: 3, grow: 1 });
+      await GFX.tween(0.42, k => {
+        m.group.position.lerpVectors(top, dest, k);
+        glow.position.copy(this.hitPoint(e.u));
+        for (let i = 0; i < 6; i++) this.p.emit(this.hitPoint(e.u).add(V3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4)), V3(0, 1.2, 0), hdr(i % 2 ? '#ffd76a' : c.col, 3), { life: 0.5, size: 0.18, drag: 2 });
+      }, Ease.in);
+      this.face(e, t.home);
+      this.tweenPose(m, POSES.cleave, 0.06);
+      Sfx.slam(); GFX.shake(0.45); GFX.flash(c.col, 0.15, 0.2);
+      // 着地：地面に炎の輪がひろがり、火の粉が舞いあがる（カメラが近いので、光の柱は立てない）
+      const g = t.home.clone().add(V3(0, 0.05, 0)), p = this.hitPoint(t.u);
+      this.fx.slash(p, c.col, { cam: this.camera, size: 3.6, angle: Math.PI / 2 - 0.5 });
+      this.fx.ring(g, c.col, { r: 4.5, life: 0.7, width: 0.35 });
+      this.fx.ring(g, '#ffd76a', { r: 2.6, life: 0.5, width: 0.2 });
+      this.fx.shards(p, '#ffb03a', 14, 6);
+      this.p.burst(g, c.col, 60, { speed: 6, up: 3, life: 0.8, size: 0.13, grav: 4 });
+      await GFX.delay(0.12);
+    },
+  },
+  // ひとけずり：敵の横から、かんなをかけるように二度すべらせる。削りぶしがひらひら舞う
+  shave: {
+    async attack(e, ts, c) {
+      const t = ts[0], m = e.model, dest = this.meleeSpot(t, 0.55);
+      this.sideCam(dest, t, 1);
+      await this.dashTo(e, dest, { pose: POSES.ready, dur: 0.24, hop: 0.25 });
+      this.face(e, t.home);
+      const p = this.hitPoint(t.u);
+      for (let i = 0; i < 2; i++) {
+        await this.tweenPose(m, POSES.windup, 0.09);
+        await this.tweenPose(m, POSES.cleave, 0.07);
+        if (i) Sfx.swing();
+        this.fx.slash(p.clone().add(V3(i ? 0.15 : -0.15, 0, 0.1)), c.col, { cam: this.camera, size: 1.5, angle: Math.PI / 2 + (i ? -0.25 : 0.25), life: 0.25 });
+        this.katsuoFlakes(p, 10, { size: 0.2 });
+        this.squash(t, 0.08);
+      }
+    },
+  },
+  // けずり節：その場で剣をふるうたび、削りぶしが手裏剣のようにくるくる飛んでいく
+  flakes: {
+    async attack(e, ts, c) {
+      const t = ts[0], m = e.model, h = e.home;
+      this.focus(e);   // 肩ごしに敵の列を映す（となりの仲間で隠れないように）
+      this.setCam(V3(h.x - 1.6, 1.8, h.z + 2.8), V3(t.home.x * 0.6 + 0.3, 0.7, t.home.z), { speed: 5 });
+      this.face(e, t.home);
+      await this.tweenPose(m, POSES.windup, 0.15);
+      this.katsuoFlakes(m.tipPos(), 6, { speed: 1.2 });
+      await this.flakeShot(e, t, c.col);
+    },
+    async hop(e, te, c) { await this.flakeShot(e, te, c.col); },
+  },
+  // 火の粉：間合いの手前で、切っ先を地面すれすれから跳ねあげ、火の粉を浴びせる
+  ember: {
+    async attack(e, ts, c) {
+      const t = ts[0], m = e.model, dest = e.home.clone().lerp(this.meleeSpot(t, 0.6), 0.5), mid = dest.clone().lerp(t.home, 0.5);
+      this.setCam(V3(mid.x + 3.4, 1.4, mid.z + 2.0), V3(mid.x - 0.3, 0.8, mid.z - 0.1), { speed: 6 });
+      await this.dashTo(e, dest, { pose: POSES.dash, dur: 0.22, hop: 0.12 });
+      this.face(e, t.home);
+      await this.tweenPose(m, POSES.cleave, 0.1);
+      this.p.burst(m.tipPos(), hdr(c.col, 3), 10, { speed: 1.5, up: 1, life: 0.4, size: 0.1 });
+      Sfx.fire();
+      await this.sweep(m, POSES.windup, 0.12, c.col, { n: 4 });
+      const tip = m.tipPos(), to = this.hitPoint(t.u), d = to.clone().sub(tip);
+      for (let i = 0; i < 40; i++) this.p.emit(tip, d.clone().multiplyScalar(1.6 + Math.random() * 0.8).add(V3((Math.random() - 0.5) * 2, 1.5 + Math.random() * 2, (Math.random() - 0.5) * 2)), hdr(i % 3 ? c.col : '#ffd76a', 3), { life: 0.6, size: 0.1, grav: 6, drag: 0.5 });
+      await Promise.all([0, 1, 2, 3].map(i => GFX.delay(i * 0.04).then(() => this.fx.projectile(tip, to.clone().add(V3((Math.random() - 0.5) * 0.7, (Math.random() - 0.5) * 0.5, 0)), c.col, { dur: 0.3, size: 0.3, arc: 0.6 + Math.random() * 0.6 }))));
+      this.p.burst(to, hdr(c.col, 3), 26, { speed: 3, up: 1.5, life: 0.6, size: 0.1 });
+      this.fx.sprite(to, '#ffb03a', 1.3, 0.3, { k: 3 });
+    },
+  },
+  // 燃えうつり：斬った敵が燃えあがり、その炎がとなりの敵へ跳びうつる
+  spread: {
+    async attack(e, ts, c) {
+      const t = ts[0], m = e.model, dest = this.meleeSpot(t, 0.7);
+      this.closeCam(dest);
+      await this.dashTo(e, dest, { pose: POSES.windup, dur: 0.28, hop: 0.35 });
+      this.face(e, t.home);
+      await this.tweenPose(m, POSES.strike, 0.08);
+      const p = this.hitPoint(t.u);
+      this.fx.slash(p, c.col, { cam: this.camera, size: 2.6, angle: 0.6 });
+      Sfx.fire();
+      this.flameUp(t, c.col);
+      const adj = ts.slice(1);
+      if (!adj.length) { await GFX.delay(0.2); return; }
+      const cx = ts.reduce((a, x) => a + x.home.x, 0) / ts.length;
+      this.setCam(V3(cx + 1.2, 3.0, t.home.z + 6.2), V3(cx, 0.9, t.home.z - 0.3), { speed: 4 });
+      await GFX.delay(0.25);
+      await Promise.all(adj.map((a, i) => GFX.delay(i * 0.08)
+        .then(() => this.fx.projectile(p, this.hitPoint(a.u), c.col, { dur: 0.36, size: 0.8, arc: 1.5 }))
+        .then(() => this.flameUp(a, c.col, 0.75))));
+    },
+  },
+  // ぶんまわし：大剣をぐんと大きくして、体ごとひねって横になぎ払う。ねこじゃらしの穂のわた毛が散る
+  bigSwing: {
+    async attack(e, ts, c) {
+      const t = ts[0], m = e.model, dest = this.meleeSpot(t, 1.0);
+      // 右前から低く：のびた大剣と、横なぎの弧が見えるように
+      this.setCam(V3(dest.x + 2.8, 1.1, dest.z + 1.6), V3(dest.x - 0.6, 0.8, dest.z - 0.9), { speed: 5 });
+      await this.dashTo(e, dest, { pose: POSES.ready, dur: 0.3, hop: 0.3 });
+      this.face(e, t.home);
+      await Promise.all([this.tweenPose(m, POSES.strike2, 0.25), this.weaponGrow(m, 2.8, 0.25)]);
+      Sfx.swing();
+      this.fx.swirl(dest.clone().add(V3(0, 0.6, 0)), c.col, { r: 1.7, life: 0.4, tilt: 0, speed: 12, arc: 2.6, width: 0.08 });
+      await this.sweep(m, POSES.strike, 0.22, c.col, { twist: -1.2, n: 5, size: 0.16 });
+      GFX.shake(0.15);
+      for (const x of ts) this.squash(x, 0.2);
+      this.fluff(this.hitPoint(t.u), 24);
+      GFX.delay(0.2).then(() => this.weaponGrow(m, 1, 0.25));
+    },
+  },
+  // にゃんだー斬り：その場で大剣を高くかかげると、天までとどく光の剣になる。振りおろすと光の筋が地面を走り、敵をまっぷたつ
+  nyander: {
+    async attack(e, ts, c) {
+      const t = ts[0], m = e.model, h = e.home;
+      this.focus(e); this.face(e, t.home);
+      // 横から少し見上げて：両手で立てた剣が、空へ向かってのびていく
+      this.setCam(V3(h.x + 4.2, 1.0, h.z + 0.9), V3(h.x - 0.2, 1.6, h.z - 0.9), { snap: true });
+      await this.tweenPose(m, POSES.swordUp, 0.25);
+      m.flash(c.col, 1);
+      const grow = this.weaponGrow(m, 5, 0.7);
+      await this.every(0.7, 21, i => {
+        const tp = m.tipPos();
+        for (let j = 0; j < 2; j++) {
+          const a = Math.random() * Math.PI * 2, from = tp.clone().add(V3(Math.cos(a) * 1.5, (Math.random() - 0.5) * 1.5, Math.sin(a) * 1.5));
+          this.p.emit(from, tp.clone().sub(from).multiplyScalar(2.4), hdr(c.col, 3), { life: 0.4, size: 0.14, drag: 0 });
+        }
+        if (i % 7 === 0) this.fx.ring(h.clone().add(V3(0, 0.05, 0)), c.col, { r: 2.2, life: 0.5, width: 0.15 });
+      });
+      await grow;
+      this.fx.sprite(m.tipPos(), c.col, 3, 0.4, { k: 3 });
+      GFX.flash(c.col, 0.2, 0.25);
+      await GFX.delay(0.2);
+      // 横から：振りおろすと、光の筋が地面を走って敵へとどく
+      const mid = h.clone().lerp(t.home, 0.5);
+      this.setCam(V3(mid.x + 7.5, 2.6, mid.z + 0.6), V3(mid.x, 1.2, mid.z), { snap: true });
+      Sfx.swing();
+      await this.sweep(m, POSES.cleave, 0.12, c.col, { n: 8, size: 0.2 });
+      Sfx.slam(); GFX.shake(0.4);
+      const g0 = h.clone().add(V3(0, 0.06, 0)), g1 = t.home.clone().add(V3(0, 0.06, 0));
+      this.fx.beam(g0, g1, c.col, { life: 0.6, r: 0.08 });
+      await this.every(0.15, 8, i => this.p.burst(g0.clone().lerp(g1, (i + 1) / 8), hdr(c.col, 3), 8, { speed: 2, up: 2, life: 0.5, size: 0.12 }));
+      const p = this.hitPoint(t.u);
+      // 天から地まで、細い光の線で敵をまっぷたつ
+      this.fx.beam(V3(p.x, 10, p.z), V3(p.x, 0, p.z), c.col, { life: 0.45, r: 0.1 });
+      this.fx.beam(V3(p.x, 10, p.z), V3(p.x, 0, p.z), '#ffffff', { life: 0.3, r: 0.035 });
+      this.fx.ring(g1, c.col, { r: 4.5, life: 0.7, width: 0.3 });
+      this.fx.shards(p, c.col, 16, 7);
+      GFX.flash('#ffffff', 0.2, 0.25);
+      GFX.delay(0.25).then(() => this.weaponGrow(m, 1, 0.3));
+    },
+  },
   // ためぎり：その場で大きく振りかぶって力をため、一気に間合いをつめて振りおろす
   charge: {
     async attack(e, ts, c) {
@@ -679,6 +876,82 @@ Object.assign(BattleView.prototype, {
   // いま使っている技の anim（技の run から opt.anim で差しかえられる）
   animOf(opt = {}) { return opt.anim || (this.b.curAb && this.b.curAb.anim) || null; },
   allyEnt(key) { return [...this.ents.values()].find(x => x.ally && x.u.key === key) || null; },
+  // ---------- ミケの技の部品 ----------
+  // 剣をふりぬく：ポーズへ寄せながら、切っ先の通り道に光の粒を残す（twist で、ひねりをポーズより大きく）
+  sweep(m, pose, dur, col, { twist = pose.twist || 0, n = 3, size = 0.12 } = {}) {
+    const from = { ...m.pose }, c = hdr(col, 3);
+    return GFX.tween(dur, k => {
+      for (const key of POSE_KEYS) m.pose[key] = lerp(from[key], pose[key] || 0, k);
+      m.pose.twist = lerp(from.twist, twist, k);
+      const tp = m.tipPos();
+      for (let i = 0; i < n; i++) this.p.emit(tp, V3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(0.4), c, { life: 0.3, size, drag: 4 });
+    }, Ease.in);
+  },
+  // きらり：十字の光
+  glint(p, col, size = 1) {
+    this.fx.sprite(p, col, size * 0.8, 0.3, { k: 4, grow: 1.2 });
+    for (const a of [0, Math.PI / 2]) this.fx.slash(p, col, { cam: this.camera, size: size * 1.6, angle: a, life: 0.3 });
+  },
+  // 右手の武器を s 倍に（技のあいだだけ。終わったら 1 に戻す）
+  weaponGrow(m, s, dur) {
+    const w = m.extras && m.extras.hold; if (!w) return Promise.resolve();
+    const s0 = w.scale.x;
+    return GFX.tween(dur, k => w.scale.setScalar(lerp(s0, s, k)), s > s0 ? Ease.back : Ease.inOut);
+  },
+  // 削りぶし：うすい花かつおが、ひらひら舞いおちる
+  katsuoFlakes(p, n = 10, { speed = 2.2, size = 0.14 } = {}) {
+    for (let i = 0; i < n; i++) {
+      const mat = new THREE.MeshBasicMaterial({ color: pick(['#f0c0a0', '#e8a888', '#f6d8c0']), transparent: true, side: THREE.DoubleSide, depthWrite: false });
+      const f = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 0.7), mat); f.position.copy(p);
+      const v = V3(Math.random() - 0.5, 0.6 + Math.random() * 0.8, Math.random() - 0.5).normalize().multiplyScalar(speed * (0.5 + Math.random()));
+      const spin = V3(Math.random() * 8, Math.random() * 8, Math.random() * 8);
+      this.fx.add(f, 1.0 + Math.random() * 0.5, (k, o, dt) => {
+        v.y -= 3.2 * dt; v.multiplyScalar(Math.exp(-2.2 * dt));
+        o.position.addScaledVector(v, dt);
+        o.rotation.x += spin.x * dt; o.rotation.y += spin.y * dt; o.rotation.z += spin.z * dt;
+        mat.opacity = k > 0.7 ? (1 - k) / 0.3 : 1;
+      });
+    }
+  },
+  // くるくる回って飛んでいく削りぶし（とどいたら resolve）
+  flyFlake(from, to, delay = 0, dur = 0.24) {
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.3), new THREE.MeshBasicMaterial({ color: '#f0c0a0', side: THREE.DoubleSide }));
+    const spin = 18 + Math.random() * 8, c = hdr('#ffd8a0', 2.5);
+    f.position.copy(from);
+    return GFX.delay(delay).then(() => new Promise(res => this.fx.add(f, dur, (k, o) => {
+      o.position.lerpVectors(from, to, k); o.position.y += Math.sin(k * Math.PI) * 0.35;
+      o.rotation.set(0.6, k * spin, 0.3);
+      this.p.emit(o.position, V3(0, 0, 0), c, { life: 0.25, size: 0.12 });
+      if (k >= 1) res();
+    })));
+  },
+  // けずり節のひとふり：削りぶしを 3 枚飛ばす（右へふったら、次は左へ返す）
+  async flakeShot(e, te, col) {
+    const m = e.model;
+    this.face(e, te.home);
+    Sfx.swing();
+    await this.tweenPose(m, m.pose.twist > 0 ? POSES.strike : POSES.strike2, 0.08);
+    const from = m.tipPos(), to = this.hitPoint(te.u);
+    await Promise.all([-1, 0, 1].map(j => this.flyFlake(from, to.clone().add(V3(j * 0.22, j * j * 0.12, 0)), (j + 1) * 0.04)));
+    this.katsuoFlakes(to, 10, { size: 0.2 });
+    this.fx.slash(to, col, { cam: this.camera, size: 1.3, angle: Math.random() * Math.PI });
+    this.squash(te, 0.1);
+  },
+  // 燃えあがる：炎の帯が敵のまわりを巻いてのぼる
+  flameUp(t, col, s = 1) {
+    const g = t.home.clone().add(V3(0, 0.1, 0)), r = t.model.radius, h = t.model.height, c = hdr(col, 3), c2 = hdr('#ffd76a', 3);
+    for (let i = 0; i < 2; i++) this.fx.swirl(g, col, { r: r * (0.9 + i * 0.3) * s, life: 0.8, tilt: 0, speed: 10 + i * 4, arc: 3.2, width: 0.05, y0: 0.1, y1: h * 0.9 });
+    for (let i = 0; i < 24 * s; i++) {
+      const a = Math.random() * Math.PI * 2, q = Math.random() * r;
+      this.p.emit(V3(g.x + Math.cos(a) * q, 0.1 + Math.random() * h * 0.5, g.z + Math.sin(a) * q), V3(0, 2 + Math.random() * 2, 0), i % 3 ? c : c2, { life: 0.7, size: 0.15 * s });
+    }
+    this.fx.sprite(this.hitPoint(t.u), col, 2 * s, 0.4, { k: 3 });
+  },
+  // ねこじゃらしの穂のわた毛：ふわふわ浮いて流れる
+  fluff(p, n = 20) {
+    const a = hdr('#fffbe8', 1.6), b = hdr('#ffe07a', 1.6);
+    for (let i = 0; i < n; i++) this.p.emit(p.clone().add(V3((Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.4)), V3((Math.random() - 0.5) * 2.5, 0.4 + Math.random() * 1.2, (Math.random() - 0.5) * 1.5), i % 3 ? a : b, { life: 1.4, size: 0.12, drag: 2.5, grav: -0.3 });
+  },
   // 放物線で飛ぶ魚（ファイアボール）
   flyFish(from, to, dur) {
     const g = new THREE.Group(), mat = toon('#4a7ab8');

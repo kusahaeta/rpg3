@@ -61,9 +61,9 @@ const CHARS = {
     gear: { weapon: 'sword', style: 'melee' },
     basic: { name: 'ねこパンチ', elem: 'physical', target: 'single', anim: 'punch', desc: '指定した敵単体に攻撃力100%の物理ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
-    skill: { name: '勇者のつるぎ', elem: 'physical', target: 'blast', desc: '指定した敵単体に攻撃力130%、隣接する敵に攻撃力50%の物理ダメージ。',
+    skill: { name: '勇者のつるぎ', elem: 'physical', target: 'blast', anim: 'hero', desc: '指定した敵単体に攻撃力130%、隣接する敵に攻撃力50%の物理ダメージ。',
       run: (B, s, t) => B.blast(s, t, 1.3, 0.5, 20, 10, 'skill') },
-    ult: { name: '流星ねこぎり', elem: 'fire', target: 'single', desc: '指定した敵単体に攻撃力400%の炎ダメージ。味方全体の攻撃力+15%（2ターン）。',
+    ult: { name: '流星ねこぎり', elem: 'fire', target: 'single', anim: 'meteor', desc: '指定した敵単体に攻撃力400%の炎ダメージ。味方全体の攻撃力+15%（2ターン）。',
       run: async (B, s, t) => {
         const r = await B.single(s, t, 4.0, 30, 'ult', { heavy: true });
         B.aliveAllies().forEach(a => B.buff(a, { key: 'mike_u', name: '勇者の背中', stat: 'atk', value: 0.15, turns: 2 }));

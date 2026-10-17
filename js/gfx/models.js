@@ -32,6 +32,7 @@ const POSES = {
   charge:  { hipsY: -0.2, twist: 0.7, lean: -0.15, headX: 0.1, armRx: -3.0, armRz: -0.5, elbowR: -0.3, armLx: -2.6, armLz: -0.2, elbowL: -0.6, legLx: -0.6, kneeL: 0.8, legRx: 0.5, kneeR: 0.8 },   // 大きく振りかぶってためる
   cleave:  { hipsY: -0.22, twist: -0.1, lean: 0.55, armRx: -0.5, armRz: 0.1, elbowR: 0, armLx: -0.5, armLz: -0.1, elbowL: 0, legLx: -0.8, kneeL: 0.7, legRx: 0.6, kneeR: 0.4 },   // 真上から振りおろす
   spin:    { hipsY: -0.08, lean: 0.1, armRx: -1.4, armRz: -1.2, elbowR: 0, armLx: -0.4, armLz: 1.0, elbowL: -0.3, legLx: -0.4, kneeL: 0.3, legRx: 0.3, kneeR: 0.3 },   // 剣を横に伸ばしてまわる
+  swordUp: { hipsY: -0.08, lean: -0.1, headX: -0.25, armRx: -1.75, armRz: 0.15, elbowR: -0.1, armLx: -1.75, armLz: -0.15, elbowL: -0.1, legLx: -0.45, kneeL: 0.4, legRx: 0.35, kneeR: 0.3 },   // 両手で剣をまっすぐ立てて構える
   raise:   { lean: -0.12, headX: -0.2, armRx: -3.0, armRz: -0.1, elbowR: -0.1, armLx: -0.6, armLz: 0.6, elbowL: -0.5, legLx: -0.3, legRx: 0.2 },   // 杖・笏を高く掲げる
   tailSpin:{ hipsY: -0.1, lean: 0.35, headX: 0.1, armLx: 0.3, armLz: 0.7, elbowL: -0.4, armRx: 0.3, armRz: -0.7, elbowR: -0.4, legLx: -0.5, kneeL: 0.6, legRx: 0.4, kneeR: 0.6 },
   guard:   { hipsY: -0.14, lean: 0.08, armRx: -1.35, armRz: 0.55, elbowR: -0.7, armLx: -1.3, armLz: -0.35, elbowL: -0.7, legLx: -0.55, kneeL: 0.55, legRx: 0.45, kneeR: 0.55 },   // 刀を横に構えて受けとめる
