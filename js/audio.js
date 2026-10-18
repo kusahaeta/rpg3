@@ -295,17 +295,21 @@ const TRACKS = {
     pad: { wave: 'triangle', vol: 0.025 },
     drums: { vol: 0.6, T: 'x...............................' },
   },
-  // 古代遺跡の中：なぞの壁画と、時の水晶
+  // 古代遺跡の中：なぞの壁画と、時の水晶。D の持続音の上で、中東の旋法を笛と弦が重ねて歌う。手太鼓はドゥム・テク
   ruins: {
-    bpm: 84, gain: 0.73, lp: 5000, prog: 'F#m D F#m E Bm D C#sus4,C# F#m D E C#m F#m Bm G C#sus4 C#',
-    lead: { wave: 'sine', vol: 0.24, echo: 0.4, vib: 5, seq: `
-      C#5 - - - F#5 - - G#5 | A5 - - - F#5 - - . | C#5 - - E5 F#5 - C#5 - | B4 - - - - - . . |
-      D5 - - - F#5 - B5 - | A5 - - G#5 F#5 - D5 - | F#5 - - - F5 - - - | F#5 - - - - - . . |
-      F#5 - - - A5 - D6 - | B5 - - - G#5 - E5 - | E5 - - - G#5 - C#6 - | C#6 - - - A5 - - . |
-      B5 - - - F#5 - D5 - | D5 - - - B4 - G4 - | F#4 - - - G#4 - - - | F4 - - - G#4 - - .` },
+    bpm: 96, gain: 0.82, lp: 5000, prog: 'D Eb/D D Cm/D D Eb/D Gm/D D Gm Cm Gm D Eb Cm Eb D',
+    lead: { wave: 'triangle', vol: 0.2, echo: 0.2, vib: 10, seq: `
+      A4 - D5 - Eb5 - F#5 - | G5 - - F#5 Eb5 - - D5 | F#5 - A5 G5 F#5 - Eb5 F#5 | Eb5 D5 Eb5 D5 C5 - - - |
+      D5 - F#5 - A5 - Bb5 A5 | G5 - - F#5 G5 - Bb5 - | Bb5 - - A5 G5 - D5 - | F#5 - Eb5 - D5 - - . |
+      D5 - G5 - Bb5 - A5 Bb5 | C6 - - Bb5 G5 - Eb5 - | G5 - - A5 Bb5 - A5 G5 | A5 - - G5 F#5 - - - |
+      Bb5 - - - G5 - Eb5 - | G5 - - F#5 G5 - C6 - | Bb5 - - A5 G5 - F#5 Eb5 | D5 - - - - - . .` },
+    // 同じ旋律を、1 オクターブ下で弦がなぞる
+    lead2: { from: 'lead', wave: 'sawtooth', env: 'pluck', dec: 0.18, oct: -12, vol: 0.09 },
     bass: { pat: 'r - - - - - - -', wave: 'sine', vol: 0.3 },
-    arp: { pat: '0 . . 2 . . 4 . . 2 . . 3 . . .', env: 'bell', wave: 'sine', oct: 12, vol: 0.03 },
+    // ウードのような刻み
+    arp: { pat: '0 . 0 0 . . 2 . 0 . 0 0 . . 1 .', wave: 'sawtooth', dec: 0.09, oct: -12, vol: 0.07 },
     pad: { vol: 0.03 },
+    drums: { vol: 0.6, t: 'x.......x.......', h: '..x...x.....x.x.' },
   },
   // 樹の地下：しおれた根の奥で、かすかな鼓動
   root: {
