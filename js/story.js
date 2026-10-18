@@ -460,7 +460,7 @@ function ChapterClearScreen(ci, niboshi) {
 // エンディング：Fin
 function EndingScreen() {
   const v3 = GFX.ok ? GFX.show('title', () => new TitleView()) : null;
-  Music.play('hope');
+  Music.stop();   // Fin は曲なしで、静かに
   const s = h(`<div class="screen ending">
     <div class="en-roll">
       <h1>Fin</h1>
