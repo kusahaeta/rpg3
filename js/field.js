@@ -879,7 +879,7 @@ class FieldView extends BaseView {
     const m = buildCharacter(this.team[this.leader].key);
     m.setPose(POSES.idle);
     this.scene.add(m.group);
-    this.player = { m, pos: pos.clone(), y: 0, vy: 0, yaw, phase: 0, speed: 0, dir: V3(Math.sin(yaw), 0, Math.cos(yaw)), atk: 0, hitDone: true };
+    this.player = { m, pos: pos.clone(), y: 0, yaw, phase: 0, speed: 0, dir: V3(Math.sin(yaw), 0, Math.cos(yaw)), atk: 0, hitDone: true };
     this.placePlayer(0);
     this.spawnFollowers();
   }
@@ -958,10 +958,8 @@ class FieldView extends BaseView {
     const bx = p.pos.x, bz = p.pos.z;
     this.moveBody(p.pos, p.dir.x * p.speed * d, p.dir.z * p.speed * d, this.bodyR(), this.moveOpts());
     if (this.zone.sizes) this.sizeHint(len > 0 && !attacking ? Math.hypot(p.pos.x - bx, p.pos.z - bz) / Math.max(1e-4, p.speed * d) : 1, d);
-    p.vy -= 20 * d; p.y = Math.max(0, p.y + p.vy * d);
-    if (p.y === 0) p.vy = Math.max(0, p.vy);
     this.placePlayer(d);
-    if (p.speed > 5.5 && p.y === 0 && Math.random() < d * 20) this.p.emit(p.pos.clone().add(V3(0, 0.1, 0)), V3((Math.random() - 0.5), 0.6, (Math.random() - 0.5)), hdr('#e8dcc8', 0.6), { life: 0.5, size: 0.12 });
+    if (p.speed > 5.5 && Math.random() < d * 20) this.p.emit(p.pos.clone().add(V3(0, 0.1, 0)), V3((Math.random() - 0.5), 0.6, (Math.random() - 0.5)), hdr('#e8dcc8', 0.6), { life: 0.5, size: 0.12 });
     if (attacking) {
       p.atk -= d;
       if (!p.hitDone && p.atk <= 0.29) { p.hitDone = true; this.attackHit(); }
@@ -1023,10 +1021,6 @@ class FieldView extends BaseView {
   animatePlayer(d, sprint) {
     const p = this.player, P = p.m.pose;
     this.walkPose(p, d, sprint);
-    if (p.y > 0.05) {
-      const w = Math.min(1, p.y * 2);
-      for (const k of POSE_KEYS) P[k] = lerp(P[k], POSES.jump[k] || 0, w * 0.7);
-    }
     if (p.doze) for (const k of POSE_KEYS) P[k] = lerp(P[k], POSES.sleep[k] || 0, p.doze);
     // 爪とぎ：前のめりになり、両前足を交互に上下させる
     if (p.scratch > 0) {
@@ -1043,9 +1037,6 @@ class FieldView extends BaseView {
     }
   }
 
-  jump() {
-    if (this.player.y === 0) { this.player.vy = 7; Sfx.click(); }
-  }
   attack() {
     const p = this.player;
     if (this.busy || p.atk > 0) return;
@@ -2035,7 +2026,7 @@ class FieldView extends BaseView {
     setTimeout(() => this.root.querySelector('.fd-wipe').classList.add('on'), delay - 800);
     setTimeout(() => {
       const p = this.player, b = V3(pos[0], 0, pos[1]);
-      p.pos.set(b.x, this.gy(b.x, b.z), b.z); p.vis = null; p.y = 0; p.vy = 0; p.speed = 0; p.doze = 0;
+      p.pos.set(b.x, this.gy(b.x, b.z), b.z); p.vis = null; p.y = 0; p.speed = 0; p.doze = 0;
       p.yaw = Math.atan2(faceTo.x - b.x, faceTo.z - b.z); this.camYaw = p.yaw + Math.PI;
       if (then) then();
       this.placePlayer(0); this.spawnFollowers();
@@ -2227,7 +2218,7 @@ class FieldView extends BaseView {
       if (Math.random() < d * 5) this.p.emit(F.puff.position.clone().add(V3((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 1.2)), V3((Math.random() - 0.5) * 0.6, 0.2, (Math.random() - 0.5) * 0.6), hdr('#ffffff', 1.4), { life: 1.6, size: 0.06, drag: 0.6 });
     }
     if (t < 1) return;
-    this.flight = null; p.y = 0; p.vy = 0; p.speed = 0;
+    this.flight = null; p.y = 0; p.speed = 0;
     this.placePlayer(1);
     if (F.glide) {
       // 綿毛から手をはなすと、綿毛は空へのぼっていく
@@ -2555,7 +2546,6 @@ class FieldView extends BaseView {
       <div class="fd-pad">
         <button class="pad-btn talk" data-pad="talk">調べる</button>
         <button class="pad-btn tech" data-pad="tech">初手技<b class="tp"></b></button>
-        <button class="pad-btn jump" data-pad="jump">ジャンプ</button>
         <button class="pad-btn atk" data-pad="atk">攻撃</button>
       </div>
       <div class="fd-talk hidden"><div class="fd-talk-name"></div><div class="fd-talk-text"></div><div class="fd-talk-next"></div></div>
@@ -2565,7 +2555,7 @@ class FieldView extends BaseView {
       <div class="fd-wipe"></div>
       <div class="fd-flash"></div>
       <div class="fd-nap hidden"></div>
-      <div class="fd-help">WASD 移動 ／ Space ジャンプ ／ ドラッグ 視点 ／ ホイール ズーム ／ F 調べる・話す ／ 1〜4 先頭の子を交代</div>
+      <div class="fd-help">WASD 移動 ／ ドラッグ 視点 ／ ホイール ズーム ／ F 調べる・話す ／ 1〜4 先頭の子を交代</div>
       <div class="overlay hidden"></div>`;
     this.root = r;
     this.map = r.querySelector('.fd-map').getContext('2d');
@@ -2636,7 +2626,6 @@ class FieldView extends BaseView {
       if (a === 'talk') this.interact();
       else if (a === 'atk') this.attack();
       else if (this.busy) return;
-      else if (a === 'jump') this.jump();
       else if (a === 'tech') this.useTechnique();
     }));
     r.querySelector('.fd-prompt').onclick = () => this.interact();
@@ -2751,8 +2740,7 @@ class FieldView extends BaseView {
       return;
     }
     if (!isDown || e.repeat) return;
-    if (k === ' ') { e.preventDefault(); this.jump(); }
-    else if (k === 'j') this.attack();
+    if (k === 'j') this.attack();
     else if (k === 'e') this.useTechnique();
     else if (k === 'f') this.interact();
     else if ('1234'.includes(k) && k.length === 1) this.switchLeader(+k - 1);

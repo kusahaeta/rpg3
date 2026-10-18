@@ -925,7 +925,6 @@ body.touch .fd-prompt { cursor: pointer; padding: 12px 26px; font-size: 20px; }
 .pad-btn:active { transform: scale(.92); border-color: #fff; }
 .pad-btn.atk { right: 40px; bottom: 40px; width: 156px; height: 156px; font-size: 26px; border-color: rgba(255, 180, 160, .7);
   background: radial-gradient(circle, rgba(140, 50, 60, .9), rgba(40, 12, 20, .9)); }
-.pad-btn.jump { right: 214px; bottom: 34px; }
 .pad-btn.tech { right: 190px; bottom: 158px; border-color: rgba(180, 169, 255, .6); }
 .pad-btn.tech b { display: block; font-size: 14px; color: #b4a9ff; }
 .pad-btn.talk { right: 66px; bottom: 214px; opacity: .55; }
