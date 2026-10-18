@@ -235,8 +235,8 @@ const MOVES = {
     async attack(e, ts, c) {
       const t = ts[0], m = e.model, h = e.home;
       this.focus(e); this.face(e, t.home);
-      // 横から少し見上げて：両手で立てた剣が、空へ向かってのびていく
-      this.setCam(V3(h.x + 4.2, 1.0, h.z + 0.9), V3(h.x - 0.2, 1.6, h.z - 0.9), { snap: true });
+      // うしろから少し見上げて：両手で立てた剣が、空へ向かってのびていく
+      this.setCam(V3(h.x + 1.5, 0.8, h.z + 4.4), V3(h.x, 2.0, h.z - 1.0), { snap: true });
       await this.tweenPose(m, POSES.swordUp, 0.25);
       m.flash(c.col, 1);
       const grow = this.weaponGrow(m, 5, 0.7);
@@ -252,11 +252,13 @@ const MOVES = {
       this.fx.sprite(m.tipPos(), c.col, 3, 0.4, { k: 3 });
       GFX.flash(c.col, 0.2, 0.25);
       await GFX.delay(0.2);
-      // 横から：振りおろすと、光の筋が地面を走って敵へとどく
-      const mid = h.clone().lerp(t.home, 0.5);
-      this.setCam(V3(mid.x + 7.5, 2.6, mid.z + 0.6), V3(mid.x, 1.2, mid.z), { snap: true });
+      // 斜めうしろ上から：振りおろす弧と、光の筋が地面を走って敵へとどくのが見えるように
+      this.setCam(V3(h.x + 2.6, 2.2, h.z + 3.6), V3(t.home.x * 0.6 + h.x * 0.4, 0.5, t.home.z * 0.6 + h.z * 0.4), { snap: true });
+      // 切りかわってすぐ振らず、光の剣をかかげたまま少しそって、ためる
+      await this.tweenPose(m, { ...POSES.swordUp, lean: -0.3, hipsY: -0.12 }, 0.4);
+      await GFX.delay(0.12);
       Sfx.swing();
-      await this.sweep(m, POSES.cleave, 0.12, c.col, { n: 8, size: 0.2 });
+      await this.sweep(m, POSES.cleave, 0.38, c.col, { n: 8, size: 0.2, ease: Ease.inOut });
       Sfx.slam(); GFX.shake(0.4);
       const g0 = h.clone().add(V3(0, 0.06, 0)), g1 = t.home.clone().add(V3(0, 0.06, 0));
       this.fx.beam(g0, g1, c.col, { life: 0.6, r: 0.08 });
@@ -1268,14 +1270,14 @@ Object.assign(BattleView.prototype, {
   allyEnt(key) { return [...this.ents.values()].find(x => x.ally && x.u.key === key) || null; },
   // ---------- ミケの技の部品 ----------
   // 剣をふりぬく：ポーズへ寄せながら、切っ先の通り道に光の粒を残す（twist で、ひねりをポーズより大きく）
-  sweep(m, pose, dur, col, { twist = pose.twist || 0, n = 3, size = 0.12 } = {}) {
+  sweep(m, pose, dur, col, { twist = pose.twist || 0, n = 3, size = 0.12, ease = Ease.in } = {}) {
     const from = { ...m.pose }, c = hdr(col, 3);
     return GFX.tween(dur, k => {
       for (const key of POSE_KEYS) m.pose[key] = lerp(from[key], pose[key] || 0, k);
       m.pose.twist = lerp(from.twist, twist, k);
       const tp = m.tipPos();
       for (let i = 0; i < n; i++) this.p.emit(tp, V3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(0.4), c, { life: 0.3, size, drag: 4 });
-    }, Ease.in);
+    }, ease);
   },
   // きらり：十字の光
   glint(p, col, size = 1) {
