@@ -581,29 +581,36 @@ const FOE_MOVES = {
   },
   // 絶望（コドク専用）：コドクの足もとから黒い影が地面に広がり、みんなの足もとをのみこむ
   async tide(e, ts, c) {
-    const h = e.home, U = GFX.grade.uniforms;
+    const h = e.home, U = GFX.grade.uniforms, glow = '#a07bff';
     this.foeFlash(e, c.col);
     if (e.model.critter) this.foePose(e, POSES.open, 0.2);
     const far = Math.max(...ts.map(t => h.distanceTo(t.home))) + 1.2;
-    const pool = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ color: '#0a0612', transparent: true, opacity: 0.85, depthWrite: false }));
-    pool.rotation.x = -Math.PI / 2; pool.position.set(h.x, 0.03, h.z); pool.scale.setScalar(0.01); pool.renderOrder = 2;
-    this.fx.add(pool, 1.9, null);
+    const flat = (geo, mat, y, o) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.set(h.x, y, h.z); m.scale.setScalar(0.01); m.renderOrder = o; this.fx.add(m, 1.9, null); return m; };
+    // 黒い影（ふつうの合成）の上に、加算で光る紫の紋様と、光るふちを重ねる（黒だけだと、何が起きたかわかりにくい）
+    const pool = flat(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ color: '#0a0612', transparent: true, opacity: 0.85, depthWrite: false }), 0.03, 2);
+    const runes = flat(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ color: hdr(glow, 1.8), map: runeTex(), transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }), 0.05, 3);
+    const edge = flat(new THREE.RingGeometry(0.93, 1, 64), new THREE.MeshBasicMaterial({ color: hdr(glow, 3), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }), 0.06, 4);
     GFX.tween(0.3, k => { U.desat.value = 0.4 * k; }, Ease.out, true);
     const reached = new Set();
     await GFX.tween(0.8, k => {
       const r = far * Ease.inOut(k);
-      pool.scale.setScalar(Math.max(0.01, r));
-      // ふちから、闇がゆらゆら立ちのぼる
-      for (let i = 0; i < 3; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.6, p = V3(h.x + Math.cos(a) * r, 0.1, h.z - Math.sin(a) * r); this.p.emit(p, V3(0, 1.2 + Math.random(), 0), hdr(Math.random() < 0.3 ? '#8a6aff' : '#2a1a4a', 1.6), { life: 0.8, size: 0.28, drag: 0.5 }); }
+      pool.scale.setScalar(Math.max(0.01, r)); runes.scale.setScalar(Math.max(0.01, r)); edge.scale.setScalar(Math.max(0.01, r));
+      runes.rotation.z = k * 1.5;
+      // ふちから、光る闇がゆらゆら立ちのぼる
+      for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.8, p = V3(h.x + Math.cos(a) * r, 0.1, h.z - Math.sin(a) * r); this.p.emit(p, V3(0, 1.4 + Math.random() * 1.2, 0), hdr(Math.random() < 0.5 ? glow : '#e0d0ff', 2.6), { life: 0.9, size: 0.26, drag: 0.5 }); }
       for (const t of ts) if (!reached.has(t) && h.distanceTo(t.home) < r) {
-        reached.add(t); t.model.flash('#2a2238', 1.5); this.squash(t, 0.3);
-        for (let i = 0; i < 10; i++) this.p.emit(t.home.clone().add(V3((Math.random() - 0.5) * 0.7, 0.1, (Math.random() - 0.5) * 0.5)), V3(0, 1.5 + Math.random(), 0), hdr(c.col, 1.6), { life: 0.7, size: 0.2 });
+        reached.add(t); t.model.flash(glow, 1.4); this.squash(t, 0.3);
+        // のみこまれた子の足もとから、紫の光の柱
+        this.fx.pillar(t.home, glow, { h: 3.2, r: 0.5, life: 0.7, k: 1.2 });
+        this.fx.ring(t.home.clone().add(V3(0, 0.07, 0)), glow, { r: 1.1, life: 0.5, width: 0.15, k: 2.5 });
+        for (let i = 0; i < 14; i++) this.p.emit(t.home.clone().add(V3((Math.random() - 0.5) * 0.7, 0.1, (Math.random() - 0.5) * 0.5)), V3(0, 1.8 + Math.random() * 1.2, 0), hdr(glow, 2.6), { life: 0.8, size: 0.18 });
       }
     }, Ease.linear);
-    await GFX.delay(0.35);
+    // しばらく、紋様が脈うつ
+    await GFX.tween(0.35, k => { runes.rotation.z = 1.5 + k * 0.6; runes.material.opacity = 0.7 + Math.sin(k * Math.PI * 3) * 0.25; });
     GFX.tween(0.4, k => { U.desat.value = 0.4 * (1 - k); }, Ease.out, true);
-    await GFX.tween(0.4, k => { pool.material.opacity = 0.85 * (1 - k); });
-    pool.visible = false;
+    await GFX.tween(0.4, k => { pool.material.opacity = 0.85 * (1 - k); runes.material.opacity = 0.7 * (1 - k); edge.material.opacity = 1 - k; });
+    pool.visible = runes.visible = edge.visible = false;
   },
 
   // ---------- ボスがためて撃つ大技 ----------
