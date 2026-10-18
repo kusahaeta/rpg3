@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.application'
+}
+
+// ゲーム本体（リポジトリ直下の Web 版）を、ビルドのたびに APK の assets/web へ写す
+def webDir = layout.buildDirectory.dir('generated/web')
+def copyWeb = tasks.register('copyWeb', Sync) {
+    from(rootProject.file('..')) {
+        include 'index.html', 'manifest.webmanifest', 'css/**', 'js/**', 'vendor/**'
+    }
+    into webDir.map { it.dir('web') }
+}
+preBuild.dependsOn copyWeb
+
+android {
+    namespace 'com.kusahaeta.nyanko'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.kusahaeta.nyanko'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    sourceSets {
+        main.assets.srcDirs += webDir.get().asFile
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

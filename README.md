@@ -15,6 +15,16 @@ node .claude/serve.js
 
 セーブデータはブラウザの localStorage（`nyanko_fantasy_v1`）に保存されます。探索のメニュー（Esc）の「データを初期化」でリセットできます。
 
+### Android アプリ
+
+`android/` は、このフォルダの Web 版をそのまま WebView で包んだアプリ（サーバー不要・ネットワーク権限なし）。ビルドのたびに `index.html`・`css/`・`js/`・`vendor/` を APK の中へ写すので、ゲーム側の変更はビルドし直すだけで入ります。
+
+```bash
+cd android && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew assembleDebug
+```
+
+→ `android/app/build/outputs/apk/debug/app-debug.apk`（`adb install -r` で入れる）。横画面固定・全画面・画面スリープなし。裏に回すと BGM を止め、戻るキーではゲームを終わらせず裏に回すだけ。セーブはアプリ内の localStorage に残ります。デバッグ版は Chrome の `chrome://inspect` から中身を調べられます。
+
 ## 遊べる範囲
 
 第一章〜第二章は、通しで遊べることを確認済みです（会話 → フィールドの目的地 → 戦闘 → 章クリア）。
