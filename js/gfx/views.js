@@ -308,12 +308,14 @@ class BattleView extends BaseView {
     });
   }
   // カメラから点 p までの視線をさえぎる地形・大きな小物のうち、いちばん奥のものの深さ（なければ 0）
+  //   戦闘のあいだ自動扉は閉じたままなので、扉のマス（D）は床から上の壁まで、まるごと視線をさえぎる
   blockDepth(cam, p, fwd) {
     const T = this.set.pv.T, cols = this.set.pv.colliders || [], d = V3().subVectors(p, cam), len = d.length();
     const q = V3(), l = V3(); let deep = 0;
+    const shut = (x, z) => { const i = T.at(x, z); return i >= 0 && T.kind[i] === TK.DOOR; };
     for (let s = 0.25; s < len - 0.3; s += 0.3) {
       q.copy(cam).addScaledVector(d, s / len); l.copy(q).applyMatrix4(this.toSet);
-      const hit = (T && T.blocksView(l.x, l.y, l.z)) || cols.some(c => (c.box || c.r > 0.5) && (c.top == null || l.y - (c.y || 0) < c.top + 0.2) && this.hitsCol(c, l.x, l.z, 0.1, null));
+      const hit = (T && (T.blocksView(l.x, l.y, l.z) || shut(l.x, l.z))) || cols.some(c => (c.box || c.r > 0.5) && (c.top == null || l.y - (c.y || 0) < c.top + 0.2) && this.hitsCol(c, l.x, l.z, 0.1, null));
       if (hit) deep = V3().subVectors(q, cam).dot(fwd);
     }
     return deep;
