@@ -4464,7 +4464,10 @@ class ZoneKit {
     }
     // 昔の猫たちの面影：昔のあいだだけ、壁画の前や水晶のそばに、昔の猫たち（2頭身の猫のモデル）が、琥珀色に透けて立っている
     const ghostMats = [], ghostDepthM = new THREE.MeshBasicMaterial({ colorWrite: false, transparent: true });
+    //   戦闘の背景（v.arena）では、戦場の中の面影は作らない（小部屋のまん中に立って、敵を隠してしまう）
+    const A = this.v.arena;
     if (typeof buildCat === 'function') (S.ghosts || []).forEach(([x, z, ry, lines], i) => {
+      if (A && Math.hypot(x - A.x, z - A.z) < A.r) return;
       const m = buildCat(null, { def: { color: ELEMENTS.imaginary.color, look: ANCIENT_CAT_LOOKS[i % ANCIENT_CAT_LOOKS.length] } });
       if (m.setPose && typeof POSES !== 'undefined') m.setPose(POSES.idle);
       if (m.face) m.face.set('gentle');

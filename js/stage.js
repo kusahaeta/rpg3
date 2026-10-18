@@ -1114,7 +1114,9 @@ function buildBattleSet(view, loc) {
   const pv = Object.create(view);
   Object.assign(pv, { scene: root, p: lp });
   const flags = typeof loc.flags === 'function' ? loc.flags() : loc.flags;
-  buildZoneSet(pv, loc.zone, { flags, reserved: [{ x: cx, z: cz, r: 9 }], light: view });
+  // arena：戦場の範囲（戦場の中に立つ飾り、昔の猫の面影などは作らない）
+  const arena = { x: cx, z: cz, r: 9 };
+  buildZoneSet(pv, loc.zone, { flags, reserved: [arena], arena, light: view });
   const h = pv.T ? pv.T.groundAt(cx, cz) : 0, a = loc.face * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
   root.rotation.y = a;
   root.position.set(-(cx * c + cz * s), -h, -(-cx * s + cz * c));

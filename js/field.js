@@ -3142,7 +3142,7 @@ class FieldView extends BaseView {
 function buildZoneSet(v, zoneId, o = {}) {
   const Z = FIELD_ZONES[zoneId];
   Object.assign(v, { zone: Z, zoneId, ci: Z.ci, ch: CHAPTERS[Z.ci], rand: seeded(hashStr(zoneId)), hw: Z.w / 2, hd: Z.d / 2,
-    colliders: [], reserved: o.reserved || [], zoneTicks: [], emitters: [], safe: [], town: !!Z.town, flags: o.flags || {}, hooks: v.hooks || {} });
+    colliders: [], reserved: o.reserved || [], arena: o.arena || null, zoneTicks: [], emitters: [], safe: [], town: !!Z.town, flags: o.flags || {}, hooks: v.hooks || {} });
   v.T = Z.map ? new Terrain(Z) : null;
   if (v.T) {
     interiorLighting(o.light || v, Z);
