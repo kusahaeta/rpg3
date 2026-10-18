@@ -1182,6 +1182,7 @@ const STORY = [
   // clearSet：章のおしまいの画面の背景（SceneryView の loc）。区画のその場所を中心に、face の向きを見る。
   //   radius・height・lookY で、まわりを回るカメラ。cam：{ pos, look, fov } で決めたカメラ（会話の舞台の shots と同じ向き）。
   //   full：区画をまるごと組み立てる（軽い戦闘用の背景を使わない）。fog：もやの倍率。bloom：光のにじみ。flags：区画の組み立ての印
+  // clearBgm：章のおしまいの画面の曲（なければ hope）
   // 第一章：ぽかぽか村の井戸の広場から、南の大きな木のほうを見る
   { title: '第一章　勇者、拾われる', clearSet: { zone: 'pokapoka', at: [0, 4], face: 180, radius: 12, height: 4.5, lookY: 4 }, steps: [
     { t: 'scene', id: 'c1_01', g: '魚どろぼう' },
@@ -1266,7 +1267,7 @@ const STORY = [
     { t: 'reward', niboshi: 800, g: '第六章 おしまい' },
   ] },
   // 第七章：樹の心臓の間（根のゆりかごの、光る心臓）
-  { title: '第七章　最後のにゃんこ', clearSet: { zone: 'tree_under_3', at: [0, 2], face: 180, cam: { pos: [3.5, 2.6, -7], look: [2.2, 0.8, 5] } }, steps: [
+  { title: '第七章　最後のにゃんこ', clearBgm: 'root', clearSet: { zone: 'tree_under_3', at: [0, 2], face: 180, cam: { pos: [3.5, 2.6, -7], look: [2.2, 0.8, 5] } }, steps: [
     { t: 'field', zone: 'tree_root', at: [0, -20], start: ['tree_root', 0, -38], near: ['tree_root', 'tree_under', 'forest_deep'], scene: 'c7_01', g: 'にゃんだーの樹の根もとへ' },
     { t: 'field', zone: 'tree_root', at: [0, 33], scene: 'c7_01b', clear: '7-1', g: '根もとの南、根のトンネルの奥の扉へ' },
     { t: 'field', zone: 'tree_under', at: [0, -45], scene: 'c7_02', battle: '7-2', g: '封印の扉の奥、樹の地下へ' },

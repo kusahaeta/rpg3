@@ -452,7 +452,7 @@ function ChapterClearScreen(ci, niboshi) {
     <div class="res-info">${niboshi ? `<div class="rw"><i class="ic-jade"></i>章のごほうび　にぼし +${niboshi}</div>` : ''}
     ${nx && !nx.hidden ? `<div class="dim">次のお話「${nx.title}」</div>` : ''}</div>
     <button class="btn gold" data-ok>${nx && !nx.hidden ? '次のお話へ' : '冒険にもどる'}</button></div></div>`);
-  Save.save(); Sfx.win(); Music.play('hope');
+  Save.save(); Sfx.win(); Music.play(ch.clearBgm || 'hope');
   s.querySelector('[data-ok]').onclick = () => { Sfx.click(); nx && !nx.hidden ? Story.run() : App.go(FieldScreen); };
   return s;
 }
