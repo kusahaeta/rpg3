@@ -69,7 +69,9 @@ const CHARS = {
         B.aliveAllies().forEach(a => B.buff(a, { key: 'mike_u', name: '勇者の背中', stat: 'atk', value: 0.15, turns: 2 }));
         return r;
       } },
-    talent: { name: '食いしん坊', desc: '戦闘中1回、HPが40%を下回ると隠しておいた焼き魚を食べ、HPを30%回復。第七章からは、仲間の数だけ与ダメージ+5%。',
+    // 第七章で「勇者」になると、とくせいに力が加わる
+    talent: { name: '食いしん坊',
+      get desc() { return '戦闘中1回、HPが40%を下回ると隠しておいた焼き魚を食べ、HPを30%回復。' + (flag('mikeHero') ? '仲間の数だけ与ダメージ+5%。' : ''); },
       onAllyHit(B, s, a) {
         if (a !== s || !s.alive || s.flags.ate || s.hp / s.maxHp >= 0.4) return;
         s.flags.ate = true; B.float(s, 'もぐもぐ', 'info'); B.heal(s, s, s.maxHp * 0.3);
@@ -171,7 +173,9 @@ const CHARS = {
         B.aliveEnemies().forEach(e => B.dot(s, e, { type: 'burn', mult: 0.4, turns: 2, chance: 1 }));
         return r;
       } },
-    talent: { name: 'プライド', desc: '敵を倒すと与ダメージ+10%（最大3層）。第七章からは、魔法の失敗が「成功のもと」になり追撃する。',
+    // 第七章で失敗を受け入れると、とくせいに力が加わる
+    talent: { name: 'プライド',
+      get desc() { return '敵を倒すと与ダメージ+10%（最大3層）。' + (flag('shiroGrow') ? '魔法の失敗が「成功のもと」になり追撃する。' : ''); },
       onKill(B, s) { B.buff(s, { key: 'shiro_t', name: 'プライド', stat: 'dmg', value: 0.1, turns: Infinity, max: 3 }); } },
     technique: { name: 'ヒール', desc: '戦闘開始時、味方全体のHPを15%回復する。（シロの毛が爆発する）',
       run: (B, s) => { B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.15)); B.float(s, '毛が爆発した！', 'info'); } },
