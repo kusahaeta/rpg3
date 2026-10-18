@@ -23,7 +23,6 @@ function topBar(title, back = true) {
     <div class="tb-title">${title}</div>
     <div class="currency">
       <span class="c-item" title="にぼし（お金）"><i class="ic-jade"></i>${fmt(d.niboshi)}</span>
-      <span class="c-item" title="初手技ポイント（初手技に使う）"><i class="ic-tp"></i>${d.tp}/5</span>
     </div></div>`;
 }
 function wireBack(node, fn = () => App.go(FieldScreen)) { const b = node.querySelector('[data-back]'); if (b) b.onclick = () => { Sfx.click(); fn(); }; }
@@ -91,7 +90,6 @@ function battleTeam(st) {
 }
 // after(res)：戦いを終えたあと（負けて「もどる」を選んだときも）
 function startStage(ci, st, techs, after) {
-  Save.data.tp -= techs.length; Save.save();
   const first = !Save.data.cleared[st.id];
   const b = new Battle({
     team: battleTeam(st).map(carried), techs, bg: CHAPTERS[ci].bg, canRetry: true, loc: st.id, final: st.final || null,

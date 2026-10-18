@@ -8,7 +8,7 @@ const Save = {
   data: null,
   defaults() {
     return {
-      niboshi: 300, tp: 3,
+      niboshi: 300,
       owned: { mike: { lv: 1, exp: 0, eid: 0 } },
       team: ['mike'],
       cleared: {},
@@ -20,7 +20,7 @@ const Save = {
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       weapons: {},        // 持っている武器と強化段階（はじめの武器は持っていなくても使える。js/weapons.js）
       equip: {},          // にゃんこごとに装備している武器
-      auto: false, speed: 1, ver: 11,
+      auto: false, speed: 1, ver: 12,
       eco: null,          // 省エネ（30fps）。null はおまかせ（スマホなら省エネ）
       hp: {},             // HP の割合（にゃんこごと）。探索・物語の戦闘で引きつぐ（carried）
       energy: {},         // 奥義ゲージ（にゃんこごと）。ないときは戦闘のはじめの量
@@ -112,6 +112,11 @@ const Save = {
     if (ver < 11) {
       if (d.story && d.story.ch === 2 && d.story.step >= 5) d.story.step += 1;
       d.ver = 11;
+    }
+    // ver 12：初手技ポイントをやめた。爪とぎの丸太で爪を研ぐと、その場で初手技が準備される
+    if (ver < 12) {
+      delete d.tp;
+      d.ver = 12;
     }
   },
   load() {

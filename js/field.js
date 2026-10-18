@@ -1,7 +1,7 @@
 'use strict';
 // ============================================================
 //  フィールド探索（3D）— 章ごとに複数の区画がゲートでつながる
-//  WASD 移動／ドラッグで視点／クリック・J で攻撃（先制）／E 初手技／F 調べる・話す／M ワールドマップ
+//  WASD 移動／ドラッグで視点／クリック・J で攻撃（先制）／F 調べる・話す（爪とぎの丸太で初手技を準備）／M ワールドマップ
 //  仲間は先頭の子のうしろを一列になってついてくる
 // ============================================================
 function seeded(seed) {
@@ -339,7 +339,7 @@ class FieldView extends BaseView {
       this.chests.push({ id: i, pos: V3(p.x, y, p.z), opened: done, ...c });
       this.reserved.push({ x: p.x, z: p.z, r: 2 });
     }
-    // 爪とぎの丸太（爪を研ぐと初手技ポイントが回復。使ったあとは爪あとが残る）
+    // 爪とぎの丸太（爪を研ぐと先頭の子の初手技が準備される。使ったあとは爪あとが残る）
     const broken = this.s.set(this.s.broken, this.zoneId);
     this.crystals = [];
     for (let i = 0; i < Z.crystals; i++) {
@@ -1076,10 +1076,11 @@ class FieldView extends BaseView {
       if (dist < (o.R.r || 1.6) + 1.6 && to.normalize().dot(fwd) > 0.2) { if (o.R.look === 'jackbox') this.pokeJackbox(o); else this.breakRubble(o); }
     }
   }
-  // 爪を研ぐ：先頭の子が丸太のほうを向き、前足でカリカリ。爪あとが残り、初手技ポイント +1（満タンなら研がない）
+  // 爪を研ぐ：先頭の子が丸太のほうを向き、前足でカリカリ。爪あとが残り、その子の初手技が準備される（次の戦闘のはじめに発動。準備ずみなら研がない）
   scratch(c) {
     if (this.busy) return;
-    if (Save.data.tp >= 5) { this.toast('爪はもう、じゅうぶんとがっている（初手技ポイントは満タン）'); return; }
+    const key = this.team[this.leader].key, ch = CHARS[key];
+    if (this.techs.has(key)) { this.toast(`${ch.name}の初手技はもう準備できている（ほかの子に替えると研げる）`); return; }
     const p = this.player, grip = p.m.armR && p.m.armR.grip, off = p.m.extras && p.m.extras.offhand;   // off：左手の武器（双子の小太刀）
     // 丸太のすぐ前へ寄り、持ち物はしまう
     const away = V3(p.pos.x - c.pos.x, 0, p.pos.z - c.pos.z); if (away.lengthSq() < 1e-4) away.set(0, 0, 1);
@@ -1092,27 +1093,19 @@ class FieldView extends BaseView {
       c.broken = true; this.s.set(this.s.broken, this.zoneId).add(c.id);
       c.setUsed(Math.atan2(p.pos.x - c.pos.x, p.pos.z - c.pos.z));
       this.p.burst(c.pos.clone().add(V3(0, 0.55, 0)), '#d8b07a', 16, { speed: 2, up: 0.6, life: 0.5, size: 0.06 });
-      Sfx.meow(this.team[this.leader].key);
-      Save.data.tp++; Save.save(); this.toast('バリバリッ！　爪がとがった。初手技ポイント +1');
-      this.renderHud(); this.busy = false;
+      Sfx.meow(key);
       if (grip) grip.visible = true; if (off) off.visible = true;
+      // 爪がとがったら、その場で初手技が整う
+      this.techs.add(key);
+      const col = ch.color, pos = p.pos;
+      this.fx.pillar(pos, col, { h: 3.5, r: 0.5, life: 0.7, k: 1.5 });
+      this.fx.ring(pos.clone().add(V3(0, 0.05, 0)), col, { r: 2, life: 0.6 });
+      this.p.burst(pos.clone().add(V3(0, 0.6, 0)), col, 50, { speed: 4, life: 0.8, up: 0.8 });
+      p.m.flash(col, 0.8);
+      Sfx.ult();
+      this.toast(`バリバリッ！　初手技「${ch.technique.name}」：次の戦闘開始時に発動`);
+      this.renderTeam(); this.busy = false;
     }, 900);
-  }
-  useTechnique() {
-    if (this.busy) return;
-    const key = this.team[this.leader].key, c = CHARS[key];
-    if (this.techs.has(key)) { this.toast(`${c.name}の初手技はすでに準備済みです`); return; }
-    if (Save.data.tp < 1) { this.toast('初手技ポイントが足りません（爪とぎの丸太で爪を研ぐと回復）'); return; }
-    Save.data.tp--; Save.save();
-    this.techs.add(key);
-    const col = c.color, pos = this.player.pos;
-    this.fx.pillar(pos, col, { h: 3.5, r: 0.5, life: 0.7, k: 1.5 });
-    this.fx.ring(pos.clone().add(V3(0, 0.05, 0)), col, { r: 2, life: 0.6 });
-    this.p.burst(pos.clone().add(V3(0, 0.6, 0)), col, 50, { speed: 4, life: 0.8, up: 0.8 });
-    this.player.m.flash(col, 0.8);
-    Sfx.ult();
-    this.toast(`初手技「${c.technique.name}」：次の戦闘開始時に発動`);
-    this.renderHud(); this.renderTeam();
   }
 
   // ============================================================
@@ -1245,7 +1238,7 @@ class FieldView extends BaseView {
     } else if (it.type === 'nap') {
       this.startTalk(it.n.name || speakerName(it.n.key), it.n.talk || ['……すぴー……']);
     } else if (it.type === 'post') {
-      if (it.c.broken) this.startTalk('爪とぎの丸太', ['縄に、くっきりと爪あとが残っている。……ここではもう、研いだばかりだ。', '爪とぎの丸太で爪を研ぐと、初手技ポイントが1回復する（最大5）。初手技ポイントを使うと、E で先頭の子の初手技を準備できる。次の戦闘のはじめに発動する。'], null, true);
+      if (it.c.broken) this.startTalk('爪とぎの丸太', ['縄に、くっきりと爪あとが残っている。……ここではもう、研いだばかりだ。', '爪とぎの丸太で爪を研ぐと、先頭の子の初手技が準備される。次の戦闘のはじめに発動する。'], null, true);
       else this.scratch(it.c);
     } else if (it.type === 'chest') {
       const c = it.c; c.opened = true;
@@ -2547,7 +2540,6 @@ class FieldView extends BaseView {
       <div class="fd-team"></div>
       <div class="fd-actions">
         <div class="fd-act"><kbd>クリック / J</kbd>攻撃・先制</div>
-        <div class="fd-act tech"><kbd>E</kbd>初手技 <b class="tp"></b></div>
         <div class="fd-act"><kbd>Shift</kbd>ダッシュ</div>
         <div class="fd-act"><kbd>M</kbd>ワールドマップ</div>
       </div>
@@ -2555,7 +2547,6 @@ class FieldView extends BaseView {
       <div class="fd-stick hidden"><i></i></div>
       <div class="fd-pad">
         <button class="pad-btn talk" data-pad="talk">調べる</button>
-        <button class="pad-btn tech" data-pad="tech">初手技<b class="tp"></b></button>
         <button class="pad-btn atk" data-pad="atk">攻撃</button>
       </div>
       <div class="fd-talk hidden"><div class="fd-talk-name"></div><div class="fd-talk-text"></div><div class="fd-talk-next"></div></div>
@@ -2636,8 +2627,6 @@ class FieldView extends BaseView {
       const a = b.dataset.pad;
       if (a === 'talk') this.interact();
       else if (a === 'atk') this.attack();
-      else if (this.busy) return;
-      else if (a === 'tech') this.useTechnique();
     }));
     r.querySelector('.fd-prompt').onclick = () => this.interact();
     // メニュー・あらすじ・お店などの上では、ホイールは中の一覧のスクロールに使う
@@ -2652,8 +2641,7 @@ class FieldView extends BaseView {
   renderHud() {
     const d = Save.data;
     this.root.querySelector('.currency').innerHTML =
-      `<span class="c-item" title="にぼし"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><span class="c-item" title="初手技ポイント"><i class="ic-tp"></i>${d.tp}/5</span>`;
-    this.root.querySelectorAll('.fd-act.tech .tp, .pad-btn.tech .tp').forEach(x => { x.textContent = `${d.tp}/5`; });
+      `<span class="c-item" title="にぼし"><i class="ic-jade"></i>${fmt(d.niboshi)}</span>`;
   }
   renderTeam() {
     const el = this.root.querySelector('.fd-team');
@@ -2751,7 +2739,6 @@ class FieldView extends BaseView {
     }
     if (!isDown || e.repeat) return;
     if (k === 'j') this.attack();
-    else if (k === 'e') this.useTechnique();
     else if (k === 'f') this.interact();
     else if ('1234'.includes(k) && k.length === 1) this.switchLeader(+k - 1);
   }
