@@ -367,9 +367,9 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .ab-btn .k { position: absolute; top: -4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; background: #000; border: 1px solid var(--line); font-size: 12px; line-height: 22px; font-weight: 800; }
 .ab-btn .ab-el { position: absolute; top: -4px; left: 4px; display: flex; gap: 2px; }
 .ab-btn .l { font-size: 11px; margin-top: 6px; padding: 0 8px; text-align: center; line-height: 1.3; }
-.ult-hint { display: none; text-align: right; font-size: 13px; color: var(--gold); padding: 8px 0; }
+.ult-hint { display: none; gap: 14px; justify-content: flex-end; }
 .panel.ultmode .ab-btns, .panel.ultmode .sp { display: none; }
-.panel.ultmode .ult-hint { display: block; }
+.panel.ultmode .ult-hint { display: flex; }
 .panel.ultmode .ab-info { border-left-color: #ffcf4d; box-shadow: 0 0 20px rgba(255, 207, 77, .3); }
 .help { position: absolute; bottom: 3px; left: 110px; font-size: 10px; color: rgba(255, 255, 255, .35); }
 
@@ -929,8 +929,9 @@ body.touch .fd-prompt { cursor: pointer; padding: 12px 26px; font-size: 20px; }
 
 /* 戦闘：キーの説明を消して、必殺技のキャンセルをボタンで */
 body.touch .battle .help, body.touch .ab-btn .k, body.touch .bond-btn .k, body.touch .ult-key { display: none; }
-.ult-go { margin-left: 14px; padding: 0 16px; border-color: var(--gold); color: var(--gold); }
-.ult-cancel { margin-left: 8px; }
+.ab-btn .k.wide { width: auto; padding: 0 7px; border-radius: 12px; }
+.ab-btn.ult-go { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 0 3px rgba(232, 199, 122, .35), 0 0 24px rgba(232, 199, 122, .5); }
+.ab-btn.ult-go:hover { border-color: #fff; }
 
 /* 診断表示（?debug のときだけ） */
 #diag { position: fixed; left: 4px; top: 4px; z-index: 200; pointer-events: none; white-space: pre; font: 11px/1.35 ui-monospace, Menlo, monospace;
