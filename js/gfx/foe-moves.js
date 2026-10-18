@@ -536,7 +536,50 @@ const FOE_MOVES = {
     threads.forEach(th => { this.p.burst(th.mid, '#5a3a8a', 10, { speed: 2, life: 0.5, size: 0.08 }); th.hide(); });
     for (const t of order) this.foeKnock(t, V3(0, 0, 1), 0.15);
   },
-  // 絶望：コドクの足もとから黒い影が地面に広がり、みんなの足もとをのみこむ
+  // からっぽの渦（虚ろ）：みんなの前に闇の渦ができ、みんなを吸い寄せてから、はじける
+  async vortex(e, ts, c) {
+    this.foeFlash(e, c.col);
+    const xs = ts.map(t => t.home.x), cen = V3((Math.min(...xs) + Math.max(...xs)) / 2, 0.7, ts[0].home.z - 1.3);
+    for (let i = 0; i < 4; i++) this.fx.swirl(cen.clone().setY(0.1 + i * 0.12), i % 2 ? '#e8e0ff' : c.col, { r: 0.6 + i * 0.5, life: 1.1, tilt: 0, speed: -10 - i * 2, arc: 4, width: 0.04, k: i % 2 ? 1.2 : 2 });
+    const hole = this.darkBall(0.45); hole.position.copy(cen);
+    await GFX.tween(0.25, k => { hole.scale.setScalar(Math.max(0.01, Ease.back(k))); });
+    // 闇の粒がうずを巻いて吸いこまれ、みんなも渦のほうへ引きずられる
+    const pulled = ts.map(t => ({ t, g: t.model.group }));
+    let ang = 0;
+    await GFX.tween(0.7, k => {
+      ang += 0.35;
+      for (let i = 0; i < 3; i++) { const a = ang + i * 2.1, r = 3.2, p = cen.clone().add(V3(Math.cos(a) * r, (Math.random() - 0.5) * 0.8, Math.sin(a) * r * 0.6)); this.p.emit(p, cen.clone().sub(p).multiplyScalar(2.2).add(V3(-Math.sin(a) * 2, 0, Math.cos(a) * 1.2)), hdr(c.col, 2), { life: 0.45, size: 0.14, drag: 0 }); }
+      for (const { t, g } of pulled) { g.position.lerpVectors(t.home, V3(cen.x, 0, cen.z), 0.28 * Ease.in(k)); g.rotation.z = Math.sin(k * 30) * 0.06 * k; }
+      hole.scale.setScalar(1 + k * 0.5);
+    }, Ease.linear);
+    // ぱちん
+    hole.visible = false;
+    this.fx.ring(cen, c.col, { r: 3.5, life: 0.5, face: this.camera.position, width: 0.15, k: 2 });
+    this.p.burst(cen, c.col, 40, { speed: 6, life: 0.5, size: 0.14 });
+    GFX.shake(0.2);
+    for (const { t, g } of pulled) { g.position.copy(t.home); g.rotation.z = 0; this.foeKnock(t, t.home.clone().sub(cen).setY(0).normalize(), 0.35); t.model.flash('#2a2238', 1.2); }
+    await GFX.delay(0.15);
+  },
+  // 影の爪あと（コドクの獣）：みんなの前へとびかかって、大きな影の爪で、横一列をまとめて引っかく
+  async rake(e, ts, c) {
+    const order = [...ts].sort((a, b) => a.home.x - b.home.x), mid = order[Math.floor((order.length - 1) / 2)];
+    await this.foeLunge(e, mid, { back: 1.3, dur: 0.3 });
+    const g = e.model.group, z = mid.home.z;
+    await GFX.tween(0.12, k => { g.rotation.x = -0.25 * k; g.position.y = k * 0.3; });
+    const xs = order.map(t => t.home.x), x0 = Math.min(...xs) - 0.8, x1 = Math.max(...xs) + 0.8, w = x1 - x0;
+    // 三本の大きな爪あとが、左から右へ走る（細い斬撃をつないで長くする）
+    for (let n = 0; n < 3; n++) {
+      const y = 0.95 - n * 0.28;
+      for (let i = 0; i < 4; i++) GFX.delay(n * 0.05 + i * 0.04).then(() => this.fx.slash(V3(x0 + (i + 0.5) / 4 * w, y + (i - 1.5) * -0.06, z + 0.1), c.col, { cam: this.camera, size: w / 3, angle: 0.12, life: 0.4 }));
+    }
+    Sfx.swing();
+    await GFX.tween(0.15, k => { g.rotation.x = -0.25 + 0.5 * k; g.position.y = 0.3 * (1 - k); });
+    order.forEach((t, i) => GFX.delay(i * 0.04).then(() => { this.foeKnock(t, V3(0, 0, 1), 0.3); t.model.flash(c.col, 1); this.p.burst(this.hitPoint(t.u), c.col, 12, { speed: 3, life: 0.4, size: 0.1 }); }));
+    GFX.shake(0.2);
+    g.rotation.x = 0;
+    await GFX.delay(0.2);
+  },
+  // 絶望（コドク専用）：コドクの足もとから黒い影が地面に広がり、みんなの足もとをのみこむ
   async tide(e, ts, c) {
     const h = e.home, U = GFX.grade.uniforms;
     this.foeFlash(e, c.col);

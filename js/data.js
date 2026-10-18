@@ -367,6 +367,9 @@ const ENEMY_MOVES = {
   // コドク：仲間を引き離す
   isolate: { name: '孤独', anim: 'sever', elem: 'quantum',           type: 'single', mult: 1.0, eff: { kind: 'isolate', chance: 1 } },
   despair: { name: '絶望', anim: 'tide', elem: 'quantum',           type: 'aoe',    mult: 0.9 },
+  // コドクの手下の全体技（絶望はコドク専用）
+  voidSwirl: { name: 'からっぽの渦', anim: 'vortex', elem: 'quantum', type: 'aoe', mult: 0.9 },
+  shadowRake: { name: '影の爪あと', anim: 'rake', elem: 'quantum', type: 'aoe', mult: 0.9 },
   doubt:   { name: '疑心', anim: 'crack', elem: 'quantum',           type: 'aoe',    mult: 0.6, eff: { kind: 'bondDrain', chance: 1, value: 20 } },
   erase:   { name: '思い出消去', anim: 'shatter', elem: 'quantum',     type: 'single', mult: 1.2, eff: { kind: 'energy', chance: 1, value: 40 } },
   kodokuCharge: { name: 'すべての声が遠ざかっていく…', type: 'charge', next: 'kodokuNova' },
@@ -449,11 +452,11 @@ const ENEMIES = {
     turn: { at: 0.5, name: 'ぬいぐるみの守り', cry: '魔王マオウ「ぬいぐるみたちよ……余のそばにいろ！」', summon: ['nuigurumi', 2], guard: 0.5, until: 'summon', end: ['守りが消えた！', '「……みんな、いなくなった……」'] }, summon: 'mazoku', moves: [['darkPaw', 2], ['darkWave', 2], ['maouCharge', 1], ['summon', 1]] },
   // 第七章：にゃんだーの樹の根
   kakera:   { name: 'コドクのかけら', shape: 'shard',    color: '#5a4a8a', hp: 6200, atk: 1500, spd: 110, tough: 40, weak: ['imaginary', 'fire', 'lightning'], moves: [['hollow', 2], ['strike', 1]] },
-  utsuro:   { name: '虚ろ',           shape: 'void',     color: '#3a2a5a', elite: true, hp: 22000, atk: 1600, spd: 100, tough: 110, eres: 0.25, weak: ['imaginary', 'lightning', 'physical'], moves: [['hollow', 2], ['despair', 1], ['cleave', 1]] },
+  utsuro:   { name: '虚ろ',           shape: 'void',     color: '#3a2a5a', elite: true, hp: 22000, atk: 1600, spd: 100, tough: 110, eres: 0.25, weak: ['imaginary', 'lightning', 'physical'], moves: [['hollow', 2], ['voidSwirl', 1], ['cleave', 1]] },
   kodoku_kage: { name: 'コドクの影',  shape: 'kodoku',   color: '#2a1a4a', boss: true, hp: 100000, atk: 1700, spd: 105, tough: 200, eres: 0.35, weak: ['imaginary', 'fire', 'physical'],
     turn: { at: 0.5, name: '孤独の闇', cry: 'コドクの影がふくれあがった！「……見るな。わたしを、見るな」', isolate: true, buffs: [{ stat: 'atk', value: 0.2 }] }, summon: 'kakera', moves: [['isolate', 2], ['despair', 2], ['erase', 1], ['kodokuCharge', 1], ['summon', 1]] },
   // 第八章：世界の果て
-  kagejuu:  { name: 'コドクの獣',     shape: 'shadowbeast', color: '#4a2a6a', hp: 7200, atk: 1650, spd: 108, tough: 40, weak: ['imaginary', 'fire', 'physical'], moves: [['bite', 2], ['despair', 1]] },
+  kagejuu:  { name: 'コドクの獣',     shape: 'shadowbeast', color: '#4a2a6a', hp: 7200, atk: 1650, spd: 108, tough: 40, weak: ['imaginary', 'fire', 'physical'], moves: [['bite', 2], ['shadowRake', 1]] },
   kodoku:   { name: 'コドク',         shape: 'kodoku',   color: '#1a0a36', boss: true, final: true, hp: 80000, atk: 1800, spd: 112, tough: 220, eres: 0.4, weak: ['imaginary', 'fire', 'physical'],
     phases: [{ weak: ['lightning', 'ice', 'quantum'], cry: 'コドク「まだ手を伸ばすか。ならば、闇の底まで沈めてやろう」' }, { weak: ['imaginary', 'ice', 'fire'], cry: 'コドク「消えろ……ひとりのほうが、楽だと言っている！」' }], summon: 'kakera', moves: [['isolate', 2], ['despair', 2], ['doubt', 1], ['erase', 1], ['eclipseCharge', 1], ['summon', 1]] },
   // 隠しダンジョン：ねこ神の夢
