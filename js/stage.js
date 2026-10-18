@@ -644,7 +644,7 @@ class StageView extends BaseView {
     if (d.enter) [].concat(d.enter).forEach(k => this.enter(k, d.enterFx));
     if (d.exit) [].concat(d.exit).forEach(k => { const a = this.actors[k]; if (a) GFX.tween(0.5, e => { a.alpha = 1 - e; }).then(() => { a.m.group.visible = false; }); });
     if (d.defeat) [].concat(d.defeat).forEach(k => Object.values(this.actors).filter(a => a.base === k).forEach(a => { a.dead = 0.001; a.m.flash('#ffffff', 1.2); }));
-    if (d.fx) [].concat(d.fx).forEach(f => { const [n, arg] = f.split(':'); const h = this.hooks[n]; if (h) h.call(this, arg); else if (n === 'glow') this.chestGlow(arg); });
+    if (d.fx) [].concat(d.fx).forEach(f => { const i = f.indexOf(':'), n = i < 0 ? f : f.slice(0, i), arg = i < 0 ? undefined : f.slice(i + 1); const h = this.hooks[n]; if (h) h.call(this, arg); else if (n === 'glow') this.chestGlow(arg); });
     if (d.bgm) Music.play(d.bgm);
     if (d.roar) [].concat(d.roar).forEach(k => Object.values(this.actors).filter(a => a.base === k).forEach(a => a.roar()));
     if (d.shake) GFX.shake(d.shake);
@@ -1017,7 +1017,20 @@ const STAGE_FX = {
   // 影（コドク・過去の幻）がわき上がる
   shadow(arg) { const c = this.point(arg) || this.W(0, 6); for (let i = 0; i < 80; i++) this.p.emit(V3(c.x + (Math.random() - 0.5) * 4, this.O.y + Math.random() * 0.5, c.z + (Math.random() - 0.5) * 3), V3(0, 1 + Math.random() * 2, 0), hdr(Math.random() < 0.3 ? '#8a5aff' : '#2a1a4a', 2), { life: 1.8, size: 0.4, drag: 0.4 }); Sfx.tone(80, 1, 'sawtooth', 0.06, -30); },
   // 光が集まる（樹・仲間のつながり）
-  light(arg) { const c = this.point(arg) || this.O.clone().add(V3(0, 1, 0)); this.fx.pillar(c, '#fff0a8', { h: 30, r: 1.4, life: 2, k: 2 }); this.fx.ring(c, '#fff0a8', { r: 10, life: 1.6, width: 0.3 }); this.p.burst(c, '#fff0a8', 160, { speed: 8, life: 2, size: 0.12 }); GFX.flash('#fff8e0', 0.6, 1); Sfx.win(); },
+  light(arg) {
+    const a = this.actors[arg];
+    if (a && a.visible()) {
+      // 役者を名指しすると、体の大きさに合わせて、まるごと光で包む（コドクのような大きな敵でも、頭の一点からにならない）
+      const box = new THREE.Box3().setFromObject(a.m.group), c = box.getCenter(V3()), sz = box.getSize(V3()), r = Math.max(sz.x, sz.z) * 0.6, foot = V3(c.x, box.min.y, c.z);
+      this.fx.pillar(foot, '#fff0a8', { h: 30, r, life: 3, k: 1.6 });
+      this.fx.sprite(c, '#fff0a8', Math.max(sz.x, sz.y) * 1.5, 3, { k: 1.6, grow: 1.2 });
+      this.fx.ring(foot.clone().setY(foot.y + 0.05), '#fff0a8', { r: r * 2.5, life: 1.6, width: 0.3 });
+      for (let i = 0; i < 4; i++) GFX.delay(i * 0.35).then(() => this.fx.swirl(V3(c.x, box.min.y, c.z), '#fff0a8', { r: r * 0.95, life: 2.4, width: 0.08, speed: 4, y0: sz.y * 0.1, y1: sz.y * 0.9 }));
+      for (let i = 0; i < 120; i++) GFX.delay(i * 0.025).then(() => this.p.emit(V3(lerp(box.min.x, box.max.x, Math.random()), lerp(box.min.y, box.max.y, Math.random()), lerp(box.min.z, box.max.z, Math.random())), V3(0, 1 + Math.random() * 2, 0), hdr('#fff0a8', 2.4), { life: 2, size: 0.14, drag: 0.4 }));
+      GFX.tween(3, k => a.m.flash('#fff0a8', 1.4 * (1 - k)));   // 黒い体が、光にそまっていく
+      GFX.flash('#fff8e0', 0.6, 1); Sfx.win(); return;
+    }
+    const c = this.point(arg) || this.O.clone().add(V3(0, 1, 0)); this.fx.pillar(c, '#fff0a8', { h: 30, r: 1.4, life: 2, k: 2 }); this.fx.ring(c, '#fff0a8', { r: 10, life: 1.6, width: 0.3 }); this.p.burst(c, '#fff0a8', 160, { speed: 8, life: 2, size: 0.12 }); GFX.flash('#fff8e0', 0.6, 1); Sfx.win(); },
   // 世界中の猫の光（第八章）
   voices() { const cols = ['#ffe08a', '#ff9ab8', '#8ad8ff', '#b8ff8a']; for (let i = 0; i < 60; i++) GFX.delay(i * 0.03).then(() => this.p.emit(this.O.clone().add(V3((Math.random() - 0.5) * 20, 10 + Math.random() * 6, (Math.random() - 0.5) * 20)), V3(0, -3, 0), hdr(pick(cols), 2.6), { life: 3, size: 0.16, drag: 0.3 })); Sfx.tone(880, 0.4, 'sine', 0.05); Sfx.tone(1320, 0.5, 'sine', 0.04, 0, 0.15); },
   // 遠くのにゃんだーの樹が光る（第八章の終わり。村から見上げる）
