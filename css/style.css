@@ -740,7 +740,6 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .hp-say b { display: block; font-size: 11px; color: #c8603a; }
 .fm-foot { display: flex; gap: 20px; justify-content: center; }
 .fm-foot .link { color: #f0dcc8; }
-.fm-keys { font-size: 11px; color: var(--dim); }
 
 /* チップ */
 .chip { border-radius: 16px; background: linear-gradient(180deg, #fff3e2, #f0d8c0 70%); border: 2px solid rgba(255, 236, 214, .5); color: #4a2c20; }

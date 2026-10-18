@@ -2687,8 +2687,7 @@ class FieldView extends BaseView {
         <button class="link" data-bgm>BGM：${Music.on ? 'ON' : 'OFF'}</button>
         <button class="link" data-eco>画質：${GFX.eco ? '省エネ（30fps）' : 'なめらか（60fps）'}</button>
         <button class="link" data-reset>データを初期化</button>
-      </div>
-      <div class="fm-keys pc-only">戦闘：Q 通常攻撃 ／ E スキル ／ R どうぐ ／ 1〜4 必殺技 ／ C コンボ ／ Space 決定 ／ V オート ／ F 倍速</div></div>`;
+      </div></div>`;
     o.classList.remove('hidden');
     const go = (m, fn) => { o.querySelector(`[data-m=${m}]`).onclick = () => { Sfx.click(); fn(); }; };
     go('resume', () => this.closeOverlay());
