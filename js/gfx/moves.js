@@ -1383,9 +1383,7 @@ Object.assign(BattleView.prototype, {
   },
   // にらむ：金の目がきらり（挑発）
   glare(e) {
-    const g = e.model.group, ry = g.rotation.y, f = V3(Math.sin(ry), 0, Math.cos(ry)), s = V3(Math.cos(ry), 0, -Math.sin(ry));
-    const hp = this.headPos(e).addScaledVector(f, 0.36).add(V3(0, 0.27, 0));   // 首の根もとから、顔の前の目の高さへ
-    for (const k of [-1, 1]) this.glint(hp.clone().addScaledVector(s, k * 0.1), '#ffd24a', 0.24);
+    for (const k of [-1, 1]) this.glint(e.model.eyePos(k), '#ffd24a', 0.24);   // 首の傾き・前かがみも込みの、顔に描いた目の位置
     Sfx.tone(1800, 0.15, 'triangle', 0.04, 400);
   },
   // 画面を夜の色に沈める（k：1 で沈め、0 で戻す。col：沈めたときの色の掛け算）
