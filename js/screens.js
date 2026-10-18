@@ -49,7 +49,6 @@ function TitleScreen() {
       <div class="t-name">〜 一匹では弱くても 〜</div>
     </div>
     <div class="t-start">— <span class="pc-only">クリック</span><span class="touch-only">タップ</span>して はじめる —</div>
-    <div class="t-note">3D コマンドRPG ／ にゃんこはみんな2頭身</div>
   </div>`);
   s.onclick = () => { Sfx.init(); Sfx.meow('mike'); Music.play('village'); Story.resume(); };
   return s;
