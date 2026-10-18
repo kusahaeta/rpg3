@@ -340,7 +340,7 @@ function renderShop(o, kind, name, close, field) {
         <div class="sh-row"><div class="sh-icon">🛏</div><div class="sh-info"><b>ひと晩休む</b><small>みんなのHPが全回復し、ちょっとだけ友情が深まる</small></div><button class="btn small" data-item="rest">休む（無料）</button></div>
       </div>`;
     }
-    o.innerHTML = `<div class="ov-box shop"><h2>${name}</h2>${body}<div class="sh-foot"><span class="c-item"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><button class="btn gold" data-close>おしまい</button></div></div>`;
+    o.innerHTML = `<div class="ov-box shop"><h2>${name}</h2>${body}<div class="sh-foot"><span class="c-item"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><button class="btn gold" data-close>閉じる</button></div></div>`;
     o.classList.remove('hidden');
     o.querySelector('[data-close]').onclick = () => { Sfx.click(); o.classList.add('hidden'); close(); };
     o.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { shopTab = b.dataset.tab; Sfx.select(); draw(); });
