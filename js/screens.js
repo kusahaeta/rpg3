@@ -336,12 +336,8 @@ function renderShop(o, kind, name, close, field) {
         <div class="sh-row"><div class="sh-icon">🐟</div><div class="sh-info"><b>焼き魚</b><small>冒険中のみんなのHPが全回復する</small></div><button class="btn small" data-item="fish" ${d.niboshi < 30 ? 'disabled' : ''}>にぼし 30</button></div>
       </div>`;
     } else if (kind === 'inn') {
-      const ks = Object.keys(d.owned);
-      const talks = [];
-      for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) { const k = bondKey(ks[i], ks[j]); if (BOND_EVENTS[k] && bondLv(ks[i], ks[j]) >= 4) talks.push(k); }
       body = `<div class="sh-list">
         <div class="sh-row"><div class="sh-icon">🛏</div><div class="sh-info"><b>ひと晩休む</b><small>みんなのHPが全回復し、ちょっとだけ友情が深まる</small></div><button class="btn small" data-item="rest">休む（無料）</button></div>
-        ${talks.map(k => { const [a, b] = k.split('|'); return `<div class="sh-row"><div class="sh-face">${avatarSVG(a)}</div><div class="sh-info"><b>夜のおしゃべり</b><small>${CHARS[a].name}と${CHARS[b].name}（友情Lv4）</small></div><button class="btn small" data-talk="${k}">聞く</button></div>`; }).join('')}
       </div>`;
     }
     o.innerHTML = `<div class="ov-box shop"><h2>${name}</h2>${body}<div class="sh-foot"><span class="c-item"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><button class="btn gold" data-close>おしまい</button></div></div>`;
@@ -373,7 +369,6 @@ function renderShop(o, kind, name, close, field) {
       if (it === 'rest') { if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.s.keep(); field.spawnFollowers(); } const ts = d.team; for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++) addBond(ts[i], ts[j], 1); field && field.toast('ぐっすり眠った。みんなのHPが全回復！'); Sfx.heal(); }
       Save.save(); Sfx.select(); draw();
     });
-    o.querySelectorAll('[data-talk]').forEach(b => b.onclick = () => { const k = b.dataset.talk; Save.data.bondSeen[k] = true; Save.save(); field.leave(() => App.go(DialogueScreen, BOND_EVENTS[k], () => App.go(FieldScreen))); });
   };
   draw();
 }
