@@ -359,6 +359,7 @@ class Battle {
   // ============================================================
   async start() {
     Game.activeBattle = this;
+    Music.play(this.opts.bgm || battleBgm(this.opts.waves));
     App.mount(this.root);
     if (this.v) GFX.setView(this.v);
     await this.spawnWave();
@@ -1351,6 +1352,7 @@ class Battle {
     for (const v of F.chorus || []) if (await voice(v, true, 1100)) return;
     this.bond = 100; this.renderBond();
     this.announce('友情ゲージ MAX', '「にゃんこオールスターズ」が使える！（C キー）', '#ffcf4a');
+    Music.play('hope');   // みんなの声がとどいたら、希望の曲に
     this.aliveAllies().forEach(a => { a.flags.isolated = 0; a.buffs = a.buffs.filter(b => b.key !== 'e_iso'); this.say(a, '「一人じゃない！」'); this.updateUnit(a); });
     Sfx.win();
   }
@@ -1536,7 +1538,7 @@ class Battle {
     this.input = null; this.renderInput();
     await wait(600);
     Game.activeBattle = null;
-    win ? Sfx.win() : Sfx.lose();
+    Music.stop(); win ? Sfx.win() : Sfx.lose();
     if (win && this.v) { this.v.victory(); await wait(900); }
     const res = { win, team: this.teamState() };
     let info = this.opts.onResult ? this.opts.onResult(res) : '';

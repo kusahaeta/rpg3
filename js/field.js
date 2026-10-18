@@ -80,11 +80,7 @@ class FieldView extends BaseView {
     this.rememberPos();
     this.playBgm();
   }
-  // 区画の曲。敵に囲まれているあいだ（siege）は、村でも暗い曲
-  playBgm() {
-    const Z = this.zone;
-    Music.play(this.siege ? 'dark' : Z.bgm || (Z.town ? 'village' : ['cave', 'root', 'end'].includes(this.bg) ? 'dark' : 'field'));
-  }
+  playBgm() { Music.play(zoneBgm(this.zone)); }
   // 探索を離れた位置を記録し、次に探索するときにそこから再開する
   rememberPos() {
     const p = this.player.pos;

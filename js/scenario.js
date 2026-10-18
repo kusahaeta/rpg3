@@ -11,6 +11,7 @@
 //    仲間はその場面までに加わった子が自動で隊列を組み、ほかの人物は向かいに立つ。cast で個別に上書き
 //    voices：{ 話し手: 点の名前 } 姿のない話し手（しゃべる幕など、区画の小物が演じる）。立たせずに、しゃべるたびにその点を映す
 //    flags：区画の組み立てに渡す、その場面だけの印（区画の置き物を、配役で演じるときに出さないなど）
+//  bgm：シーンの曲（js/audio.js の TRACKS）。'zone' は舞台の区画の曲（探索から続けて流れる）
 // ============================================================
 const SCENES = {
   // ================= 第一章　勇者、拾われる =================
@@ -112,7 +113,7 @@ const SCENES = {
       ['kuro', '……面倒だ。', { f: 'serious', g: 'turnAway', later: [1.6, { r: { kuro: ['neutral', 'nod'] } }] }],
       ['n', '【目的】村の南から、ほしふる森へ。（村の武器屋では「にぼし」で武器を鍛えられる。宿屋で休むとHPが回復する）', { cam: 'wide', dur: 6 }],
     ] },
-  c1_05: { title: 'ほしふる森', cast: ['e:slime'], bgm: 'field',
+  c1_05: { title: 'ほしふる森', cast: ['e:slime'], bgm: 'zone',
     stage: { zone: 'forest_in', at: [-2, -8], face: 0,
       cast: { 'e:slime': [{ at: [-1.4, 5.6], hidden: true }, { at: [1.3, 6.2], hidden: true }] },
       points: { sky: [0, 10, 12] } },
@@ -126,7 +127,7 @@ const SCENES = {
       ['mike', 'なんで！？　二人のほうが強いに決まってるじゃん！', { f: 'angry', g: 'fist', to: 'kuro' }],
       ['n', '（ヒント：敵の頭の上に出ている属性が弱点。弱点で攻撃すると、白い「靭性ゲージ」が減って「弱点撃破」できる）', { cam: 'wide', dur: 6 }],
     ] },
-  c1_06: { title: '森の奥で', cast: ['e:risu', 'e:nezumi'], bgm: 'field',
+  c1_06: { title: '森の奥で', cast: ['e:risu', 'e:nezumi'], bgm: 'zone',
     stage: { zone: 'forest_deep', at: [-4, -4], face: 0,
       cast: { 'e:risu': [{ at: [-1.6, 6], hidden: true }, { at: [1.6, 6.4], hidden: true }], 'e:nezumi': { at: [0, 7], hidden: true } } },
     lines: [
@@ -196,7 +197,7 @@ const SCENES = {
     ] },
 
   // ================= 第二章　にゃんこ大集合 =================
-  c2_01: { title: 'ミャオ街道', bgm: 'field',
+  c2_01: { title: 'ミャオ街道', bgm: 'zone',
     stage: { zone: 'road1', at: [2, 50], face: 0 },
     lines: [
       ['n', 'ミャオ街道。ぽかぽか村から北へ続く、長い長い道。', { cam: 'wide', dur: 7 }],
@@ -515,7 +516,7 @@ const SCENES = {
       ['mike', '……って、先に行ってるし！', { f: 'joy', g: 'point', to: 'kuro', r: { tama: 'smile' } }],
       ['n', '【目的】宿場の南、街道の丘の上の風車の畑で、シロをさがそう。', { cam: 'wide', dur: 5 }],
     ] },
-  c2_03e: { title: 'ひみつの特訓', cast: ['e:karasu', 'e:noraInu'], bgm: 'field',
+  c2_03e: { title: 'ひみつの特訓', cast: ['e:karasu', 'e:noraInu'], bgm: 'zone',
     stage: { zone: 'road1_hill', at: [-2, -10], face: 90,
       cast: { shiro: { at: [0.3, 4.2], face: [0.3, 12] },
         'e:karasu': [{ at: [-2.6, 9], hidden: true }, { at: [2.4, 9.4], hidden: true }], 'e:noraInu': { at: [0, 10], hidden: true } },
@@ -564,7 +565,7 @@ const SCENES = {
     ] },
   // ごろごろ切り通しの入口：宿場から石段を上ると、岩山の谷。目の前を、ハチマキの岩が爆走していく（ごろごろ団の前ふり）。
   // 岩は roll の画（x -10〜6 が映る）のすぐ外から走りだす。遠くからだと、画面に入るまで 2 秒ほど待たされる
-  c2_03k: { title: 'ごろごろ切り通し', bgm: 'field',
+  c2_03k: { title: 'ごろごろ切り通し', bgm: 'zone',
     stage: { zone: 'road2', at: [0, 58], face: 0, points: { valley: [0, 0.8, 8] },
       cast: { 'e:iwa': { at: [-13, 8], hidden: true, face: [12, 8], scale: 1.6 } },
       shots: { pass: { pos: [2.2, 3.6, -5.5], look: [-0.5, 1.6, 14] }, roll: { pos: [2.6, 3.0, -4.5], look: [-1, 0.6, 9] } } },
@@ -748,7 +749,7 @@ const SCENES = {
       ['nyahaha_ou', '……頼む。あのピエロは、昔はこの国いちばんの人気者じゃったのじゃ。', { f: 'sad', g: 'bow' }],
       ['n', '【目的】城下町の北東、笑顔の塔へ。', { cam: 'wide', dur: 5 }],
     ] },
-  c3_03: { title: '笑顔の塔', cast: ['e:ghost'], bgm: 'dark',
+  c3_03: { title: '笑顔の塔', cast: ['e:ghost'], bgm: 'zone',
     stage: { zone: 'tower', at: [0, 15], face: 0, cast: { 'e:ghost': [{ at: [-2.4, 5], hidden: true }, { at: [2.2, 5.6], hidden: true }] }, points: { top: [0, 9, 20] } },
     lines: [
       ['n', '笑顔の塔。色あせたポスター、しぼんだ風船。……舞台のほうから、笑い声のような声が聞こえる。', { cam: 'look:top', dur: 7 }],
@@ -765,7 +766,7 @@ const SCENES = {
   // むすっと幕：大ロビーの奥の通路をふさぐ、しゃべる幕（maku は姿のない話し手。しゃべるたびに幕を映す）。
   //   漫才で笑わせる。ツッコミのいない漫才はだめ → 相方はシロ。ピエロのギャグ・だれかがしょんぼりするネタはすべる。
   //   町の猫に受けなかった「クロのしっぽ」の話（c3_01）が、シロのツッコミとクロのひとことで受ける。オチは「でも、ちょっとおいしかった」（c1_01 の味見）
-  c3_03a: { title: 'むすっと幕', bgm: 'dark', meter: { name: 'むすっと幕', max: 3, moods: ['むすっ……', 'ぴくっ', 'にやにや', 'ブワッハッハ！'] },
+  c3_03a: { title: 'むすっと幕', bgm: 'zone', meter: { name: 'むすっと幕', max: 3, moods: ['むすっ……', 'ぴくっ', 'にやにや', 'ブワッハッハ！'] },
     stage: { zone: 'tower', at: [0, -13], face: 0, voices: { maku: 'curtain' }, points: { curtain: [0, 2.5, 4] },
       shots: { duo: { pos: [0.7, 1.55, 3.75], look: [0, 0.75, 0.9] } } },
     lines: [
@@ -992,7 +993,7 @@ const SCENES = {
       ['mike', 'よし、行こう！　ピエロさんのところへ！', { f: 'serious', g: 'fist' }],
       ['n', '【目的】上り階段から、三階の空中ブランコの間へ。', { cam: 'wide', dur: 5 }],
     ] },
-  c3_03b: { title: '空中ブランコの間', cast: ['e:mimic', 'e:ghost'], bgm: 'dark',
+  c3_03b: { title: '空中ブランコの間', cast: ['e:mimic', 'e:ghost'], bgm: 'zone',
     stage: { zone: 'tower_3f', at: [0, 6], face: 0, cast: { 'e:mimic': { at: [-2, 6.2], hidden: true }, 'e:ghost': { at: [2.2, 6.8], hidden: true } }, points: { trapeze: [0, 4, 13], bridge: [0, 0.8, 15.5] },
       shots: { bridge: { pos: [1.8, 2.4, 6.5], look: [0, 0.4, 15.5] } } },
     lines: [
@@ -1321,7 +1322,7 @@ const SCENES = {
       ['kuro', '……ああ。あいつらの記録を、あそこに置いたままにはしておけない。', { f: 'serious', g: 'nod', r: { mike: 'serious' } }],
       ['n', '【目的】谷の北、黒影洞窟へ。', { cam: 'wide', dur: 5 }],
     ] },
-  c4_03: { title: '黒影洞窟', cast: ['e:kageneko', 'e:yoroi'], bgm: 'dark',
+  c4_03: { title: '黒影洞窟', cast: ['e:kageneko', 'e:yoroi'], bgm: 'zone',
     stage: { zone: 'cave', at: [0, 39], face: 0, cast: { 'e:kageneko': { at: [-2.4, 4.6], hidden: true }, 'e:yoroi': { at: [2, 5.6], hidden: true } }, points: { deep: [0, 2, 16] } },
     lines: [
       ['n', 'ハヤテが手帳を持って入った、最後の場所——黒影洞窟。ひんやりとした闇が、奥へ奥へと続いている。', { cam: 'wide', dur: 7 }],
@@ -1332,7 +1333,7 @@ const SCENES = {
       ['tama', '……でも……やさしい声、だった。', { f: 'worry', g: 'tilt' }],
       ['n', '闇の中から、影と、さまよう鎧が現れた！', { enter: ['e:kageneko', 'e:yoroi'], cam: 'wide', stance: { all: 'ready' } }],
     ] },
-  c4_03b: { title: '影の壁', bgm: 'dark',
+  c4_03b: { title: '影の壁', bgm: 'zone',
     stage: { zone: 'cave', at: [2, -15], face: 0, points: { wall: [0, 2, 10], west: [-33, 1, 28], east: [49, 1, -28] } },
     lines: [
       ['n', '大空洞の奥。北へ続く坑道を、黒い霧のような壁がふさいでいた。', { cam: 'look:wall', dur: 7, look: { all: 'wall' } }],
@@ -1364,7 +1365,7 @@ const SCENES = {
       ['shiro', '……回る順番も、考えたほうがよさそうね。遠回りしたら、きっと間に合わないわ。', { f: 'serious', g: 'think' }],
       ['n', '（岸の光の水晶を三つ灯して、橋の影の壁を消そう。一つめを灯すと、その光は 32 秒で消えてしまう。三つとも灯すまでに、最初の光が消えたら、やりなおし。Shift で走れる）', { cam: 'wide', dur: 8, look: { all: 'east' } }],
     ] },
-  c4_03d: { title: '闇の淵', bgm: 'dark',
+  c4_03d: { title: '闇の淵', bgm: 'zone',
     stage: { zone: 'cave_deep', at: [0, 36], face: 0, points: { abyss: [0, -3, 10], memW: [-44, 1, 33], memI: [1, 1, 30], memE: [44.6, 1, 25] } },
     lines: [
       ['n', '洞窟の最深部。足もとには、底の見えない闇の淵が、大きく口を開けていた。', { cam: 'look:abyss', dur: 7, look: { all: 'abyss' } }],
