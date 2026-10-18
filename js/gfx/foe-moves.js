@@ -337,7 +337,7 @@ const FOE_MOVES = {
     t.model.flash('#ffffff', 1);
     this.foeLean(e, 0, 0.2);
   },
-  // 闇がねらった子をつつむ（孤独・思い出消去・うつろな声）
+  // 闇がねらった子をつつむ（うつろな声）
   async gloom(e, ts, c) {
     const from = this.foeMouth(e);
     this.foeFlash(e, c.col);
@@ -347,8 +347,7 @@ const FOE_MOVES = {
       await this.every(0.4, 16, () => this.p.emit(from, p.clone().sub(from).multiplyScalar(2.5).add(V3((Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 0.6, 0)), hdr(c.col, 2), { life: 0.4, size: 0.2, drag: 0 }));
       this.fx.ring(t.home.clone().add(V3(0, 0.05, 0)), c.col, { r: 1.6, life: 0.7, width: 0.5, k: 1.4 });
       for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; this.p.emit(t.home.clone().add(V3(Math.cos(a) * 0.9, 0.1, Math.sin(a) * 0.9)), V3(-Math.cos(a) * 1.2, 1.5, -Math.sin(a) * 1.2), hdr(c.col, 1.6), { life: 0.7, size: 0.18 }); }
-      if (c.mv.glyph === 'away') this.foeKnock(t, V3(Math.sign(t.home.x) || 1, 0, 0.6).normalize(), 0.7);
-      else t.model.flash('#2a2238', 1.5);
+      t.model.flash('#2a2238', 1.5);
     }
   },
   // だいばくはつ：体に光をためて、まわりごと吹きとばす
@@ -408,6 +407,93 @@ const FOE_MOVES = {
       for (let i = 0; i < 16; i++) GFX.delay(i * 0.04).then(() => { const a = i * 0.9; this.p.emit(at.clone().add(V3(Math.cos(a) * 0.7, (i / 16) * 0.8 - 0.3, Math.sin(a) * 0.7)), V3(-Math.sin(a) * 2, 0.8, Math.cos(a) * 2), hdr(i % 2 ? c.col : '#c8e870', 1.2), { life: 0.6, size: 0.12 }); });
     }
     await GFX.delay(0.7);
+  },
+
+  // ---------- コドクの技（技の中身が見た目でわかるように） ----------
+  // 孤独：ねらった子の両がわに闇の壁が立ち、仲間から引き離す
+  async sever(e, ts, c) {
+    const t = ts[0], h = t.home;
+    this.foeFlash(e, c.col);
+    this.darkFlow(e, t, c.col, 0.35, 12);
+    await GFX.delay(0.3);
+    this.fx.ring(h.clone().add(V3(0, 0.05, 0)), c.col, { r: 1.4, life: 0.6, width: 0.4, k: 1.6 });
+    const walls = [-1, 1].map(s => this.darkWall(h.clone().add(V3(s * 0.7, 0, 0)), 2.4, 1.5));
+    // 壁が立つと、ねらった子だけ、うしろへ下げられる
+    const g = t.model.group;
+    await GFX.tween(0.3, k => { walls.forEach(w => w.rise(Ease.back(k))); g.position.z = h.z + Ease.out(k) * 0.5; });
+    t.model.flash('#2a2238', 1.5);
+    this.glyphPop('…', this.headPos(t).add(V3(0, 0.6, 0)), '#b8a8e8');
+    await GFX.delay(0.45);
+    await GFX.tween(0.3, k => { walls.forEach(w => w.rise(1 - k)); g.position.z = h.z + 0.5 * (1 - k); });
+    g.position.copy(h);
+  },
+  // 思い出消去：ねらった子の上に、色のついた思い出があらわれる。色が抜けて、コドクのまわりの板と同じ色になり、砕けて散る
+  async shatter(e, ts, c) {
+    const t = ts[0], above = this.headPos(t).add(V3(0, 1.1, 0));
+    this.foeFlash(e, c.col);
+    const mem = this.memoryObj();
+    mem.position.copy(above); mem.quaternion.copy(this.camera.quaternion); mem.scale.setScalar(0.01);
+    this.fx.add(mem, 1.6, null);
+    this.p.burst(above, '#ffe8a8', 16, { speed: 2, life: 0.5, size: 0.08 });
+    await GFX.tween(0.25, k => { mem.scale.setScalar(1.5 * Ease.back(k)); });
+    // 闇が流れこんで、色が抜けていく
+    this.darkFlow(e, t, c.col, 0.5, 18, above);
+    const warm = new THREE.Color('#ffd88a'), cold = new THREE.Color('#8a80a8'), frame = new THREE.Color('#fff8ec'), frameCold = new THREE.Color('#5a5070');
+    await GFX.tween(0.55, k => { mem.userData.photo.color.lerpColors(warm, cold, k); mem.userData.frame.color.lerpColors(frame, frameCold, k); mem.userData.heart.material.opacity = 1 - k; mem.position.x = above.x + Math.sin(k * 40) * 0.02 * k; });
+    // ひびが入って、砕ける
+    mem.visible = false;
+    this.fx.shards(above, '#8a80a8', 18, 3);
+    this.fx.shards(above, '#5a5070', 12, 2.5);
+    t.model.flash('#2a2238', 1.5);
+    // 光（EP）が、コドクへ吸いとられる
+    const to = this.hitPoint(e.u), from = this.hitPoint(t.u);
+    await this.every(0.35, 14, () => this.p.emit(from.clone().add(V3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, 0)), to.clone().sub(from).multiplyScalar(1.6).add(V3((Math.random() - 0.5), Math.random(), 0)), hdr('#ffe08a', 2), { life: 0.6, size: 0.1, drag: 0 }));
+  },
+  // 疑心：みんなをつなぐ金の糸があらわれ、黒くにごって、まん中から切れる
+  async crack(e, ts, c) {
+    this.foeFlash(e, c.col);
+    const order = [...ts].sort((a, b) => a.home.x - b.home.x);
+    // 糸が見えるように、みんなのすぐうしろへ寄る（全体攻撃のカメラは、大きなコドクに合わせて遠い）
+    const xs = order.map(t => t.home.x), cx = (Math.min(...xs) + Math.max(...xs)) / 2, z = order[0].home.z;
+    this.setCam(V3(cx + 0.6, 1.9, z + 3.6), V3(cx, 1.0, z - 1.5), { snap: true });
+    for (const t of order) this.darkFlow(e, t, c.col, 0.35, 8);
+    await GFX.delay(0.25);
+    const knot = t => this.headPos(t).add(V3(0, 0.35, 0));   // 頭の上で結ぶ（体の高さだと、うしろからは味方の陰になる）
+    const threads = order.slice(1).map((t, i) => this.bondThread(knot(order[i]), knot(t)));
+    const gold = new THREE.Color(hdr('#ffd86a', 1.6)), dark = new THREE.Color('#2a1a3a');
+    await GFX.tween(0.25, k => { threads.forEach(th => th.grow(Ease.out(k))); });
+    await GFX.tween(0.35, k => { threads.forEach(th => th.mat.color.lerpColors(gold, dark, k)); });
+    for (const t of order) this.glyphPop('？', this.headPos(t).add(V3(0, 0.75, 0)), '#8a6aff');
+    // ぷつん
+    await GFX.tween(0.3, k => { threads.forEach(th => th.snap(k)); });
+    threads.forEach(th => { this.p.burst(th.mid, '#5a3a8a', 10, { speed: 2, life: 0.5, size: 0.08 }); th.hide(); });
+    for (const t of order) this.foeKnock(t, V3(0, 0, 1), 0.15);
+  },
+  // 絶望：コドクの足もとから黒い影が地面に広がり、みんなの足もとをのみこむ
+  async tide(e, ts, c) {
+    const h = e.home, U = GFX.grade.uniforms;
+    this.foeFlash(e, c.col);
+    if (e.model.critter) this.foePose(e, POSES.open, 0.2);
+    const far = Math.max(...ts.map(t => h.distanceTo(t.home))) + 1.2;
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ color: '#0a0612', transparent: true, opacity: 0.85, depthWrite: false }));
+    pool.rotation.x = -Math.PI / 2; pool.position.set(h.x, 0.03, h.z); pool.scale.setScalar(0.01); pool.renderOrder = 2;
+    this.fx.add(pool, 1.9, null);
+    GFX.tween(0.3, k => { U.desat.value = 0.4 * k; }, Ease.out, true);
+    const reached = new Set();
+    await GFX.tween(0.8, k => {
+      const r = far * Ease.inOut(k);
+      pool.scale.setScalar(Math.max(0.01, r));
+      // ふちから、闇がゆらゆら立ちのぼる
+      for (let i = 0; i < 3; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.6, p = V3(h.x + Math.cos(a) * r, 0.1, h.z - Math.sin(a) * r); this.p.emit(p, V3(0, 1.2 + Math.random(), 0), hdr(Math.random() < 0.3 ? '#8a6aff' : '#2a1a4a', 1.6), { life: 0.8, size: 0.28, drag: 0.5 }); }
+      for (const t of ts) if (!reached.has(t) && h.distanceTo(t.home) < r) {
+        reached.add(t); t.model.flash('#2a2238', 1.5); this.squash(t, 0.3);
+        for (let i = 0; i < 10; i++) this.p.emit(t.home.clone().add(V3((Math.random() - 0.5) * 0.7, 0.1, (Math.random() - 0.5) * 0.5)), V3(0, 1.5 + Math.random(), 0), hdr(c.col, 1.6), { life: 0.7, size: 0.2 });
+      }
+    }, Ease.linear);
+    await GFX.delay(0.35);
+    GFX.tween(0.4, k => { U.desat.value = 0.4 * (1 - k); }, Ease.out, true);
+    await GFX.tween(0.4, k => { pool.material.opacity = 0.85 * (1 - k); });
+    pool.visible = false;
   },
 
   // ---------- ボスがためて撃つ大技 ----------
@@ -777,6 +863,50 @@ Object.assign(BattleView.prototype, {
         else this.p.burst(p, col, 8, { speed: 2, life: 0.4, size: 0.07 });
       }
     });
+  },
+  // 闇が、敵の口もとからねらった子（to があればそこ）へ流れていく
+  darkFlow(e, t, col, dur, n, to) {
+    const from = this.foeMouth(e), p = to || this.hitPoint(t.u);
+    return this.every(dur, n, () => this.p.emit(from, p.clone().sub(from).multiplyScalar(2.5).add(V3((Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 0.6, 0)), hdr(col, 2), { life: 0.4, size: 0.2, drag: 0 }));
+  },
+  // 闇の壁（孤独）：黒い板と、紫に光るふち。rise(k) で地面からせりあがる
+  darkWall(at, h, d) {
+    const g = new THREE.Group(); g.position.copy(at);
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(d, h), new THREE.MeshBasicMaterial({ color: '#0a0612', transparent: true, opacity: 0.88, side: THREE.DoubleSide, depthWrite: false }));
+    wall.rotation.y = Math.PI / 2; wall.position.y = h / 2; g.add(wall);
+    const edge = new THREE.Mesh(new THREE.PlaneGeometry(d, 0.06), new THREE.MeshBasicMaterial({ color: hdr('#8a5aff', 3), transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+    edge.rotation.y = Math.PI / 2; edge.position.y = h; g.add(edge);
+    g.scale.y = 0.001;
+    this.fx.add(g, 2, null);
+    g.rise = k => { g.scale.y = Math.max(0.001, k); if (k > 0.5 && Math.random() < 0.5) this.p.emit(at.clone().add(V3(0, h * k, (Math.random() - 0.5) * d)), V3(0, 1, 0), hdr('#8a6aff', 2), { life: 0.6, size: 0.12 }); };
+    return g;
+  },
+  // 思い出（思い出消去）：白いふちの写真に、あたたかい色と ♥
+  memoryObj() {
+    const g = new THREE.Group();
+    const frame = new THREE.MeshBasicMaterial({ color: '#fff8ec', side: THREE.DoubleSide }), photo = new THREE.MeshBasicMaterial({ color: '#ffd88a', side: THREE.DoubleSide });
+    g.add(new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.6), frame));
+    const in_ = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.46), photo); in_.position.z = 0.005; g.add(in_);
+    const heart = this.glyph('♥', '#ff6a8a', '#ffffff', 0.3); heart.position.z = 0.01; g.add(heart);
+    g.rotation.z = 0.1;
+    g.userData = { frame, photo, heart };
+    return g;
+  },
+  // 友情の糸（疑心）：a→b の細い管。grow で両はしから伸び、snap でまん中から切れて縮む
+  bondThread(a, b) {
+    const mat = new THREE.MeshBasicMaterial({ color: hdr('#ffd86a', 1.6), transparent: true, depthWrite: false });
+    const mid = a.clone().lerp(b, 0.5), up = V3(0, 1, 0);
+    const half = (p, q) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 8, 1, true), mat); m.quaternion.setFromUnitVectors(up, q.clone().sub(p).normalize()); m.renderOrder = 12; this.fx.add(m, 2, null); return m; };
+    const L = half(a, mid), R = half(b, mid), len = a.distanceTo(mid);
+    // 片がわの管を、はし p から長さ l だけ、q へ向けて置く
+    const put = (m, p, q, l) => { m.position.copy(p).lerp(q, l / len / 2); m.scale.set(1, Math.max(0.001, l), 1); };
+    put(L, a, mid, 0); put(R, b, mid, 0);
+    return {
+      mat, mid,
+      grow: k => { put(L, a, mid, len * k); put(R, b, mid, len * k); },
+      snap: k => { const l = len * (1 - Ease.in(k)); put(L, a, mid, l); put(R, b, mid, l); mat.opacity = 1 - k * 0.5; },
+      hide: () => { L.visible = R.visible = false; },
+    };
   },
   // 紙ふぶき：色紙がくるくる舞いながら落ちる（光の粒だと明るい背景で見えない）
   confettiFx(p, n) {

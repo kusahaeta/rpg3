@@ -365,10 +365,10 @@ const ENEMY_MOVES = {
   daichiQuake: { name: '大地ゆらし', anim: 'fissure', type: 'aoe', mult: 1.5 },
   hollow:  { name: 'うつろな声', anim: 'gloom', elem: 'quantum',     type: 'single', mult: 1.0, eff: { kind: 'energy', chance: 1, value: 15 } },
   // コドク：仲間を引き離す
-  isolate: { name: '孤独', anim: 'gloom', glyph: 'away', elem: 'quantum',           type: 'single', mult: 1.0, eff: { kind: 'isolate', chance: 1 } },
-  despair: { name: '絶望', anim: 'shout', obj: 'dark', elem: 'quantum',           type: 'aoe',    mult: 0.9 },
-  doubt:   { name: '疑心', anim: 'shout', obj: 'dark', glyph: '？', elem: 'quantum',           type: 'aoe',    mult: 0.6, eff: { kind: 'bondDrain', chance: 1, value: 20 } },
-  erase:   { name: '思い出消去', anim: 'gloom', elem: 'quantum',     type: 'single', mult: 1.2, eff: { kind: 'energy', chance: 1, value: 40 } },
+  isolate: { name: '孤独', anim: 'sever', elem: 'quantum',           type: 'single', mult: 1.0, eff: { kind: 'isolate', chance: 1 } },
+  despair: { name: '絶望', anim: 'tide', elem: 'quantum',           type: 'aoe',    mult: 0.9 },
+  doubt:   { name: '疑心', anim: 'crack', elem: 'quantum',           type: 'aoe',    mult: 0.6, eff: { kind: 'bondDrain', chance: 1, value: 20 } },
+  erase:   { name: '思い出消去', anim: 'shatter', elem: 'quantum',     type: 'single', mult: 1.2, eff: { kind: 'energy', chance: 1, value: 40 } },
   kodokuCharge: { name: 'すべての声が遠ざかっていく…', type: 'charge', next: 'kodokuNova' },
   kodokuNova: { name: 'ひとりぼっちの世界', anim: 'dome', elem: 'quantum', type: 'aoe', mult: 1.7 },
   // ねこ神の夢
