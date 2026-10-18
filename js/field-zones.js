@@ -2633,8 +2633,9 @@ const FIELD_ZONES = {
       thickets: [{ id: 'T1', cells: [-1, 15, -1, 15], node: [-1, 11] }, { id: 'T3', cells: [-1, 53, 1, 53], node: [5, 49] }],
       knots: [{ id: 'treeKnot1', cells: [-1, 25, -1, 25], cradles: [5] }, { id: 'treeKnot2', cells: [-1, 51, 1, 51], cradles: [9, 10] }],
     },
+    // 実をもどす石碑（rootReset）は、石段を下りた正面、はじめの橋のたもと。下りてくる一行のほうを向ける
     notes: [{ at: [-19, -41], mark: [-0.6, 3.6, 0], title: '光る樹液', text: 'かすかに光る樹液が、根を伝って流れている。……まるで、泣いているみたいに。' },
-      { at: [7, -25], title: '古い石碑', text: '「実は、樹のぬくもり。根元の輪に光る実があれば、根は目をさます。輪を出れば、根はまた眠る」', rootReset: true }],
+      { at: [3, -23], face: Math.PI, title: '古い石碑', text: '「実は、樹のぬくもり。根元の輪に光る実があれば、根は目をさます。輪を出れば、根はまた眠る」', rootReset: true }],
     map2d: [330, 540] },
 
   tree_under_2: { ci: 6, name: '樹の地下・影の回廊', floor: 'B2', parent: 'tree_under', w: 52, d: 92, stage: '7-2', arenas: [[0, -25, 0], [-4, -1, 0], [-2, 15, 0]], build: 'treeUnder2', bg: 'root', groups: 3, chests: 2, crystals: 0, calmAfter: '7-3', skyTree: false,
