@@ -22,6 +22,8 @@ const Save = {
       equip: {},          // にゃんこごとに装備している武器
       auto: false, speed: 1, ver: 11,
       eco: null,          // 省エネ（30fps）。null はおまかせ（スマホなら省エネ）
+      hp: {},             // HP の割合（にゃんこごと）。探索・物語の戦闘で引きつぐ（carried）
+      energy: {},         // 奥義ゲージ（にゃんこごと）。ないときは戦闘のはじめの量
     };
   },
   // 古いセーブを今の台本に合わせる
@@ -135,6 +137,20 @@ function grantExp(key, amount) {
   while (o.lv < 80 && o.exp >= expToNext(o.lv)) { o.exp -= expToNext(o.lv); o.lv++; }
   if (o.lv >= 80) o.exp = 0;
   return o.lv - before;
+}
+
+// HP と奥義ゲージは、探索を離れても・物語の戦闘でも引きつぐ。回復するのは宿・焼き魚・やられたときだけ
+function carried(m) {
+  const d = Save.data;
+  return { ...m, hpRatio: (d.hp || {})[m.key] ?? 1, energy: (d.energy || {})[m.key] ?? null };
+}
+// list：{ key, hpRatio, energy } の並び（戦闘の結果の team など）。保存はよび出し側で
+function keepCarried(list) {
+  const d = Save.data; d.hp = d.hp || {}; d.energy = d.energy || {};
+  list.filter(m => d.owned[m.key]).forEach(m => {
+    d.hp[m.key] = m.hpRatio;
+    if (m.energy == null) delete d.energy[m.key]; else d.energy[m.key] = m.energy;
+  });
 }
 
 // 物語の都合で、いまは一行を離れている子（STORY の段階の away）

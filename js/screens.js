@@ -94,10 +94,12 @@ function startStage(ci, st, techs, after) {
   Save.data.tp -= techs.length; Save.save();
   const first = !Save.data.cleared[st.id];
   const b = new Battle({
-    team: battleTeam(st), techs, bg: CHAPTERS[ci].bg, canRetry: true, loc: st.id, final: st.final || null,
+    team: battleTeam(st).map(carried), techs, bg: CHAPTERS[ci].bg, canRetry: true, loc: st.id, final: st.final || null,
     title: `${st.name}`,
     waves: st.waves.map(w => w.map(k => ({ key: k, lv: st.lv }))),
     onResult: res => {
+      // 負けたら、探索でやられたときと同じく、みんな目を覚ます（やりなおしも元気な状態から）
+      keepCarried(res.win ? res.team : res.team.map(t => ({ key: t.key, hpRatio: 1, energy: null }))); Save.save();
       if (!res.win) return '<div class="dim">へんせいやレベルを見直してみよう。</div>';
       const d = Save.data, exp = (80 + st.lv * 30) * st.waves.length, nib = (10 + st.lv * 3) * (first ? 3 : 1);
       d.cleared[st.id] = true;
@@ -108,6 +110,7 @@ function startStage(ci, st, techs, after) {
       return html;
     },
     onExit: (res, act) => {
+      if (res.retreat) { keepCarried(res.team); Save.save(); }
       if (act === 'retry') startStage(ci, st, [], after);
       else after(res);
     },
@@ -131,6 +134,12 @@ function TeamScreen() {
   const away = awayNow(), isAway = k => away.includes(k);
   const free = i => !isAway(Save.data.team[i]);
   if (!free(slot)) slot = [0, 1, 2, 3].find(free);
+  // 探索で戦闘不能の子（宿・焼き魚で回復するまで）。全員が戦闘不能になる編成はできない
+  const isDown = k => (Save.data.hp || {})[k] <= 0;
+  const canForm = team => team.some(k => k && !isAway(k) && !isDown(k));
+  const hint = s.querySelector('.tm-hint'), hintText = hint.textContent;
+  const refuse = () => { hint.textContent = 'みんな戦闘不能になってしまう。元気な子を一匹は入れておこう。'; hint.classList.add('warn'); };
+  const unrefuse = () => { hint.textContent = hintText; hint.classList.remove('warn'); };
   const render = () => {
     const t = Save.data.team, lead = t.findIndex(k => !isAway(k));
     s.querySelector('.tm-slots').innerHTML = [0, 1, 2, 3].map(i => isAway(t[i]) ? `
@@ -140,18 +149,24 @@ function TeamScreen() {
       </div>` : `
       <div class="tm-slot ${i === slot ? 'on' : ''}" data-slot="${i}">
         <div class="tm-no">${i === lead ? '先頭' : i + 1}</div>
-        ${t[i] ? charChip(t[i], 'big') + `<button class="tm-x" data-x="${i}">×</button>
+        ${t[i] ? charChip(t[i], 'big' + (isDown(t[i]) ? ' down' : '')) + `<button class="tm-x" data-x="${i}">×</button>
           <div class="tm-path">${PATHS[CHARS[t[i]].path].name}</div>` : '<div class="tm-empty">あき</div>'}
       </div>`).join('');
-    s.querySelector('.tm-roster').innerHTML = Object.keys(CHARS).filter(k => Save.data.owned[k]).map(k => charChip(k, isAway(k) ? 'away' : t.includes(k) ? 'inteam' : '')).join('');
+    s.querySelector('.tm-roster').innerHTML = Object.keys(CHARS).filter(k => Save.data.owned[k]).map(k => charChip(k, isAway(k) ? 'away' : (t.includes(k) ? 'inteam' : '') + (isDown(k) ? ' down' : ''))).join('');
     on(s, '[data-slot]', 'click', (el, e) => {
-      if (e.target.closest('[data-x]')) { const i = +e.target.closest('[data-x]').dataset.x; if (Save.data.team.filter(k => k && !isAway(k)).length > 1) { Save.data.team.splice(i, 1); Save.save(); } slot = Math.min(slot, Save.data.team.length); if (!free(slot)) slot = [0, 1, 2, 3].find(free); render(); return; }
+      if (e.target.closest('[data-x]')) {
+        const i = +e.target.closest('[data-x]').dataset.x, next = Save.data.team.filter((k, j) => j !== i);
+        if (!canForm(next)) refuse();
+        else if (Save.data.team.filter(k => k && !isAway(k)).length > 1) { Save.data.team = next; Save.save(); unrefuse(); }
+        slot = Math.min(slot, Save.data.team.length); if (!free(slot)) slot = [0, 1, 2, 3].find(free); render(); return; }
       slot = +el.dataset.slot; render();
     });
     on(s, '.tm-roster .chip', 'click', el => {
       const k = el.dataset.key; if (isAway(k)) return;
-      const team = Save.data.team, at = team.indexOf(k), target = Math.min(slot, team.length);
+      const team = [...Save.data.team], at = team.indexOf(k), target = Math.min(slot, team.length);
       if (at >= 0) { if (team[target]) { team[at] = team[target]; team[target] = k; } } else team[target] = k;
+      if (!canForm(team)) { refuse(); return; }
+      unrefuse();
       Save.data.team = team.filter(Boolean); Save.save(); Sfx.meow(k);
       slot = Math.min(3, Math.min(target + 1, Save.data.team.length)); if (!free(slot)) slot = [0, 1, 2, 3].find(free); render();
     });
@@ -354,8 +369,8 @@ function renderShop(o, kind, name, close, field) {
     o.querySelectorAll('[data-item]').forEach(b => b.onclick = () => {
       const it = b.dataset.item;
       if (it === 'tp') { d.niboshi -= 60; d.tp = 5; field && field.toast('初手技ポイントが満タンになった'); }
-      if (it === 'fish') { d.niboshi -= 30; if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.spawnFollowers(); field.toast('焼き魚をみんなで食べた。HPが全回復！'); } }
-      if (it === 'rest') { if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.spawnFollowers(); } const ts = d.team; for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++) addBond(ts[i], ts[j], 1); field && field.toast('ぐっすり眠った。みんなのHPが全回復！'); Sfx.heal(); }
+      if (it === 'fish') { d.niboshi -= 30; if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.s.keep(); field.spawnFollowers(); field.toast('焼き魚をみんなで食べた。HPが全回復！'); } }
+      if (it === 'rest') { if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.s.keep(); field.spawnFollowers(); } const ts = d.team; for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++) addBond(ts[i], ts[j], 1); field && field.toast('ぐっすり眠った。みんなのHPが全回復！'); Sfx.heal(); }
       Save.save(); Sfx.select(); draw();
     });
     o.querySelectorAll('[data-talk]').forEach(b => b.onclick = () => { const k = b.dataset.talk; Save.data.bondSeen[k] = true; Save.save(); field.leave(() => App.go(DialogueScreen, BOND_EVENTS[k], () => App.go(FieldScreen))); });
