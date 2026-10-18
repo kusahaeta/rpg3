@@ -30,16 +30,10 @@ const SanitizeShader = {
     }`,
 };
 
-const GradeShader = {
-  uniforms: {
-    tDiffuse: { value: null }, vignette: { value: 1.15 }, flash: { value: 0 }, flashColor: { value: new THREE.Color(1, 1, 1) },
-    desat: { value: 0 }, tint: { value: new THREE.Color(1, 1, 1) }, time: { value: 0 }, aberr: { value: 0 },
-  },
-  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-  fragmentShader: `
-    uniform sampler2D tDiffuse; uniform float vignette, flash, desat, time, aberr; uniform vec3 flashColor, tint; varying vec2 vUv;
-    float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
-    void main(){
+// 色の仕上げ：周辺減光・フラッシュ・彩度・色味・色収差・粒子。最後のトーンマッピング（OutputPass）の直前に、同じ処理の中で行う（fuseGrade）
+const GRADE_PARS = `uniform float vignette, flash, desat, time, aberr; uniform vec3 flashColor, tint;
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }`;
+const GRADE_MAIN = `
       vec2 d = vUv - 0.5;
       vec4 c = texture2D(tDiffuse, vUv);
       if (aberr > 0.0) { c.r = texture2D(tDiffuse, vUv + d * aberr).r; c.b = texture2D(tDiffuse, vUv - d * aberr).b; }
@@ -49,14 +43,45 @@ const GradeShader = {
       c.rgb = mix(c.rgb, vec3(l), desat);
       c.rgb = mix(c.rgb, flashColor, flash);
       c.rgb += (hash(vUv * 900.0 + time) - 0.5) * 0.012;
-      gl_FragColor = c;
+      gl_FragColor = c;`;
+const GradeShader = {
+  uniforms: {
+    tDiffuse: { value: null }, vignette: { value: 1.15 }, flash: { value: 0 }, flashColor: { value: new THREE.Color(1, 1, 1) },
+    desat: { value: 0 }, tint: { value: new THREE.Color(1, 1, 1) }, time: { value: 0 }, aberr: { value: 0 },
+  },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+    ${GRADE_PARS}
+    void main(){${GRADE_MAIN}
     }`,
 };
+// 色の仕上げを OutputPass のシェーダーに入れて、画面全体を読み書きする処理を 1 回減らす（非力なスマホで 1 コマ 3ms ほど）。
+// uniforms は grade（composer には入れない）と同じものを使うので、GFX.grade.uniforms を書きかえればそのまま効く。
+// three.js の OutputPass の中身が変わって入れられなかったときは false（grade を別の処理として残す）
+function fuseGrade(output, grade) {
+  const m = output.material, src = 'gl_FragColor = texture2D( tDiffuse, vUv );', head = 'uniform sampler2D tDiffuse;';
+  if (!m || !m.fragmentShader.includes(src) || !m.fragmentShader.includes(head)) return false;
+  m.fragmentShader = m.fragmentShader.replace(head, head + '\n' + GRADE_PARS).replace(src, GRADE_MAIN);
+  for (const k in grade.uniforms) if (k !== 'tDiffuse') m.uniforms[k] = grade.uniforms[k];
+  m.needsUpdate = true;
+  return true;
+}
+
+// 画質の段階。スマホは省エネから始め、それでもコマ数が足りなければ軽量へ落とす（GFX.watchFps）
+//   prMax：画面の細かさ（devicePixelRatio × 画面の縮み）の上限。shadow：影の画像の大きさ。bloom：光のにじみ。
+//   trim：小さな部品（足・しっぽ・耳など）は影を落とさない（GFX.tierPass）。
+//   cheap：金属でない MeshStandardMaterial のつや（光の照り返し）を省き、拡散光だけで照らす（cheapLight）。空の雲も粗くする（skyOctaves）
+//   Galaxy A21 での確かめ（2026-10）：画面の細かさ・つや・空の計算が重く、光のにじみは 1 割ほど。影のふちのぼかしはほとんど変わらない
+const GFX_TIERS = [
+  { name: 'なめらか（60fps）', fps: 60, prMax: 2, smaa: true, shadow: 2048, bloom: true, trim: false, cheap: false },
+  { name: '省エネ（30fps）', fps: 30, prMax: 1, smaa: false, shadow: 1024, bloom: true, trim: false, cheap: false },
+  { name: '軽量（30fps・画面を粗く）', fps: 30, prMax: 0.75, smaa: false, shadow: 1024, bloom: false, trim: true, cheap: true },
+];
 
 const GFX = {
   ok: false, renderer: null, composer: null, view: null, tweens: [], time: 0, timeScale: 1, pixelRatio: 1,
-  // 省エネ：30fps・画面の細かさ 1 まで・SMAA なし・影を小さく（スマホは最初から省エネ）
-  eco: false, appScale: 1, lastFrame: 0,
+  // tier：画質の段階（GFX_TIERS の番号）。eco は省エネ以下（30fps）、low は軽量
+  tier: 0, Q: GFX_TIERS[0], eco: false, low: false, appScale: 1, lastFrame: 0,
   // 診断（?debug のとき画面に出す）：3D 描画が止められた・戻った・作り直した回数、描いたコマ数
   diag: { lost: 0, restored: 0, rebuilt: 0, rebuildFail: '', frames: 0 },
   shakeAmt: 0,
@@ -67,12 +92,13 @@ const GFX = {
       this.createRenderer();
       this.clock = new THREE.Clock();
       this.ok = true;
-      this.setEco(Save.data.eco ?? matchMedia('(pointer: coarse)').matches);
-      this.buildPortraits();
+      this.setTier(this.savedTier());
+      this.lazyPortraits();
       const tick = now => {
         requestAnimationFrame(tick);
         // 省エネは 30fps（60Hz でも 120Hz の画面でも、約 33ms ごとに描く）
         if (this.eco && now - this.lastFrame < 1000 / 30 - 8) return;
+        this.watchFps(now);
         this.lastFrame = now; this.diag.frames++; this.frame();
       };
       requestAnimationFrame(tick);
@@ -93,6 +119,8 @@ const GFX = {
     r.toneMappingExposure = 1.0;
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
+    // シェーダーのエラーを調べると、シェーダーができあがるまで 1 本ずつ待つことになり、場面の最初の描画が遅くなる（非力なスマホで 3〜4 割）。?debug のときだけ調べる
+    r.debug.checkShaderErrors = typeof Debug !== 'undefined' && Debug.on;
     this.renderer = r; this.canvas = canvas;
     const X = THREEX;
     this.composer = new X.EffectComposer(r);
@@ -102,7 +130,8 @@ const GFX = {
     this.grade = new X.ShaderPass(GradeShader);
     this.output = new X.OutputPass();
     this.smaa = new X.SMAAPass();
-    [this.renderPass, this.sanitize, this.bloom, this.grade, this.output, this.smaa].forEach(p => this.composer.addPass(p));
+    const fused = fuseGrade(this.output, this.grade);
+    [this.renderPass, this.sanitize, this.bloom, fused ? null : this.grade, this.output, this.smaa].forEach(p => p && this.composer.addPass(p));
     // スマホなどでメモリが足りなくなると、ブラウザが 3D 描画を止める（画面が消える）。
     // ブラウザが戻すのを少し待ち、戻らなければ作り直す
     canvas.addEventListener('webglcontextlost', () => { this.diag.lost++; clearTimeout(this.lostTimer); this.lostTimer = setTimeout(() => this.rebuild(), 2500); });
@@ -116,7 +145,7 @@ const GFX = {
     try { this.createRenderer(); } catch (e) { this.diag.rebuildFail = String(e && e.message || e); console.warn('3D 描画を作り直せませんでした', e); return; }
     this.diag.rebuilt++;
     this.renderer.localClippingEnabled = clip;
-    this.setEco(this.eco);
+    this.setTier(this.tier);
     if (this.view) {
       // 環境光の画像は前の描画で作ったものなので使えない（次の場面で作り直される）
       this.view.scene.environment = null;
@@ -125,18 +154,74 @@ const GFX = {
     this.canvas.style.opacity = this.view ? 1 : 0;
   },
 
-  setEco(on) {
-    this.eco = !!on;
+  // 保存してある画質。Save.data.eco：null はおまかせ（スマホなら省エネ。遅ければ軽量へ落としたのを gfxAuto に覚える）、
+  // false はなめらか、true は省エネ、'low' は軽量（メニューで選んだもの）
+  savedTier() {
+    const e = Save.data.eco;
+    if (e === 'low') return 2;
+    if (e != null) return e ? 1 : 0;
+    return Save.data.gfxAuto ?? (matchMedia('(pointer: coarse)').matches ? 1 : 0);
+  },
+  setTier(n) {
+    const prev = this.Q;
+    this.tier = n; this.Q = GFX_TIERS[n]; this.eco = n >= 1; this.low = n >= 2;
+    this.fpsWatch = null;
     if (!this.ok) return;
-    this.smaa.enabled = !this.eco;
+    const Q = this.Q;
+    this.smaa.enabled = Q.smaa;
+    // 光のにじみを省くときは、その前の壊れた値を消す処理もいらない（ぼかさなければ広がらない）
+    this.bloom.enabled = this.sanitize.enabled = Q.bloom;
+    if (this.view && prev !== Q) this.tierScene(this.view.scene);
     this.resize(this.appScale);
   },
-  shadowSize() { return this.eco ? 1024 : 2048; },
+  setEco(on) { this.setTier(on ? 1 : 0); },
+  shadowSize() { return this.Q.shadow; },
+  // いまの場面を画質に合わせる（影の画像の大きさ・空・小さな部品の影・つや）
+  tierScene(scene) {
+    const Q = this.Q;
+    scene.traverse(o => {
+      if (o.isLight && o.castShadow && o.shadow.mapSize.x !== Q.shadow) { o.shadow.mapSize.set(Q.shadow, Q.shadow); if (o.shadow.map) { o.shadow.map.dispose(); o.shadow.map = null; } }
+      if (o.userData.sky && o.material.defines.OCT !== skyOctaves()) { o.material.defines.OCT = skyOctaves(); o.material.needsUpdate = true; }
+    });
+    scene.traverse(o => {
+      if (!Q.trim && o.userData.shadowTrim) o.castShadow = true;
+      if (!Q.trim) delete o.userData.shadowTrim;
+      if (!Q.cheap && o.material) [].concat(o.material).forEach(m => cheapLight(m, false));
+    });
+    if (Q.trim || Q.cheap) this.tierPass(scene);
+  },
+  // 軽量の画質で、場面のものを軽くする。あとから場面に入ったもの（戦闘の敵など）も拾えるよう、ときどき見なおす。
+  //   trim：小さな部品は影を落とさない（影を描く回数が半分ほどになる。影の画像の上では数画素で、ほとんど見えない）。
+  //   木や草の InstancedMesh は 1 本ずつ小さくても全体は大きいので除く
+  tierPass(scene) {
+    const Q = this.Q;
+    scene.traverse(o => {
+      if (!o.isMesh) return;
+      if (Q.cheap && o.material) [].concat(o.material).forEach(m => cheapLight(m, true));
+      if (!Q.trim || o.isInstancedMesh || !o.castShadow || o.userData.shadowTrim != null || !o.geometry) return;
+      const g = o.geometry; if (!g.boundingSphere) g.computeBoundingSphere();
+      if ((o.userData.shadowTrim = g.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis() < 0.1)) o.castShadow = false;
+    });
+  },
+  // コマ数を見張る：おまかせの省エネで、場面を出してから少したっても 30fps に遠く届かなければ、軽量へ落として覚えておく。
+  // 読みこみ・場面の切りかえの重いコマは数えない（3 秒ずつ区切って、中央値で見る）
+  watchFps(now) {
+    if (this.tier !== 1 || Save.data.eco != null || !this.view || document.hidden) { this.fpsWatch = null; return; }
+    let w = this.fpsWatch;
+    if (!w || w.view !== this.view) w = this.fpsWatch = { view: this.view, t0: now + 2500, dts: [], bad: 0 };
+    if (now < w.t0) return;
+    if (this.lastFrame) w.dts.push(now - this.lastFrame);
+    if (now - w.t0 < 3000) return;
+    const d = w.dts.sort((a, b) => a - b)[w.dts.length >> 1];
+    w.bad = d > 1000 / 20 ? w.bad + 1 : 0;
+    w.t0 = now; w.dts = [];
+    if (w.bad >= 2) { console.info(`コマ数が足りない（${(1000 / d).toFixed(1)}fps）ので、画質を軽量にします`); Save.data.gfxAuto = 2; Save.save(); this.setTier(2); }
+  },
 
   resize(appScale) {
     this.appScale = appScale;
     if (!this.ok) return;
-    const pr = Math.min(this.eco ? 1 : 2, Math.max(0.75, (window.devicePixelRatio || 1) * appScale));
+    const pr = Math.min(this.Q.prMax, Math.max(0.75, (window.devicePixelRatio || 1) * appScale));
     this.pixelRatio = pr;
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(1280, 720, false);
@@ -158,6 +243,8 @@ const GFX = {
     this.canvas.style.opacity = view ? 1 : 0;
   },
   applyView(view) {
+    // 軽量の画質は、最初に描く前に合わせる（あとで差しかえると、シェーダーを二度作ることになる）
+    if (this.Q.trim || this.Q.cheap) { view.scene.updateMatrixWorld(); this.tierPass(view.scene); }
     this.renderPass.scene = view.scene;
     this.renderPass.camera = view.camera;
     this.bloom.strength = view.bloomStrength ?? 0.4;
@@ -196,6 +283,7 @@ const GFX = {
       this.shakeAmt *= Math.pow(0.02, rdt);
     }
     this.composer.render(rdt);
+    if ((this.Q.trim || this.Q.cheap) && (this.diag.frames & 15) === 0) this.tierPass(this.view.scene);
   },
 
   tween(dur, fn, ease = Ease.inOut, real = false) {
@@ -219,37 +307,82 @@ const GFX = {
   // ---------- キャラクター肖像（3Dモデルから描画） ----------
   // portraitsWide：戦闘の味方カードの横長の枠（150×52）用。耳の先からあごまで入るように引いて、
   // 右上の必殺技ボタンにかからないよう顔を少し左に寄せる
+  // 起動を待たせないよう、はじめて使うとき（avatarSVG など）に描く。タイトルが出たあとの手のあいたときにも、先に描いておく
+  // （非力なスマホでは 5 匹で 5 秒ほどかかり、起動がそのぶん遅れていた）
   portraits: {}, portraitsWide: {},
-  buildPortraits() {
-    const size = 256, WW = 300, WH = 104;
-    const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    r.outputColorSpace = THREE.SRGBColorSpace;
-    r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
-    for (const key of Object.keys(CHARS)) {
-      const scene = new THREE.Scene();
-      const col = CHARS[key].color;
-      addStudioLights(scene, '#fff0dc');
-      const m = buildCharacter(key);
-      m.group.rotation.y = -0.3;
-      m.setPose(POSES.idle); m.face.set('smile'); m.update(0, 0.8);
-      scene.add(m.group);
-      const cam = catPortraitCam(m);
-      const bg = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ map: radialTex(col, '#fff6ea'), toneMapped: false }));
-      bg.position.copy(cam.position).add(cam.getWorldDirection(V3()).multiplyScalar(3)); bg.lookAt(cam.position);
-      scene.add(bg);
-      r.setSize(size, size);
-      r.render(scene, cam);
-      this.portraits[key] = r.domElement.toDataURL('image/png');
+  lazyPortraits() {
+    const sq = {}, wide = {}, self = this;
+    this.portraitStore = { sq, wide };
+    const lazy = o => new Proxy(o, { get(t, k) { if (typeof k === 'string' && !(k in t) && CHARS[k]) self.drawPortrait(k); return t[k]; } });
+    this.portraits = lazy(sq); this.portraitsWide = lazy(wide);
+    const keys = Object.keys(CHARS);
+    const idle = fn => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 4000 }) : setTimeout(fn, 300));
+    const next = () => { const k = keys.find(k => !(k in sq)); if (k) this.drawPortrait(k, true).then(() => idle(next)); };
+    setTimeout(() => idle(next), 1500);
+  },
+  // wait：シェーダーができあがるのを待ってから描く（待つあいだ、画面を止めない）
+  drawPortrait(key, wait = false) {
+    const size = 256, WW = 300, WH = 104, { sq, wide } = this.portraitStore;
+    const st = this.stamp();
+    const scene = new THREE.Scene();
+    const col = CHARS[key].color;
+    addStudioLights(scene, '#fff0dc');
+    const m = buildCharacter(key);
+    m.group.rotation.y = -0.3;
+    m.setPose(POSES.idle); m.face.set('smile'); m.update(0, 0.8);
+    scene.add(m.group);
+    const cam = catPortraitCam(m);
+    const bg = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ map: radialTex(col, '#fff6ea'), toneMapped: false }));
+    bg.position.copy(cam.position).add(cam.getWorldDirection(V3()).multiplyScalar(3)); bg.lookAt(cam.position);
+    scene.add(bg);
+    st.scenes.push(scene);
+    const shoot = () => {
+      if (key in sq) return;   // 待っているあいだに、使う場面で先に描かれた
+      sq[key] = this.snap(scene, cam, size, size);
       // 横長：正方形の肖像の上 84% の高さを切り出し、横は枠の比率まで広げる（背景の板も広げる）
       const vh = 0.84 * size, vw = vh * WW / WH;
       cam.setViewOffset(size, size, size * 0.5 - vw * 0.4, -0.04 * size, vw, vh);
       bg.scale.setScalar(2.2);
-      r.setSize(WW, WH);
-      r.render(scene, cam);
-      this.portraitsWide[key] = r.domElement.toDataURL('image/png');
-      disposeTree(scene);
+      wide[key] = this.snap(scene, cam, WW, WH);
+    };
+    if (!wait) return shoot();
+    return st.r.compileAsync(scene, cam).catch(() => {}).then(shoot);
+  },
+  // 肖像を描く小さな描画の土台。続けて描くあいだは使い回し、しばらく使わなければ手放す。
+  // 描いた場面も手放すまでとっておく（材質を捨てると、同じシェーダーを 1 枚ごとに作りなおすことになり、1 枚 0.4 秒ほどかかる）
+  stampR: null,
+  stamp() {
+    let s = this.stampR;
+    if (!s) {
+      const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      r.outputColorSpace = THREE.SRGBColorSpace;
+      r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
+      r.setSize(300, 256);   // いちばん大きい肖像（横長の幅・正方形の高さ）が入る大きさ
+      s = this.stampR = { r, scenes: [], cut: document.createElement('canvas') };
     }
-    r.dispose(); r.forceContextLoss();
+    clearTimeout(s.timer); s.timer = setTimeout(() => this.releaseStamp(), 5000);
+    return s;
+  },
+  // 1 枚ごとに描画の土台の大きさを変えると、そのたびに描画用のメモリを取りなおして遅い（非力なスマホで 1 回 0.1 秒ほど）。
+  // 大きさは変えずに左下の w×h だけに描き、そこを切り出す
+  snap(scene, cam, w, h) {
+    const st = this.stamp(), r = st.r, c = r.domElement, out = st.cut;
+    r.setViewport(0, 0, w, h); r.setScissor(0, 0, w, h); r.setScissorTest(true);
+    r.render(scene, cam);
+    out.width = w; out.height = h;
+    out.getContext('2d').drawImage(c, 0, c.height - h, w, h, 0, 0, w, h);
+    return out.toDataURL('image/png');
+  },
+  releaseStamp() {
+    const s = this.stampR; if (!s) return;
+    this.stampR = null; clearTimeout(s.timer);
+    // 輪郭線の材質・顔などの画像は、ほかの場面と使い回しているので捨てない（描画の土台ごと手放せば GPU からは消える）
+    const shared = new Set(Object.values(OutlineCache));
+    for (const sc of s.scenes) sc.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) [].concat(o.material).forEach(m => { if (!shared.has(m)) m.dispose(); });
+    });
+    s.r.dispose(); s.r.forceContextLoss(); s.cut.width = s.cut.height = 0;
   },
 
   // 敵の肖像（戦闘の行動順のアイコン用）。出てきた敵の分だけ、その場で 3D モデルから描いて覚えておく
@@ -257,11 +390,7 @@ const GFX = {
   buildEnemyPortraits(keys) {
     keys = [...new Set(keys)].filter(k => !this.enemyPortraits[k] && ENEMIES[k]);
     if (!this.ok || !keys.length) return;
-    const size = 128;
-    const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    r.outputColorSpace = THREE.SRGBColorSpace;
-    r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
-    r.setSize(size, size);
+    const size = 128, st = this.stamp();
     for (const key of keys) {
       const scene = new THREE.Scene();
       addStudioLights(scene, '#ffd8e0');
@@ -288,11 +417,9 @@ const GFX = {
       bg.position.copy(cam.position).add(cam.getWorldDirection(V3()).multiplyScalar(dist * 1.6)); bg.lookAt(cam.position);
       bg.scale.setScalar(dist * 1.6 * Math.tan(15 * Math.PI / 180) * 2.4);
       scene.add(bg);
-      r.render(scene, cam);
-      this.enemyPortraits[key] = r.domElement.toDataURL('image/png');
-      disposeTree(scene);
+      this.enemyPortraits[key] = this.snap(scene, cam, size, size);
+      st.scenes.push(scene);
     }
-    r.dispose(); r.forceContextLoss();
   },
 };
 
@@ -304,6 +431,74 @@ function ecoShrink(c) {
   s.getContext('2d').drawImage(c, 0, 0, s.width, s.height);
   c.width = c.height = 0;
   return s;
+}
+
+// 動かない部品をまとめて、描く回数を減らす（にゃんこ 1 匹で 1 割ほど。関節ごとに部品が分かれているので、それ以上はまとまらない）。
+// 描く回数が多いと、非力なスマホでは CPU が追いつかない。
+// 同じ親の子で、材質・影の設定・形の属性が同じメッシュを一つにする。輪郭線（outlined の子）は、まとめた本体の子として同じ形で描く。
+// keep：ほかから直接さわる部品（位置を読む・動かす）。probe：動きを試しに進める関数。そのあいだに位置・見え方が変わった部品はまとめない
+function mergeRigid(root, keep = [], probe = null) {
+  const skip = new Set(keep), units = [], tmp = new THREE.Matrix4();
+  const sig = g => (g.index ? 'i' : 'n') + Object.keys(g.attributes).sort().map(k => { const a = g.attributes[k]; return a.isInterleavedBufferAttribute ? '!' : k + a.itemSize + (a.normalized ? 'n' : '') + a.array.constructor.name; }).join(',') + Object.keys(g.morphAttributes).length;
+  root.traverse(o => {
+    if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || o.isSprite || skip.has(o) || !o.parent || o.parent.isMesh || !o.visible || Array.isArray(o.material) || o.userData.face) return;
+    const ol = o.children;
+    if (ol.length > 1 || (ol.length === 1 && !(ol[0].isMesh && ol[0].userData.outline && ol[0].geometry === o.geometry && !ol[0].children.length && ol[0].matrix.equals(tmp.identity()) && ol[0].visible))) return;
+    if (sig(o.geometry).includes('!')) return;
+    o.updateMatrix();
+    if (o.matrix.determinant() < 0) return;   // 裏返し（scale が負）の部品は、まとめると面の向きが逆になる
+    units.push({ o, ol: ol[0] || null, p: o.position.clone(), q: o.quaternion.clone(), s: o.scale.clone() });
+  });
+  if (probe) {
+    probe();
+    for (const u of units) u.moves = !u.o.visible || !u.o.position.equals(u.p) || !u.o.quaternion.equals(u.q) || !u.o.scale.equals(u.s);
+  }
+  const buckets = new Map();
+  for (const u of units) {
+    if (u.moves) continue;
+    const o = u.o, k = [o.parent.uuid, o.material.uuid, u.ol ? u.ol.material.uuid : '-', o.castShadow, o.receiveShadow, o.renderOrder, o.frustumCulled, sig(o.geometry)].join('|');
+    (buckets.get(k) || buckets.set(k, []).get(k)).push(u);
+  }
+  for (const list of buckets.values()) {
+    if (list.length < 2) continue;
+    const merged = THREEX.BufferGeometryUtils.mergeGeometries(list.map(u => { u.o.updateMatrix(); return u.o.geometry.clone().applyMatrix4(u.o.matrix); }), false);
+    if (!merged) continue;
+    const a = list[0].o, parent = a.parent, m = new THREE.Mesh(merged, a.material);
+    m.castShadow = a.castShadow; m.receiveShadow = a.receiveShadow; m.renderOrder = a.renderOrder; m.frustumCulled = a.frustumCulled;
+    if (a.userData.outline) m.userData.outline = true;
+    if (list[0].ol) { const o = new THREE.Mesh(merged, list[0].ol.material); o.userData.outline = true; o.castShadow = false; m.add(o); }
+    for (const u of list) parent.remove(u.o);
+    parent.add(m);
+  }
+}
+
+// 拡散光だけの照らし方：MeshStandardMaterial の光の計算から、照り返し（GGX）と環境光の画像の映りこみを除く。
+// 1 画素ごとの計算がずっと軽くなる（Galaxy A21 の軽量の画質で、戦闘 8 → 10fps・探索 9 → 14fps）。環境光の画像の拡散光（まわりの明るさ）は残す。
+// 材質はそのまま（ほかの処理が色や明るさを変えても効く）で、シェーダーだけを差しかえる。金属（metalness が大きい）は照り返しが見た目の大半なので除く
+const CHEAP_LIGHT = `
+#undef RE_Direct
+#undef RE_IndirectSpecular
+#define RE_Direct RE_Direct_Cheap
+void RE_Direct_Cheap( const in IncidentLight directLight, const in vec3 geometryPosition, const in vec3 geometryNormal, const in vec3 geometryViewDir, const in vec3 geometryClearcoatNormal, const in PhysicalMaterial material, inout ReflectedLight reflectedLight ) {
+  reflectedLight.directDiffuse += saturate( dot( geometryNormal, directLight.direction ) ) * directLight.color * BRDF_Lambert( material.diffuseColor );
+}`;
+function cheapLight(m, on) {
+  if (!m.isMeshStandardMaterial || m.metalness > 0.3 || on === !!m.userData.cheap) return;
+  if (on) {
+    const obc = m.onBeforeCompile, key = m.customProgramCacheKey;
+    // もとのキー（ふつうは onBeforeCompile の中身）に印をつける。同じシェーダーの材質どうしは、差しかえたあとも同じプログラムを使う
+    const base = key === THREE.Material.prototype.customProgramCacheKey ? obc.toString() : null;
+    m.userData.cheap = { obc, key };
+    m.onBeforeCompile = function (sh, r) {
+      obc.call(this, sh, r);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <lights_physical_pars_fragment>', '#include <lights_physical_pars_fragment>' + CHEAP_LIGHT);
+    };
+    m.customProgramCacheKey = function () { return (base ?? key.call(this)) + '|cheap'; };
+  } else {
+    m.onBeforeCompile = m.userData.cheap.obc; m.customProgramCacheKey = m.userData.cheap.key;
+    delete m.userData.cheap;
+  }
+  m.needsUpdate = true;
 }
 
 // GPU に載せたものを手放す。画像は模様（map）だけでなく、光る模様・凹凸なども全部。

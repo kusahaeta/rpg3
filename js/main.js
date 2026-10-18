@@ -48,7 +48,7 @@ function diagHud() {
     const mem = performance.memory ? ` heap ${Math.round(performance.memory.usedJSHeapSize / 1048576)}MB` : '';
     el.textContent = [
       `3D ${lost}  止まった ${D.lost} / 戻った ${D.restored} / 作り直し ${D.rebuilt}${D.rebuildFail ? ' 失敗:' + D.rebuildFail : ''}`,
-      `fps ${fps.toFixed(0)}  省エネ ${GFX.eco ? 'ON' : 'OFF'}  pr ${GFX.pixelRatio.toFixed(2)}  canvas ${c ? `${c.width}x${c.height} ${c.isConnected ? '' : '外れ'} 不透明度${c.style.opacity}` : 'なし'}`,
+      `fps ${fps.toFixed(0)}  画質 ${GFX.tier}  pr ${GFX.pixelRatio.toFixed(2)}  canvas ${c ? `${c.width}x${c.height} ${c.isConnected ? '' : '外れ'} 不透明度${c.style.opacity}` : 'なし'}`,
       R ? `画像 ${R.info.memory.textures}  形 ${R.info.memory.geometries}  シェーダー ${R.info.programs ? R.info.programs.length : '?'}  描画 ${R.info.render.calls}回${mem}` : '',
       `場所 ${f ? f.zoneId : '-'}  カメラ ${cam ? [cam.x, cam.y, cam.z].map(v => v.toFixed(1)).join(',') : '-'}  距離 ${f && f.curDist != null ? f.curDist.toFixed(1) : '-'}`,
       ...errs.map(m => 'エラー: ' + m),

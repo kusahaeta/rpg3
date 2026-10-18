@@ -57,7 +57,7 @@ const SkyShader = {
     float noise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f*f*(3.0-2.0*f);
       return mix(mix(mix(hash(i), hash(i+vec3(1,0,0)), f.x), mix(hash(i+vec3(0,1,0)), hash(i+vec3(1,1,0)), f.x), f.y),
                  mix(mix(hash(i+vec3(0,0,1)), hash(i+vec3(1,0,1)), f.x), mix(hash(i+vec3(0,1,1)), hash(i+vec3(1,1,1)), f.x), f.y), f.z); }
-    float fbm(vec3 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
+    float fbm(vec3 p){ float v = 0.0, a = 0.5; for (int i = 0; i < OCT; i++){ v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
     void main(){
       vec3 d = normalize(vDir); float h = d.y;
       vec3 col = mix(horizon, top, smoothstep(0.0, 0.6, h));
@@ -86,11 +86,14 @@ const SkyShader = {
     }`,
 };
 
+function skyOctaves() { return GFX.low ? 3 : 5; }
 function makeSky(th) {
   const u = { time: { value: 0 }, stars: { value: th.stars || 0 }, clouds: { value: th.clouds || 0 } };
   for (const k of ['top', 'horizon', 'bottom', 'nebA', 'nebB', 'sun']) u[k] = { value: new THREE.Color(th[k] || '#ffffff') };
-  const m = new THREE.Mesh(new THREE.SphereGeometry(400, 48, 32), new THREE.ShaderMaterial({ uniforms: u, ...SkyShader, side: THREE.BackSide, depthWrite: false }));
-  m.renderOrder = -10; m.frustumCulled = false;
+  // OCT：雲・星のもようの細かさ（重ねる回数）。軽量の画質では減らす（空は画面の半分ほどをしめ、1 画素ごとの計算が重い）
+  const m = new THREE.Mesh(new THREE.SphereGeometry(400, 48, 32), new THREE.ShaderMaterial({ uniforms: u, ...SkyShader, defines: { OCT: skyOctaves() }, side: THREE.BackSide, depthWrite: false }));
+  // 不透明なものをすべて描いたあとに描く。いちばん奥（深さ 1）にあるので、手前のもので隠れたところは計算しないですむ
+  m.renderOrder = 100; m.frustumCulled = false; m.userData.sky = true;
   return m;
 }
 
