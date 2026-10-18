@@ -117,7 +117,10 @@ class Battle {
           <button class="ab-btn" data-ab="skill"><span class="ab-ic">✦</span><span class="ab-el"></span><span class="k">E</span><span class="l">戦闘スキル</span></button>
           <button class="ab-btn item" data-ab="item"><span class="ab-ic">🎒</span><span class="k">R</span><span class="l">どうぐ</span></button>
         </div>
-        <div class="ult-hint"><span class="pc-only">Space で発動　Esc でキャンセル</span><button class="ctl ult-go">発動</button><button class="ctl ult-cancel">キャンセル</button></div>
+        <div class="ult-hint">
+          <button class="ab-btn ult-cancel"><span class="ab-ic">✕</span><span class="k wide">Esc</span><span class="l">キャンセル</span></button>
+          <button class="ab-btn ult-go"><span class="ab-ic">✸</span><span class="k wide">Space</span><span class="l">発動</span></button>
+        </div>
       </div>
       <div class="bond hidden"><div class="bond-l">友情ゲージ</div><div class="bond-bar"><i></i></div><button class="bond-btn" data-combo disabled><span class="k">C</span><b>コンボ</b></button></div>
       <div class="combo-menu hidden"></div>
@@ -153,7 +156,7 @@ class Battle {
       }
     });
 
-    r.querySelectorAll('.ab-btn').forEach(b => b.addEventListener('click', () => this.selectAbility(b.dataset.ab)));
+    r.querySelectorAll('.ab-btns .ab-btn').forEach(b => b.addEventListener('click', () => this.selectAbility(b.dataset.ab)));
     r.querySelector('[data-combo]').addEventListener('click', e => { e.stopPropagation(); this.requestCombo(); });
     r.querySelector('.ult-go').addEventListener('click', () => { if (this.input && this.input.mode === 'ult') this.confirm(); });
     r.querySelector('.ult-cancel').addEventListener('click', () => this.cancelUlt());
@@ -942,7 +945,7 @@ class Battle {
     this.$('.ab-name b').textContent = ab.name;
     this.$('.ab-name .ab-el').innerHTML = abElems(ab).map(el => elemIcon(el)).join('');
     this.$('.ab-desc').textContent = ab.desc;
-    this.root.querySelectorAll('.ab-btn').forEach(b => {
+    this.root.querySelectorAll('.ab-btns .ab-btn').forEach(b => {
       b.classList.toggle('sel', inp.mode === 'turn' && b.dataset.ab === inp.sel);
       b.querySelector('.l').textContent = b.dataset.ab === 'item' ? 'どうぐ' : u.def[b.dataset.ab].name;
       const el = b.querySelector('.ab-el'); if (el) el.innerHTML = abElems(u.def[b.dataset.ab]).map(x => elemIcon(x)).join('');
