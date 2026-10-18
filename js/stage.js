@@ -644,7 +644,7 @@ class StageView extends BaseView {
     if (d.enter) [].concat(d.enter).forEach(k => this.enter(k, d.enterFx));
     if (d.exit) [].concat(d.exit).forEach(k => { const a = this.actors[k]; if (a) GFX.tween(0.5, e => { a.alpha = 1 - e; }).then(() => { a.m.group.visible = false; }); });
     if (d.defeat) [].concat(d.defeat).forEach(k => Object.values(this.actors).filter(a => a.base === k).forEach(a => { a.dead = 0.001; a.m.flash('#ffffff', 1.2); }));
-    if (d.fx) [].concat(d.fx).forEach(f => { const [n, arg] = f.split(':'); const h = this.hooks[n]; if (h) h.call(this, arg); else if (n === 'glow') this.chestGlow(arg); });
+    if (d.fx) [].concat(d.fx).forEach(f => { const i = f.indexOf(':'), n = i < 0 ? f : f.slice(0, i), arg = i < 0 ? undefined : f.slice(i + 1); const h = this.hooks[n]; if (h) h.call(this, arg); else if (n === 'glow') this.chestGlow(arg); });
     if (d.bgm) Music.play(d.bgm);
     if (d.roar) [].concat(d.roar).forEach(k => Object.values(this.actors).filter(a => a.base === k).forEach(a => a.roar()));
     if (d.shake) GFX.shake(d.shake);
