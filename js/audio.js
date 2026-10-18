@@ -138,18 +138,6 @@ const TRACKS = {
     bass: { pat: 'r - f - o -', wave: 'square', env: 'pluck', dec: 0.2, vol: 0.13 },
     pad: { wave: 'triangle', vol: 0.02 },
   },
-  // 谷の集落：ひっそりした、笛の民謡
-  hamlet: {
-    bpm: 96, gain: 1.5, prog: 'Dm C Dm G Dm F C Dm Bb C Dm Am Bb C G C',
-    lead: { wave: 'triangle', vol: 0.2, echo: 0.15, vib: 5, seq: `
-      D5 - F5 - A5 - G5 F5 | E5 - - - C5 - . . | D5 - A4 - D5 - E5 F5 | G5 - - - B4 - . . |
-      A5 - G5 F5 E5 - D5 - | C5 - F5 - A5 - G5 - | E5 - D5 - C5 - E5 - | D5 - - - - - . . |
-      D5 - - - F5 - Bb5 - | A5 - G5 - E5 - . . | F5 - E5 D5 A5 - - . | E5 - - - C5 - A4 - |
-      Bb4 - D5 - F5 - D5 - | E5 - G5 - C6 - . . | B5 - A5 G5 D5 - B4 - | C5 - - - E5 - . .` },
-    bass: { pat: 'r - - - f - - -', env: 'pluck', dec: 0.25, vol: 0.32 },
-    arp: { div: 2, pat: '. 2 1 2 . 2 1 2', vol: 0.035 },
-    drums: { vol: 0.5, t: 'x.....x.....x...' },
-  },
   // ニャハハ王国関所：砦の行進
   fort: {
     bpm: 112, lp: 3200, prog: 'Bb Eb F Bb Gm Cm F Bb Eb Bb Cm F Bb Eb F7 Bb',
@@ -212,7 +200,7 @@ const TRACKS = {
     bass: { pat: 'r . r r . r f o', wave: 'sawtooth', env: 'pluck', dec: 0.12, vol: 0.2 },
     drums: { vol: 0.8, k: 'x.....x.x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
   },
-  // くろねこ谷：風のふく、さびしい谷
+  // くろねこ谷（谷・集落）：風のふく、さびしい谷
   kuroneko: {
     bpm: 76, gain: 0.8, prog: 'Am F C G Am F Dm E F G Em Am Dm Am F E',
     lead: { wave: 'sine', vol: 0.24, echo: 0.35, vib: 6, seq: `
@@ -236,7 +224,7 @@ const TRACKS = {
     arp: { div: 2, pat: '0 . 1 . 2 . 1 .', vol: 0.035 },
     drums: { vol: 0.6, k: 'x.......x...x...', t: '......x.......x.' },
   },
-  // 魔王領：どこかとぼけた、魔族の行進
+  // 魔王領・魔王城：どこかとぼけた、魔族の行進
   demonland: {
     bpm: 108, gain: 1.7, lp: 3000, prog: 'Cm Cm Ab G Cm Fm G Cm Ab Bb Eb G Fm Cm Ab G',
     lead: { wave: 'sawtooth', vol: 0.13, det: 4, seq: `
@@ -330,18 +318,6 @@ const TRACKS = {
     bass: { pat: 'r - - - - - - -', wave: 'sine', vol: 0.3 },
     arp: { pat: '0 . . 2 . . 4 . . 2 . . 3 . . .', env: 'bell', wave: 'sine', oct: 12, vol: 0.03 },
     pad: { vol: 0.03 },
-  },
-  // 魔王城：オルガンとティンパニの、悪の城
-  demoncastle: {
-    bpm: 120, gain: 0.9, lp: 3500, prog: 'Gm Gm Eb D Gm Cm D7 D Eb F Bb Gm Cm Gm Ab D',
-    lead: { wave: 'sawtooth', vol: 0.13, det: 7, vib: 6, seq: `
-      G4 - - - D5 - - - | G5 - - F#5 G5 - A5 - | Bb5 - - - G5 - Eb5 - | F#5 - - - D5 - - . |
-      D5 - G5 - Bb5 - - A5 | G5 - Eb5 - C5 - Eb5 - | D5 - F#5 - A5 - C6 - | A5 - - - - - . . |
-      G5 - - - Bb5 - G5 - | A5 - - - C6 - A5 - | F5 - - - D5 - Bb4 - | D5 - - - G5 - - . |
-      Eb5 - - - G5 - C6 - | Bb5 - - - G5 - D5 - | C5 - Eb5 - Ab5 - - . | F#5 - - - D5 - A4 -` },
-    bass: { pat: 'r - - r o - r -', wave: 'sawtooth', vol: 0.2 },
-    pad: { wave: 'square', vol: 0.018 },
-    drums: { vol: 0.7, T: 'x.....x.x.......', c: CR(8) },
   },
   // 樹の地下：しおれた根の奥で、かすかな鼓動
   root: {
