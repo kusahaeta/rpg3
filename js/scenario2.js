@@ -1196,7 +1196,7 @@ const STORY = [
     { t: 'reward', niboshi: 300, g: '第一章 おしまい' },
   ] },
   // 第二章：切り通しの見晴らし台から、関所の砦のむこうの、ニャハハ王国のお城と笑顔の塔（つぎの章の行き先）を見る
-  { title: '第二章　にゃんこ大集合', clearSet: { zone: 'road2_gate', at: [-22, -26.5], face: 0, full: true, fog: 0.3, cam: { pos: [-1.5, 2.6, -3.6], look: [20, -22, 314], fov: 20 } }, steps: [
+  { title: '第二章　にゃんこ大集合', clearBgm: 'fort', clearSet: { zone: 'road2_gate', at: [-22, -26.5], face: 0, full: true, fog: 0.3, cam: { pos: [-1.5, 2.6, -3.6], look: [20, -22, 314], fov: 20 } }, steps: [
     { t: 'scene', id: 'c2_01', g: 'ミャオ街道へ' },
     { t: 'field', zone: 'road1', at: [9, 17], start: ['road1', -1, 68], near: ['road1', 'road1_hill', 'road_rest'], yaw: Math.PI, scene: 'c2_01b', g: '街道を北へ進む' },
     { t: 'field', zone: 'road_rest', at: [0, -1.5], scene: 'c2_02', battle: '2-1', after: 'c2_02b', g: '街道の宿場へ' },
@@ -1216,7 +1216,7 @@ const STORY = [
     { t: 'reward', niboshi: 400, g: '第二章 おしまい' },
   ] },
   // 第三章：城下町の噴水を中心に、南の広場から、北のお城と笑顔の塔のほうを見る
-  { title: '第三章　笑わない街', clearSet: { zone: 'nyahaha', at: [0, -8], face: 0, radius: 16, height: 6.5, lookY: 5.5 }, steps: [
+  { title: '第三章　笑わない街', clearBgm: 'royal', clearSet: { zone: 'nyahaha', at: [0, -8], face: 0, radius: 16, height: 6.5, lookY: 5.5 }, steps: [
     { t: 'field', zone: 'nyahaha', at: [0, 22], scene: 'c3_01', g: 'ニャハハ王国に入る' },
     { t: 'field', zone: 'castle_in', at: [0, -20], scene: 'c3_02', g: '町の北、ニャハハ城の玉座の間で王さまに会う' },
     { t: 'field', zone: 'tower', at: [0, 14], scene: 'c3_03', battle: '3-1', g: '町の北東、笑顔の塔へ' },
@@ -1230,7 +1230,7 @@ const STORY = [
     { t: 'reward', niboshi: 500, g: '第三章 おしまい' },
   ] },
   // 第四章：谷の丘の墓標。三本の剣が立ち、名前のない石はもうない（夕焼けの空）
-  { title: '第四章　黒猫の過去', clearSet: { zone: 'valley', at: [-16, -9.5], face: 0, cam: { pos: [1.6, 1.6, -5.5], look: [-0.4, 3.6, 4] } }, steps: [
+  { title: '第四章　黒猫の過去', clearBgm: 'kuroneko', clearSet: { zone: 'valley', at: [-16, -9.5], face: 0, cam: { pos: [1.6, 1.6, -5.5], look: [-0.4, 3.6, 4] } }, steps: [
     { t: 'field', zone: 'valley_village', at: [-12, 1], scene: 'c4_01', g: '城下町の東、くろねこ谷を抜けて谷の集落へ' },
     { t: 'field', zone: 'valley', at: [-16, -8], scene: 'c4_02', battle: '4-1', after: 'c4_02b', g: '谷の丘の上の墓標へ' },
     { t: 'field', zone: 'valley', at: [18, -5], scene: 'c4_02c', g: '谷の北東、川のほとりの野営あとで、影の四剣の記録をさがす' },
@@ -1243,7 +1243,7 @@ const STORY = [
     { t: 'reward', niboshi: 600, g: '第四章 おしまい' },
   ] },
   // 第五章：石畳の丘の、古代遺跡の神殿の正面（猫の紋章と、光る扉）
-  { title: '第五章　眠れる子猫', clearSet: { zone: 'ruins_hill', at: [0, -18], face: 0, fog: 0.6, cam: { pos: [3, 2.2, -12], look: [0, 7.5, 15] } }, steps: [
+  { title: '第五章　眠れる子猫', clearBgm: 'ruins', clearSet: { zone: 'ruins_hill', at: [0, -18], face: 0, fog: 0.6, cam: { pos: [3, 2.2, -12], look: [0, 7.5, 15] } }, steps: [
     // 第四章の終わりに谷の墓へ戻っているので、墓標の丘から歩き出す（谷や遺跡の外庭にいれば、その場から）
     { t: 'field', zone: 'ruins_out', at: [-6, 20], start: ['valley', -16, -8], near: ['valley', 'valley_village', 'old_road', 'ruins_out'], yaw: 0, scene: 'c5_01', battle: '5-1', g: '谷の北西から苔むす古道を上って、古代遺跡へ' },
     { t: 'field', zone: 'ruins_hill', at: [0, -12.5], scene: 'c5_01b', g: '外庭の北、石畳の丘を上って、遺跡の入口へ' },
@@ -1255,7 +1255,7 @@ const STORY = [
     { t: 'reward', niboshi: 700, g: '第五章 おしまい' },
   ] },
   // 第六章：魔王城の玉座の間（赤いじゅうたんの先の玉座と、シャンデリア）
-  { title: '第六章　魔王城へ', clearSet: { zone: 'demon_throne', at: [0, -6], face: 0, cam: { pos: [2, 3.4, -7], look: [0, 0.3, 9] } }, steps: [
+  { title: '第六章　魔王城へ', clearBgm: 'demonland', clearSet: { zone: 'demon_throne', at: [0, -6], face: 0, cam: { pos: [2, 3.4, -7], look: [0, 0.3, 9] } }, steps: [
     { t: 'field', zone: 'demon_land', at: [-2, 24], scene: 'c6_01', battle: '6-1', g: '遺跡の東、魔王領へ' },
     { t: 'field', zone: 'demon_castle', at: [1, 14.2], scene: 'c6_01b', g: '魔王城に入り、大広間の受付へ' },
     { t: 'field', zone: 'demon_clinic', at: [-12, 8], scene: 'c6_02', battle: '6-2', after: 'c6_02b', g: '面会許可証のハンコ（0/5）：大広間の西、保健の間で健康診断を受ける' },
