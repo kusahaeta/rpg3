@@ -6,7 +6,10 @@
 //  FOE_MOVES[anim](e, ts, c)：e＝敵の ent、ts＝ねらわれた味方の ent、c＝{ col, mv }
 //  敵が動いたら this.lastEnemy = { src, from } を立てる（enemyAttackEnd でもどる）
 //  2頭身の骨組みの敵（ネズミ・魔族・魔王など。model.critter）は、手足のポーズも動かす
+//  ボスの大技（ためる技のあとに撃つもの）は、ボスごとに専用の動きを持つ（ふだんの技と同じ動きにしない）
 // ============================================================
+// ためる技（type: 'charge'）のあとに撃つ大技。撃つ前に、ボスを足もとからあおる（bigWindup）
+const BIG_FOE_MOVES = new Set(Object.values(ENEMY_MOVES).filter(m => m.type === 'charge').map(m => ENEMY_MOVES[m.next]));
 const FOE_MOVES = {
   // ひっかき：とびかかって、三本の爪あと
   async claw(e, ts, c) {
@@ -183,15 +186,29 @@ const FOE_MOVES = {
     }
     await GFX.delay(0.2);
   },
-  // 降らせる（なみだ・カレー・ろう・メテオ）：上を見上げると、ねらった子の上から降ってくる
+  // 降らせる（なみだ・カレー・ろう・メテオ）：上を見上げると、ねらった子の上から降ってくる。メテオ（魔王の大技）は空が暗くなり、最後に大きな星が落ちる
   async rain(e, ts, c) {
     const o = c.mv.obj || 'drop';
     this.foeFlash(e, c.col);
     await this.foePose(e, POSES.raise, 0.2);
     this.foeHop(e, 0.2);
     this.p.burst(this.foeMouth(e).add(V3(0, 0.5, 0)), c.col, 20, { speed: 3, up: 3, life: 0.6, size: 0.1 });
-    const n = ts.length === 1 ? 6 : o === 'meteor' ? 2 : 4;
-    await Promise.all(ts.flatMap((t, i) => Array.from({ length: n }, (_, j) => GFX.delay(0.15 + i * 0.05 + j * 0.07).then(() => this.dropFx(t, o, c.col)))));
+    const meteor = o === 'meteor', n = ts.length === 1 ? 6 : meteor ? 2 : 4;   // メテオは一つずつの光が強いので、数をふやすと白く飛ぶ
+    const U = GFX.grade.uniforms;
+    if (meteor) GFX.tween(0.3, k => { U.tint.value.setRGB(1 - 0.35 * k, 1 - 0.45 * k, 1 - 0.2 * k); }, Ease.out, true);
+    await Promise.all(ts.flatMap((t, i) => Array.from({ length: n }, (_, j) => GFX.delay(0.15 + i * 0.05 + j * 0.09).then(() => this.dropFx(t, o, c.col)))));
+    if (meteor) {
+      // ひときわ大きな星が、まん中に落ちる
+      const xs = ts.map(t => t.home.x), cen = V3((Math.min(...xs) + Math.max(...xs)) / 2, 0, ts[0].home.z - 0.4);
+      const m = this.fx.sprite(V3(cen.x - 4, 12, cen.z), c.col, 2.6, 0.45, { k: 2.5, grow: 1 });
+      await GFX.tween(0.45, k => { m.position.set(cen.x - 4 * (1 - k), lerp(12, 0.6, Ease.in(k)), cen.z); m.material.opacity = 1; if (Math.random() < 0.5) this.p.emit(m.position, V3(0.8, 1.5, 0), hdr(c.col, 2), { life: 0.4, size: 0.35 }); }, Ease.linear);
+      this.fx.ring(cen.clone().add(V3(0, 0.06, 0)), c.col, { r: 5, life: 0.6, width: 0.5, k: 2 });
+      this.p.burst(cen.clone().add(V3(0, 0.4, 0)), c.col, 30, { speed: 8, up: 2, life: 0.7, size: 0.12 });
+      for (const t of ts) this.foeKnock(t, t.home.clone().sub(cen).setY(0).normalize(), 0.4);
+      GFX.shake(0.4); Sfx.slam();
+      await GFX.delay(0.2);
+      GFX.tween(0.4, k => { U.tint.value.setRGB(0.65 + 0.35 * k, 0.55 + 0.45 * k, 0.8 + 0.2 * k); }, Ease.out, true);
+    }
   },
   // 叫ぶ・笑う・いびき・おしゃべり：声の輪と文字が、こちらへとどく
   async shout(e, ts, c) {
@@ -226,14 +243,12 @@ const FOE_MOVES = {
     Sfx.laugh();
     await GFX.delay(0.8);
   },
-  // 地ならし（おおあばれ・大地ゆらし・寝返り・ぷるるん）：跳んで地面をたたき、ゆれがみんなへとどく
+  // 地ならし（おおあばれ・ぷるるん）：跳んで地面をたたき、ゆれがみんなへとどく
   async quake(e, ts, c) {
     const g = e.model.group, h = e.home;
     this.foeFlash(e, c.col);
-    const spin = c.mv.glyph === 'spin';
     await this.foePose(e, POSES.jump, 0.15);
-    await GFX.tween(0.35, k => { g.position.y = Math.sin(k * Math.PI) * 1.2; if (spin) g.rotation.y = k * Math.PI * 4; });
-    g.rotation.y = 0;
+    await GFX.tween(0.35, k => { g.position.y = Math.sin(k * Math.PI) * 1.2; });
     this.foePose(e, POSES.slam, 0.08);
     this.squashFoe(e, 0.3);
     GFX.shake(0.3);
@@ -245,21 +260,42 @@ const FOE_MOVES = {
     await GFX.delay(0.1);
   },
   // 大行進・大突進：みんなのあいだを駆けぬけて、またもどる
+  //   大突進（boar）は、うしろへさがって前足で地面をかき、駆けぬけたらふりかえって、もう一度つっこんでくる
   async stampede(e, ts, c) {
-    const g = e.model.group, from = g.position.clone();
+    const g = e.model.group, from = g.position.clone(), boar = c.mv.glyph === 'boar';
     this.lastEnemy = { src: e.u, from };
     this.foeFlash(e, c.col);
     this.foePose(e, POSES.dash, 0.15);
     const z1 = Math.max(...ts.map(t => t.home.z)) + 1.2;
-    const hit = new Set();
+    let hit = new Set();
     const run = async (a, b, dur) => {
       this.face(e, b);
       await GFX.tween(dur, k => {
         g.position.lerpVectors(a, b, k); g.position.y = Math.abs(Math.sin(k * Math.PI * 6)) * 0.12;
-        if (Math.random() < 0.8) this.dustFx(g.position, 1);
-        for (const t of ts) if (!hit.has(t) && Math.abs(g.position.z - t.home.z) < 0.4) { hit.add(t); this.foeKnock(t, V3(Math.sign(t.home.x - g.position.x) || 1, 0, 0.4).normalize(), 0.45); }
+        if (Math.random() < 0.8) this.dustFx(g.position, boar ? 2 : 1);
+        for (const t of ts) if (!hit.has(t) && Math.abs(g.position.z - t.home.z) < 0.4) { hit.add(t); this.foeKnock(t, V3(Math.sign(t.home.x - g.position.x) || 1, 0, 0.4).normalize(), boar ? 0.6 : 0.45); if (boar) this.fx.sprite(this.hitPoint(t.u), c.col, 1.4, 0.25, { k: 3 }); }
       }, Ease.linear);
     };
+    if (boar) {
+      const back = from.clone().add(V3(0, 0, -1.4));
+      await GFX.tween(0.3, k => { g.position.lerpVectors(from, back, Ease.out(k)); });
+      // 鼻息あらく、前足で三回地面をかく
+      for (let i = 0; i < 3; i++) {
+        await GFX.tween(0.13, k => { g.rotation.x = -Math.sin(k * Math.PI) * 0.18; });
+        this.dustFx(g.position.clone().add(V3(0, 0, 0.6)), 6);
+        this.p.burst(this.foeMouth(e), '#ffffff', 6, { speed: 2, life: 0.4, size: 0.12 });
+      }
+      e.model.flash('#ff3040', 1.6);
+      await run(back, V3(from.x * 0.3 - 1.0, 0, z1), 0.42);
+      GFX.shake(0.25);
+      // うしろで土ぼこりをあげてふりかえり、もう一度
+      this.dustFx(g.position, 14);
+      await GFX.delay(0.15);
+      hit = new Set();
+      await run(g.position.clone(), V3(from.x * 0.3 + 1.0, 0, from.z), 0.42);
+      GFX.shake(0.25);
+      return;
+    }
     // 小さな子分の影もいっしょに走る（大行進）
     if (c.mv.glyph === 'swarm') for (let i = 0; i < 8; i++) { const x = (i / 7 - 0.5) * 6; this.minionRun(V3(x, 0, from.z), V3(x + (Math.random() - 0.5), 0, z1), c.col, i * 0.04); }
     await run(from, V3(from.x * 0.3, 0, z1), 0.45);
@@ -373,6 +409,214 @@ const FOE_MOVES = {
     }
     await GFX.delay(0.7);
   },
+
+  // ---------- ボスがためて撃つ大技 ----------
+  // さみしいフィナーレ：スポットライトの下で、お手玉を高く投げあげる。みんなの上で紙ふぶきになって、あとから涙が降る
+  async finale(e, ts, c) {
+    const from = this.foeMouth(e);
+    this.fx.pillar(e.home, '#fff4d8', { h: 10, r: e.model.radius + 0.5, life: 1.6, k: 0.4 });
+    this.foeFlash(e, c.col);
+    await this.foePose(e, POSES.cheer, 0.2);
+    this.foeHop(e, 0.25);
+    await Promise.all(ts.flatMap((t, i) => [0, 1].map(j => GFX.delay(i * 0.1 + j * 0.18).then(async () => {
+      const p = this.hitPoint(t.u).add(V3((j - 0.5) * 0.3, 0, 0));
+      await this.tossFx(from, p, 'ball', 1, 3, 0.7);
+      this.squash(t, 0.25);
+      this.confettiFx(p.clone().add(V3(0, 0.3, 0)), 10);
+    }))));
+    this.foePose(e, { ...POSES.hurt, headX: 0.3 }, 0.25);
+    for (const t of ts) for (let j = 0; j < 3; j++) GFX.delay(0.1 + j * 0.1).then(() => this.dropFx(t, 'drop', '#8ad8ff'));
+    await GFX.delay(0.5);
+  },
+  // 影の乱れ斬り：影にとけて、ひとりずつの前にあらわれては斬る。もとの場所で刀をはらうと、遅れて斬りあとが走る
+  async phantom(e, ts, c) {
+    const g = e.model.group, from = g.position.clone(), r0 = g.rotation.y;
+    this.lastEnemy = { src: e.u, from };
+    const melt = () => { const p = this.hitPoint(e.u); this.p.burst(p, c.col, 30, { speed: 3, life: 0.5, size: 0.14 }); this.fx.sprite(p, c.col, 1.8, 0.3, { k: 2 }); };
+    this.foeFlash(e, c.col);
+    await this.foePose(e, POSES.iai, 0.25);
+    melt(); g.visible = false;
+    await GFX.delay(0.2);
+    const cuts = [];
+    for (let i = 0; i < ts.length; i++) {
+      const t = ts[i], s = i % 2 ? 1 : -1;
+      g.position.copy(t.home).add(V3(s * 0.75, 0, -(t.model.radius + e.model.radius + 0.2)));
+      this.face(e, t.home); g.visible = true; melt();
+      if (e.model.critter) e.model.critter.setPose(POSES.iai);
+      await this.foePose(e, POSES.offStrike, 0.07);
+      const p = this.hitPoint(t.u), a = s * 0.7;
+      this.fx.slash(p, c.col, { cam: this.camera, size: 2.2, angle: a });
+      this.foeKnock(t, V3(-s, 0, 0.5).normalize(), 0.25);
+      cuts.push([p, a]);
+      await GFX.delay(0.1);
+      melt(); g.visible = false;
+      await GFX.delay(0.05);
+    }
+    g.position.copy(from); g.rotation.y = r0; g.visible = true; melt();
+    if (e.model.critter) e.model.critter.setPose(POSES.offStrike);
+    await this.foePose(e, POSES.chiburi, 0.18);
+    // 遅れて、さっきの斬りあとが一度に光る
+    for (const [p, a] of cuts) this.fx.slash(p, c.col, { cam: this.camera, size: 3.2, angle: -a });   // 白い斬撃を重ねると、命中の光とあわせて白く飛ぶ
+    for (const t of ts) t.model.flash(c.col, 1.2);
+    GFX.shake(0.3);
+    await GFX.delay(0.15);
+  },
+  // おかわり自由：みんなの頭の上に大なべがあらわれて、ひっくりかえる
+  async pot(e, ts, c) {
+    this.foeFlash(e, c.col);
+    await this.foePose(e, POSES.raise, 0.2);
+    this.foeHop(e, 0.2);
+    const xs = ts.map(t => t.home.x), x0 = Math.min(...xs), x1 = Math.max(...xs), z = ts[0].home.z;
+    // 味方のうしろ上から映すので、みんなの少し前の、頭より上に出す（真上だとカメラに近すぎて画面をふさぐ）
+    const pot = this.potObj(), top = 2.0, pz = z - 2;
+    pot.position.set((x0 + x1) / 2 - 1.4, top, pz);
+    this.fx.add(pot, 2.4, null);
+    this.p.burst(pot.position, '#ffffff', 30, { speed: 3, life: 0.6, size: 0.2 });
+    await GFX.tween(0.3, k => { pot.scale.setScalar(0.8 * Ease.back(k)); });
+    // かたむけながら、左から右へ流しかける
+    const start = pot.position.x, end = (x0 + x1) / 2 + 1.4;
+    // なべの口から、みんなの頭へ流れおちるカレーの帯
+    const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.16, 1, 10, 1, true), toon('#b8742a'));
+    stream.visible = false;
+    this.fx.add(stream, 1.2, null);
+    const lip = V3(), foot = V3(), up = V3(0, 1, 0);
+    let next = 0;
+    await GFX.tween(0.7, k => {
+      pot.rotation.z = -Math.min(1, k * 2.5) * 1.9;
+      pot.position.x = lerp(start, end, Ease.inOut(k));
+      if (k > 0.3) {
+        const rz = pot.rotation.z, lx = 1.0 * pot.scale.x, ly = 0.45 * pot.scale.x;
+        lip.set(pot.position.x + lx * Math.cos(rz) - ly * Math.sin(rz), pot.position.y + lx * Math.sin(rz) + ly * Math.cos(rz), pot.position.z);
+        foot.set(lip.x + 0.25, 0.8, z);
+        stream.visible = true;
+        stream.position.copy(lip).lerp(foot, 0.5);
+        stream.quaternion.setFromUnitVectors(up, foot.clone().sub(lip).normalize());
+        stream.scale.set(1, lip.distanceTo(foot), 1);
+      }
+      // なべの口から、みんなのほうへ流れおちる
+      if (k > 0.25) for (let i = 0; i < 4; i++) this.p.emit(pot.position.clone().add(V3(0.5, -0.1, 0.2)), V3((Math.random() - 0.5) * 0.6, -1 - Math.random(), 3.4 + Math.random() * 0.6), hdr(Math.random() < 0.3 ? '#e8b060' : '#b8742a', 1.4), { life: 0.6, size: 0.24, grav: 7, drag: 0 });
+      while (next < ts.length && pot.position.x + 0.6 > ts[next].home.x) {
+        const t = ts[next++];
+        for (let j = 0; j < 4; j++) GFX.delay(j * 0.05).then(() => this.dropFx(t, 'curry', c.col));
+        GFX.delay(0.2).then(() => this.squash(t, 0.3));
+      }
+    }, Ease.linear);
+    stream.visible = false;
+    for (const t of ts) for (let i = 0; i < 4; i++) this.p.emit(t.home.clone().add(V3((Math.random() - 0.5) * 0.6, 0.6, 0)), V3(0, 1.2, 0), hdr('#ffffff', 1.2), { life: 1.0, size: 0.24 });
+    await GFX.tween(0.25, k => { pot.scale.setScalar(0.8 * (1 - k)); pot.position.y = top + k * 0.6; });
+    pot.visible = false;
+  },
+  // 寝返り大回転：ふとんごと横になって、みんなの前をごろごろと転がり、ぶつかっていく
+  async negaeri(e, ts, c) {
+    const g = e.model.group, from = g.position.clone(), h = Math.max(0.35, e.model.height * 0.28);
+    this.lastEnemy = { src: e.u, from };
+    this.foeFlash(e, c.col);
+    // 味方のうしろ上から映すので、みんなのすぐ前をころがる（重なると味方の陰にかくれる）
+    const xs = ts.map(t => t.home.x), z = ts[0].home.z - 0.75;
+    const a = V3(Math.min(...xs) - 1.5, 0, z), b = V3(Math.max(...xs) + 1.5, 0, z);
+    for (let i = 0; i < 3; i++) GFX.delay(i * 0.18).then(() => this.glyphFly('Z', this.foeMouth(e), this.foeMouth(e).add(V3(0.6 + i * 0.3, 1.2, 0)), c.col));
+    this.foePose(e, POSES.sleep, 0.25);
+    // 横から、ころがりはじめる場所へ
+    g.rotation.y = Math.PI / 2;
+    await GFX.tween(0.4, k => { g.position.lerpVectors(from, a, k); g.position.y = Math.sin(k * Math.PI) * 1.2; });
+    const P = V3(), hit = new Set();
+    const rollAt = (p, ang) => { g.rotation.set(0, Math.PI / 2, 0); g.rotateX(-ang); g.position.set(p.x + h * Math.sin(ang), h - h * Math.cos(ang), p.z); };
+    await GFX.tween(0.9, k => {
+      P.lerpVectors(a, b, k); const ang = (P.x - a.x) / h;
+      rollAt(P, ang);
+      if (Math.random() < 0.6) this.dustFx(P, 1);
+      for (const t of ts) if (!hit.has(t) && P.x > t.home.x - 0.4) { hit.add(t); this.squash(t, 0.55); this.fx.ring(t.home.clone().add(V3(0, 0.05, 0)), c.col, { r: 1.3, life: 0.4, width: 0.2 }); this.p.burst(this.hitPoint(t.u), '#ffffff', 14, { speed: 2.5, up: 1, life: 0.7, size: 0.1, grav: 1.5 }); GFX.shake(0.15); }
+    }, Ease.linear);
+    g.rotation.set(0, -Math.PI / 2, 0); g.position.copy(b);
+    this.foePose(e, POSES.ready, 0.2);
+    await GFX.delay(0.15);
+  },
+  // 猫の形に刈りこみ：葉っぱのつむじ風が、みんなを猫の形の植えこみにしてしまう。はさみで「チョキン」とやると、はじける
+  async topiary(e, ts, c) {
+    this.foeFlash(e, c.col);
+    await this.foePose(e, POSES.spin, 0.15);
+    const g = e.model.group;
+    GFX.tween(0.5, k => { g.rotation.y = k * Math.PI * 4; }).then(() => { g.rotation.y = 0; });
+    const bushes = ts.map(t => {
+      const at = t.home.clone().add(V3(0, 0.6, 0));
+      for (let i = 0; i < 2; i++) this.fx.swirl(at, c.col, { r: 0.6 + i * 0.25, life: 0.6, tilt: 0, speed: 12, arc: 2.8, width: 0.025, y0: -0.4 + i * 0.4, y1: 0.4 + i * 0.4, k: 1.3 });
+      const b = this.bushObj(Math.max(0.55, t.model.height * 0.5));
+      b.position.copy(t.home); b.scale.setScalar(0.01);
+      this.fx.add(b, 1.5, null);
+      return b;
+    });
+    await GFX.delay(0.25);
+    await GFX.tween(0.25, k => { for (const b of bushes) b.scale.setScalar(Math.max(0.01, Ease.back(k))); });
+    // チョキン、チョキン
+    this.foePose(e, POSES.strike, 0.1);
+    for (let n = 0; n < 2; n++) {
+      ts.forEach(t => { const p = this.hitPoint(t.u); this.fx.slash(p, '#ffffff', { cam: this.camera, size: 1.4, angle: 0.8 }); this.fx.slash(p, '#ffffff', { cam: this.camera, size: 1.4, angle: -0.8 }); });
+      Sfx.swing();
+      await GFX.delay(0.18);
+    }
+    // 植えこみがはじけて、葉っぱが散る
+    bushes.forEach((b, i) => {
+      b.visible = false;
+      const p = this.hitPoint(ts[i].u);
+      this.p.burst(p, '#5aa84a', 26, { speed: 4, up: 1.5, life: 0.9, size: 0.12, grav: 2 });
+      this.p.burst(p, '#c8e870', 12, { speed: 3, up: 1, life: 0.8, size: 0.09, grav: 2 });
+      this.squash(ts[i], 0.3);
+    });
+    GFX.shake(0.18);
+    await GFX.delay(0.2);
+  },
+  // 大地ゆらし：高く跳んで地面をふみ鳴らすと、地割れが岩を突きあげながら、みんなの足もとまで走る
+  async fissure(e, ts, c) {
+    const g = e.model.group, h = e.home;
+    this.foeFlash(e, c.col);
+    await this.foePose(e, POSES.jump, 0.18);
+    await GFX.tween(0.5, k => { g.position.y = Math.sin(k * Math.PI) * 2.4; }, Ease.inOut);
+    g.position.y = 0;
+    this.foePose(e, POSES.slam, 0.08);
+    this.squashFoe(e, 0.4);
+    GFX.shake(0.45); Sfx.slam();
+    this.dustFx(h, 26);
+    this.fx.ring(h.clone().add(V3(0, 0.05, 0)), c.col, { r: 4, life: 0.5, width: 0.4 });
+    let last = 0;
+    for (const t of ts) {
+      const d = t.home.clone().sub(h).setY(0), n = Math.max(4, Math.round(d.length() / 0.8));
+      for (let i = 1; i <= n; i++) {
+        const k = i / n, at = h.clone().addScaledVector(d, k).add(V3((Math.random() - 0.5) * 0.3, 0, 0)), dl = 0.05 + i * 0.05;
+        last = Math.max(last, dl);
+        if (i < n) GFX.delay(dl).then(() => this.rockFx(at, 0.25 + k * 0.35, 0.5));
+        else GFX.delay(dl).then(() => {
+          for (let j = 0; j < 3; j++) { const a = j / 3 * Math.PI * 2; this.rockFx(t.home.clone().add(V3(Math.cos(a) * 0.45, 0, Math.sin(a) * 0.35)), 0.7 + Math.random() * 0.3, 0.6); }
+          const gg = t.model.group; GFX.tween(0.35, q => { gg.position.y = Math.sin(q * Math.PI) * 0.6; });
+          this.dustFx(t.home, 10);
+        });
+      }
+    }
+    await GFX.delay(last + 0.35);
+  },
+  // 天地創造にゃんこ：虹の輪が広がり、星のふる空から、大きな肉球がみんなの上におりてくる
+  async creation(e, ts, c) {
+    this.foeFlash(e, c.col);
+    await this.foePose(e, POSES.ult, 0.25);
+    const rainbow = ['#ff9ad8', '#ffe08a', '#8ad8ff', '#b8ff8a'];
+    rainbow.forEach((col, i) => GFX.delay(i * 0.1).then(() => this.fx.ring(e.home.clone().add(V3(0, 0.08, 0)), col, { r: 9 + i, life: 0.9, width: 0.3, k: 2 })));
+    const xs = ts.map(t => t.home.x), cen = V3((Math.min(...xs) + Math.max(...xs)) / 2, 0, ts[0].home.z - 0.3);
+    this.every(0.6, 30, () => this.p.emit(cen.clone().add(V3((Math.random() - 0.5) * 7, 4 + Math.random() * 2, (Math.random() - 0.5) * 3)), V3(0, -2.5, 0), hdr(pick(rainbow), 2.4), { life: 1.0, size: 0.1, drag: 0 }));
+    const paw = this.pawObj(c.col);
+    paw.position.set(cen.x, 6, cen.z); paw.rotation.x = -Math.PI / 2 + 0.9;   // カメラへ向けて落としてきて、着くときに寝かせる
+    this.fx.add(paw, 1.7, null);
+    // 落ちてくるところの影
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(2.4, 32), new THREE.MeshBasicMaterial({ color: '#1a1020', transparent: true, opacity: 0, depthWrite: false }));
+    shadow.rotation.x = -Math.PI / 2; shadow.position.set(cen.x, 0.04, cen.z - 0.4);
+    this.fx.add(shadow, 1.0, null);
+    await GFX.tween(0.3, k => { shadow.material.opacity = 0.25 * k; shadow.scale.setScalar(0.4 + k * 0.3); });
+    await GFX.tween(0.55, k => { const f = k * k; paw.position.y = lerp(6, 0.08, f); paw.rotation.x = -Math.PI / 2 + 0.9 * (1 - f); paw.scale.setScalar(lerp(0.6, 1, k)); shadow.material.opacity = 0.25 + 0.25 * k; shadow.scale.setScalar(0.7 + k * 0.3); }, Ease.linear);
+    shadow.visible = false;
+    GFX.flash('#ffffff', 0.35, 0.4); GFX.shake(0.45); Sfx.slam();
+    this.fx.ring(cen.clone().add(V3(0, 0.1, 0)), c.col, { r: 6, life: 0.6, width: 0.5 });
+    ts.forEach((t, i) => GFX.delay(i * 0.05).then(() => { this.p.burst(this.hitPoint(t.u), pick(rainbow), 20, { speed: 4, up: 1, life: 0.7, size: 0.1 }); this.squash(t, 0.4); }));
+    await GFX.tween(0.4, k => { paw.traverse(o => { if (o.material) o.material.opacity = 1 - k; }); });
+    paw.visible = false;
+  },
 };
 
 Object.assign(BattleView.prototype, {
@@ -386,6 +630,25 @@ Object.assign(BattleView.prototype, {
     this.setCam(V3(tx + 1.2, 1.6 + big * 0.35, T.z + back), V3((tx + E.x) / 2, 0.5 + big * 0.3, (T.z * 2 + E.z) / 3), { snap: true });
   },
 
+
+  // ためた大技を撃つ前：味方を隠して、ボスを足もとからあおる。まわりの光がボスへ吸いこまれる
+  async bigWindup(e, col) {
+    const h = e.home, core = this.hitPoint(e.u), U = GFX.grade.uniforms, big = Math.max(e.model.height, 1.2), d = 2.6 + big * 1.3;
+    this.focus(e); this.sway = 0;
+    this.cut(V3(h.x + 1.3, 0.35, h.z + d), V3(h.x, core.y + big * 0.15, h.z), { fov: 40 });
+    this.setCam(V3(h.x + 0.8, 0.45, h.z + d - 0.8), V3(h.x, core.y + big * 0.2, h.z), { speed: 1.5 });
+    GFX.tween(0.3, k => { U.desat.value = 0.35 * k; }, Ease.out, true);
+    e.model.flash(col, 1.6);
+    this.foePose(e, POSES.ult, 0.3);
+    Sfx.tone(110, 0.8, 'sawtooth', 0.07, 60); Sfx.noise(0.7, 0.08, 500);
+    await this.every(0.7, 28, () => {
+      const a = Math.random() * Math.PI * 2, r = 2.5 + Math.random() * 2.5, p = core.clone().add(V3(Math.cos(a) * r, (Math.random() - 0.3) * 3, Math.sin(a) * r * 0.6));
+      this.p.emit(p, core.clone().sub(p).multiplyScalar(2.6), hdr(Math.random() < 0.3 ? '#ffffff' : col, 3), { life: 0.38, size: 0.1, drag: 0 });
+    });
+    this.fx.sprite(core, col, 3 + big, 0.35, { k: 3 });
+    GFX.tween(0.2, k => { U.desat.value = 0.35 * (1 - k); }, Ease.out, true);
+    this.setFov(38); this.unfocus(); this.sway = 0.2;
+  },
 
   // 口もと（体の前のほう）
   foeMouth(e) {
@@ -478,13 +741,13 @@ Object.assign(BattleView.prototype, {
     }
     return g;
   },
-  tossFx(from, to, o, scale = 1) {
+  tossFx(from, to, o, scale = 1, lift = 1, dur = 0.5) {
     return new Promise(res => {
       const g = this.tossObj(o); g.scale.setScalar(1.6 * scale);
       const spin = V3(Math.random() * 12, Math.random() * 12, Math.random() * 12);
-      this.fx.add(g, 0.5, (k, obj, dt) => {
+      this.fx.add(g, dur, (k, obj, dt) => {
         const f = Math.min(1, k / 0.8);
-        obj.position.lerpVectors(from, to, f); obj.position.y += Math.sin(f * Math.PI) * 1.0;
+        obj.position.lerpVectors(from, to, f); obj.position.y += Math.sin(f * Math.PI) * lift;
         obj.rotation.x += spin.x * dt; obj.rotation.y += spin.y * dt;
         if (f >= 1) { obj.visible = false; if (!obj.userData.hit) { obj.userData.hit = true; res(); } }
       });
@@ -497,23 +760,68 @@ Object.assign(BattleView.prototype, {
     if (o === 'drop') { m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), new THREE.MeshBasicMaterial({ color: hdr('#8ad8ff', 1.4), transparent: true, opacity: 0.85 })); m.scale.y = 1.8; }
     else if (o === 'curry' || o === 'spicy') { m = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), toon(o === 'spicy' ? '#d83a1a' : '#a86a20')); m.scale.y = 0.7; }
     else if (o === 'wax') { m = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), toon('#fff0e0')); m.scale.y = 1.6; }
-    else if (o === 'meteor') { m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 4), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); m.scale.setScalar(1.2); }
+    else if (o === 'meteor') { m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 3), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); m.scale.setScalar(1.1); }
     else if (o === 'leaf') { m = new THREE.Mesh(new THREE.CircleGeometry(0.1, 6), toon(pick(['#e8a040', '#c8584a', '#d8c040']), { side: THREE.DoubleSide })); m.scale.y = 0.6; }
     else { m = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), glowMat(pick(['#ff6a8a', '#ffd76a', '#6ad8ff']), 1.6)); }
     const meteor = o === 'meteor', h0 = meteor ? 9 : 5, dur = meteor ? 0.35 : 0.45, sx = meteor ? -3 : 0;
     this.fx.add(m, dur, (k, obj, dt) => {
       obj.position.set(x + sx * (1 - k), y1 + (h0 - y1) * (1 - Ease.in(k)), z);
       if (o === 'leaf') { obj.rotation.z += dt * 8; obj.position.x += Math.sin(k * 12) * 0.2; }
-      if (meteor) this.p.emit(obj.position, V3(0.5, 1, 0), hdr(col, 3), { life: 0.4, size: 0.4 });
+      if (meteor && Math.random() < 0.6) this.p.emit(obj.position, V3(0.5, 1, 0), hdr(col, 2.2), { life: 0.35, size: 0.32 });
       if (k >= 1 && !obj.userData.hit) {
         obj.userData.hit = true;
         const p = V3(x, y1, z);
-        if (meteor) { this.fx.sprite(p, col, 3, 0.4, { k: 4 }); this.fx.ring(V3(x, 0.05, z), col, { r: 1.8, life: 0.4, width: 0.3 }); GFX.shake(0.15); }
+        if (meteor) { this.fx.sprite(p, col, 1.8, 0.35, { k: 2.2 }); this.fx.ring(V3(x, 0.05, z), col, { r: 1.8, life: 0.4, width: 0.3, k: 2 }); GFX.shake(0.15); }
         else if (o === 'drop') this.p.burst(p, '#8ad8ff', 8, { speed: 2, up: 1, life: 0.4, size: 0.06, grav: 4 });
         else if (o === 'curry' || o === 'spicy') { this.p.burst(p, o === 'spicy' ? '#ff6a3c' : '#c8843a', 10, { speed: 2, up: 1, life: 0.5, size: 0.09, grav: 4 }); for (let i = 0; i < 3; i++) this.p.emit(p, V3(0, 1, 0), hdr('#ffffff', 1.2), { life: 0.8, size: 0.18 }); }
         else this.p.burst(p, col, 8, { speed: 2, life: 0.4, size: 0.07 });
       }
     });
+  },
+  // 紙ふぶき：色紙がくるくる舞いながら落ちる（光の粒だと明るい背景で見えない）
+  confettiFx(p, n) {
+    for (let i = 0; i < n; i++) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.14), new THREE.MeshBasicMaterial({ color: pick(['#ff6a8a', '#ffd23c', '#4ac8ff', '#a86aff', '#6ae08a']), side: THREE.DoubleSide, transparent: true }));
+      const v = V3((Math.random() - 0.5) * 3, 1.5 + Math.random() * 2, (Math.random() - 0.5) * 2), spin = V3(Math.random() * 12, Math.random() * 12, 0);
+      m.position.copy(p);
+      this.fx.add(m, 1.1 + Math.random() * 0.4, (k, o, dt) => { v.y -= 5 * dt; v.multiplyScalar(1 - dt * 1.5); o.position.addScaledVector(v, dt); o.rotation.x += spin.x * dt; o.rotation.y += spin.y * dt; o.material.opacity = k > 0.8 ? (1 - k) * 5 : 1; });
+    }
+  },
+  // 大なべ（おかわり自由）
+  potObj() {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.8, 0.9, 20, 1, true), toon('#4a4040', { side: THREE.DoubleSide })); g.add(body);
+    const bottom = new THREE.Mesh(new THREE.CircleGeometry(0.8, 20), toon('#4a4040')); bottom.rotation.x = Math.PI / 2; bottom.position.y = -0.45; g.add(bottom);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.07, 6, 24), toon('#6a5a58')); rim.rotation.x = Math.PI / 2; rim.position.y = 0.45; g.add(rim);
+    const curry = new THREE.Mesh(new THREE.CircleGeometry(0.95, 20), toon('#a86a20')); curry.rotation.x = -Math.PI / 2; curry.position.y = 0.32; g.add(curry);
+    for (const s of [-1, 1]) { const hd = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.05, 6, 12), toon('#6a5a58')); hd.position.set(s * 1.08, 0.2, 0); hd.rotation.y = Math.PI / 2; g.add(hd); }
+    g.scale.setScalar(0.01);
+    return g;
+  },
+  // 猫の形の植えこみ（刈りこみ）
+  bushObj(r) {
+    const g = new THREE.Group(), mat = toon('#4a9a3e');
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), mat); ball.position.y = r * 0.95; ball.scale.y = 1.05; g.add(ball);
+    for (const s of [-1, 1]) { const ear = new THREE.Mesh(new THREE.ConeGeometry(r * 0.38, r * 0.75, 4), mat); ear.position.set(s * r * 0.55, r * 2.05, 0); ear.rotation.z = -s * 0.4; g.add(ear); }
+    for (const s of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(r * 0.09, 8, 6), toon('#1a2a14')); eye.position.set(s * r * 0.35, r * 1.1, r * 0.92); g.add(eye); }
+    return g;
+  },
+  // 大きな肉球（天地創造）：桃色の肉球を、光るふちが囲む。group の XY 面に置く（rotation.x で寝かせる）
+  pawObj(col) {
+    const g = new THREE.Group();
+    const mk = (r, x, y, sy, color, k, add, z) => { const m = new THREE.Mesh(new THREE.CircleGeometry(r, 28), new THREE.MeshBasicMaterial({ color: add ? hdr(color, k) : color, transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending })); m.position.set(x, y, z); m.scale.set(1, sy, 1); m.renderOrder = 11; g.add(m); };
+    const pads = [[1.5, 0, -0.5, 0.8], [0.5, -1.6, 0.6, 1.15], [0.5, -0.6, 1.3, 1.15], [0.5, 0.6, 1.3, 1.15], [0.5, 1.6, 0.6, 1.15]];
+    for (const [r, x, y, sy] of pads) mk(r * 1.18, x, y, sy, col, 2.2, true, 0);
+    for (const [r, x, y, sy] of pads) mk(r, x, y, sy, '#ff9ab8', 1, false, 0.01);
+    return g;
+  },
+  // 地面から突き出す岩（大地ゆらし）
+  rockFx(at, h, life) {
+    const geo = new THREE.ConeGeometry(h * 0.45, h, 5, 1); geo.translate(0, h / 2, 0);
+    const m = new THREE.Mesh(geo, toon(pick(['#8a6a4a', '#a07a52', '#7a5a3e'])));
+    m.position.set(at.x, 0, at.z); m.rotation.set((Math.random() - 0.5) * 0.4, Math.random() * Math.PI, (Math.random() - 0.5) * 0.4);
+    this.dustFx(at, 2);
+    this.fx.add(m, life, k => { m.scale.set(1, k < 0.2 ? Ease.back(k / 0.2) : k > 0.75 ? Math.max(0.01, (1 - k) / 0.25) : 1, 1); });
   },
   // 小さな子分が駆けていく（大行進）
   minionRun(a, b, col, delay) {
