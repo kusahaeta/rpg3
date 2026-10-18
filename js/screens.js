@@ -329,7 +329,6 @@ function renderShop(o, kind, name, close, field) {
       }).join('');
       body = `<div class="dim">どうぐは、戦闘中に「どうぐ」（Rキー）で使える。ひとつにつき ${ITEM_MAX} こまで持てる。</div><div class="sh-list">
         ${goods}
-        <div class="sh-row"><div class="sh-icon">🌿</div><div class="sh-info"><b>またたびの小袋</b><small>初手技ポイントが満タンになる</small></div><button class="btn small" data-item="tp" ${d.niboshi < 60 || d.tp >= 5 ? 'disabled' : ''}>にぼし 60</button></div>
       </div>`;
     } else if (kind === 'fish') {
       body = `<div class="sh-list">
@@ -364,7 +363,6 @@ function renderShop(o, kind, name, close, field) {
     });
     o.querySelectorAll('[data-item]').forEach(b => b.onclick = () => {
       const it = b.dataset.item;
-      if (it === 'tp') { d.niboshi -= 60; d.tp = 5; field && field.toast('初手技ポイントが満タンになった'); }
       if (it === 'fish') { d.niboshi -= 30; if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.s.keep(); field.spawnFollowers(); field.toast('焼き魚をみんなで食べた。HPが全回復！'); } }
       if (it === 'rest') { if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.s.keep(); field.spawnFollowers(); } const ts = d.team; for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++) addBond(ts[i], ts[j], 1); field && field.toast('ぐっすり眠った。みんなのHPが全回復！'); Sfx.heal(); }
       Save.save(); Sfx.select(); draw();
