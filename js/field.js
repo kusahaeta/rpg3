@@ -28,11 +28,17 @@ function stagePools(stageId) {
 class FieldSession {
   constructor(ci) {
     this.ci = ci;
-    this.team = teamMembers().map(m => ({ ...m, hpRatio: 1, energy: null }));
-    this.leader = 0; this.techs = new Set();
+    // HP と奥義ゲージは、探索を離れても（なかまの画面・会話・物語の戦闘・読みなおし）引きつぐ（carried）
+    this.team = teamMembers().map(carried);
+    // 全員が戦闘不能の編成は、へんせいの画面でできない。物語で元気な子が一行を離れてそうなったときだけ、やられたときと同じく目を覚ます
+    if (this.team.every(m => m.hpRatio <= 0)) this.team.forEach(m => { m.hpRatio = 1; });
+    this.leader = Math.max(0, this.team.findIndex(m => m.hpRatio > 0)); this.techs = new Set();
     this.defeated = {}; this.broken = {};
+    this.keep();
   }
   set(map, zone) { return map[zone] || (map[zone] = new Set()); }
+  // いまの HP と奥義ゲージをセーブに書く（保存はよび出し側で）
+  keep() { keepCarried(this.team); }
 }
 
 class FieldView extends BaseView {
@@ -2462,6 +2468,7 @@ class FieldView extends BaseView {
 
   battleResult(g, res) {
     res.team.forEach((t, i) => { this.team[i].hpRatio = t.hpRatio; this.team[i].energy = t.energy; });
+    this.s.keep(); Save.save();
     if (!res.win) return '';
     const d = Save.data, exp = Math.round((60 + g.lv * 28) * g.waves.length);
     let html = '';
@@ -2491,6 +2498,7 @@ class FieldView extends BaseView {
       this.player.pos.set(sp.x, 0, sp.z);
       setTimeout(() => this.toast('やられちゃった……ひと休みして、目を覚ました'), 400);
     }
+    this.s.keep(); Save.save();
     if (this.team[this.leader].hpRatio <= 0) {
       const i = this.team.findIndex(m => m.hpRatio > 0);
       if (i >= 0) { this.leader = i; this.spawnPlayer(this.player.pos, this.player.yaw); }
