@@ -387,19 +387,37 @@ const TRACKS = {
     pad: { wave: 'sawtooth', vol: 0.015 },
     drums: { vol: 0.85, k: 'x...x...x...x...', s: '....x.......x..x', h: '..x...x...x...x.', c: CR(8) },
   },
-  // ラスボス戦（コドク）
+  // ラスボス戦（コドク）：タイトルのテーマ（ぽかぽか村とかなしい場面の旋律）を、ハ短調で。
+  //   前奏：回り音形の低いリフ → A：村の旋律を 4 分音符で大きく → B：かなしい場面の旋律（ドラムは半分の速さ）
+  //   → C：村の旋律をもとの速さで、回り音形を一段ずつ上げて前奏へ
   lastboss: {
-    bpm: 152, prog: 'Cm Ab Fm G Cm Ab Bb G Ab Bb Eb Cm Fm Db G G7',
+    bpm: 152,
+    prog: `Cm Ab Fm G
+      Cm Ab Bb G Cm Ab Gsus4,G Cm
+      Cm Cm/Bb Ab G Ab Cm,Bb G Cm,G
+      Cm G7 Cm,Ab Ab,Cm Ab Bb Cm G`,
     lead: { wave: 'sawtooth', vol: 0.11, det: 9, vib: 5, seq: `
-      C5 - - - G5 - - - | Ab5 - G5 - Eb5 - C5 - | F5 - - - Ab5 - C6 - | B5 - - - G5 - D5 - |
-      Eb5 - G5 - C6 - - D6 | Eb6 - - D6 C6 - Ab5 - | D6 - - C6 Bb5 - F5 - | G5 - - - B5 - D6 - |
-      C6 - - - Eb6 - - C6 | D6 - - - Bb5 - F5 - | G5 - - - Bb5 - Eb6 - | C6 - - - G5 - - . |
-      Ab5 - - G5 F5 - C5 - | F5 - - - Ab5 - Db6 - | B5 - - - D6 - - B5 | G5 - F5 - D5 - B4 -` },
+      C5 D5 C5 B4 C5 . G4 . | Ab4 Bb4 Ab4 G4 Ab4 . Eb4 . | F4 G4 F4 E4 F4 . C5 . | G5 . F5 . D5 . B4 . |
+      C5 - D5 - Eb5 - G5 - | Eb5 - D5 - C5 - - - | D5 - Eb5 - F5 - Eb5 - | D5 - C5 - B4 - - - |
+      C5 - D5 - Eb5 - G5 - | Ab5 - G5 - Eb5 - D5 - | C5 - D5 - C5 - B4 - | C5 - - - - - . . |
+      C5 - - - Eb5 - D5 - | C5 - - - Bb4 - - - | Ab4 - - - Bb4 - C5 - | G4 - - - - - - - |
+      C5 - - - Eb5 - F5 - | G5 - - - F5 - Eb5 - | D5 - - - Eb5 - D5 - | C5 - - - . . . . |
+      C5 D5 Eb5 G5 Eb5 D5 C5 . | D5 Eb5 F5 Eb5 D5 C5 B4 . | C5 D5 Eb5 G5 Ab5 G5 Eb5 D5 | C5 D5 C5 B4 C5 . . . |
+      Eb5 F5 Eb5 D5 Eb5 . C5 . | F5 G5 F5 Eb5 F5 . D5 . | G5 Ab5 G5 F5 G5 . Eb5 . | G5 - B5 - D6 - - - |` },
     lead2: { from: 'lead', wave: 'sawtooth', oct: -12, vol: 0.05 },
     arp: { pat: '0 1 2 3 4 3 2 1', wave: 'square', dec: 0.05, vol: 0.025 },
     bass: { pat: 'r - r r o - r r', wave: 'sawtooth', env: 'pluck', dec: 0.12, vol: 0.22 },
     pad: { wave: 'sawtooth', vol: 0.02 },
-    drums: { vol: 0.85, k: 'x.....x...x.....', s: '....x.......x...', h: '..x...x...x...x.', T: 'x...............', c: CR(8) },
+    // 各段の終わりに小太鼓のフィル。B は半分の速さ、C は 4 つ打ち
+    drums: {
+      vol: 0.85,
+      k: 'x.....x...x.....'.repeat(12) + 'x.........x.....'.repeat(8) + 'x...x...x...x...'.repeat(8),
+      s: '....x.......x...'.repeat(3) + '....x...x.x.xxxx' + '....x.......x...'.repeat(7) + '....x...x.x.xxxx' +
+        '........x.......'.repeat(7) + '....x...x.x.xxxx' + '....x.......x...'.repeat(7) + '....x...x.x.xxxx',
+      h: '..x...x...x...x.'.repeat(12) + 'x...x...x...x...'.repeat(8) + 'x.x.x.x.x.x.x.x.'.repeat(8),
+      T: 'x...............',
+      c: CR(4) + CR(8).repeat(3),
+    },
   },
 };
 
