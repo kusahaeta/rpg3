@@ -2637,7 +2637,7 @@ const FIELD_ZONES = {
       { at: [7, -25], title: '古い石碑', text: '「実は、樹のぬくもり。根元の輪に光る実があれば、根は目をさます。輪を出れば、根はまた眠る」', rootReset: true }],
     map2d: [330, 540] },
 
-  tree_under_2: { ci: 6, name: '樹の地下・影の回廊', floor: 'B2', parent: 'tree_under', w: 52, d: 92, stage: '7-2', arenas: [[0, -25, 0], [-4, -1, 0], [-2, 15, 0]], build: 'treeUnder2', bg: 'root', groups: 3, chests: 2, crystals: 2, calmAfter: '7-3', skyTree: false,
+  tree_under_2: { ci: 6, name: '樹の地下・影の回廊', floor: 'B2', parent: 'tree_under', w: 52, d: 92, stage: '7-2', arenas: [[0, -25, 0], [-4, -1, 0], [-2, 15, 0]], build: 'treeUnder2', bg: 'root', groups: 3, chests: 2, crystals: 0, calmAfter: '7-3', skyTree: false,
     world: true, arch: 'roots', chestAt: [[11, -13], [-11, 29]],
     th: { fog: '#140f1c', fogD: 0.022 },
     // 入口の間から南へ、影の部屋が三つ。部屋に入ると、先頭の子の「ひとりぼっちの影」が足もとからはなれ、同じ部屋の中を鏡うつしに動く。
