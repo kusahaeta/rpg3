@@ -380,6 +380,67 @@ const FOE_MOVES = {
     GFX.flash(c.col, 0.12, 0.3); GFX.shake(0.25);
     await GFX.delay(0.15 + ts.length * 0.06);
   },
+  // 孤独の月蝕（ラスボスのコドク）：思い出のかけらが空へ集まって黒い月になる。月から鎖が降ってみんなをしばり、月がはじけて大爆発
+  async eclipse(e, ts, c) {
+    const U = GFX.grade.uniforms, core = this.hitPoint(e.u), purple = '#8a5aff', pale = '#e8dcff';
+    const xs = ts.map(t => t.home.x), cen = V3((Math.min(...xs) + Math.max(...xs)) / 2, 0, ts[0].home.z);
+    const moonAt = V3(cen.x, 5.2, (cen.z + e.home.z) / 2), R = 1.6;
+    // みんなのうしろの低いところから、空を見上げる（月と、奥のコドクが入る）
+    this.unfocus(); this.sway = 0.15;
+    this.cut(V3(cen.x + 1.2, 0.7, cen.z + 4.6), V3(cen.x, 3.0, moonAt.z - 1), { fov: 50 });
+    this.setCam(V3(cen.x + 0.6, 0.9, cen.z + 5.2), V3(cen.x, 3.2, moonAt.z - 1), { speed: 0.8 });
+    // ① 空から光が消えていく
+    GFX.tween(0.6, k => { U.tint.value.setRGB(1 - 0.55 * k, 1 - 0.62 * k, 1 - 0.4 * k); U.desat.value = 0.25 * k; }, Ease.out, true);
+    Sfx.tone(70, 1.6, 'sawtooth', 0.08, -20); Sfx.noise(1.4, 0.08, 300);
+    // ② 思い出のかけらが、うずを巻いて空へのぼる
+    const plates = [];
+    for (let i = 0; i < 14; i++) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.36), new THREE.MeshBasicMaterial({ color: hdr('#b8a8e8', 1.4), transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+      const a0 = i / 14 * Math.PI * 2, y0 = 1 + (i % 3) * 1.1, dl = i * 0.03;
+      this.fx.add(m, 1.1 + dl, (k, o) => {
+        const f = Math.max(0, (k * (1.1 + dl) - dl) / 1.1), a = a0 + f * 5, r = 2.6 * (1 - Ease.in(f));
+        o.position.set(lerp(e.home.x, moonAt.x, Ease.in(f)) + Math.cos(a) * r, lerp(y0, moonAt.y, Ease.inOut(f)), lerp(e.home.z, moonAt.z, Ease.in(f)) + Math.sin(a) * r * 0.7);
+        o.rotation.set(f * 6, a, 0); o.visible = f < 0.98;
+        if (Math.random() < 0.3) this.p.emit(o.position, V3(0, 0, 0), hdr(purple, 2), { life: 0.4, size: 0.12 });
+      });
+      plates.push(m);
+    }
+    if (e.model.critter) this.foePose(e, POSES.ult, 0.3);
+    e.model.flash(purple, 1.6);
+    await GFX.delay(1.1);
+    // ③ 黒い月があらわれる（まわりに光の冠）
+    const moon = this.eclipseObj(R, purple, pale);
+    moon.position.copy(moonAt); moon.scale.setScalar(0.01);
+    this.fx.add(moon, 3.2, (k, o) => { o.userData.spin(k); });
+    GFX.flash(purple, 0.25, 0.4); Sfx.slam();
+    this.fx.ring(moonAt, pale, { r: R * 3, life: 0.6, face: this.camera.position, width: 0.12, k: 2 });
+    await GFX.tween(0.35, k => { moon.scale.setScalar(Math.max(0.01, Ease.back(k))); });
+    // 月から、黒い稲妻があたりへ落ちる
+    for (let i = 0; i < 7; i++) GFX.delay(i * 0.07).then(() => this.fx.bolt(moonAt, V3(cen.x + (Math.random() - 0.5) * 9, 0, cen.z - Math.random() * 5), i % 2 ? purple : pale, { life: 0.25, r: 0.035, jag: 0.4, segs: 12, k: 3 }));
+    await GFX.delay(0.3);
+    // ④ 鎖が、ひとりずつへ降ってきて、しばる
+    const chains = ts.map((t, i) => GFX.delay(i * 0.08).then(() => this.chainFx(moonAt.clone().add(V3((Math.random() - 0.5) * R, -R * 0.6, 0)), this.hitPoint(t.u), 0.3, () => { t.model.flash(purple, 1.6); this.squash(t, 0.3); Sfx.tone(180, 0.15, 'square', 0.04, -60); })));
+    const links = await Promise.all(chains);
+    await GFX.delay(0.35);
+    // ⑤ 月が光を吸いこんで、しぼむ
+    await this.every(0.4, 16, () => { const a = Math.random() * Math.PI * 2, p = moonAt.clone().add(V3(Math.cos(a) * 4, Math.sin(a) * 3, 0)); this.p.emit(p, moonAt.clone().sub(p).multiplyScalar(2.6), hdr(pale, 2.4), { life: 0.38, size: 0.12, drag: 0 }); });
+    await GFX.tween(0.18, k => { moon.scale.setScalar(Math.max(0.01, 1 - Ease.in(k) * 0.85)); });
+    // ⑥ はじける：衝撃波・光の柱・砕ける鎖
+    moon.visible = false;
+    GFX.flash(purple, 0.4, 0.6); GFX.shake(0.6); GFX.slowmo(0.35, 0.7);
+    Sfx.brk(); Sfx.slam();
+    this.fx.sprite(moonAt, purple, 7, 0.5, { k: 2 });
+    this.fx.shards(moonAt, '#2a1a4a', 20, 9);
+    this.fx.shards(moonAt, pale, 10, 8);
+    for (let i = 0; i < 3; i++) GFX.delay(i * 0.1).then(() => this.fx.ring(cen.clone().add(V3(0, 0.06, 0)), i === 1 ? pale : purple, { r: 8 + i * 2.5, life: 0.9, width: 0.45 - i * 0.1, k: 2 }));
+    ts.forEach((t, i) => GFX.delay(0.05 + i * 0.05).then(() => { this.fx.pillar(t.home, purple, { h: 12, r: 0.55, life: 0.7, k: 1.6 }); this.p.burst(this.hitPoint(t.u), purple, 24, { speed: 5, up: 1.5, life: 0.7, size: 0.12 }); }));
+    for (const ls of links) for (const l of ls) { const p = l.getWorldPosition(V3()); l.visible = false; if (Math.random() < 0.35) this.fx.shards(p, '#5a5070', 2, 4); }
+    for (const t of ts) this.foeKnock(t, V3(0, 0, 1), 0.45);
+    await GFX.delay(0.5);
+    // 空がもどる
+    GFX.tween(0.6, k => { U.tint.value.setRGB(0.45 + 0.55 * k, 0.38 + 0.62 * k, 0.6 + 0.4 * k); U.desat.value = 0.25 * (1 - k); }, Ease.out, true);
+    this.setFov(38); this.sway = 0.2;
+  },
   // ひとりぼっちの世界：黒い帳が、みんなを包んで閉じる
   async dome(e, ts, c) {
     this.foeFlash(e, c.col);
@@ -932,6 +993,43 @@ Object.assign(BattleView.prototype, {
       snap: k => { const l = len * (1 - Ease.in(k)); put(L, a, mid, l); put(R, b, mid, l); mat.opacity = 1 - k * 0.5; },
       hide: () => { L.visible = R.visible = false; },
     };
+  },
+  // 黒い月（孤独の月蝕）：黒い球の奥に、光の冠と、ゆっくり回る光の輪
+  eclipseObj(R, col, pale) {
+    const g = new THREE.Group();
+    const add = (m, o = 0) => { m.renderOrder = 11 + o; g.add(m); return m; };
+    const glow = add(new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 1.8), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }))); glow.scale.setScalar(R * 4.2);
+    const corona = add(new THREE.Mesh(new THREE.RingGeometry(R * 0.98, R * 1.22, 64), new THREE.MeshBasicMaterial({ color: hdr(pale, 2.4), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide })));
+    const halo = add(new THREE.Mesh(new THREE.RingGeometry(R * 1.5, R * 1.58, 64), new THREE.MeshBasicMaterial({ color: hdr(col, 2), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide })));
+    const ball = add(new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), new THREE.MeshBasicMaterial({ color: '#050208', fog: false })), 2);   // 霧がかかると、紫に透けて見える
+    g.userData.spin = k => {
+      corona.quaternion.copy(this.camera.quaternion); halo.quaternion.copy(this.camera.quaternion);
+      halo.rotateX(1.1); halo.rotateZ(k * 4);
+      corona.scale.setScalar(1 + Math.sin(k * 40) * 0.03);
+      glow.material.opacity = 0.8 + Math.sin(k * 25) * 0.2;
+    };
+    return g;
+  },
+  // 鎖：a から b へ、輪がつながりながら伸びる。伸びきったら hit()。輪の配列を返す
+  chainFx(a, b, dur, hit) {
+    const dir = b.clone().sub(a), len = dir.length(), n = Math.max(6, Math.round(len / 0.2)), up = V3(0, 1, 0);
+    dir.normalize();
+    const mat = new THREE.MeshStandardMaterial({ color: '#4a4458', metalness: 0.8, roughness: 0.3, emissive: '#8a5aff', emissiveIntensity: 0.5 });
+    const geo = new THREE.TorusGeometry(0.08, 0.025, 6, 12), links = [];
+    for (let i = 0; i < n; i++) {
+      const l = new THREE.Mesh(geo, mat);
+      l.position.copy(a).addScaledVector(dir, (i + 0.5) / n * len);
+      l.quaternion.setFromUnitVectors(up, dir); if (i % 2) l.rotateY(Math.PI / 2);
+      l.scale.set(1, 1.5, 1); l.visible = false;
+      this.fx.add(l, dur + 1.6, null);
+      links.push(l);
+    }
+    return GFX.tween(dur, k => { const m = Math.floor(k * n); for (let i = 0; i < n; i++) links[i].visible = i <= m; }, Ease.linear).then(() => {
+      links.forEach(l => { l.visible = true; });
+      this.fx.ring(b, '#8a5aff', { r: 0.9, life: 0.35, face: this.camera.position, width: 0.1, k: 2 });
+      if (hit) hit();
+      return links;
+    });
   },
   // 紙ふぶき：色紙がくるくる舞いながら落ちる（光の粒だと明るい背景で見えない）
   confettiFx(p, n) {

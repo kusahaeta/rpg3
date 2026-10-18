@@ -371,6 +371,9 @@ const ENEMY_MOVES = {
   erase:   { name: '思い出消去', anim: 'shatter', elem: 'quantum',     type: 'single', mult: 1.2, eff: { kind: 'energy', chance: 1, value: 40 } },
   kodokuCharge: { name: 'すべての声が遠ざかっていく…', type: 'charge', next: 'kodokuNova' },
   kodokuNova: { name: 'ひとりぼっちの世界', anim: 'dome', elem: 'quantum', type: 'aoe', mult: 1.7 },
+  // ラスボスのコドクだけの大技（コドクの影は、ひとりぼっちの世界のまま）
+  eclipseCharge: { name: '空から、光が消えていく…', type: 'charge', next: 'eclipse' },
+  eclipse: { name: '孤独の月蝕', anim: 'eclipse', elem: 'quantum', type: 'aoe', mult: 1.7 },
   // ねこ神の夢
   purin:   { name: 'ぷるるんボディ', anim: 'quake', type: 'aoe', mult: 0.7 },
   splash:  { name: 'ぴちぴちビンタ', anim: 'punch', elem: 'ice', type: 'single', mult: 1.2 },
@@ -452,7 +455,7 @@ const ENEMIES = {
   // 第八章：世界の果て
   kagejuu:  { name: 'コドクの獣',     shape: 'shadowbeast', color: '#4a2a6a', hp: 7200, atk: 1650, spd: 108, tough: 40, weak: ['imaginary', 'fire', 'physical'], moves: [['bite', 2], ['despair', 1]] },
   kodoku:   { name: 'コドク',         shape: 'kodoku',   color: '#1a0a36', boss: true, final: true, hp: 80000, atk: 1800, spd: 112, tough: 220, eres: 0.4, weak: ['imaginary', 'fire', 'physical'],
-    phases: [{ weak: ['lightning', 'ice', 'quantum'], cry: 'コドク「まだ手を伸ばすか。ならば、闇の底まで沈めてやろう」' }, { weak: ['imaginary', 'ice', 'fire'], cry: 'コドク「消えろ……ひとりのほうが、楽だと言っている！」' }], summon: 'kakera', moves: [['isolate', 2], ['despair', 2], ['doubt', 1], ['erase', 1], ['kodokuCharge', 1], ['summon', 1]] },
+    phases: [{ weak: ['lightning', 'ice', 'quantum'], cry: 'コドク「まだ手を伸ばすか。ならば、闇の底まで沈めてやろう」' }, { weak: ['imaginary', 'ice', 'fire'], cry: 'コドク「消えろ……ひとりのほうが、楽だと言っている！」' }], summon: 'kakera', moves: [['isolate', 2], ['despair', 2], ['doubt', 1], ['erase', 1], ['eclipseCharge', 1], ['summon', 1]] },
   // 隠しダンジョン：ねこ神の夢
   purin:    { name: '超巨大プリン',   shape: 'pudding',  color: '#ffd27a', elite: true, hp: 30000, atk: 1600, spd: 80, tough: 120, eres: 0.2, weak: ['fire', 'lightning', 'physical'], moves: [['purin', 2], ['heavy', 1]] },
   sakana:   { name: '喋る魚',         shape: 'fish',     color: '#6ac8ff', hp: 8000, atk: 1700, spd: 115, tough: 40, weak: ['fire', 'lightning', 'physical'], moves: [['splash', 2], ['chatter', 1]] },
