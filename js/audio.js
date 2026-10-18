@@ -115,19 +115,7 @@ const TRACKS = {
     stab: { pat: '....x.......x...', wave: 'triangle', vol: 0.05, dec: 0.18 },
     drums: { vol: 0.5, k: 'x.......x.......', h: 'x...x.x.x...x.x.' },
   },
-  // ニャハハ王国・城下町：ゆかいな王国の、はずむ歩き
-  kingdom: {
-    bpm: 126, sw: 0.3, prog: 'C Am Dm7 G7 C A7 Dm7,G7 C F C/E Dm7 G7 Em7 A7 Dm7,G7 C',
-    lead: { wave: 'square', vol: 0.12, seq: `
-      E5 - G5 - E5 C5 D5 E5 | A4 - - - E5 - C5 - | D5 - F5 - A5 - G5 F5 | E5 - D5 - B4 - G4 - |
-      C5 - E5 G5 C6 - B5 A5 | G5 - C#5 - E5 - G5 - | F5 - A5 - D5 - B4 - | C5 - - - G4 - . . |
-      A5 - - F5 C5 - F5 - | G5 - - E5 C5 - E5 - | F5 - E5 D5 C5 - A4 - | B4 - D5 - F5 - - . |
-      G5 - - E5 B4 - D5 - | C#5 - E5 - A5 - G5 - | F5 - D5 - B4 - D5 - | C5 - - - - . . .` },
-    bass: { pat: 'r - t - f - o -', vol: 0.3 },
-    stab: { pat: '....x.......x...', wave: 'triangle', vol: 0.045 },
-    drums: { vol: 0.5, k: 'x.......x.......', s: '....x.......x...', h: 'x...x.x.x...x.x.' },
-  },
-  // ニャハハ城：チェンバロのメヌエット
+  // ニャハハ王国（城下町・城）：チェンバロのメヌエット
   royal: {
     bpm: 108, gain: 2.2, bar: 12, prog: 'D A/C# Bm F#m G D/F# Em A G D/F# Em A Bm G A7 D',
     lead: { wave: 'square', env: 'pluck', dec: 0.25, vol: 0.13, echo: 0.1, seq: `

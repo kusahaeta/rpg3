@@ -985,7 +985,7 @@ const FIELD_ZONES = {
     map2d: [470, 164] },
 
   // ---------------- 第三章 ニャハハ王国 ----------------
-  nyahaha: { ci: 2, name: 'ニャハハ王国・城下町', bgm: 'kingdom', mapName: 'ニャハハ王国', stage: '3-1', arenas: [[0, 14, 0]], build: 'kingdom', town: true, groups: 0, chests: 3, crystals: 0,
+  nyahaha: { ci: 2, name: 'ニャハハ王国・城下町', bgm: 'royal', mapName: 'ニャハハ王国', stage: '3-1', arenas: [[0, 14, 0]], build: 'kingdom', town: true, groups: 0, chests: 3, crystals: 0,
     world: true, arch: 'kingdom', chestAt: [[-20, 30], [22, -30], [28, 30]],
     // 南門から大通りを北へ、噴水の大広場。北の大階段を上ると高台の大通り（北西に城の門、北東に塔の門）。
     // 西は一段高い宿屋の街区（広場と大通りから階段）、東は運河ぞいの市場通り（橋を渡ると、くろねこ谷への東門）
