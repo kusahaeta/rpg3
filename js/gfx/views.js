@@ -746,10 +746,20 @@ class BattleView extends BaseView {
       .then(() => GFX.delay(hold))
       .then(() => { this.p.burst(m.position.clone(), '#dff4ff', 14, { speed: 3, life: 0.6, size: 0.08 }); this.scene.remove(m); m.geometry.dispose(); });
   }
+  // 力をためる：ためる敵へ寄り、まわりの光が吸いこまれる（つぎの手番でカメラはもどる）
   chargeFx(t) {
     const e = this.ent(t); if (!e) return;
-    this.fx.ring(this.hitPoint(t), '#ff3040', { r: 3, life: 0.8, face: this.camera.position });
+    const h = e.home, core = this.hitPoint(t), col = e.model.color, big = Math.max(e.model.height, 1.2);
+    this.unfocus(); this.sway = 0.2;
+    this.setCam(V3(h.x + 1.6, 1.0 + big * 0.35, h.z + 3.4 + big * 1.6), V3(h.x, core.y, h.z), { speed: 2.2 });
     e.model.flash('#ff3040', 1.5);
+    if (e.model.critter) this.tweenPose(e.model.critter, POSES.cast, 0.25).then(() => GFX.delay(0.45)).then(() => { if (t.alive) this.tweenPose(e.model.critter, POSES.ready, 0.3); });
+    this.every(0.7, 24, i => {
+      const a = Math.random() * Math.PI * 2, r = 2 + Math.random() * 2, p = core.clone().add(V3(Math.cos(a) * r, (Math.random() - 0.4) * 2.4, Math.sin(a) * r * 0.6));
+      this.p.emit(p, core.clone().sub(p).multiplyScalar(2.8), hdr(i % 3 ? col : '#ff3040', 3), { life: 0.35, size: 0.1, drag: 0 });
+    });
+    // 輪は、寄っている途中のカメラではなく、行き先へ向ける
+    GFX.delay(0.55).then(() => { this.fx.ring(core, '#ff3040', { r: 2.2 + big * 0.5, life: 0.5, face: this.camPos.clone() }); this.fx.sprite(core, col, 2 + big, 0.4, { k: 2 }); });
   }
 
   // ---------- 必殺技の導入 ----------
@@ -950,10 +960,16 @@ class BattleView extends BaseView {
     this.unfocus(); this.sway = 0.2;
     const ranged = ['drone', 'spirit', 'boss', 'empress', 'dragon', 'deity', 'wraith'].includes(src.def.shape);
     const aoe = mv.type === 'aoe';
-    this.setCam(V3(e.home.x * 0.3 + 3.2, 2.4, 7.2), V3(e.home.x * 0.5, 1.5, (e.home.z + 3) / 2), { speed: 4 });
+    const camPos = V3(e.home.x * 0.3 + 3.2, 2.4, 7.2), camLook = V3(e.home.x * 0.5, 1.5, (e.home.z + 3) / 2);
+    this.setCam(camPos, camLook, { speed: 4 });
     // 技ごとのモーション（js/gfx/foe-moves.js）
     const fm = FOE_MOVES[mv.anim];
-    if (fm) { this.attackerCam(e, tEnts, mv.anim); await fm.call(this, e, tEnts, { col: mv.elem ? ELEMENTS[mv.elem].color : col, mv }); return; }
+    if (fm) {
+      const c = { col: mv.elem ? ELEMENTS[mv.elem].color : col, mv };
+      if (BIG_FOE_MOVES.has(mv)) { await this.bigWindup(e, c.col); this.setCam(camPos, camLook, { snap: true }); }   // ためて撃つ大技
+      this.attackerCam(e, tEnts, mv.anim);
+      await fm.call(this, e, tEnts, c); return;
+    }
     e.model.flash(col, 1.2);
     this.fx.sprite(this.hitPoint(src), col, 2.5, 0.5, { k: 2 });
     await GFX.delay(0.25);
