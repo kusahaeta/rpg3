@@ -1552,7 +1552,13 @@ class Battle {
         <button class="btn gold" data-r="next">${win ? '続ける' : '戻る'}</button>
       </div></div>`;
     o.classList.remove('hidden');
-    o.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { Sfx.click(); this.opts.onExit(res, b.dataset.r); });
+    // 再挑戦のボタンのほかは、どこをクリックしても「続ける／戻る」（出た直後の連打では閉じない）
+    const shown = performance.now(); let done = false;
+    o.onclick = e => {
+      const b = e.target.closest('[data-r]');
+      if (done || (!b && performance.now() - shown < 500)) return;
+      done = true; Sfx.click(); this.opts.onExit(res, b ? b.dataset.r : 'next');
+    };
   }
 }
 
