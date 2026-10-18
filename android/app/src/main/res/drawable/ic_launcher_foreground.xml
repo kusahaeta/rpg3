@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- 耳 -->
+    <path android:fillColor="#F2A65A" android:pathData="M33,52 L36,30 L50,43z M75,52 L72,30 L58,43z" />
+    <path android:fillColor="#F7C6C0" android:pathData="M36.5,46 L38,35 L45,42z M71.5,46 L70,35 L63,42z" />
+    <!-- 顔 -->
+    <path android:fillColor="#F2A65A" android:pathData="M30,61 a24,20 0 1,0 48,0 a24,20 0 1,0 -48,0z" />
+    <path android:fillColor="#FFE9D2" android:pathData="M44,70 a10,7 0 1,0 20,0 a10,7 0 1,0 -20,0z" />
+    <!-- 目と鼻 -->
+    <path android:fillColor="#1B1B2E" android:pathData="M41,59 a3.5,4.2 0 1,0 7,0 a3.5,4.2 0 1,0 -7,0z M60,59 a3.5,4.2 0 1,0 7,0 a3.5,4.2 0 1,0 -7,0z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M45,57.2 a1.1,1.1 0 1,0 2.2,0 a1.1,1.1 0 1,0 -2.2,0z M64,57.2 a1.1,1.1 0 1,0 2.2,0 a1.1,1.1 0 1,0 -2.2,0z" />
+    <path android:fillColor="#E0707A" android:pathData="M51.5,66 h5 l-2.5,2.6z" />
+</vector>
