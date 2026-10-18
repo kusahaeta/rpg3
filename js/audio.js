@@ -295,14 +295,14 @@ const TRACKS = {
     pad: { wave: 'triangle', vol: 0.025 },
     drums: { vol: 0.6, T: 'x...............................' },
   },
-  // 古代遺跡の中：なぞの壁画と、時の水晶。D の持続音の上で、中東の旋法を笛と弦が重ねて歌う。手太鼓はドゥム・テク
+  // 古代遺跡の中：なぞの壁画と、時の水晶。C の持続音の上で、中東の旋法を笛と弦が重ねて歌う。手太鼓はドゥム・テク
   ruins: {
-    bpm: 96, gain: 0.82, lp: 5000, prog: 'D Eb/D D Cm/D D Eb/D Gm/D D Gm Cm Gm D Eb Cm Eb D',
+    bpm: 104, gain: 0.82, lp: 5000, prog: 'C Db/C C Bbm/C C Db/C Fm/C C Fm Bbm Fm C Db Bbm Db C',
     lead: { wave: 'triangle', vol: 0.2, echo: 0.2, vib: 10, seq: `
-      A4 - D5 - Eb5 - F#5 - | G5 - - F#5 Eb5 - - D5 | F#5 - A5 G5 F#5 - Eb5 F#5 | Eb5 D5 Eb5 D5 C5 - - - |
-      D5 - F#5 - A5 - Bb5 A5 | G5 - - F#5 G5 - Bb5 - | Bb5 - - A5 G5 - D5 - | F#5 - Eb5 - D5 - - . |
-      D5 - G5 - Bb5 - A5 Bb5 | C6 - - Bb5 G5 - Eb5 - | G5 - - A5 Bb5 - A5 G5 | A5 - - G5 F#5 - - - |
-      Bb5 - - - G5 - Eb5 - | G5 - - F#5 G5 - C6 - | Bb5 - - A5 G5 - F#5 Eb5 | D5 - - - - - . .` },
+      G4 - C5 - Db5 - E5 - | F5 - - E5 Db5 - - C5 | E5 - G5 F5 E5 - Db5 E5 | Db5 C5 Db5 C5 Bb4 - - - |
+      C5 - E5 - G5 - Ab5 G5 | F5 - - E5 F5 - Ab5 - | Ab5 - - G5 F5 - C5 - | E5 - Db5 - C5 - - . |
+      C5 - F5 - Ab5 - G5 Ab5 | Bb5 - - Ab5 F5 - Db5 - | F5 - - G5 Ab5 - G5 F5 | G5 - - F5 E5 - - - |
+      Ab5 - - - F5 - Db5 - | F5 - - E5 F5 - Bb5 - | Ab5 - - G5 F5 - E5 Db5 | C5 - - - - - . .` },
     // 同じ旋律を、1 オクターブ下で弦がなぞる
     lead2: { from: 'lead', wave: 'sawtooth', env: 'pluck', dec: 0.18, oct: -12, vol: 0.09 },
     bass: { pat: 'r - - - - - - -', wave: 'sine', vol: 0.3 },
