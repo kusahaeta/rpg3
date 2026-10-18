@@ -34,8 +34,8 @@ const expToNext = lv => 100 + lv * 45;
 // 物語の進み具合で変わる力（成長）
 const flag = k => !!(typeof Save !== 'undefined' && Save.data && Save.data.flags && Save.data.flags[k]);
 
-function charStats(key, lv, eid) {
-  const b = CHARS[key].base, w = Save.data ? weaponStatMult(key) : { hp: 1, atk: 1, def: 1 };
+function charStats(key, lv, eid, wid) {
+  const b = CHARS[key].base, w = Save.data ? weaponStatMult(key, wid) : { hp: 1, atk: 1, def: 1 };
   const f = lvFactor(lv) * (1 + 0.06 * eid);
   return {
     maxHp: b.hp * f * w.hp, atk: b.atk * f * w.atk, def: b.def * f * w.def, spd: b.spd,
