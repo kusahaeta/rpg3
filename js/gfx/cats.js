@@ -532,6 +532,12 @@ function buildCat(key, opt = {}) {
     },
     flash(col = '#ffffff', amt = 1) { this.flashCol.set(col); this.flashAmt = amt; },
     handPos() { return armR.grip.getWorldPosition(V3()); },
+    // 目の位置（s：-1 右目・1 左目。out：頭の表面から外へ出す割合）。顔のテクスチャの目（drawCatFeatures の 128±36, 132／512×256）を、頭の球の上へ
+    eyePos(s, out = 1.06) {
+      const ph = (128 + s * 36) / 512 * Math.PI * 2, th = 132 / 256 * Math.PI;
+      head.updateWorldMatrix(true, false);
+      return head.localToWorld(V3(-Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)).multiplyScalar(out));
+    },
     tipPos() { return (extras.tip || armR.grip).getWorldPosition(V3()); },
     seed: Math.random() * 10,
   };
