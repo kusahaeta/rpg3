@@ -259,7 +259,7 @@ const FOE_MOVES = {
     for (const t of ts) { const gg = t.model.group; GFX.tween(0.3, k => { gg.position.y = Math.sin(k * Math.PI) * 0.35; }); this.dustFx(t.home, 6); }
     await GFX.delay(0.1);
   },
-  // 大行進・大突進：みんなのあいだを駆けぬけて、またもどる
+  // おしくらまんじゅう・大突進：みんなのあいだを駆けぬけて、またもどる
   //   大突進（boar）は、うしろへさがって前足で地面をかき、駆けぬけたらふりかえって、もう一度つっこんでくる
   async stampede(e, ts, c) {
     const g = e.model.group, from = g.position.clone(), boar = c.mv.glyph === 'boar';
@@ -296,7 +296,7 @@ const FOE_MOVES = {
       GFX.shake(0.25);
       return;
     }
-    // 小さな子分の影もいっしょに走る（大行進）
+    // 小さな子分の影もいっしょに走る（おしくらまんじゅう）
     if (c.mv.glyph === 'swarm') for (let i = 0; i < 8; i++) { const x = (i / 7 - 0.5) * 6; this.minionRun(V3(x, 0, from.z), V3(x + (Math.random() - 0.5), 0, z1), c.col, i * 0.04); }
     await run(from, V3(from.x * 0.3, 0, z1), 0.45);
     await GFX.delay(0.1);
@@ -497,6 +497,32 @@ const FOE_MOVES = {
   },
 
   // ---------- ボスがためて撃つ大技 ----------
+  // ネズミ大行進：キングネズミはその場で号令をかけるだけ。うしろからネズミの大群が列になって行進し、みんなをふみこえていく
+  async march(e, ts, c) {
+    const h = e.home, rat = ENEMIES.nezumi.color;
+    this.foeFlash(e, c.col);
+    // フォークを高くかかげて「進めー！」、それから前をさす
+    await this.foePose(e, POSES.raise, 0.2);
+    this.glyphFly('！', this.foeMouth(e), this.foeMouth(e).add(V3(0.5, 1.2, 0.3)), c.col, 0.5, 0.6);
+    this.fx.ring(this.foeMouth(e), c.col, { r: 1.6, life: 0.4, face: this.camera.position, width: 0.08 });
+    Sfx.horn(0.6);
+    await GFX.delay(0.3);
+    this.foePose(e, { ...POSES.cast, headX: -0.15 }, 0.15);
+    // 列：みんなの横はばより少し広く、キングのうしろから、みんなのうしろまで
+    const xs = ts.map(t => t.home.x), x0 = Math.min(...xs) - 1.0, x1 = Math.max(...xs) + 1.0, cols = 9, rows = 5;
+    const zA = h.z - 1.0, zB = Math.max(...ts.map(t => t.home.z)) + 2.5, dur = 1.25, hit = new Set();
+    let last = 0;
+    for (let r = 0; r < rows; r++) for (let i = 0; i < cols; i++) {
+      const x = lerp(x0, x1, i / (cols - 1)) + (r % 2 ? 0.2 : -0.2) + (Math.random() - 0.5) * 0.15, dl = r * 0.16 + Math.random() * 0.05;
+      last = Math.max(last, dl);
+      GFX.delay(dl).then(() => this.ratRun(V3(x, 0, zA), V3(x, 0, zB), rat, dur, r === 0 ? z => {
+        for (const t of ts) if (!hit.has(t) && z > t.home.z - 0.3 && Math.abs(t.home.x - x) < 0.8) { hit.add(t); this.foeKnock(t, V3(0, 0, 1), 0.35); this.squash(t, 0.3); t.model.flash('#ffffff', 0.8); }
+      } : null));
+    }
+    // 行進のあいだ、地面がこきざみにゆれる
+    await this.every(dur + last, 10, () => GFX.shake(0.06));
+    await GFX.delay(0.1);
+  },
   // さみしいフィナーレ：スポットライトの下で、お手玉を高く投げあげる。みんなの上で紙ふぶきになって、あとから涙が降る
   async finale(e, ts, c) {
     const from = this.foeMouth(e);
@@ -952,7 +978,27 @@ Object.assign(BattleView.prototype, {
     this.dustFx(at, 2);
     this.fx.add(m, life, k => { m.scale.set(1, k < 0.2 ? Ease.back(k / 0.2) : k > 0.75 ? Math.max(0.01, (1 - k) / 0.25) : 1, 1); });
   },
-  // 小さな子分が駆けていく（大行進）
+  // 行進するネズミ（ネズミ大行進）：a→b へ、ちょこちょこ跳ねながら。onZ(z) で、いまの位置を知らせる
+  ratRun(a, b, col, dur, onZ) {
+    const g = new THREE.Group(), mat = toon(col), pink = toon('#f2b8c0');
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), mat); body.scale.set(0.85, 0.75, 1.2); body.position.y = 0.16; g.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), mat); head.position.set(0, 0.24, 0.2); g.add(head);
+    for (const s of [-1, 1]) { const ear = new THREE.Mesh(new THREE.CircleGeometry(0.07, 10), pink); ear.position.set(s * 0.08, 0.34, 0.17); g.add(ear); }
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 4), pink); nose.position.set(0, 0.23, 0.31); g.add(nose);
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.35, 5), pink); tail.position.set(0, 0.16, -0.32); tail.rotation.x = -1.1; g.add(tail);
+    g.scale.setScalar(1.5);
+    g.position.copy(a); g.rotation.y = Math.atan2(b.x - a.x, b.z - a.z);
+    const ph = Math.random() * 6;
+    this.fx.add(g, dur, k => {
+      g.position.lerpVectors(a, b, k);
+      g.position.y = Math.abs(Math.sin(k * 26 + ph)) * 0.14;
+      g.rotation.z = Math.sin(k * 26 + ph) * 0.12;
+      if (Math.random() < 0.15) this.dustFx(g.position, 1);
+      if (onZ) onZ(g.position.z);
+      g.visible = k < 0.97;
+    });
+  },
+  // 小さな子分が駆けていく（おしくらまんじゅう）
   minionRun(a, b, col, delay) {
     const m = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), toon(col)); m.scale.set(0.9, 0.8, 1.3);
     for (const s of [-1, 1]) { const ear = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), toon(col)); ear.position.set(s * 0.09, 0.13, 0.05); m.add(ear); }

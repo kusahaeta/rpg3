@@ -303,7 +303,7 @@ const ENEMY_MOVES = {
   cheese:  { name: 'チーズどろぼう', anim: 'claw', type: 'single', mult: 1.1 },
   kingPress: { name: 'キングプレス', anim: 'press', type: 'single', mult: 1.9 },
   ratCharge: { name: '腹ぺこで目が回っている…', type: 'charge', next: 'ratStorm' },
-  ratStorm: { name: 'ネズミ大行進', anim: 'stampede', glyph: 'swarm', type: 'aoe', mult: 1.4 },
+  ratStorm: { name: 'ネズミ大行進', anim: 'march', type: 'aoe', mult: 1.4 },
   peck:    { name: 'つっつき', anim: 'bite', glyph: 'peck',       type: 'single', mult: 1.0 },
   roll:    { name: 'ごろごろ爆走', anim: 'roll',       type: 'blast',  mult: 1.2, adj: 0.6 },
   howl:    { name: 'とおぼえ', anim: 'shout', glyph: 'ォ',       type: 'aoe',    mult: 0.5, eff: { kind: 'buff', chance: 0.5, buff: { key: 'e_howl', name: 'びくびく', stat: 'atk', value: -0.15, turns: 2 } } },
