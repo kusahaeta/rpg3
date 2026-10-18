@@ -2577,6 +2577,7 @@ class FieldView extends BaseView {
 
     // マウス：ドラッグで視点、クリックで攻撃
     // タッチ：画面の左半分はスティック（端まで倒すとダッシュ）、右半分はドラッグで視点・2本指でズーム・タップで攻撃
+    // 会話中は、どこをクリック・タップしても次の文言へ進む（ドラッグの視点まわしはそのまま）
     const pts = new Map(), stick = r.querySelector('.fd-stick'), STICK_R = 80;
     const local = e => { const b = r.getBoundingClientRect(), k = b.width / 1280; return { x: (e.clientX - b.left) / k, y: (e.clientY - b.top) / k }; };
     const pinchDist = () => { const c = [...pts.values()].filter(q => !q.stick); return c.length === 2 ? Math.hypot(c[0].x - c[1].x, c[0].y - c[1].y) : 0; };
@@ -2585,7 +2586,7 @@ class FieldView extends BaseView {
       const q = { x: e.clientX, y: e.clientY, moved: 0 };
       if (e.pointerType === 'touch') {
         const at = local(e);
-        if (at.x < 640 && ![...pts.values()].some(o => o.stick)) {
+        if (at.x < 640 && !this.talk && ![...pts.values()].some(o => o.stick)) {
           q.stick = at; this.stick = { x: 0, y: 0 };
           stick.style.transform = `translate(${at.x}px, ${at.y}px)`; stick.firstChild.style.transform = ''; stick.classList.remove('hidden');
         }
@@ -2616,7 +2617,7 @@ class FieldView extends BaseView {
       const q = pts.get(e.pointerId); if (!q) return;
       pts.delete(e.pointerId); this.pinch = pinchDist();
       if (q.stick) { this.stick = null; stick.classList.add('hidden'); }
-      else if (e.type === 'pointerup' && q.moved < 6 && !pts.size) this.attack();
+      else if (e.type === 'pointerup' && q.moved < 6 && !pts.size) this.talk ? this.advanceTalk() : this.attack();
     };
     r.addEventListener('pointerup', up);
     r.addEventListener('pointercancel', up);
