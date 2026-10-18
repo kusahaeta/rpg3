@@ -4,7 +4,7 @@
 // ============================================================
 Object.assign(SCENES, {
   // ================= 第五章　眠れる子猫 =================
-  c5_01: { title: '古代遺跡', cast: ['e:sekizou'], bgm: 'field',
+  c5_01: { title: '古代遺跡', cast: ['e:sekizou'], bgm: 'zone',
     stage: { zone: 'ruins_out', at: [-6, 20], face: 0, cast: { 'e:sekizou': [{ at: [13.4, 8], y: 0.6, face: -0.5, still: true }, { at: [16.2, 8], y: 0.6, face: -0.5, still: true }] }, points: { ruins: [14.5, 1.6, 8.5] },
       // 右前の、崩れた柱のあいだの二つの台座（外庭の遺跡）。台座の上に、石のねこ像（敵）が二体、目を閉じた石像として立っていて（still。向きは探索の像とそろえる）、動き出す行で目をさます。
       //   シロは、一行のうしろの高いところから、像のほうを指さすところを写す
@@ -19,7 +19,7 @@ Object.assign(SCENES, {
       ['mike', 'わわっ、像が動いた！', { f: 'surprise', g: 'recoil' }],
     ] },
   // 石畳の丘の、大階段を上りきったところ：石の神殿（遺跡）と扉の結界、その前の「つながりの石畳」が見える
-  c5_01b: { title: 'つながりの石畳', bgm: 'field',
+  c5_01b: { title: 'つながりの石畳', bgm: 'zone',
     stage: { zone: 'ruins_hill', at: [0, -13], face: 0, points: { gate: [0, 4.5, 20], tiles: [0, 0.6, 9] },
       shots: { gate: { pos: [2, 2.2, -8], look: [0, 8.2, 20] }, tiles: { pos: [0, 6.5, -3], look: [0, 0.6, 9] } } },
     lines: [
@@ -31,7 +31,7 @@ Object.assign(SCENES, {
       ['shiro', '立て札もあるわ。「始まりの石から、すべての石をひと筆で」……ですって。', { f: 'neutral', g: 'think' }],
       ['n', '（つながりの石畳：始まりの石（足あと）から、すべての石を一度ずつ踏み、最後に終わりの石（星）を踏むと、結界が消える。光った石をまた踏むか、石畳から出ると、やりなおし。ひとつ前の石へもどると、一歩取り消せる。丘のふもとの西、「光の庭」で練習もできる）', { cam: 'tiles', dur: 9 }],
     ] },
-  c5_02: { title: '壁画の大広間', bgm: 'dark',
+  c5_02: { title: '壁画の大広間', bgm: 'zone',
     stage: { zone: 'ruins_in', at: [0, -10], face: 0,
       // 壁画の見る点は、壁画の面のすぐ手前（壁の中に置くと、カメラが壁を突き抜ける）
       points: { mural0: [-25.5, 2.2, 5], mural1: [25.5, 2.2, 5], mural2: [-12, 2.2, 19.5] },
@@ -49,7 +49,7 @@ Object.assign(SCENES, {
       ['kuro', '……行こう。大広間の奥にも、まだ道が続いている。', { f: 'serious', cam: 'wide', dur: 5 }],
     ] },
   // 崩れた迷宮の入口の間：白い時の水晶。タマがふれると、遺跡が昔の姿にもどる（シーンの中だけ。もう一度ふれて、今にもどす）
-  c5_02b: { title: '時の水晶', bgm: 'dark',
+  c5_02b: { title: '時の水晶', bgm: 'zone',
     // 入口の間（南）の白い水晶。北の壁に二つの口：右（right：今は瓦礫・昔に通れる）と、左（left：今は崩れて通れる・昔は石の門）
     // touch：水晶にふれるタマを、水晶の向こう（北）から、顔が見えるように
     stage: { zone: 'ruins_maze', at: [-18, 38], face: 0, points: { crystal: [0, 1.6, 6], left: [-9, 1.5, 12], right: [9, 1.5, 12] },
@@ -168,7 +168,7 @@ Object.assign(SCENES, {
     ] },
 
   // ================= 第六章　魔王城へ =================
-  c6_01: { title: '魔王領', cast: ['e:mazoku', 'e:monban'], extra: ['mazoku_yukyu'], bgm: 'field',
+  c6_01: { title: '魔王領', cast: ['e:mazoku', 'e:monban'], extra: ['mazoku_yukyu'], bgm: 'zone',
     stage: { zone: 'demon_land', at: [-2, 24], face: 0,
       cast: { mazoku_yukyu: { at: [0, 2.8], face: 'mike' },
         'e:mazoku': { at: [-2.6, 7], hidden: true }, 'e:monban': { at: [2.6, 7.4], hidden: true } },
@@ -187,7 +187,7 @@ Object.assign(SCENES, {
       ['kuro', '……油断するな。', { f: 'serious' }],
     ] },
   // 魔王城の受付：面会許可証（ハンコの欄が五つ）を受け取る。健康診断と、四天王四人のハンコを集める
-  c6_01b: { title: '面会の手続き', extra: ['uketsuke'], bgm: 'field',
+  c6_01b: { title: '面会の手続き', extra: ['uketsuke'], bgm: 'zone',
     stage: { zone: 'demon_castle', at: [1, 14.2], face: 0, cast: { uketsuke: { at: [1.3, 3], face: 'mike' } } },
     lines: [
       ['n', '魔王城の大広間。……入ってすぐのところに、小さな受付があった。', { cam: 'wide', dur: 6 }],
@@ -209,7 +209,7 @@ Object.assign(SCENES, {
       ['shiro', '……同じお城の中なのに、連絡が行ってないのね。', { f: 'smug', g: 'shrug' }],
       ['mike', 'じゃあ、戦いながらスタンプラリーだね！', { f: 'joy', g: 'fist' }],
     ] },
-  c6_02: { title: '魔王城の健康診断', cast: ['e:kanbu'], extra: ['mazoku_nurse', 'mazoku_nurse2'], bgm: 'field',
+  c6_02: { title: '魔王城の健康診断', cast: ['e:kanbu'], extra: ['mazoku_nurse', 'mazoku_nurse2'], bgm: 'zone',
     stage: { zone: 'demon_clinic', at: [-12, 8], face: 0,
       cast: { mazoku_nurse: { at: [1.2, 2.2], face: 'mike' }, mazoku_nurse2: { at: [-1.6, 3], face: 'mike' }, 'e:kanbu': { at: [0, 6.5], hidden: true } } },
     lines: [
@@ -232,7 +232,7 @@ Object.assign(SCENES, {
       ['e:kanbu', 'い、今はそれどころではない！　ええい、かかれーっ！', { later: [0.8, { exit: ['mazoku_nurse', 'mazoku_nurse2'] }] }],
       ['kuro', '……来るぞ。', { f: 'serious', stance: { all: 'ready' } }],
     ] },
-  c6_02b: { title: '異常なし', cast: ['e:kanbu'], extra: ['mazoku_nurse', 'mazoku_nurse2'], bgm: 'field',
+  c6_02b: { title: '異常なし', cast: ['e:kanbu'], extra: ['mazoku_nurse', 'mazoku_nurse2'], bgm: 'zone',
     stage: { zone: 'demon_clinic', at: [-12, 8], face: 0,
       cast: { mazoku_nurse: { at: [1.2, 2.2], face: 'mike' }, mazoku_nurse2: { at: [-1.6, 3], face: 'mike' }, 'e:kanbu': { at: [0.4, 5.6] } } },
     lines: [
@@ -248,7 +248,7 @@ Object.assign(SCENES, {
       ['mazoku_nurse2', '最初は、東の兵の詰め所の奥の厨房で、カレーを煮こんでいるグツグツさんね〜。いってらっしゃーい。', { f: 'smile', g: 'wave' }],
     ] },
   // 魔王軍四天王（ゆるい）：倒すと面会許可証に「通ってよし」のハンコ
-  c6_k1: { title: '四天王 炎のグツグツ', extra: ['gutsugutsu'], bgm: 'field',
+  c6_k1: { title: '四天王 炎のグツグツ', extra: ['gutsugutsu'], bgm: 'zone',
     stage: { zone: 'demon_barracks', at: [-11, -23.5], face: 0, cast: { gutsugutsu: { at: [1.6, 3.6], face: 'mike' } }, points: { pot: [0, 2.2, 10.5] },
       shots: { pot: { pos: [-4.5, 2.6, 0.5], look: [1.2, 1.3, 7] } } },
     lines: [
@@ -264,7 +264,7 @@ Object.assign(SCENES, {
       ['tama', '……ちょっと、かわいそう……。', { f: 'worry' }],
       ['gutsugutsu', 'こうなったら、やけ食い……じゃない、勝負だ！　四天王の火力、見せてやる！', { f: 'angry', g: 'fist', stance: { all: 'ready' } }],
     ] },
-  c6_k1b: { title: '減塩のひみつ', extra: ['gutsugutsu'], bgm: 'field',
+  c6_k1b: { title: '減塩のひみつ', extra: ['gutsugutsu'], bgm: 'zone',
     stage: { zone: 'demon_barracks', at: [-11, -23.5], face: 0, cast: { gutsugutsu: { at: [1.6, 3.6], face: 'mike' } }, points: { pot: [0, 2.2, 10.5] } },
     lines: [
       ['gutsugutsu', 'まいった！　……いい腕してるな、おまえたち。', { f: 'pained', g: 'lookDown' }],
@@ -276,7 +276,7 @@ Object.assign(SCENES, {
       ['gutsugutsu', '恩に着るぜ！　……次の四天王は、地下の牢屋で寝てる、ネムネムだ。', { f: 'joy', g: 'explain' }],
       ['gutsugutsu', 'ああ、あいつはちょっとやそっとじゃ起きないぞ。がんばれよ！', { f: 'smile', g: 'wave' }],
     ] },
-  c6_k2: { title: '四天王 眠りのネムネム', extra: ['nemunemu'], bgm: 'field',
+  c6_k2: { title: '四天王 眠りのネムネム', extra: ['nemunemu'], bgm: 'zone',
     stage: { zone: 'demon_cellar', at: [-23.5, -18], face: 270, wide: { pos: [-2.2, 2.2, -2.4], look: [0.6, 0.6, 3.2] },
       cast: { nemunemu: { at: [1.6, 6.7], y: 0.25, face: 'mike', stance: 'sleep' } } },
     lines: [
@@ -295,7 +295,7 @@ Object.assign(SCENES, {
       ['kuro', '……四天王の寝床が、牢屋か。', { f: 'serious' }],
       ['nemunemu', 'ハンコ……？　おれに勝ったら……むにゃ……勝負だ……ぐう。', { f: 'sleepy', g: 'nod', stance: { all: 'ready' } }],
     ] },
-  c6_k2b: { title: 'ぐっすり', extra: ['nemunemu'], bgm: 'field',
+  c6_k2b: { title: 'ぐっすり', extra: ['nemunemu'], bgm: 'zone',
     stage: { zone: 'demon_cellar', at: [-23.5, -18], face: 270, wide: { pos: [-2.2, 2.2, -2.4], look: [0.6, 0.6, 3.2] },
       cast: { nemunemu: { at: [1.2, 4.4], face: 'mike' } } },
     lines: [
@@ -307,7 +307,7 @@ Object.assign(SCENES, {
       ['tama', '……おやすみ……。', { f: 'smile', g: 'wave' }],
       ['kuro', '……タマ。おまえは寝るな。行くぞ。', { f: 'serious', g: 'nod' }],
     ] },
-  c6_k3: { title: '四天王 風のチョキチョキ', extra: ['chokichoki'], bgm: 'field',
+  c6_k3: { title: '四天王 風のチョキチョキ', extra: ['chokichoki'], bgm: 'zone',
     stage: { zone: 'demon_court', at: [17, -5], face: 0, cast: { chokichoki: { at: [2.5, 3.8], face: 'mike' } }, points: { bed: [3, 1.2, 7] } },
     lines: [
       ['n', '中庭。猫じゃらしの花壇の前で、大きなはさみを持った年寄りの魔族が、葉を一枚ずつそろえていた。', { cam: 'look:bed', dur: 7, look: { all: 'bed' } }],
@@ -319,7 +319,7 @@ Object.assign(SCENES, {
       ['mike', '……魔王って、ひとりで遊んでるの？', { f: 'worry', g: 'tilt' }],
       ['chokichoki', '……おっと、年寄りはしゃべりすぎていかん。ハンコがほしければ、腕前を見せてもらおうかの！', { f: 'serious', g: 'raise', look: { chokichoki: 'mike' }, stance: { all: 'ready' } }],
     ] },
-  c6_k3b: { title: 'じいさんの猫じゃらし', extra: ['chokichoki'], bgm: 'field',
+  c6_k3b: { title: 'じいさんの猫じゃらし', extra: ['chokichoki'], bgm: 'zone',
     stage: { zone: 'demon_court', at: [17, -5], face: 0, cast: { chokichoki: { at: [2.5, 3.8], face: 'mike' } }, points: { bed: [3, 1.2, 7] } },
     lines: [
       ['chokichoki', 'ほっほっ、見事じゃ。……通ってよし。', { f: 'smile', g: 'nod', stamp: true, card: 4 }],
@@ -332,7 +332,7 @@ Object.assign(SCENES, {
       ['chokichoki', '最後の四天王は、2F の回廊におる、まとめ役のドドンじゃ。……ちょうど今朝、有給の温泉から帰ってきたところでな。', { f: 'smile', hold: { mike: null } }],
       ['shiro', '……四天王が、有給？', { f: 'surprise', g: 'recoil' }],
     ] },
-  c6_k4: { title: '四天王 大地のドドン', extra: ['dodon'], bgm: 'field',
+  c6_k4: { title: '四天王 大地のドドン', extra: ['dodon'], bgm: 'zone',
     stage: { zone: 'demon_castle_2f', at: [0, -15.2], face: 0, cast: { dodon: { at: [0, 4.6], face: 'mike' } } },
     lines: [
       ['n', '三階への階段の前。浴衣すがたの大きな魔族が、腕を組んで待ちかまえていた。……頭には、手ぬぐいがのっている。', { cam: 'wide', dur: 7 }],
@@ -348,7 +348,7 @@ Object.assign(SCENES, {
       ['dodon', 'もちろん戦う！　腹ごしらえは、戦いの基本だからな。', { f: 'joy', g: 'laugh' }],
       ['dodon', 'わしのハンコは、わしを倒した者にしか押さん！　温泉で温まったこの体、受けてみよ！', { f: 'angry', g: 'fist', hold: { mike: null }, stance: { all: 'ready' }, shake: 0.3 }],
     ] },
-  c6_k4b: { title: 'いい湯だった', extra: ['dodon'], bgm: 'field',
+  c6_k4b: { title: 'いい湯だった', extra: ['dodon'], bgm: 'zone',
     stage: { zone: 'demon_castle_2f', at: [0, -15.2], face: 0, cast: { dodon: { at: [0, 4.6], face: 'mike' } } },
     lines: [
       ['dodon', 'ぬう……！　はっはっは、見事！　……有給明けの体には、ちとこたえたわい。', { f: 'pained', g: 'laugh' }],
@@ -473,7 +473,7 @@ Object.assign(SCENES, {
       ['maou', '……扉の奥から、あの声がする。', { f: 'serious', g: 'point' }],
       ['n', '扉の奥には、樹の根の下へ下りていく、暗い石段が続いていた。', { cam: 'wide', look: { all: 'door' } }],
     ] },
-  c7_02: { title: '樹の地下', cast: ['e:utsuro'], bgm: 'dark',
+  c7_02: { title: '樹の地下', cast: ['e:utsuro'], bgm: 'zone',
     stage: { zone: 'tree_under', at: [0, -45], face: 180, cast: { 'e:utsuro': { at: [0, 6], hidden: true } } },
     lines: [
       ['n', '封印の扉の奥。樹の根の下には、光る樹液が流れる、広い地下が広がっていた。', { cam: 'wide', dur: 7 }],
@@ -481,7 +481,7 @@ Object.assign(SCENES, {
       ['tama', '……根っこが、さむいって言ってる。……光が、ほしいって。', { f: 'sad', g: 'lookDown' }],
       ['kuro', '……来るぞ。', { f: 'serious', enter: 'e:utsuro', stance: { all: 'ready' } }],
     ] },
-  c7_02b: { title: '影の回廊', bgm: 'dark',
+  c7_02b: { title: '影の回廊', bgm: 'zone',
     stage: { zone: 'tree_under_2', at: [0, -40], face: 180 },
     lines: [
       ['n', '石段を下りると、うす暗い回廊が続いていた。天井の割れ目から、ところどころ、光が差しこんでいる。', { cam: 'wide', dur: 7 }],
@@ -646,7 +646,7 @@ Object.assign(SCENES, {
       { bond: ['all', null, 20] },
       ['mike', '行こう、世界の果てへ！　みんなの力で、コドクを止めるんだ！', { f: 'serious', g: 'fist', r: { all: ['joy', 'cheer'] } }],
     ] },
-  c8_03: { title: '世界の果て', cast: ['e:kagejuu', 'e:utsuro'], bgm: 'dark',
+  c8_03: { title: '世界の果て', cast: ['e:kagejuu', 'e:utsuro'], bgm: 'zone',
     stage: { zone: 'world_end', at: [0, 20], face: 0, cast: { 'e:kagejuu': { at: [-2.6, 6], hidden: true }, 'e:utsuro': { at: [2.4, 6.6], hidden: true } }, points: { edge: [0, 2, 60], roots: [0, 16, 60] },
       // descent：岩盤A（中の島）から、来た道をふりかえる。とぎれた地面のふちから、根が坂になって下りてくる
       shots: { descent: { pos: [7, 3, 8], look: [-2, 3, -8], free: true, fov: 55 } } },
@@ -660,7 +660,7 @@ Object.assign(SCENES, {
       ['tama', '……だいじょうぶ。……今は、みんないる。', { f: 'smile', g: 'nod', to: 'maou', r: { maou: 'shy' } }],
       ['n', '闇の中から、コドクの獣たちが現れた！', { enter: ['e:kagejuu', 'e:utsuro'], cam: 'wide', stance: { all: 'ready' } }],
     ] },
-  c8_04: { title: '一人じゃない', cast: ['e:kodoku'], bgm: 'boss',
+  c8_04: { title: '一人じゃない', cast: ['e:kodoku'], bgm: 'lastboss',
     stage: { zone: 'world_end', at: [0, -21], face: 0, cast: { 'e:kodoku': { at: [0, 9.5] } } },
     lines: [
       ['e:kodoku', '……来たか。たった五匹で。', { cam: 'foe:e:kodoku', dur: 6 }],
@@ -777,7 +777,7 @@ Object.assign(SCENES, {
     ] },
 
   // ================= おまけ　ねこ神の夢 =================
-  c10_01: { title: '夢の入口', cast: ['e:sakana'], bgm: 'field',
+  c10_01: { title: '夢の入口', cast: ['e:sakana'], bgm: 'zone',
     stage: { zone: 'dream', at: [0, 39], face: 0, cast: { 'e:sakana': { at: [0, 5], hidden: true } } },
     lines: [
       ['n', '猫神社の鳥居の奥。気がつくと、一行は、お菓子と魚の浮かぶふしぎな夢の中にいた。', { cam: 'wide', dur: 7 }],
@@ -788,7 +788,7 @@ Object.assign(SCENES, {
       ['e:sakana', 'いいかい、そもそも魚というのはだね……', { enter: 'e:sakana' }],
       ['maou', '……魚がしゃべったぞ。', { f: 'surprise', stance: { all: 'ready' } }],
     ] },
-  c10_02: { title: 'へんてこ回廊', cast: ['e:nisemike', 'e:kuroPlush', 'e:tamas'], bgm: 'field',
+  c10_02: { title: 'へんてこ回廊', cast: ['e:nisemike', 'e:kuroPlush', 'e:tamas'], bgm: 'zone',
     stage: { zone: 'dream_2', at: [0, -30], face: 0, cast: { 'e:nisemike': { at: [-2.6, 4] }, 'e:kuroPlush': { at: [2.6, 4.4] }, 'e:tamas': { at: [0, 7] } } },
     lines: [
       ['e:nisemike', 'やっと回廊をぬけてきたね！　……ぼくが、本物のミケだよ！'],

@@ -30,7 +30,7 @@ function rollerLane(z, x0, x1, n, o) {
 }
 const FIELD_ZONES = {
   // ---------------- 第一章 ぽかぽか村・ほしふる森 ----------------
-  pokapoka: { ci: 0, name: 'ぽかぽか村', w: 72, d: 64, stage: '1-1', arenas: [[0, 12, 0]], build: 'village', town: true, groups: 0, chests: 3, crystals: 0, treeLook: [150, 1.4, -8],
+  pokapoka: { ci: 0, name: 'ぽかぽか村', bgm: 'village', w: 72, d: 64, stage: '1-1', arenas: [[0, 12, 0]], build: 'village', town: true, groups: 0, chests: 3, crystals: 0, treeLook: [150, 1.4, -8],
     world: true, arch: 'woods', chestAt: [[-30, -20], [29, -25], [-27, 25]],
     // 木立に囲まれた村。井戸の広場を中心に、北の街道へ出る道の東は村長の家の高台（石段）、北東は鳥居から長い石段を上った猫神社の丘（社の奥の道から夢の世界へ）。
     // 西は一段高い住宅地（ミケの家・畑）、南西に武器屋、南に道具屋と宿屋、東に魚屋の屋台。東の道は村はずれの丘へ、南の道はほしふる森へ。南東に池
@@ -102,7 +102,7 @@ const FIELD_ZONES = {
     //   子猫たちと村人は家に隠れている。店の主人と村長は、いつもの場所でふんばっている
     siege: { when: 'c8_01', until: 'c8_02', scene: 'c8_01', foe: 'kagejuu', face: [0, 13], hide: ['koneko_a', 'koneko_b', 'murabito_a', 'murabito_b'] } },
 
-  hill: { ci: 0, name: '村はずれの丘', w: 52, d: 48, stage: '1-1', arenas: [[0, 10, 0]], build: 'hill', calm: true, groups: 0, chests: 2, crystals: 2,
+  hill: { ci: 0, name: '村はずれの丘', bgm: 'hill', w: 52, d: 48, stage: '1-1', arenas: [[0, 10, 0]], build: 'hill', calm: true, groups: 0, chests: 2, crystals: 2,
     world: true, arch: 'woods', chestAt: [[21, -17], [21, 1]],
     // 流れ星のクレーター（北の石段にかからないよう、流れ星の岩より少し南）
     dents: [{ at: [0, -2], r: 4, depth: 0.9, rim: 0.25, w: 1.3 }],
@@ -137,7 +137,7 @@ const FIELD_ZONES = {
     notes: [{ at: [-2.5, -3.5], mark: 1.3, when: 'scene:c1_03', title: '友情の実のかけら', text: 'えぐれた地面に、流れ星に見えた実のかけらが残っている。ほんのりあたたかく、かすかに光っている。' }],
     map2d: [610, 380] },
 
-  forest_in: { ci: 0, name: 'ほしふる森・入口', mapName: 'ほしふる森', w: 60, d: 72, stage: '1-1', arenas: [[-2, -18, 0]], build: 'forest', bg: 'forest', groups: 5, chests: 3, crystals: 3,
+  forest_in: { ci: 0, name: 'ほしふる森・入口', bgm: 'forest', mapName: 'ほしふる森', w: 60, d: 72, stage: '1-1', arenas: [[-2, -18, 0]], build: 'forest', bg: 'forest', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-25, -29], [-25, 7], [23, 25]],
     // 村から北の端へ入ると、北の広場（戦い。ねこ地蔵は広場の北のくぼみ）→ 小川の橋 → 南の広場 → 南の端から奥へ。西の小さな広場・北西の茂み・南東の高台は行き止まり
     map: [
@@ -182,7 +182,7 @@ const FIELD_ZONES = {
     notes: [{ at: [14, 7], face: 0, post: ['ほしふる森', '星をひろった者は、友を得る'], title: '古い立て札', text: '「ほしふる森——夜になると、空から小さな星が降る。星をひろった者は、友を得るという」' }],
     map2d: [470, 450] },
 
-  forest_deep: { ci: 0, name: 'ほしふる森・奥', parent: 'forest_in', w: 64, d: 72, stage: '1-2', arenas: [[-4, 0, 0]], build: 'forestDeep', bg: 'forest', groups: 6, chests: 3, crystals: 3,
+  forest_deep: { ci: 0, name: 'ほしふる森・奥', bgm: 'forest', parent: 'forest_in', w: 64, d: 72, stage: '1-2', arenas: [[-4, 0, 0]], build: 'forestDeep', bg: 'forest', groups: 6, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-25, -19], [23, -27], [-21, 15]],
     // 入口から北の端へ入り、北の大広場（戦い）を抜けると、ねこ地蔵の広場。東の端からネズミの王国へ、南の端から樹の根もとへ。東に星の泉、西に巨木の根の高台（石段）、北東と南西は行き止まりの小さな広場
     map: [
@@ -227,7 +227,7 @@ const FIELD_ZONES = {
     notes: [{ at: [19, -5], mark: [0, 1.0, 1.2], title: '泉のほとり', text: 'すみきった泉。水面に、星のような光がゆらめいている。' }],
     map2d: [470, 486] },
 
-  rat_nest: { ci: 0, name: 'ネズミの王国', parent: 'forest_in', w: 54, d: 54, stage: '1-3', arenas: [[0, -2, 0]], build: 'ratNest', bg: 'forest', groups: 3, chests: 3, crystals: 2, calmAfter: '1-3',
+  rat_nest: { ci: 0, name: 'ネズミの王国', bgm: 'ratnest', parent: 'forest_in', w: 54, d: 54, stage: '1-3', arenas: [[0, -2, 0]], build: 'ratNest', bg: 'forest', groups: 3, chests: 3, crystals: 2, calmAfter: '1-3',
     world: true, arch: 'woods', chestAt: [[-22, -12], [22, -16], [-10, 10]],
     // 根のトンネルをくねくね進むと、玉座の大広間。西はチーズの倉、東は子ネズミの寝床（どちらも行き止まり）
     map: [
@@ -269,7 +269,7 @@ const FIELD_ZONES = {
   // ---------------- 第二章 ミャオ街道 ----------------
   // ミャオ街道は二つの広い区画：村の北の、ひょうたん池のある野原（road1）と、その北の、風車の立つ丘（road1_hill）。丘をこえると街道の宿場
   // ひょうたん池：村から北へのびる街道。ゆるやかに起伏する広い野原を、道しるべの分かれ道まで。分かれ道の西は、ひょうたんの形の池（ハチとブチが出会った池）
-  road1: { ci: 1, name: 'ミャオ街道・ひょうたん池', mapName: 'ミャオ街道', floor: '池', w: 160, d: 160, stage: '2-1', arenas: [[4, 52, 0], [8, -44, 0], [-20, 20, 0]], build: 'road', groups: 6, chests: 3, crystals: 2,
+  road1: { ci: 1, name: 'ミャオ街道・ひょうたん池', bgm: 'field', mapName: 'ミャオ街道', floor: '池', w: 160, d: 160, stage: '2-1', arenas: [[4, 52, 0], [8, -44, 0], [-20, 20, 0]], build: 'road', groups: 6, chests: 3, crystals: 2,
     world: true, arch: 'woods', chestAt: [[-66, -6], [66, -54], [-50, 58]],
     // 戦闘は、戦場のまわりだけの軽い背景で（区画が広いので、まるごと組み立てると重い）
     battleSet: { build: 'meadowBattle', marks: [['pond', -50, 8, 9.5], ['pond', -48, -14, 7], ['pond', -44, -4, 5]] },
@@ -370,7 +370,7 @@ const FIELD_ZONES = {
   // ミャオ街道・丘：ひょうたん池の北の、大きな丘（高さ 10m・半径 70m。いちばん急なところで 15°）。道は南の斜面を折り返しながら上り、
   //   平らな頂上（風車と畑。シロの特訓 c2_03e・ステージ 2-3）をこえて、北の斜面を折り返して下ると街道の宿場
   //   丘は dents（depth を負に、top が平らな頂上の半径）。丘の上は、木立（#）を置かず、木は区画の組み立てで一本ずつ（地面の高さにそって立つ）
-  road1_hill: { ci: 1, name: 'ミャオ街道・丘', floor: '丘', parent: 'road1', w: 160, d: 192, stage: '2-1', arenas: [[-28, 72, 0], [2, -8, 0], [26, -84, 0]], build: 'roadHill', groups: 8, chests: 3, crystals: 3,
+  road1_hill: { ci: 1, name: 'ミャオ街道・丘', bgm: 'field', floor: '丘', parent: 'road1', w: 160, d: 192, stage: '2-1', arenas: [[-28, 72, 0], [2, -8, 0], [26, -84, 0]], build: 'roadHill', groups: 8, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-10, -20], [56, -60], [-40, 66]],
     // 戦闘は、戦場のまわりだけの軽い背景で（丘の高さ・頂上の風車と小麦畑）
     battleSet: { build: 'meadowBattle', marks: [['windmill', 7, -21.5, 1.3, -0.66], ['wheat', WHEAT_HILL, WHEAT_HILL_AVOID]] },
@@ -478,7 +478,7 @@ const FIELD_ZONES = {
     notes: [{ at: [8, 76], face: 0, post: ['↑ 街道の宿場（丘をこえて）', '↓ ひょうたん池・ぽかぽか村'], title: '道しるべ', text: '「北　街道の宿場（丘の上の風車をこえて）／南　ひょうたん池・ぽかぽか村」' },
       { at: [-3, -22], mark: 1.0, title: '丘のてっぺん', text: '丘のてっぺんのベンチ。北の道を下れば、街道の宿場だ。……ふり返ると、ひょうたん池が、きらきら光っている。風車が、ぎいぎいと回っている。' }] },
 
-  road_rest: { ci: 1, name: '街道の宿場', w: 68, d: 64, stage: '2-1', arenas: [[0, -4, 0]], build: 'rest', town: true, groups: 0, chests: 2, crystals: 0,
+  road_rest: { ci: 1, name: '街道の宿場', bgm: 'inn', w: 68, d: 64, stage: '2-1', arenas: [[0, -4, 0]], build: 'rest', town: true, groups: 0, chests: 2, crystals: 0,
     world: true, arch: 'woods', chestAt: [[-25, -24], [-23, 9]],
     // 街道ぞいに、南から北へ上っていく宿場。南の木戸をくぐると下宿（西に田んぼ、東に水車小屋）、川の橋を渡って石段を上ると広場（西に茶屋「ねこじゃらし」、北に高札場、東に鍛冶屋の屋台、南東に道具屋の屋台）。
     // 広場の東の道はまどろみの林へ。広場から石段を上ると上宿（東に旅籠、西に問屋場）で、北のごろごろ切り通しへ続く。北西は石段を上った見晴らしの高台。広場の下は川べりの小道
@@ -544,7 +544,7 @@ const FIELD_ZONES = {
   // まどろみの林：入口（たんぽぽの原）→ ねむり花の谷 → 大樹のうろ（parent：ワールドマップでは入口にまとめる）
   //   どの区画にも「眠り」の仕掛けがある。綿毛（fluff。F でつかまると風に乗って飛ぶ）、ねむり花（nemuri。粉をはいているあいだに入ると眠ってしまう）、
   //   ねぼけ歩きのタマ（sleepwalk。近づくと、次の場所へふらふら歩いていく）、眠っている子（naps）
-  woods: { ci: 1, name: 'まどろみの林', floor: '入口', w: 60, d: 76, stage: '2-2', arenas: [[2, 8, 0]], build: 'woods', bg: 'forest', groups: 5, chests: 3, crystals: 3,
+  woods: { ci: 1, name: 'まどろみの林', bgm: 'drowsy', floor: '入口', w: 60, d: 76, stage: '2-2', arenas: [[2, 8, 0]], build: 'woods', bg: 'forest', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-15, -31], [16, -18], [23, 31]],
     th: { fog: '#c8dcc8', fogD: 0.026 },
     // 宿場から入ると、ねこ地蔵の広場。北のたんぽぽの原のまん中に、見上げるほど大きなたんぽぽ。原の北は「ねむり川」（丸木橋はこわれている）。
@@ -599,7 +599,7 @@ const FIELD_ZONES = {
       { at: [-13, 19], face: 0.3, post: ['↑ たんぽぽの原', '← 街道の宿場'], title: '道しるべ', text: '「北　たんぽぽの原／西　街道の宿場」……下のほうに、小さく「ねむり川を越えるときは、綿毛で」と書き足してある。' },
       { at: [5, 3.5], when: 'scene:c2_03', mark: [0, 3.2, -2.5], title: '綿毛の抜けた大たんぽぽ', text: '見上げるほど大きなたんぽぽ。……てっぺんの綿毛は、眠る子猫ごと、川のむこうへ飛んでいってしまった。' }],
     map2d: [610, 236] },
-  woods_valley: { ci: 1, name: 'まどろみの林・ねむり花の谷', floor: '谷', parent: 'woods', w: 60, d: 80, stage: '2-2', after: 'c2_03', arenas: [[0, -28, 0], [14, 16, 0]], build: 'woodsValley', bg: 'forest', groups: 5, chests: 3, crystals: 3,
+  woods_valley: { ci: 1, name: 'まどろみの林・ねむり花の谷', bgm: 'drowsy', floor: '谷', parent: 'woods', w: 60, d: 80, stage: '2-2', after: 'c2_03', arenas: [[0, -28, 0], [14, 16, 0]], build: 'woodsValley', bg: 'forest', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-19, 15], [-23, -11], [21, -11]], foes: ['kinoko', 'karasu', 'noraInu'],
     th: { fog: '#e0c8e0', fogD: 0.03 },
     // 南の入口から、小川が谷をくだる花畑へ（板の橋で西の花畑へ）。花畑のまん中の大きなねむり花に、タマが綿毛ごと落ちていた。
@@ -658,7 +658,7 @@ const FIELD_ZONES = {
     notes: [{ at: [-1, -11], face: 0.2, post: ['↑ 林の奥', '→ 高台　← 小川'], title: '道しるべ', text: '「北　林の奥／東　高台／西　小川」……「ねむり花がふくらんだら、息をとめて、しぼむまで待つこと」と書いてある。' },
       { at: [9, 12], when: 'scene:c2_03g', mark: [0, 1.6, -3], title: '大きなねむり花', text: '人の背たけほどもある、大きなねむり花。……花びらの上に、綿毛がひとつ引っかかっている。' }],
     map2d: [610, 236] },
-  woods_deep: { ci: 1, name: 'まどろみの林・大樹のうろ', floor: '奥', parent: 'woods', w: 60, d: 72, stage: '2-2', after: 'c2_03g', arenas: [[1, -20, 0], [-3, 8, 0]], build: 'woodsDeep', bg: 'forest', groups: 5, chests: 3, crystals: 3,
+  woods_deep: { ci: 1, name: 'まどろみの林・大樹のうろ', bgm: 'drowsy', floor: '奥', parent: 'woods', w: 60, d: 72, stage: '2-2', after: 'c2_03g', arenas: [[1, -20, 0], [-3, 8, 0]], build: 'woodsDeep', bg: 'forest', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-25, -11], [25, -11], [-11, 25]], foes: ['risu', 'kinoko', 'noraInu'],
     th: { fog: '#c8d8b8', fogD: 0.03 },
     // 南の入口から丸木橋で小川を渡ると、光るきのこの輪の広場。北の分かれ道から、ねむり花の小道を抜けると、林のいちばん奥の大樹の広場
@@ -717,7 +717,7 @@ const FIELD_ZONES = {
 
   // ごろごろ切り通し：宿場の北、ニャハハ王国関所の手前の長い岩山。暴走族のような「ごろごろ団」（ごろごろ岩の一団と、総長のばくそうイノシシ）の走り場
   //   二つの区画に分かれる：入口からごろごろ団のたまり場まで（road2）と、その北の、こわれた外門の手前の広場から見晴らし台まで（road2_gate）
-  road2: { ci: 1, name: 'ごろごろ切り通し', floor: '入口', w: 96, d: 142, stage: '2-4', arenas: [[0, 51, 0], [6, -25, 0]], build: 'checkpoint', groups: 4, chests: 4, crystals: 2,
+  road2: { ci: 1, name: 'ごろごろ切り通し', bgm: 'pass', floor: '入口', w: 96, d: 142, stage: '2-4', arenas: [[0, 51, 0], [6, -25, 0]], build: 'checkpoint', groups: 4, chests: 4, crystals: 2,
     world: true, arch: 'crag', chestAt: [[31, -62], [-38, -23.5], [29, 26], [17, -64]],
     // 高さは 2 倍（数字 1 = 2m）。崖は 13m まで（となりの区画の見晴らし台（高さ 14）より低く）
     hScale: 2, rockCap: 13,
@@ -830,7 +830,7 @@ const FIELD_ZONES = {
     map2d: [340, 200] },
 
   // ごろごろ切り通し・外門：たまり場の北の、高い崖にかこまれた広場（総長と戦う。c2_04）から、崖の石段を上った見晴らし台（c2_05b）を通って関所へ
-  road2_gate: { ci: 1, name: 'ごろごろ切り通し・外門', floor: '外門', parent: 'road2', w: 80, d: 64, stage: '2-4', arenas: [[0, 23, 0]], build: 'checkpointGate', groups: 2, chests: 1, crystals: 1,
+  road2_gate: { ci: 1, name: 'ごろごろ切り通し・外門', bgm: 'pass', floor: '外門', parent: 'road2', w: 80, d: 64, stage: '2-4', arenas: [[0, 23, 0]], build: 'checkpointGate', groups: 2, chests: 1, crystals: 1,
     world: true, arch: 'crag', chestAt: [[-31, -27]],
     // 高さは 2 倍（数字 1 = 2m）：見晴らし台（高さ 14）を、区画でいちばん高いところにする（崖のてっぺんも、それより低い）
     hScale: 2, rockCap: 13,
@@ -888,7 +888,7 @@ const FIELD_ZONES = {
   // ニャハハ王国関所：切り通しの先の、石の砦。門はひとりでは開け閉めできないつくりで、腰を痛めた関所番のゴン爺の仕事を、仲間のわざで手伝っていく（敵は出ない。敵が出るのは手前の切り通しだけ）
   //   内門（plates。踏み板を二匹で同時に踏む）→ 中庭から、蔵の門（クロ。かんぬき）・番犬の庭（guards。見つからずに抜けるか、タマのこもりうたで眠らせる）
   //   → 三つののろし台（シロ。西の櫓・門楼・東の櫓）で王国に知らせると、大門の鉄格子が上がる → 北の広場（ゴン爺から通行手形。c2_06）
-  sekisho: { ci: 1, name: 'ニャハハ王国関所', floor: '砦', w: 68, d: 84, stage: '2-4', after: 'c2_05', arenas: [[0, -30, 0], [0, -4, 0]], build: 'sekisho', arch: 'fort', calm: true, groups: 0, chests: 4, crystals: 3,
+  sekisho: { ci: 1, name: 'ニャハハ王国関所', bgm: 'fort', floor: '砦', w: 68, d: 84, stage: '2-4', after: 'c2_05', arenas: [[0, -30, 0], [0, -4, 0]], build: 'sekisho', arch: 'fort', calm: true, groups: 0, chests: 4, crystals: 3,
     world: true, chestAt: [[-25, 29], [-27, 5], [29, 11], [-15, -35]],
     th: { pattern: 'cobble', floor: '#a8a092', floor2: '#98907e', line: '#ffd27a', fog: '#c8d0d8', fogD: 0.012 },
     // 南の外庭（番小屋と内門）→ 中庭。中庭の西は蔵の門（奥に西の櫓）、東は番犬の庭（奥に東の櫓）、北は門楼と大門 → 北の広場
@@ -985,7 +985,7 @@ const FIELD_ZONES = {
     map2d: [470, 164] },
 
   // ---------------- 第三章 ニャハハ王国 ----------------
-  nyahaha: { ci: 2, name: 'ニャハハ王国・城下町', mapName: 'ニャハハ王国', stage: '3-1', arenas: [[0, 14, 0]], build: 'kingdom', town: true, groups: 0, chests: 3, crystals: 0,
+  nyahaha: { ci: 2, name: 'ニャハハ王国・城下町', bgm: 'kingdom', mapName: 'ニャハハ王国', stage: '3-1', arenas: [[0, 14, 0]], build: 'kingdom', town: true, groups: 0, chests: 3, crystals: 0,
     world: true, arch: 'kingdom', chestAt: [[-20, 30], [22, -30], [28, 30]],
     // 南門から大通りを北へ、噴水の大広場。北の大階段を上ると高台の大通り（北西に城の門、北東に塔の門）。
     // 西は一段高い宿屋の街区（広場と大通りから階段）、東は運河ぞいの市場通り（橋を渡ると、くろねこ谷への東門）
@@ -1041,7 +1041,7 @@ const FIELD_ZONES = {
     notes: [{ at: [0, -8], mark: 3.2, reach: 5.2, title: '広場の噴水', text: '水の止まった噴水。台座に「笑う門には福きたる」と刻まれている。' }],
     map2d: [470, 95] },
 
-  castle: { ci: 2, name: 'ニャハハ城・前庭', parent: 'nyahaha', stage: '3-1', arenas: [[0, 6, 0]], build: 'castle', town: true, groups: 0, chests: 1, crystals: 0, skyTree: true,
+  castle: { ci: 2, name: 'ニャハハ城・前庭', bgm: 'royal', parent: 'nyahaha', stage: '3-1', arenas: [[0, 6, 0]], build: 'castle', town: true, groups: 0, chests: 1, crystals: 0, skyTree: true,
     world: true, arch: 'nyacastle', chestAt: [[-14, -10]], noAnchor: true,   // 敵が出ないので休む場所はいらない。ミャオニアの地図では城下町にまとめる
     th: { pattern: 'checker', floor: '#f6eee2', floor2: '#e4d4bc', floorGlow: 0 },
     // 城門をくぐると、回廊に囲まれた前庭（城の建物に入る前の広場）。北の石段を上った先の、城の玄関から城内（玉座の間）へ
@@ -1079,7 +1079,7 @@ const FIELD_ZONES = {
 
   // ニャハハ城の中（areas の部屋ごとに場所の名前が変わる）：入口の大広間から北の扉を抜けると玉座の間。
   //   西の翼は大図書館（北・西・南の壁ぞいに高さ 3m の回廊。まん中の大階段から上る）と食堂、東の翼は宝物庫・衛兵の詰め所・厨房
-  castle_in: { ci: 2, name: 'ニャハハ城・城内', floor: '城内', parent: 'nyahaha', stage: '3-1', arenas: [[0, -10, 0]], build: 'castleIn', town: true, groups: 0, chests: 1, crystals: 0, skyTree: false,
+  castle_in: { ci: 2, name: 'ニャハハ城・城内', bgm: 'royal', floor: '城内', parent: 'nyahaha', stage: '3-1', arenas: [[0, -10, 0]], build: 'castleIn', town: true, groups: 0, chests: 1, crystals: 0, skyTree: false,
     world: true, arch: 'nyapalace', chestAt: [[41, -31]], noAnchor: true,   // 敵が出ないので休む場所はいらない。ミャオニアの地図では城下町にまとめる
     th: { pattern: 'checker', floor: '#f6eee2', floor2: '#e4d2b8', line: '#ffd27a', floorGlow: 0, fog: '#f4e6d8', fogD: 0.008, sky: '#fff4e8', ground: '#8a7a6a', light: 1.15 },
     map: [
@@ -1145,7 +1145,7 @@ const FIELD_ZONES = {
   //   2F：大きなびっくり箱（rubble の look: 'jackbox'）と、ピエロのネタ帳のコント（c3_03e）……ひとりで言うギャグも、みんなで演じると笑いになる
   //   3F：渡り板に並ぶミミックたちと、空中ブランコ（c3_03d）……失敗しても、受け止める相手がいれば笑いになる
   //   寄り道の笑い（dreams の tag）：1F の風船の間で、ゴーストとにらめっこ。2F の小道具部屋で、ゴーストの大喜利。ブーブークッション（cushions。踏むと鳴る）はあちこちに
-  tower: { ci: 2, name: '笑顔の塔', floor: '1F', stage: '3-1', after: 'c3_02', arenas: [[0, 16, 0]], build: 'tower', arch: 'tower', bg: 'tower', groups: 6, chests: 3, crystals: 3, calmAfter: '3-3',
+  tower: { ci: 2, name: '笑顔の塔', bgm: 'tower', floor: '1F', stage: '3-1', after: 'c3_02', arenas: [[0, 16, 0]], build: 'tower', arch: 'tower', bg: 'tower', groups: 6, chests: 3, crystals: 3, calmAfter: '3-3',
     world: true,
     th: { pattern: 'checker', floor: '#6a3458', floor2: '#7a4068', line: '#ffd27a', floorGlow: 0.25, fog: '#3a1a3a', light: 1.15 },
     // 1F：入口の広間から大ロビーへ。大ロビーの北半分に玉のりのリング。西はびっくり鏡の回廊（迷路）、東は風船の間、
@@ -1212,7 +1212,7 @@ const FIELD_ZONES = {
       { at: [-21, -30], mark: 1.8, title: 'きっぷ売り場の値札', text: '「入場料：にこにこ笑顔 ひとつ」「こども：にっこり ひとつ」「ねこ：ごろごろ ひとつ」' },
       { at: [29, -31], mark: 1.6, title: '楽団の譜面', text: '「笑いの行進曲」……最後のページに「ここで、みんなで大笑い（三回）」と書いてある。' }],
     map2d: [470, 30] },
-  tower_2f: { ci: 2, name: '笑顔の塔・楽屋', floor: '2F', parent: 'tower', stage: '3-2', arenas: [[0, 0, 0]], build: 'tower2f', arch: 'tower', bg: 'tower', groups: 7, chests: 4, crystals: 3, calmAfter: '3-3',
+  tower_2f: { ci: 2, name: '笑顔の塔・楽屋', bgm: 'tower', floor: '2F', parent: 'tower', stage: '3-2', arenas: [[0, 0, 0]], build: 'tower2f', arch: 'tower', bg: 'tower', groups: 7, chests: 4, crystals: 3, calmAfter: '3-3',
     world: true,
     th: { pattern: 'planks', floor: '#6a4838', floor2: '#7a5444', line: '#ffd27a', floorGlow: 0.2, fog: '#3a1a30', light: 1.1 },
     // 2F：北の階段から、ぐるりと回る廊下。まん中はピエロの楽屋、まわりに楽屋・衣装部屋・小道具部屋・物置。
@@ -1285,7 +1285,7 @@ const FIELD_ZONES = {
       { at: [-17, -35], mark: 1.8, title: 'ねこの着ぐるみ', text: 'ねこの着ぐるみ。……ねこが、ねこの着ぐるみを？　タマが中に入ろうとしている。' },
       { at: [38, -15], mark: [0.7, 1.0, 0], title: '化粧台', text: '赤い鼻がひとつ、ぽつんと置いてある。つけてみると、ちょっとだけ笑える気がする。' }],
     map2d: [470, 30] },
-  tower_3f: { ci: 2, name: '笑顔の塔・空中ブランコの間', floor: '3F', parent: 'tower', stage: '3-2', arenas: [[0, 4, 0]], build: 'tower3f', arch: 'tower', bg: 'tower', groups: 5, chests: 4, crystals: 3, calmAfter: '3-3',
+  tower_3f: { ci: 2, name: '笑顔の塔・空中ブランコの間', bgm: 'tower', floor: '3F', parent: 'tower', stage: '3-2', arenas: [[0, 4, 0]], build: 'tower3f', arch: 'tower', bg: 'tower', groups: 5, chests: 4, crystals: 3, calmAfter: '3-3',
     world: true,
     th: { pattern: 'checker', floor: '#8a2a3a', floor2: '#e8c890', line: '#ffd27a', floorGlow: 0.2, fog: '#3a1a3a', light: 1.15 },
     // 3F：底の見えない吹き抜けを、回廊がぐるりと囲む。南の渡り板でまん中の舞台へ。舞台の北から、細い渡り板が吹き抜けをこえて、
@@ -1347,7 +1347,7 @@ const FIELD_ZONES = {
       { at: [10, -36], mark: 1.8, title: '空中ブランコの名札', text: '「ピエロ」「ピエロ」「ピエロ」……ぜんぶ、ピエロの名前だ。ひとりで何役もしていたらしい。' },
       { at: [-31, 4], mark: 1.8, title: '安全ネットの注意書き', text: '「空中ブランコの下には、安全ネットがあります」……下をのぞくと、ネットは、はるか下にぼんやり見えるだけだ。だれかの字で「受け止めてくれる人がいれば、ネットはいらない」と書き足してある。' }],
     map2d: [470, 30] },
-  tower_top: { ci: 2, name: '笑顔の塔・大舞台', floor: '最上階', parent: 'tower', stage: '3-3', arenas: [[0, -26, 0]], build: 'towerTop', arch: 'tower', bg: 'tower', groups: 3, chests: 3, crystals: 2, calmAfter: '3-3',
+  tower_top: { ci: 2, name: '笑顔の塔・大舞台', bgm: 'tower', floor: '最上階', parent: 'tower', stage: '3-3', arenas: [[0, -26, 0]], build: 'towerTop', arch: 'tower', bg: 'tower', groups: 3, chests: 3, crystals: 2, calmAfter: '3-3',
     world: true,
     th: { pattern: 'planks', floor: '#5a3040', floor2: '#6a3a4a', line: '#ffd27a', floorGlow: 0.25, fog: '#3a1a3a', light: 1.15 },
     // 最上階：うしろのロビーから、段々の客席を下りていくと、奈落の向こうに大舞台。舞台の両袖に小部屋
@@ -1406,7 +1406,7 @@ const FIELD_ZONES = {
     map2d: [470, 30] },
 
   // ---------------- 第四章 くろねこ谷 ----------------
-  valley: { ci: 3, name: 'くろねこ谷', w: 70, d: 68, stage: '4-1', arenas: [[-6, 18, 0]], build: 'valley', groups: 5, chests: 3, crystals: 3,
+  valley: { ci: 3, name: 'くろねこ谷', bgm: 'kuroneko', w: 70, d: 68, stage: '4-1', arenas: [[-6, 18, 0]], build: 'valley', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'crag', chestAt: [[-24, -27], [26, -25], [-28, 21]],
     th: { path: '#8a7a6a' },
     // 西から谷へ。南の広場の東に谷の集落への道、川を渡ると北に墓標の丘（石段）、北東の野営あとから切り通しを抜けて黒影洞窟へ。北西は苔むす古道（古代遺跡へ）
@@ -1454,7 +1454,7 @@ const FIELD_ZONES = {
     map2d: [620, 95] },
 
   // 谷の集落：岩の崖に囲まれた、くろねこ谷の小さな集落（町の区画。敵は出ない）。西の出入口から小川の橋を渡ると広場と井戸、北東の見晴らし台に長老の家
-  valley_village: { ci: 3, name: '谷の集落', stage: '4-1', arenas: [[12, 4, 0]], build: 'valleyVillage', town: true, groups: 0, chests: 1, crystals: 0,
+  valley_village: { ci: 3, name: '谷の集落', bgm: 'hamlet', stage: '4-1', arenas: [[12, 4, 0]], build: 'valleyVillage', town: true, groups: 0, chests: 1, crystals: 0,
     world: true, arch: 'crag', chestAt: [[16.8, -15.2]], th: { path: '#8a7a6a' },
     map: [
       '#########~~###########',
@@ -1489,7 +1489,7 @@ const FIELD_ZONES = {
     map2d: [620, 164] },
 
   // 黒影洞窟：B1 入口 → B2 地底湖 → B3 最深部。下りの道は「影の壁」がふさぎ、洞窟のあちこちの光の水晶を灯すと消える（ZoneKit.seals）
-  cave: { ci: 3, name: '黒影洞窟', floor: 'B1', stage: '4-2', arenas: [[0, 39, 0]], build: 'cave', arch: 'cave', bg: 'cave', groups: 9, chests: 4, crystals: 5, calmAfter: '4-3',
+  cave: { ci: 3, name: '黒影洞窟', bgm: 'cave', floor: 'B1', stage: '4-2', arenas: [[0, 39, 0]], build: 'cave', arch: 'cave', bg: 'cave', groups: 9, chests: 4, crystals: 5, calmAfter: '4-3',
     world: true,
     th: { pattern: 'rock', floor: '#3a3444', floor2: '#443c50', line: '#8a6aff', floorGlow: 0.3, fog: '#141028', fogD: 0.02, light: 1.1, water: '#4a5aa8', waterGlow: '#3a2a9a' },
     // B1：入口の大広間からうねる坑道を北へ、中央の大空洞。その北の坑道を影の壁がふさぐ。光の水晶は、西の長い坑道の先の地底の泉（途中に焚き火のあとの小部屋）、
@@ -1558,7 +1558,7 @@ const FIELD_ZONES = {
     notes: [{ at: [-53, -11], mark: [-0.6, 2.4, 0], title: '壁のひっかき傷', text: '四本の爪あとが並んでいる。……「影の四剣、ここに参上」' },
       { at: [-50, -14], mark: 1.0, title: '焚き火のあと', text: '石を並べた、小さな焚き火のあと。四匹ぶんの足あとが、奥へと続いている。' }],
     map2d: [620, 30] },
-  cave_lake: { ci: 3, name: '黒影洞窟・地底湖', floor: 'B2', parent: 'cave', stage: '4-2', arenas: [[-29, 16, 0]], build: 'caveLake', arch: 'cave', bg: 'cave', groups: 8, chests: 4, crystals: 4, calmAfter: '4-3',
+  cave_lake: { ci: 3, name: '黒影洞窟・地底湖', bgm: 'cave', floor: 'B2', parent: 'cave', stage: '4-2', arenas: [[-29, 16, 0]], build: 'caveLake', arch: 'cave', bg: 'cave', groups: 8, chests: 4, crystals: 4, calmAfter: '4-3',
     world: true,
     th: { pattern: 'rock', floor: '#34303e', floor2: '#3e3848', line: '#8a6aff', floorGlow: 0.35, fog: '#100c22', fogD: 0.02, light: 1.05, water: '#3a4aa0', waterGlow: '#4a2ac0' },
     // B2：湖を見下ろす高台から石段で広い南の岸へ。湖をまたぐ長い橋のたもとを影の壁がふさぐ。光の水晶は、西の細長い入り江の奥と、東の岩棚の上
@@ -1623,7 +1623,7 @@ const FIELD_ZONES = {
     notes: [{ at: [-13.4, 13], mark: 1.2, when: 'scene:c4_03c', title: 'ゴロウの盾', text: 'まっぷたつに割れた、大きな盾。……リンをかばって、影の一撃を受け止めたのだろう。' },
       { at: [-12.2, 11.8], mark: 0.9, when: 'scene:c4_03c', title: 'リンのリボン', text: '色あせた、青いリボン。……光の水晶のかけらが、ひとつ結びつけてある。' }],
     map2d: [620, 30] },
-  cave_deep: { ci: 3, name: '黒影洞窟・最深部', floor: 'B3', parent: 'cave', stage: '4-3', arenas: [[0, -33, 0], [-35, 12, 0], [37, 16, 0], [-4, 37, 90], [26, -13, 90]], build: 'caveDeep', arch: 'cave', bg: 'cave', groups: 5, chests: 4, crystals: 3, calmAfter: '4-3',
+  cave_deep: { ci: 3, name: '黒影洞窟・最深部', bgm: 'cave', floor: 'B3', parent: 'cave', stage: '4-3', arenas: [[0, -33, 0], [-35, 12, 0], [37, 16, 0], [-4, 37, 90], [26, -13, 90]], build: 'caveDeep', arch: 'cave', bg: 'cave', groups: 5, chests: 4, crystals: 3, calmAfter: '4-3',
     world: true,
     th: { pattern: 'rock', floor: '#302a3a', floor2: '#3a3244', line: '#8a6aff', floorGlow: 0.4, fog: '#0c0a1c', fogD: 0.02, light: 1.0, water: '#3a4aa0', waterGlow: '#4a2ac0' },
     // 戦場：三本の剣の大広間（ステージ 4-3）のほか、西の縁・東の縁・到着の岩棚・北の縁。道中の戦いは近くの縁で戦い、闇の扉の奥の剣は見せない
@@ -1699,7 +1699,7 @@ const FIELD_ZONES = {
   // 苔むす古道：くろねこ谷の北西から、古代遺跡の外庭へ上る古い道（谷の崖を抜けて、森へ）。
   //   南の入口の岩場 → 小川の丸木橋 → 東岸の石段 → 茶屋あと（ねこ地蔵。西に小さな滝）→ 石灯籠の古道を西へ → 西のはしの石段 → 崖にかこまれた岩の段（腰かけ岩） → 崩れた石の門の石段 → 北の森から外庭へ。
   //   東岸の南の岩かげは、落石の岩山でふさがれている（攻撃で砕くと宝箱）。北の森の東の奥にも宝箱。下は谷の枯れ木、上へ行くほど緑の森
-  old_road: { ci: 4, name: '苔むす古道', w: 80, d: 128, stage: '5-1', arenas: [[-20, 47, 0], [-22, -21, 0], [10, -50, 0], [8, 32, 0, 'battle'], [-4, -1, 0, 'battle'], [26, -1, 0, 'battle']],
+  old_road: { ci: 4, name: '苔むす古道', bgm: 'ancient', w: 80, d: 128, stage: '5-1', arenas: [[-20, 47, 0], [-22, -21, 0], [10, -50, 0], [8, 32, 0, 'battle'], [-4, -1, 0, 'battle'], [26, -1, 0, 'battle']],
     build: 'oldRoad', groups: 6, chests: 3, crystals: 3, foes: ['kageneko', 'hotaru', 'kokegame'],
     world: true, arch: 'crag', chestAt: [[27, 51], [21, -23], [35, -53]],
     th: { path: '#a89a7a' },
@@ -1784,7 +1784,7 @@ const FIELD_ZONES = {
       { at: [9, -40.5], mark: [-4, 3.6, 0.9], reach: 3, title: '崩れた石の門', text: '古い石の門。柱に、手をつなぐ猫の紋章が彫られている。……ここから先は、遺跡を建てた猫たちの土地だったのだろうか。' }],
     map2d: [770, 164] },
 
-  ruins_out: { ci: 4, name: '古代遺跡・外庭', w: 110, d: 102, stage: '5-1', arenas: [[-2, 6, 0]], build: 'ruinsOut', groups: 7, chests: 3, crystals: 3,
+  ruins_out: { ci: 4, name: '古代遺跡・外庭', bgm: 'ancient', w: 110, d: 102, stage: '5-1', arenas: [[-2, 6, 0]], build: 'ruinsOut', groups: 7, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-38, -20], [24, -36], [28, 22]],
     th: { path: '#b8b098' },
     // 苔むす古道から北へ。森の小道を抜けると石像の広場と中庭。西は池のある庭と、苔むした庭（北のくぼみに宝箱）。東へ魔王領、その北に林の空き地。
@@ -1852,7 +1852,7 @@ const FIELD_ZONES = {
   // 石畳の丘：外庭の北。森の小道 → 丘のふもと（西に光の庭、東に崩れた塔）→ 大階段 → 高台の「つながりの石畳」と、北の石の神殿（遺跡）。
   //   神殿の扉には結界（石畳をひと筆でつなぐと消える）。扉の奥の通路から、遺跡の中（壁画の大広間）へ。
   //   ふもとの西の「光の庭」には、練習の石畳と、結界の奥の宝箱
-  ruins_hill: { ci: 4, name: '古代遺跡・石畳の丘', floor: '丘', parent: 'ruins_out', w: 82, d: 82, stage: '5-1', after: 'c5_01', arenas: [[0, 22, 0], [14, -16, 0]], build: 'ruinsHill', groups: 4, chests: 3, crystals: 2,
+  ruins_hill: { ci: 4, name: '古代遺跡・石畳の丘', bgm: 'ancient', floor: '丘', parent: 'ruins_out', w: 82, d: 82, stage: '5-1', after: 'c5_01', arenas: [[0, 22, 0], [14, -16, 0]], build: 'ruinsHill', groups: 4, chests: 3, crystals: 2,
     world: true, arch: 'woods', chestAt: [[-34, -10], [34, 4], [30, -28]],
     th: { path: '#b8b098' },
     map: [
@@ -1915,7 +1915,7 @@ const FIELD_ZONES = {
 
   // 壁画の大広間：遺跡の中。南の入口の間から、北の大広間へ。大広間の西・東・北の壁に、三つの壁画（巨大な猫と樹・手をつなぐ四匹・古代文字）。
   //   大広間の北の大きな口から「崩れた迷宮」へ
-  ruins_in: { ci: 4, name: '壁画の大広間', mapName: '古代遺跡', w: 60, d: 64, stage: '5-2', arenas: [[0, -12, 0]], build: 'ruinsIn', bg: 'ruins', groups: 3, chests: 2, crystals: 2, calmAfter: '5-3', skyTree: false,
+  ruins_in: { ci: 4, name: '壁画の大広間', bgm: 'ruins', mapName: '古代遺跡', w: 60, d: 64, stage: '5-2', arenas: [[0, -12, 0]], build: 'ruinsIn', bg: 'ruins', groups: 3, chests: 2, crystals: 2, calmAfter: '5-3', skyTree: false,
     world: true, arch: 'ruin', chestAt: [[-20, 16], [20, -26]],
     th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.3, fog: '#2a3a34', fogD: 0.02, light: 0.95 },
     map: [
@@ -1966,7 +1966,7 @@ const FIELD_ZONES = {
   //   どの段にも、まちがえると閉じこめられる水晶（南2 の青・南3 の金・北4 の金・北3 の青）がある。閉じこめられると、入口の間へもどされる（FieldView.checkTimeTrap）。
   //   三4 の白い水晶は、より道（宝箱）
   //   戦場：入口の間と封印の扉の間のほか、16 の小部屋それぞれ（'battle'。戦闘の背景だけ）。小部屋で出会った敵とはその部屋で戦い、まだ着いていない封印の扉は見せない
-  ruins_maze: { ci: 4, name: '崩れた迷宮', floor: '奥', parent: 'ruins_in', w: 78, d: 98, stage: '5-2', after: 'c5_02', arenas: [[0, 35, 0], [0, -38, 0],
+  ruins_maze: { ci: 4, name: '崩れた迷宮', bgm: 'ruins', floor: '奥', parent: 'ruins_in', w: 78, d: 98, stage: '5-2', after: 'c5_02', arenas: [[0, 35, 0], [0, -38, 0],
       [-27, -22, 0, 'battle'], [-9, -22, 0, 'battle'], [9, -22, 0, 'battle'], [27, -22, 0, 'battle'], [-27, -8, 0, 'battle'], [-9, -8, 0, 'battle'], [9, -8, 0, 'battle'], [27, -8, 0, 'battle'], [-27, 6, 0, 'battle'], [-9, 6, 0, 'battle'], [9, 6, 0, 'battle'], [27, 6, 0, 'battle'], [-27, 20, 0, 'battle'], [-9, 20, 0, 'battle'], [9, 20, 0, 'battle'], [27, 20, 0, 'battle']],
     build: 'ruinsMaze', bg: 'ruins', groups: 4, chests: 3, crystals: 2, calmAfter: '5-3', skyTree: false,
     world: true, arch: 'ruin', chestAt: [[-21, 9], [-3, -27], [33, 9]],
@@ -2039,7 +2039,7 @@ const FIELD_ZONES = {
     map2d: [770, 30] },
 
   // 封印の間：封印の扉の奥。樹の根をかたどった祭壇（第五章で守護神と戦い、守護神が語る場所）
-  ruins_seal: { ci: 4, name: '封印の間', floor: '最奥', parent: 'ruins_in', stage: '5-3', after: 'c5_03', arenas: [[0, 1, 0]], build: 'ruinsSeal', bg: 'ruins', groups: 0, chests: 1, crystals: 0, calmAfter: '5-3', skyTree: false,
+  ruins_seal: { ci: 4, name: '封印の間', bgm: 'ruins', floor: '最奥', parent: 'ruins_in', stage: '5-3', after: 'c5_03', arenas: [[0, 1, 0]], build: 'ruinsSeal', bg: 'ruins', groups: 0, chests: 1, crystals: 0, calmAfter: '5-3', skyTree: false,
     world: true, arch: 'ruin', chestAt: [[8, -4]],
     th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.4, fog: '#2a3a34', fogD: 0.02, light: 0.9 },
     map: [
@@ -2063,7 +2063,7 @@ const FIELD_ZONES = {
     map2d: [770, 30] },
 
   // ---------------- 第六章 魔王領 ----------------
-  demon_land: { ci: 5, name: '魔王領', w: 70, d: 130, stage: '6-1', arenas: [[0, -8, 0], [-2, 18, 90, 'battle'], [0, 4, 90, 'battle'], [-24, 12, 0, 'battle']], build: 'demonLand', groups: 6, chests: 3, crystals: 3,
+  demon_land: { ci: 5, name: '魔王領', bgm: 'demonland', w: 70, d: 130, stage: '6-1', arenas: [[0, -8, 0], [-2, 18, 90, 'battle'], [0, 4, 90, 'battle'], [-24, 12, 0, 'battle']], build: 'demonLand', groups: 6, chests: 3, crystals: 3,
     world: true, foes: ['mazoku', 'monban', 'jarashi'], arch: 'demoncrag', chestAt: [[-28, -26], [18, -20], [30, 18]],
     // 戦場：猫じゃらしの野原（大階段の下）のほか、南の広場・谷の道・西の受付のあたり（'battle'）。道中の戦いは出会った近くで戦い、城の目の前へは飛ばない。
     //   谷は城門とまっすぐに並ぶので、南の広場と谷の道では東を向いて戦い（90）、城門を正面にしない
@@ -2153,7 +2153,7 @@ const FIELD_ZONES = {
   // 魔王城：区画ごとに分かれている。1F 大広間（入口）から、西の保健の間（健康診断）・東の兵の詰め所・北の中庭・北東の階段から地下倉庫へ。
   //   2F の回廊へは、中庭の奥の高台から上る
   // 1F 大広間：南の玄関から入る大きな広間。西・東の廊下の先は保健の間と兵の詰め所、北の通路は中庭へ。四すみに小部屋（肖像画の間・守衛室・落とし物置き場・地下への階段）
-  demon_castle: { ci: 5, name: '魔王城', floor: '1F', stage: '6-2', arenas: [[0, -2, 0]], build: 'demonCastle', arch: 'castle', bg: 'demon', groups: 3, chests: 2, crystals: 1, calmAfter: '6-3',
+  demon_castle: { ci: 5, name: '魔王城', bgm: 'demoncastle', floor: '1F', stage: '6-2', arenas: [[0, -2, 0]], build: 'demonCastle', arch: 'castle', bg: 'demon', groups: 3, chests: 2, crystals: 1, calmAfter: '6-3',
     world: true, foes: ['mazoku', 'souji', 'shokudai'], eliteFoes: ['kacchu', 'kanbu'], chestAt: [[-26, -13], [26, 9]],
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.014, light: 1.1 },
     map: [
@@ -2209,7 +2209,7 @@ const FIELD_ZONES = {
 
   // 1F 保健の間（大広間の西）：東の待合室で受付をして、西の広い診察室で健康診断（ベッド・体重計・身長計・視力検査表）。北に薬品庫、南に休養室
   //   敵の保健係（ナース）が出るのは、この区画だけ
-  demon_clinic: { ci: 5, name: '魔王城・保健の間', floor: '1F', parent: 'demon_castle', stage: '6-2', arenas: [[-12, 0, 0]], build: 'demonClinic', arch: 'castle', bg: 'demon', groups: 2, chests: 2, crystals: 1, calmAfter: '6-3',
+  demon_clinic: { ci: 5, name: '魔王城・保健の間', bgm: 'demoncastle', floor: '1F', parent: 'demon_castle', stage: '6-2', arenas: [[-12, 0, 0]], build: 'demonClinic', arch: 'castle', bg: 'demon', groups: 2, chests: 2, crystals: 1, calmAfter: '6-3',
     world: true, chestAt: [[27, -18], [29, 18]],
     th: { pattern: 'checker', floor: '#c8b8d8', floor2: '#b8a6cc', line: '#ff8ad8', floorGlow: 0.15, fog: '#3a2a48', fogD: 0.012, light: 1.25 },
     map: [
@@ -2261,7 +2261,7 @@ const FIELD_ZONES = {
     map2d: [910, 30] },
 
   // 1F 兵の詰め所（大広間の東）：西の入口から東へのびる広い廊下。北に食堂・休憩室・寝室、食堂の奥に広い厨房（四天王グツグツの持ち場）、南に武器庫と広い訓練場
-  demon_barracks: { ci: 5, name: '魔王城・兵の詰め所', floor: '1F', parent: 'demon_castle', stage: '6-k1', arenas: [[9, 12, 0], [-11, -26.5, 0]], build: 'demonBarracks', arch: 'castle', bg: 'demon', groups: 3, chests: 2, crystals: 1, calmAfter: '6-3',
+  demon_barracks: { ci: 5, name: '魔王城・兵の詰め所', bgm: 'demoncastle', floor: '1F', parent: 'demon_castle', stage: '6-k1', arenas: [[9, 12, 0], [-11, -26.5, 0]], build: 'demonBarracks', arch: 'castle', bg: 'demon', groups: 3, chests: 2, crystals: 1, calmAfter: '6-3',
     world: true, foes: ['mazoku', 'ryouri', 'monban'], eliteFoes: ['kanbu'], chestAt: [[22, -10], [-23, 7]],
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.014, light: 1.1 },
     map: [
@@ -2323,7 +2323,7 @@ const FIELD_ZONES = {
 
   // 中庭（大広間の北）：城壁に囲まれた、空の見える魔王さまの遊び場。キャットタワー・猫じゃらしの花壇・毛糸玉の山・砂場・ハンモック。
   //   北の高台（高さ 2m）の奥に、2F の回廊への階段
-  demon_court: { ci: 5, name: '魔王城・中庭', floor: '中庭', parent: 'demon_castle', stage: '6-k1', arenas: [[0, 2, 0]], build: 'demonCourt', arch: 'demoncourt', bg: 'demon', groups: 4, chests: 2, crystals: 2, calmAfter: '6-3',
+  demon_court: { ci: 5, name: '魔王城・中庭', bgm: 'demoncastle', floor: '中庭', parent: 'demon_castle', stage: '6-k1', arenas: [[0, 2, 0]], build: 'demonCourt', arch: 'demoncourt', bg: 'demon', groups: 4, chests: 2, crystals: 2, calmAfter: '6-3',
     world: true, foes: ['jarashi', 'keito', 'mazoku'], chestAt: [[-30, 4], [30, 6]],
     th: { pattern: 'checker', floor: '#5a4a6a', floor2: '#4e405e', line: '#ff8ad8', floorGlow: 0.15 },
     map: [
@@ -2374,7 +2374,7 @@ const FIELD_ZONES = {
     map2d: [910, 30] },
 
   // 地下倉庫（大広間の北東の階段から）：まん中にミルクの樽がならぶ蔵。西に鉄格子の牢屋（扉は開けっぱなし）と看守室、東に食料庫と宝物庫
-  demon_cellar: { ci: 5, name: '魔王城・地下倉庫', floor: 'B1', parent: 'demon_castle', stage: '6-k1', arenas: [[2, -4, 0]], build: 'demonCellar', arch: 'castle', bg: 'demon', groups: 3, chests: 3, crystals: 2, calmAfter: '6-3',
+  demon_cellar: { ci: 5, name: '魔王城・地下倉庫', bgm: 'demoncastle', floor: 'B1', parent: 'demon_castle', stage: '6-k1', arenas: [[2, -4, 0]], build: 'demonCellar', arch: 'castle', bg: 'demon', groups: 3, chests: 3, crystals: 2, calmAfter: '6-3',
     world: true, foes: ['mazoku', 'shokudai', 'ryouri', 'keito'], eliteFoes: ['kacchu'], chestAt: [[30.5, 15.5], [27, 4], [22, 15]],
     th: { pattern: 'checker', floor: '#3a3040', floor2: '#322838', line: '#ff8ad8', floorGlow: 0.2, fog: '#1a1024', fogD: 0.02, light: 0.85 },
     map: [
@@ -2425,7 +2425,7 @@ const FIELD_ZONES = {
     map2d: [910, 30] },
   // 2F：まん中の吹き抜けを広い回廊がぐるりと囲み、吹き抜けのまん中を橋が渡る。四すみに魔王さまの私室（おもちゃ部屋・没収品の倉庫・衣装部屋・寝室）
   //   戦闘は、三階への階段の前（北の回廊と踊り場）で行う
-  demon_castle_2f: { ci: 5, name: '魔王城・回廊', floor: '2F', parent: 'demon_castle', stage: '6-k4', arenas: [[0, -18, 0]], build: 'demonCastle2f', arch: 'castle', bg: 'demon', groups: 4, chests: 3, crystals: 2, calmAfter: '6-3',
+  demon_castle_2f: { ci: 5, name: '魔王城・回廊', bgm: 'demoncastle', floor: '2F', parent: 'demon_castle', stage: '6-k4', arenas: [[0, -18, 0]], build: 'demonCastle2f', arch: 'castle', bg: 'demon', groups: 4, chests: 3, crystals: 2, calmAfter: '6-3',
     world: true, foes: ['souji', 'nuigurumi', 'shokudai', 'mazoku'], eliteFoes: ['kacchu', 'kanbu'], chestAt: [[-30, -7], [30, -7], [-30, 19]],
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.014, light: 1.1 },
     map: [
@@ -2471,7 +2471,7 @@ const FIELD_ZONES = {
       { at: [31, 10], mark: [2.8, 2.0, 0], title: '壁の絵', text: '黒い猫の絵。となりに「ともだち」と書いて……そこだけ、何度も消したあとがある。' }],
     map2d: [910, 30] },
   // 3F：南の謁見の廊下（両わきに、ひみつの遊び部屋と謁見の待合室）を抜けると、大きなクッションの玉座がある玉座の間
-  demon_throne: { ci: 5, name: '魔王城・玉座の間', floor: '3F', parent: 'demon_castle', stage: '6-3', arenas: [[0, -14, 0]], build: 'demonThrone', arch: 'castle', bg: 'demon', groups: 0, chests: 2, crystals: 1, calmAfter: '6-3',
+  demon_throne: { ci: 5, name: '魔王城・玉座の間', bgm: 'demoncastle', floor: '3F', parent: 'demon_castle', stage: '6-3', arenas: [[0, -14, 0]], build: 'demonThrone', arch: 'castle', bg: 'demon', groups: 0, chests: 2, crystals: 1, calmAfter: '6-3',
     world: true, chestAt: [[-24, 8], [24, 8]],
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.012, light: 1.1 },
     map: [
@@ -2511,7 +2511,7 @@ const FIELD_ZONES = {
     map2d: [910, 30] },
 
   // ---------------- 第七章 にゃんだーの樹 ----------------
-  tree_root: { ci: 6, name: 'にゃんだーの樹・根もと', w: 80, d: 84, stage: '7-1', arenas: [[0, -10, 180]], build: 'treeRoot', bg: 'tree', groups: 6, chests: 3, crystals: 3, skyTree: false,
+  tree_root: { ci: 6, name: 'にゃんだーの樹・根もと', bgm: 'tree', w: 80, d: 84, stage: '7-1', arenas: [[0, -10, 180]], build: 'treeRoot', bg: 'tree', groups: 6, chests: 3, crystals: 3, skyTree: false,
     world: true, arch: 'woods', chestAt: [[-33, 10], [27, 10], [17, 30]],
     // 森の奥から南へ下ると、落ち葉の積もった大広場。南の根のトンネルは樹の地下へ、東の小道は世界の果てへ。西の根のうろ・東のすみ・南の根の部屋は寄り道
     map: [
@@ -2563,7 +2563,7 @@ const FIELD_ZONES = {
     map2d: [470, 522] },
 
   // 樹の地下は三つの階：B1「しおれた根の洞」（光る実で根をよみがえらせる）→ B2「影の回廊」（鏡うつしに動く影）→ B3「樹の心臓の間」（コドクとの戦い）
-  tree_under: { ci: 6, name: '樹の地下・しおれた根の洞', mapName: '樹の地下', floor: 'B1', w: 60, d: 112, stage: '7-2', arenas: [[0, -45, 180]], build: 'treeUnder', bg: 'root', groups: 6, chests: 3, crystals: 2, calmAfter: '7-3', skyTree: false,
+  tree_under: { ci: 6, name: '樹の地下・しおれた根の洞', bgm: 'root', mapName: '樹の地下', floor: 'B1', w: 60, d: 112, stage: '7-2', arenas: [[0, -45, 180]], build: 'treeUnder', bg: 'root', groups: 6, chests: 3, crystals: 2, calmAfter: '7-3', skyTree: false,
     world: true, arch: 'roots', voidRail: false, chestAt: [[-27, 29], [21, 5], [13, 45]],
     th: { fog: '#10180e', fogD: 0.03 },
     // 入口の大空洞（高さ4m）から石段を下りると、根の通う洞。しおれた根は、光る実が根元の輪の中にあるあいだだけ元気になって、奈落に橋をかける（茂みは道をふさぐ）。
@@ -2642,7 +2642,7 @@ const FIELD_ZONES = {
       { at: [3, -23], face: Math.PI, title: '古い石碑', text: '「実は、樹のぬくもり。根元の輪に光る実があれば、根は目をさます。輪を出れば、根はまた眠る」', rootReset: true }],
     map2d: [330, 540] },
 
-  tree_under_2: { ci: 6, name: '樹の地下・影の回廊', floor: 'B2', parent: 'tree_under', w: 52, d: 92, stage: '7-2', arenas: [[0, -25, 0], [-4, -1, 0], [-2, 15, 0]], build: 'treeUnder2', bg: 'root', groups: 3, chests: 2, crystals: 0, calmAfter: '7-3', skyTree: false,
+  tree_under_2: { ci: 6, name: '樹の地下・影の回廊', bgm: 'root', floor: 'B2', parent: 'tree_under', w: 52, d: 92, stage: '7-2', arenas: [[0, -25, 0], [-4, -1, 0], [-2, 15, 0]], build: 'treeUnder2', bg: 'root', groups: 3, chests: 2, crystals: 0, calmAfter: '7-3', skyTree: false,
     world: true, arch: 'roots', chestAt: [[11, -13], [-11, 29]],
     th: { fog: '#140f1c', fogD: 0.022 },
     // 入口の間から南へ、影の部屋が三つ。部屋に入ると、先頭の子の「ひとりぼっちの影」が足もとからはなれ、同じ部屋の中を鏡うつしに動く。
@@ -2706,7 +2706,7 @@ const FIELD_ZONES = {
     notes: [{ at: [7, -41], title: '古い石碑', text: '「影は、光をきらう。ひだまりに入った影は、ほどけて、もとの場所にもどる。……影をおいていくなかれ」' }],
     map2d: [330, 560] },
 
-  tree_under_3: { ci: 6, name: '樹の地下・樹の心臓の間', floor: 'B3', parent: 'tree_under', w: 56, d: 76, wallH: 13, stage: '7-3', arenas: [[0, 3, 180]], build: 'treeUnder3', bg: 'root', groups: 0, chests: 1, crystals: 1, calmAfter: '7-3', skyTree: false,
+  tree_under_3: { ci: 6, name: '樹の地下・樹の心臓の間', bgm: 'root', floor: 'B3', parent: 'tree_under', w: 56, d: 76, wallH: 13, stage: '7-3', arenas: [[0, 3, 180]], build: 'treeUnder3', bg: 'root', groups: 0, chests: 1, crystals: 1, calmAfter: '7-3', skyTree: false,
     world: true, arch: 'roots', voidRail: false, chestAt: [[-15, 23]],
     th: { fog: '#0c160c', fogD: 0.016, floorGlow: 0.5 },
     // 地下のいちばん奥。根のアーチをくぐると、天井の高い丸い広間の中央に、樹の心臓が根にささえられて脈打っている。
@@ -2756,7 +2756,7 @@ const FIELD_ZONES = {
     map2d: [330, 580] },
 
   // ---------------- 第八章 世界の果て ----------------
-  world_end: { ci: 7, name: '世界の果て', w: 70, d: 92, stage: '8-2', arenas: [[0, -26, 0], [0, 16, 0]], build: 'worldEnd', bg: 'end', groups: 6, chests: 3, crystals: 3,
+  world_end: { ci: 7, name: '世界の果て', bgm: 'worldend', w: 70, d: 92, stage: '8-2', arenas: [[0, -26, 0], [0, 16, 0]], build: 'worldEnd', bg: 'end', groups: 6, chests: 3, crystals: 3,
     world: true, arch: 'abyss', chestAt: [[-18, -6], [18, -6], [-28, 24]], skyTree: false, hScale: 2, floatBelow: 18, rootRamps: true,
     // 根もとからたどってきた太い根が、入口の地面（高さ18。hScale で数字の2倍）を這い、北のふちで地面がとぎれる。その先は、奈落に浮かぶ岩盤がいくつも、下へ下へと続き、
     // 根は岩盤を伝いながら下りていく。岩盤と岩盤のあいだは、根の上を歩いて下る（地図の v が根の坂）：
@@ -2815,7 +2815,7 @@ const FIELD_ZONES = {
 
   // ---------------- クリア後 ねこ神の夢 ----------------
   // 猫神社の奥から入る、ねこ神の夢の中。夢は三つの階に分かれていて、下りるほど眠りが深くなる（うとうと → すやすや → ぐっすり）
-  dream: { ci: 8, name: 'ねこ神の夢・うとうとの庭', mapName: 'ねこ神の夢', floor: 'うとうと', w: 84, d: 108, stage: '9-1', arenas: [[0, 37, 0]], build: 'dream', bg: 'dream', groups: 6, chests: 3, crystals: 2,
+  dream: { ci: 8, name: 'ねこ神の夢・うとうとの庭', bgm: 'dream', mapName: 'ねこ神の夢', floor: 'うとうと', w: 84, d: 108, stage: '9-1', arenas: [[0, 37, 0]], build: 'dream', bg: 'dream', groups: 6, chests: 3, crystals: 2,
     world: true, arch: 'dreamgarden', chestAt: [[-19, 35], [-11, -5], [-19, -49]],
     // お菓子の庭が三つ、北へ続く。ちびクッキーを食べると、ひとまわり小さく、でかミルクを飲むと、ひとまわり大きくなる（FieldView.changeSize。解けるかは tools/check-maps.js が調べる）。
     //   小さい子は、キャンディの柵（I）のすき間をくぐれる。大きい子は、ケーキの段（高さ 2m）にのぼれるが、木立のあいだの細い道（1 マス）にはつかえる。段からは、だれでも飛びおりられる
@@ -2894,7 +2894,7 @@ const FIELD_ZONES = {
 
   // へんてこ回廊：入口の間から北へ、まっすぐな回廊。回廊は夢の中でくりかえしていて、へんなところ（異変）があれば引き返し、なければ進む（FieldView.updateLoop。部品は ZoneKit.loopHall）。
   //   五回つづけて正しく進むと、回廊の先に出口があらわれて、出口の間へ出られる
-  dream_2: { ci: 8, name: 'ねこ神の夢・へんてこ回廊', floor: 'すやすや', parent: 'dream', w: 68, d: 88, stage: '9-2', arenas: [[0, -32, 0]], build: 'dream2', bg: 'dream', groups: 0, chests: 1, crystals: 1,
+  dream_2: { ci: 8, name: 'ねこ神の夢・へんてこ回廊', bgm: 'dream', floor: 'すやすや', parent: 'dream', w: 68, d: 88, stage: '9-2', arenas: [[0, -32, 0]], build: 'dream2', bg: 'dream', groups: 0, chests: 1, crystals: 1,
     world: true, arch: 'dreamhall', chestAt: [[8, -40]],
     map: [
       '################dd################',
@@ -2956,7 +2956,7 @@ const FIELD_ZONES = {
 
   // ねこ神の寝所：大広間の奥、玉座の段の上で、ねこ神が丸くなって眠っている。ねごとで「ね・こ・が・こ・ろ・ん・だ」と言うと、ねがえりをうってこちらを向く。
   //   向いているあいだに動くと見つかって、入口へもどされる（だるまさんがころんだ。FieldView.updateNap。部品は ZoneKit.godNap）
-  dream_3: { ci: 8, name: 'ねこ神の夢・ねこ神の寝所', floor: 'ぐっすり', parent: 'dream', w: 52, d: 96, stage: '9-3', arenas: [[0, -26, 0]], build: 'dream3', bg: 'dream', groups: 0, chests: 1, crystals: 1,
+  dream_3: { ci: 8, name: 'ねこ神の夢・ねこ神の寝所', bgm: 'dream', floor: 'ぐっすり', parent: 'dream', w: 52, d: 96, stage: '9-3', arenas: [[0, -26, 0]], build: 'dream3', bg: 'dream', groups: 0, chests: 1, crystals: 1,
     world: true, arch: 'dreamhall', wallH: 12, chestAt: [[-15, 29]],
     map: [
       '##########################',
@@ -3058,6 +3058,8 @@ function zoneArenas(Z) { return (Z.arenas || []).map(([x, z, f, k]) => { const [
 function zoneCalm(Z) { return !zoneSiege(Z) && !!(Z.town || Z.calm || (Z.calmAfter && Save.data.cleared[Z.calmAfter])); }
 // 物語で区画が敵に囲まれているあいだ（siege：when のシーンを見てから until のシーンを見るまで）なら、その siege
 function zoneSiege(Z) { const S = Z.siege; return S && storyCond('scene:' + S.when) && !storyCond('scene:' + S.until) ? S : null; }
+// 区画の曲（zone.bgm）。物語で囲まれているあいだは、村でも暗い曲
+function zoneBgm(Z) { return zoneSiege(Z) ? 'dark' : Z.bgm || (Z.town ? 'village' : 'field'); }
 // 樹の地下の根（zone.roots）：光る実（pts：光っている実の位置 [x, z] の並び）が根元の輪（半径 R.r）の中にある根は元気。
 //   橋は根元のどれかひとつ、茂みは根元に実があれば元気（橋は渡れる、茂みは道をふさぐ）。tools/check-maps.js の検査と共用
 function rootsLive(R, pts) {

@@ -194,7 +194,8 @@ function DialogueScreen(id, done) {
   const scene = SCENES[id];
   let v = GFX.ok ? (SCENE_STAGES[id] ? new StageView(scene, id) : new DialogueView(scene)) : null;
   if (v) { v.key = 'dialog:' + id; GFX.setView(v); }
-  Music.play(scene.bgm || 'village');
+  // bgm: 'zone' は舞台の区画の曲（舞台のない場面は街道の曲）
+  Music.play(scene.bgm === 'zone' ? (SCENE_STAGES[id] ? zoneBgm(FIELD_ZONES[SCENE_STAGES[id].zone]) : 'field') : scene.bgm || 'village');
   const s = h(`<div class="screen dialog ${v ? '' : 'flat'}">
     <div class="dl-fade"></div>
     <div class="dl-title"><small>${scene.chapter || 'ぼうけん'}</small><b>${scene.title}</b></div>
