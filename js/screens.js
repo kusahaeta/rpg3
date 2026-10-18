@@ -169,18 +169,32 @@ function weaponIcon(id) {
 }
 const weaponTier = id => '★'.repeat(WEAPONS[id].tier + 1);
 const weaponHint = id => { const g = WEAPONS[id].get || {}; return g.shop ? '武器屋で売っている' : g.chest ? `${FIELD_ZONES[g.chest[0]].mapName || FIELD_ZONES[g.chest[0]].name}の宝箱に眠っている` : ''; };
+// 武器の行：持っている武器には、その武器の技の名前と、持ちかえたときの HP・攻撃力・防御力の増減も出す
 function weaponList(key) {
-  const eq = equippedWeapon(key), kind = WEAPON_KIND[CHARS[key].gear.weapon];
-  return `<div class="ck-wps"><div class="ck-wps-h"><b>武器（${kind}）</b><small>持っている${kind}を選ぶと、通常攻撃・戦闘スキル・必殺技が変わる</small></div>
+  const eq = equippedWeapon(key), kind = WEAPON_KIND[CHARS[key].gear.weapon], o = Save.data.owned[key];
+  const now = charStats(key, o.lv, o.eid);
+  const techs = id => { const w = WEAPONS[id].start ? CHARS[key] : WEAPONS[id]; return [w.basic, w.skill, w.ult].map(a => a.name).join('・'); };
+  const diff = id => {
+    const st = charStats(key, o.lv, o.eid, id);
+    return [['HP', 'maxHp'], ['攻撃力', 'atk'], ['防御力', 'def']].map(([n, k]) => [n, Math.round(st[k]) - Math.round(now[k])])
+      .filter(([, d]) => d).map(([n, d]) => `<span class="${d > 0 ? 'up' : 'down'}">${n} ${d > 0 ? '+' : '−'}${fmt(Math.abs(d))}</span>`).join('');
+  };
+  return `<div class="ck-wps"><div class="ck-wps-h"><b>武器（${kind}）</b><small>武器を替えると、通常攻撃・戦闘スキル・必殺技が変わる</small></div>
     ${weaponsFor(key).map(id => hasWeapon(id)
-      ? `<button class="wp-row ${id === eq ? 'on' : ''}" data-wp="${id}">${weaponIcon(id)}<span class="wp-info"><b>${weaponName(id)}</b><small>${WEAPONS[id].desc}</small></span><span class="wp-tier">${weaponTier(id)}</span><span class="wp-eq">${id === eq ? '装備中' : 'そうび'}</span></button>`
-      : `<div class="wp-row locked"><span class="wp-ic">？</span><span class="wp-info"><b>？？？</b><small>${weaponHint(id)}</small></span><span class="wp-tier">${weaponTier(id)}</span></div>`).join('')}
+      ? `<button class="wp-row ${id === eq ? 'on' : ''}" data-wp="${id}">${weaponIcon(id)}<span class="wp-info"><b>${weaponName(id)}</b><small>${WEAPONS[id].desc}</small>
+          <span class="wp-techs">技：${techs(id)}</span>${id === eq ? '' : `<span class="wp-diff">${diff(id) || '<span>力は変わらない</span>'}</span>`}</span>
+          <span class="wp-side"><span class="wp-tier">${weaponTier(id)}</span><span class="wp-eq">${id === eq ? '装備中' : 'そうび'}</span></span></button>`
+      : `<div class="wp-row locked"><span class="wp-ic">？</span><span class="wp-info"><b>？？？</b><small>${weaponHint(id)}</small></span><span class="wp-side"><span class="wp-tier">${weaponTier(id)}</span></span></div>`).join('')}
   </div>`;
 }
 
 // ------------------------------------------------------------
 //  なかま（ステータス・わざ）
+//  右側は「ステータス」（力と武器）と「わざ」のタブ。タブは子を替えても、そのまま
+//  ←→ キーでも子を替えられる
 // ------------------------------------------------------------
+let charTab = 'stat';
+const TARGET_NAME = { single: '単体', blast: '拡散', aoe: '全体', bounce: 'バウンド', ally: '味方単体', allies: '味方全体', self: '自分' };
 function CharScreen(sel) {
   const keys = Object.keys(CHARS).filter(k => Save.data.owned[k]);
   sel = sel && Save.data.owned[sel] ? sel : Save.data.team[0];
@@ -188,32 +202,44 @@ function CharScreen(sel) {
   if (v3 && (!v3.model || v3.model.key !== sel)) v3.setChar(sel);
   const c = charKit(sel), o = Save.data.owned[sel], col = c.color, wid = equippedWeapon(sel);
   const st = charStats(sel, o.lv, o.eid);
-  const ab = (label, a) => `<div class="ck-ab"><div class="ck-ab-h"><span class="ck-kind">${label}</span>${abElems(a).map(el => elemIcon(el)).join('')}<b>${a.name}</b>${a.target ? `<span class="ck-tg">${{ single: '単体', blast: '拡散', aoe: '全体', bounce: 'バウンド', ally: '味方単体', allies: '味方全体', self: '自分' }[a.target]}</span>` : ''}</div><p>${a.desc}</p></div>`;
+  const ab = (label, a) => `<div class="ck-ab"><div class="ck-ab-h"><span class="ck-kind">${label}</span>${abElems(a).map(el => elemIcon(el)).join('')}<b>${a.name}</b>${a.target ? `<span class="ck-tg">${TARGET_NAME[a.target]}</span>` : ''}</div><p>${a.desc}</p></div>`;
   const combos = COMBOS.filter(x => x.pair.includes(sel));
+  const max = o.lv >= 80;
   const s = h(`<div class="screen chars">${topBar('なかま')}
-    <div class="ck-list">${keys.map(k => charChip(k, k === sel ? 'on' : '')).join('')}</div>
+    <div class="ck-list">${keys.map(k => charChip(k, (k === sel ? 'on ' : '') + (Save.data.team.includes(k) ? 'inteam' : ''))).join('')}</div>
     <div class="ck-art ${GFX.ok ? 'is3d' : ''}" style="--c:${col}">${GFX.ok ? '' : avatarSVG(sel)}</div>
+    ${keys.length > 1 ? '<button class="ck-nav prev" data-nav="-1" title="前の子（←）">‹</button><button class="ck-nav next" data-nav="1" title="次の子（→）">›</button>' : ''}
     <div class="ck-info" style="--c:${col}">
       <div class="ck-head"><h2>${c.name}</h2><div class="ck-title">${c.title}</div>
         <div class="ck-tags"><span class="ck-path">役割：${PATHS[c.path].name}</span><span class="ck-eid">武器：${weaponName(wid)}</span></div></div>
-      <div class="ck-lv"><b>Lv.${o.lv}</b><span>/80</span>
-        <div class="bar exp"><i style="width:${o.lv >= 80 ? 100 : o.exp / expToNext(o.lv) * 100}%"></i></div>
-        <div class="dim">${o.lv >= 80 ? 'レベル最大' : `次のレベルまで あと ${fmt(expToNext(o.lv) - o.exp)}`}</div></div>
-      <div class="ck-stats">
-        <div><span>HP</span><b>${fmt(st.maxHp)}</b></div><div><span>攻撃力</span><b>${fmt(st.atk)}</b></div>
-        <div><span>防御力</span><b>${fmt(st.def)}</b></div><div><span>速度</span><b>${st.spd}</b></div>
-        <div><span>会心率</span><b>${Math.round(st.crit * 100)}%</b></div><div><span>会心ダメージ</span><b>${Math.round(st.critDmg * 100)}%</b></div>
-        <div><span>撃破特効</span><b>${Math.round(st.be * 100)}%</b></div><div><span>EP上限</span><b>${c.energyMax}</b></div>
+      <div class="ck-lv"><div class="ck-lv-n"><b>Lv.${o.lv}</b><span>/80</span><small>${max ? 'レベル最大' : `次のレベルまで あと ${fmt(expToNext(o.lv) - o.exp)}`}</small></div>
+        <div class="bar exp"><i style="width:${max ? 100 : o.exp / expToNext(o.lv) * 100}%"></i></div></div>
+      <div class="ck-tabs"><button data-tab="stat">ステータス・武器</button><button data-tab="abs">わざ</button></div>
+      <div class="ck-pane" data-pane="stat">
+        <div class="ck-stats">
+          <div><span>HP</span><b>${fmt(st.maxHp)}</b></div><div><span>攻撃力</span><b>${fmt(st.atk)}</b></div>
+          <div><span>防御力</span><b>${fmt(st.def)}</b></div><div><span>速度</span><b>${st.spd}</b></div>
+          <div><span>会心率</span><b>${Math.round(st.crit * 100)}%</b></div><div><span>会心ダメージ</span><b>${Math.round(st.critDmg * 100)}%</b></div>
+          <div><span>撃破特効</span><b>${Math.round(st.be * 100)}%</b></div><div><span>EP上限</span><b>${c.energyMax}</b></div>
+        </div>
+        ${weaponList(sel)}
       </div>
-      ${weaponList(sel)}
-      <div class="ck-abs">
+      <div class="ck-pane ck-abs" data-pane="abs">
         ${ab('通常攻撃', c.basic)}${ab('戦闘スキル', c.skill)}${ab(`必殺技（EP${c.energyMax}）`, c.ult)}
         ${ab('とくせい', c.talent)}${ab('初手技', c.technique)}
         ${combos.map(x => ab(`コンボ（${x.pair[1] === '*' ? 'みんなと' : CHARS[x.pair.find(p => p !== sel)].name + 'と'}・友情Lv3）`, x)).join('')}
       </div>
     </div></div>`);
+  const showTab = t => {
+    charTab = t;
+    s.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+    s.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== t));
+  };
+  showTab(charTab);
   wireBack(s);
+  on(s, '[data-tab]', 'click', el => showTab(el.dataset.tab));
   on(s, '.ck-list .chip', 'click', el => App.go(CharScreen, el.dataset.key));
+  on(s, '[data-nav]', 'click', el => App.go(CharScreen, keys[(keys.indexOf(sel) + +el.dataset.nav + keys.length) % keys.length]));
   on(s, '.wp-row[data-wp]', 'click', el => {
     if (el.dataset.wp === wid) return;
     equipWeapon(sel, el.dataset.wp); Sfx.select();
@@ -222,6 +248,11 @@ function CharScreen(sel) {
   if (v3) v3.bindDrag(s.querySelector('.ck-art'));
   return s;
 }
+document.addEventListener('keydown', e => {
+  if (e.repeat || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+  const b = App.el && App.el.querySelector(`.screen.chars [data-nav="${e.key === 'ArrowLeft' ? -1 : 1}"]`);
+  if (b) b.click();
+});
 
 // ------------------------------------------------------------
 //  友情：2匹の組み合わせごとの友情レベルと、特別イベント

@@ -332,9 +332,9 @@ function equipWeapon(key, id) {
   Save.save();
 }
 
-// 武器による力の倍率（段 × 武器ごとのくせ × 鍛えた分）
-function weaponStatMult(key) {
-  const id = equippedWeapon(key), w = WEAPONS[id], p = weaponPlus(id), pow = TIER_POW[w.tier], m = w.mod || {};
+// 武器による力の倍率（段 × 武器ごとのくせ × 鍛えた分）。id を渡すと、その武器を持ったときの倍率（なかまの画面のくらべ）
+function weaponStatMult(key, id = equippedWeapon(key)) {
+  const w = WEAPONS[id], p = weaponPlus(id), pow = TIER_POW[w.tier], m = w.mod || {};
   return { hp: pow * (m.hp || 1) * (1 + p * 0.04), atk: pow * (m.atk || 1) * (1 + p * 0.06), def: pow * (m.def || 1) * (1 + p * 0.05) };
 }
 
