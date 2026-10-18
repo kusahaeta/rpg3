@@ -146,6 +146,10 @@ function enemySVG(key) {
 
 // 行動順アイコン用の小さな敵アイコン
 function enemyMini(key) {
+  if (typeof GFX !== 'undefined' && GFX.ok) {
+    GFX.buildEnemyPortraits([key]);
+    if (GFX.enemyPortraits[key]) return `<img class="avatar" src="${GFX.enemyPortraits[key]}" alt="" draggable="false">`;
+  }
   const d = ENEMIES[key];
   return `<div class="mini-enemy" style="--c:${d.color}">${d.name.replace(/^.*[・ ]/, '').slice(0, 1)}</div>`;
 }
