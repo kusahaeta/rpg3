@@ -462,7 +462,6 @@ function EndingScreen() {
   Music.play('hope');
   const s = h(`<div class="screen ending">
     <div class="en-roll">
-      <p>にゃんだーの樹はよみがえり、</p><p>世界に笑顔がもどった。</p><p>——この世界を救ったのは、</p><p>最初から強かった誰かじゃない。</p><p>旅の中で出会った猫たちと、</p><p>少しずつ仲間になっていったからだ。</p>
       <h1>Fin</h1>
       <p class="dim">クリアおめでとう！　村の猫神社の奥で、ふしぎな夢の世界への道が開いたらしい……</p>
     </div>
