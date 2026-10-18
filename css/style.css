@@ -872,10 +872,10 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .bond.allstars .bond-btn.ready { background: linear-gradient(90deg, #ff6a8a, #ffd27a, #6ad8ff, #8aff9a, #b89aff); background-size: 300% 100%; animation: rainbow 2s linear infinite, pulse 1.2s ease-in-out infinite; }
 @keyframes rainbow { to { background-position: 300% 0; } }
 @keyframes pulse { 50% { transform: scale(1.04); box-shadow: 0 0 16px rgba(255, 160, 190, .8); } }
-.combo-menu { position: absolute; left: 24px; bottom: 260px; width: 380px; z-index: 8; display: flex; flex-direction: column; gap: 6px; background: rgba(62, 40, 34, .95); border: 2px solid #ff9ab8; border-radius: 18px; padding: 10px; }
-.combo-menu button { text-align: left; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); padding: 8px 12px; color: var(--ink); }
+.combo-menu { position: absolute; left: 24px; bottom: 260px; width: 440px; z-index: 8; display: flex; flex-direction: column; gap: 6px; background: rgba(62, 40, 34, .95); border: 2px solid #ff9ab8; border-radius: 18px; padding: 10px; }
+.combo-menu button { text-align: left; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); padding: 8px 12px; color: var(--ink); font-size: 17px; }
 .combo-menu button:hover { background: rgba(255, 154, 184, .25); }
-.combo-menu button small { display: block; color: var(--dim); font-size: 11px; }
+.combo-menu button small { display: block; margin-top: 2px; color: var(--dim); font-size: 13px; line-height: 1.45; }
 .combo-menu button.x { text-align: center; }
 .say { position: absolute; left: 50%; top: -18px; transform: translate(-50%, -100%); background: #fff6ea; color: #4a2c20; border-radius: 14px; padding: 5px 12px; font-size: 14px; font-weight: 700;
   width: max-content; max-width: 320px; line-height: 1.5; text-align: center; overflow-wrap: anywhere; box-shadow: 0 3px 10px rgba(0, 0, 0, .35); animation: sayIn 2.6s ease forwards; z-index: 9; pointer-events: none; }
