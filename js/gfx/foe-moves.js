@@ -268,11 +268,15 @@ const FOE_MOVES = {
     this.foePose(e, POSES.dash, 0.15);
     const z1 = Math.max(...ts.map(t => t.home.z)) + 1.2;
     let hit = new Set();
+    const rad = e.model.radius, P = V3();
     const run = async (a, b, dur) => {
       this.face(e, b);
+      let trail = 0;
       await GFX.tween(dur, k => {
         g.position.lerpVectors(a, b, k); g.position.y = Math.abs(Math.sin(k * Math.PI * 6)) * 0.12;
         if (Math.random() < 0.8) this.dustFx(g.position, boar ? 2 : 1);
+        // 大突進：うしろに、もうもうと土煙がのこる
+        if (boar) { const d = a.distanceTo(b) * k; while (trail < d) { trail += 0.5; P.lerpVectors(a, b, trail / a.distanceTo(b)); this.dustCloud(P.clone().add(V3((Math.random() - 0.5) * rad * 1.2, 0, 0)), rad * 0.95); } }
         for (const t of ts) if (!hit.has(t) && Math.abs(g.position.z - t.home.z) < 0.4) { hit.add(t); this.foeKnock(t, V3(Math.sign(t.home.x - g.position.x) || 1, 0, 0.4).normalize(), boar ? 0.6 : 0.45); if (boar) this.fx.sprite(this.hitPoint(t.u), c.col, 1.4, 0.25, { k: 3 }); }
       }, Ease.linear);
     };
@@ -283,6 +287,7 @@ const FOE_MOVES = {
       for (let i = 0; i < 3; i++) {
         await GFX.tween(0.13, k => { g.rotation.x = -Math.sin(k * Math.PI) * 0.18; });
         this.dustFx(g.position.clone().add(V3(0, 0, 0.6)), 6);
+        this.dustCloud(g.position.clone().add(V3((Math.random() - 0.5) * rad, 0, rad * 0.5)), rad * (0.7 + i * 0.2));
         this.p.burst(this.foeMouth(e), '#ffffff', 6, { speed: 2, life: 0.4, size: 0.12 });
       }
       e.model.flash('#ff3040', 1.6);
@@ -290,6 +295,7 @@ const FOE_MOVES = {
       GFX.shake(0.25);
       // うしろで土ぼこりをあげてふりかえり、もう一度
       this.dustFx(g.position, 14);
+      for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2; this.dustCloud(g.position.clone().add(V3(Math.cos(a) * rad, 0, Math.sin(a) * rad)), rad * 1.2); }
       await GFX.delay(0.15);
       hit = new Set();
       await run(g.position.clone(), V3(from.x * 0.3 + 1.0, 0, from.z), 0.42);
@@ -1029,6 +1035,17 @@ Object.assign(BattleView.prototype, {
       this.fx.ring(b, '#8a5aff', { r: 0.9, life: 0.35, face: this.camera.position, width: 0.1, k: 2 });
       if (hit) hit();
       return links;
+    });
+  },
+  // 土煙：ふくらみながら立ちのぼって、うすれていく土色のかたまり（光の粒だと明るい道で見えない）
+  dustCloud(at, size) {
+    const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: pick(['#c8b090', '#b8a080', '#d8c4a0']), transparent: true, depthWrite: false, opacity: 0 }));
+    const v = V3((Math.random() - 0.5) * 0.6, 0.5 + Math.random() * 0.5, (Math.random() - 0.5) * 0.6), life = 1.1 + Math.random() * 0.5;
+    m.position.set(at.x, size * 0.35, at.z); m.renderOrder = 10;
+    this.fx.add(m, life, (k, o, dt) => {
+      o.position.addScaledVector(v, dt); v.multiplyScalar(1 - dt * 1.2);
+      o.scale.setScalar(size * (0.6 + Ease.out(k) * 1.6));
+      o.material.opacity = (k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85) * 0.6;   // 濃いと、みんなが隠れる
     });
   },
   // 紙ふぶき：色紙がくるくる舞いながら落ちる（光の粒だと明るい背景で見えない）
