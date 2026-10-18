@@ -24,8 +24,8 @@ const NEEDS_TARGET = new Set(['single', 'blast', 'bounce', 'ally', 'down']);
 let UID = 0;
 // 敵の体力の全体倍率（にゃんこの戦いは、テンポよく）
 const FOE_HP = 0.55;
-// 1章のボス（キングネズミ）のほかは、体力・攻撃・速さを上げる（手ごたえを出す）
-const FOE_TOUGH = { hp: 2, atk: 1.1, spd: 1.2, except: new Set(['king_nezumi']) };
+// 1章のボス（キングネズミ）のほかは、体力・攻撃・速さを上げる（手ごたえを出す）。ラスボス（final）の体力は finalHp 倍
+const FOE_TOUGH = { hp: 2, finalHp: 3, atk: 1.1, spd: 1.2, except: new Set(['king_nezumi']) };
 
 class Unit {
   constructor(side, key, level, opts = {}) {
@@ -42,8 +42,8 @@ class Unit {
       this.color = this.def.color; this.path = this.def.path;
     } else {
       const d = this.def, f = lvFactor(level);
-      const t = FOE_TOUGH.except.has(key) ? { hp: 1, atk: 1, spd: 1 } : FOE_TOUGH;
-      this.base = { maxHp: d.hp * f * (d.boss ? 1.25 : 1) * t.hp, atk: d.atk * f * 1.4 * t.atk, def: 0, spd: d.spd * t.spd, eres: d.eres || 0.1, ehr: 0.1 };
+      const t = FOE_TOUGH.except.has(key) ? { hp: 1, finalHp: 1, atk: 1, spd: 1 } : FOE_TOUGH;
+      this.base = { maxHp: d.hp * f * (d.boss ? 1.25 : 1) * (d.final ? t.finalHp : t.hp), atk: d.atk * f * 1.4 * t.atk, def: 0, spd: d.spd * t.spd, eres: d.eres || 0.1, ehr: 0.1 };
       this.maxTough = d.tough; this.toughness = d.tough; this.weak = [...d.weak];
       this.broken = false; this.phase = 0; this.charging = null; this.color = ELEMENTS.physical.color;
     }
