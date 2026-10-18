@@ -399,6 +399,8 @@ class FieldView extends BaseView {
     const dia = new THREE.Mesh(new THREE.OctahedronGeometry(0.35), glowMat('#ffd66b', 3)); dia.position.y = 2.2; dia.scale.y = 1.5; g.add(dia);
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.6, 1.75, 64), glowMat('#ffd66b', 2.5, { side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; g.add(ring);
+    // 土の道や水たまりの塗り（renderOrder 1〜2）より後に描く。先に描くと、深度を書かない光の柱と輪が塗りで上書きされる
+    beam.renderOrder = ring.renderOrder = 3;
     this.groups.forEach(gr => { if (Math.hypot(gr.home.x - spot.x, gr.home.z - spot.z) < 7) { gr.alive = false; this.scene.remove(gr.model.group); } });
     this.quest = { step, pos: V3(spot.x, sy, spot.z), g, dia, ring };
   }
