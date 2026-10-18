@@ -410,22 +410,22 @@ const FOE_MOVES = {
   },
 
   // ---------- コドクの技（技の中身が見た目でわかるように） ----------
-  // 孤独：ねらった子の両がわに闇の壁が立ち、仲間から引き離す
+  // 孤独：ねらった子を、黒い丸がすっぽり包んで、仲間から閉ざす
   async sever(e, ts, c) {
-    const t = ts[0], h = t.home;
+    const t = ts[0], h = t.home, r = Math.max(0.75, t.model.height * 0.62);
     this.foeFlash(e, c.col);
     this.darkFlow(e, t, c.col, 0.35, 12);
     await GFX.delay(0.3);
-    this.fx.ring(h.clone().add(V3(0, 0.05, 0)), c.col, { r: 1.4, life: 0.6, width: 0.4, k: 1.6 });
-    const walls = [-1, 1].map(s => this.darkWall(h.clone().add(V3(s * 0.7, 0, 0)), 2.4, 1.5));
-    // 壁が立つと、ねらった子だけ、うしろへ下げられる
-    const g = t.model.group;
-    await GFX.tween(0.3, k => { walls.forEach(w => w.rise(Ease.back(k))); g.position.z = h.z + Ease.out(k) * 0.5; });
+    const ball = this.darkBall(r);
+    ball.position.set(h.x, r * 0.8, h.z);
+    this.fx.ring(h.clone().add(V3(0, 0.05, 0)), c.col, { r: r * 1.8, life: 0.6, width: 0.3, k: 1.6 });
+    // まわりの闇が集まって、丸くなる
+    await GFX.tween(0.3, k => { ball.scale.setScalar(Math.max(0.01, Ease.back(k))); });
     t.model.flash('#2a2238', 1.5);
-    this.glyphPop('…', this.headPos(t).add(V3(0, 0.6, 0)), '#b8a8e8');
-    await GFX.delay(0.45);
-    await GFX.tween(0.3, k => { walls.forEach(w => w.rise(1 - k)); g.position.z = h.z + 0.5 * (1 - k); });
-    g.position.copy(h);
+    this.glyphPop('…', V3(h.x, r * 1.8 + 0.3, h.z), '#b8a8e8');
+    await this.every(0.5, 10, () => { const a = Math.random() * Math.PI * 2; this.p.emit(ball.position.clone().add(V3(Math.cos(a) * r, (Math.random() - 0.5) * r, Math.sin(a) * r * 0.5)), V3(0, 0.8, 0), hdr('#8a6aff', 2), { life: 0.6, size: 0.12 }); });
+    await GFX.tween(0.3, k => { ball.scale.setScalar(Math.max(0.01, 1 - Ease.in(k))); });
+    ball.visible = false;
   },
   // 思い出消去：ねらった子の上に、色のついた思い出があらわれる。色が抜けて、コドクのまわりの板と同じ色になり、砕けて散る
   async shatter(e, ts, c) {
@@ -869,16 +869,15 @@ Object.assign(BattleView.prototype, {
     const from = this.foeMouth(e), p = to || this.hitPoint(t.u);
     return this.every(dur, n, () => this.p.emit(from, p.clone().sub(from).multiplyScalar(2.5).add(V3((Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 0.6, 0)), hdr(col, 2), { life: 0.4, size: 0.2, drag: 0 }));
   },
-  // 闇の壁（孤独）：黒い板と、紫に光るふち。rise(k) で地面からせりあがる
-  darkWall(at, h, d) {
-    const g = new THREE.Group(); g.position.copy(at);
-    const wall = new THREE.Mesh(new THREE.PlaneGeometry(d, h), new THREE.MeshBasicMaterial({ color: '#0a0612', transparent: true, opacity: 0.88, side: THREE.DoubleSide, depthWrite: false }));
-    wall.rotation.y = Math.PI / 2; wall.position.y = h / 2; g.add(wall);
-    const edge = new THREE.Mesh(new THREE.PlaneGeometry(d, 0.06), new THREE.MeshBasicMaterial({ color: hdr('#8a5aff', 3), transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
-    edge.rotation.y = Math.PI / 2; edge.position.y = h; g.add(edge);
-    g.scale.y = 0.001;
+  // 黒い丸（孤独）：中が見えない黒い球と、紫にうっすら光るふち
+  darkBall(r) {
+    const g = new THREE.Group();
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(r, 28, 20), new THREE.MeshBasicMaterial({ color: '#0a0612', transparent: true, opacity: 0.94, depthWrite: false }));
+    ball.renderOrder = 12; g.add(ball);
+    const rim = new THREE.Mesh(new THREE.SphereGeometry(r * 1.06, 28, 20), new THREE.MeshBasicMaterial({ color: hdr('#8a5aff', 1.4), transparent: true, opacity: 0.45, side: THREE.BackSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+    rim.renderOrder = 11; g.add(rim);
+    g.scale.setScalar(0.01);
     this.fx.add(g, 2, null);
-    g.rise = k => { g.scale.y = Math.max(0.001, k); if (k > 0.5 && Math.random() < 0.5) this.p.emit(at.clone().add(V3(0, h * k, (Math.random() - 0.5) * d)), V3(0, 1, 0), hdr('#8a6aff', 2), { life: 0.6, size: 0.12 }); };
     return g;
   },
   // 思い出（思い出消去）：白いふちの写真に、あたたかい色と ♥
