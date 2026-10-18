@@ -2683,7 +2683,7 @@ class FieldView extends BaseView {
       </div>
       <div class="fm-foot">
         <button class="link" data-bgm>BGM：${Music.on ? 'ON' : 'OFF'}</button>
-        <button class="link" data-eco>画質：${GFX.eco ? '省エネ（30fps）' : 'なめらか（60fps）'}</button>
+        <button class="link" data-eco>画質：${GFX.Q.name}</button>
         <button class="link" data-reset>データを初期化</button>
       </div></div>`;
     o.classList.remove('hidden');
@@ -2696,9 +2696,11 @@ class FieldView extends BaseView {
     // ジャンプ・セーブの差しもどしのあとは、いまの位置を記録しない（leave を通さない）
     if (Debug.on) go('debug', () => Debug.render(o, () => { this.persist = false; Story.resume(); }, () => this.closeOverlay()));
     o.querySelector('[data-bgm]').onclick = e => { Music.toggle(); e.currentTarget.textContent = `BGM：${Music.on ? 'ON' : 'OFF'}`; };
+    // 画質：なめらか → 省エネ → 軽量 → なめらか…（選んだら、おまかせはやめる）
     o.querySelector('[data-eco]').onclick = e => {
-      GFX.setEco(!GFX.eco); Save.data.eco = GFX.eco; Save.save();
-      e.currentTarget.textContent = `画質：${GFX.eco ? '省エネ（30fps）' : 'なめらか（60fps）'}`;
+      const n = (GFX.tier + 1) % GFX_TIERS.length;
+      GFX.setTier(n); Save.data.eco = [false, true, 'low'][n]; Save.save();
+      e.currentTarget.textContent = `画質：${GFX.Q.name}`;
     };
     o.querySelector('[data-reset]').onclick = () => { if (confirm('セーブデータを初期化しますか？')) { this.persist = false; Save.reset(); App.go(TitleScreen); } };
   }

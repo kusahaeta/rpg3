@@ -463,7 +463,8 @@ function buildCat(key, opt = {}) {
     if (ghost) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.6; if (o.material.emissive) { o.material.emissive.set(L.ghostCol || '#8a6aff'); o.material.emissiveIntensity = 0.5; o.material.userData.e0 = o.material.emissive.clone(); o.material.userData.ei0 = 0.5; } }
   });
   if (stone || ghost) { mats.length = 0; root.traverse(o => { if (o.isMesh && o.material.emissive && !mats.includes(o.material)) mats.push(o.material); }); }
-  root.traverse(o => { if (o.isMesh && !o.userData.outline && !o.userData.face) o.castShadow = true; });
+  // ひげは細すぎて影の画像に写らないので、影を落とさない（影を描く回数を減らす）
+  root.traverse(o => { if (o.isMesh && !o.userData.outline && !o.userData.face && o.material !== whM) o.castShadow = true; });
 
   // ---------- ポーズ → 関節 ----------
   const pose = {}; POSE_KEYS.forEach(k => pose[k] = 0);
@@ -541,6 +542,10 @@ function buildCat(key, opt = {}) {
     tipPos() { return (extras.tip || armR.grip).getWorldPosition(V3()); },
     seed: Math.random() * 10,
   };
+  model.update(0, 0);
+  // 動かない部品をまとめる。頭（目の位置を測る・顔の模様が子）・手・武器の先など、ほかから位置を読む部品は残す。
+  // 少し時間を進めて動いた部品（マオウの笏の羽など）も残す
+  mergeRigid(root, [head, armR.paw, armL.paw, ...Object.values(extras).filter(o => o && o.isObject3D)], () => { model.update(0.1, 0.7); model.update(0.1, 1.9); });
   model.update(0, 0);
   return model;
 }

@@ -3352,6 +3352,7 @@ const ZMAT = {
   candyPink: ['#ffb8d8', 0.05, 0.5], candyBlue: ['#b8e0ff', 0.05, 0.5], candyYellow: ['#fff0a8', 0.05, 0.5], cream: ['#fff8ec', 0, 0.7], choco: ['#7a4a2a', 0.05, 0.6],
 };
 
+const INST_CELL = 32;   // 木・岩などの InstancedMesh を分ける区切りの大きさ（ZoneKit.flush）
 class ZoneKit {
   constructor(view) {
     this.v = view; this.zone = view.zone; this.scene = view.scene; this.r = view.rand;
@@ -3420,19 +3421,24 @@ class ZoneKit {
       this.scene.add(m);
     }
     this.merged = {};
-    // 同じ形の部品（木の幹・葉・岩など）は InstancedMesh でまとめて描く
+    // 同じ形の部品（木の幹・葉・岩など）は InstancedMesh でまとめて描く。
+    //   区画ぜんぶで一つにすると、画面の外や影の範囲の外の分まで毎回描くことになる（林の区画では葉だけで 18 万三角形、影でもう一度）。
+    //   INST_CELL 四方ごとに分けて、見えない区切りは描かない（描く回数は少し増えるが、非力なスマホでは描く三角形の数のほうが重い）
     const M4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = V3(), pos = V3(), col = new THREE.Color();
     for (const it of Object.values(this.insts || {})) {
-      if (!it.list.length) continue;
-      const m = new THREE.InstancedMesh(it.geo, it.mat, it.list.length);
-      it.list.forEach(([x, y, z, s, rot, c], i) => {
-        e.set(rot ? rot[0] : 0, rot ? rot[1] : 0, rot ? rot[2] : 0); q.setFromEuler(e);
-        if (Array.isArray(s)) sc.set(s[0], s[1], s[2]); else sc.set(s, s, s);
-        M4.compose(pos.set(x, y, z), q, sc); m.setMatrixAt(i, M4);
-        m.setColorAt(i, col.set(c || '#ffffff'));
-      });
-      m.castShadow = !it.noShadow; m.receiveShadow = true; m.computeBoundingSphere();
-      this.scene.add(m);
+      const cells = new Map();
+      for (const p of it.list) { const k = Math.floor(p[0] / INST_CELL) + ',' + Math.floor(p[2] / INST_CELL); (cells.get(k) || cells.set(k, []).get(k)).push(p); }
+      for (const list of cells.values()) {
+        const m = new THREE.InstancedMesh(it.geo, it.mat, list.length);
+        list.forEach(([x, y, z, s, rot, c], i) => {
+          e.set(rot ? rot[0] : 0, rot ? rot[1] : 0, rot ? rot[2] : 0); q.setFromEuler(e);
+          if (Array.isArray(s)) sc.set(s[0], s[1], s[2]); else sc.set(s, s, s);
+          M4.compose(pos.set(x, y, z), q, sc); m.setMatrixAt(i, M4);
+          m.setColorAt(i, col.set(c || '#ffffff'));
+        });
+        m.castShadow = !it.noShadow; m.receiveShadow = true; m.computeBoundingSphere();
+        this.scene.add(m);
+      }
     }
     this.insts = {};
   }

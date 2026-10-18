@@ -21,7 +21,8 @@ const Save = {
       weapons: {},        // 持っている武器と強化段階（はじめの武器は持っていなくても使える。js/weapons.js）
       equip: {},          // にゃんこごとに装備している武器
       auto: false, speed: 1, ver: 12,
-      eco: null,          // 省エネ（30fps）。null はおまかせ（スマホなら省エネ）
+      eco: null,          // 画質（false なめらか・true 省エネ・'low' 軽量）。null はおまかせ（スマホなら省エネ）
+      gfxAuto: null,      // おまかせのとき、コマ数が足りなくて落とした画質の段階（GFX.watchFps）
       hp: {},             // HP の割合（にゃんこごと）。探索・物語の戦闘で引きつぐ（carried）
       energy: {},         // 奥義ゲージ（にゃんこごと）。ないときは戦闘のはじめの量
     };
