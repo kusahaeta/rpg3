@@ -251,6 +251,49 @@ const GFX = {
     }
     r.dispose(); r.forceContextLoss();
   },
+
+  // 敵の肖像（戦闘の行動順のアイコン用）。出てきた敵の分だけ、その場で 3D モデルから描いて覚えておく
+  enemyPortraits: {},
+  buildEnemyPortraits(keys) {
+    keys = [...new Set(keys)].filter(k => !this.enemyPortraits[k] && ENEMIES[k]);
+    if (!this.ok || !keys.length) return;
+    const size = 128;
+    const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    r.outputColorSpace = THREE.SRGBColorSpace;
+    r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
+    r.setSize(size, size);
+    for (const key of keys) {
+      const scene = new THREE.Scene();
+      addStudioLights(scene, '#ffd8e0');
+      const m = buildEnemy(key);
+      m.update(0, 0);
+      m.group.rotation.y = -0.3;
+      scene.add(m.group);
+      // 体の上のほう（顔のあたり）を正方形に入れる。大きい敵ほど上だけを切り取る
+      m.group.updateMatrixWorld(true);
+      // 大きさは見えているメッシュだけで測る（光の Sprite は体よりずっと大きい）
+      const box = new THREE.Box3();
+      m.inner.traverseVisible(o => { if (o.isMesh && o.geometry) { o.geometry.computeBoundingBox(); box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)); } });
+      const sz = box.getSize(V3());
+      const span = Math.min(Math.max(sz.x, sz.y), Math.max(sz.x * 0.75, sz.y * 0.55));
+      const cx = (box.min.x + box.max.x) / 2, cy = box.max.y - span * 0.5, cz = (box.min.z + box.max.z) / 2;
+      const cam = new THREE.PerspectiveCamera(30, 1, 0.05, 200);
+      const dist = span / 2 / Math.tan(15 * Math.PI / 180) + sz.z / 2;
+      cam.position.set(cx + dist * 0.18, cy + dist * 0.06, cz + dist);
+      cam.lookAt(cx, cy, cz);
+      // 影のような暗い敵は、背景の真ん中を明るくして形が見えるように
+      const bc = new THREE.Color(m.color), hsl = bc.getHSL({});
+      if (hsl.l < 0.35) bc.setHSL(hsl.h, Math.min(hsl.s, 0.5), 0.55);
+      const bg = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: radialTex('#' + bc.getHexString(), '#1a1220'), toneMapped: false }));
+      bg.position.copy(cam.position).add(cam.getWorldDirection(V3()).multiplyScalar(dist * 1.6)); bg.lookAt(cam.position);
+      bg.scale.setScalar(dist * 1.6 * Math.tan(15 * Math.PI / 180) * 2.4);
+      scene.add(bg);
+      r.render(scene, cam);
+      this.enemyPortraits[key] = r.domElement.toDataURL('image/png');
+      disposeTree(scene);
+    }
+    r.dispose(); r.forceContextLoss();
+  },
 };
 
 // 省エネのときは画像を縦横半分にする（GPU のメモリが 4 分の 1）。

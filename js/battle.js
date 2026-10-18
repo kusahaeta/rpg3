@@ -400,6 +400,7 @@ class Battle {
   }
   async spawnWave() {
     const w = this.opts.waves[this.waveIdx];
+    if (typeof GFX !== 'undefined') GFX.buildEnemyPortraits(w.map(e => e.key));   // 行動順のアイコン（まとめて描く）
     this.enemies = w.map(e => {
       const u = this.foeScale(new Unit('enemy', e.key, e.lv));
       this.applyModStats(u, 'enemyStats');
