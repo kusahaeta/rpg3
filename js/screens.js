@@ -49,7 +49,16 @@ function TitleScreen() {
     </div>
     <div class="t-start">— <span class="pc-only">クリック</span><span class="touch-only">タップ</span>して はじめる —</div>
   </div>`);
-  s.onclick = () => { Sfx.init(); Sfx.meow('mike'); Music.play('village'); Story.resume(); };
+  // タイトルの曲。ブラウザでは最初のタップまで音が止められているので、そのときの最初のタップは曲を鳴らすだけにする
+  Sfx.init(); Music.play('title');
+  //   （音が出ないままでも、二度目のタップからははじまる）
+  let wake = false, woke = false;
+  s.addEventListener('pointerdown', () => { wake = !woke && !!Sfx.ctx && Sfx.ctx.state === 'suspended' && Music.on; });
+  s.onclick = () => {
+    Sfx.init();
+    if (wake) { wake = false; woke = true; return; }
+    Sfx.meow('mike'); Music.play('village'); Story.resume();
+  };
   return s;
 }
 

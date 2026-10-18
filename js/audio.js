@@ -96,6 +96,45 @@ const Sfx = {
 // ------------------------------------------------------------
 const CR = bars => 'x' + '.'.repeat(bars * 16 - 1);   // bars 小節ごとのシンバル
 const TRACKS = {
+  // ---- タイトル ----
+  // ぽかぽか村（village）とかなしい場面（sad）に共通する旋律を、倍の長さにのばしてつないだテーマ。
+  //   前奏（回り音形のファンファーレ）→ A：village の旋律 → B：sad の旋律（平行調のイ短調）→ A'：弦も重ねて village → 後奏
+  title: {
+    bpm: 88, gain: 0.93, lp: 6000,
+    prog: `C C Am G
+      C Am Dm G C FM7 Gsus4,G C
+      Am Am/G F E F Am,G E Am,G
+      C Am Dm G C FM7 Gsus4,G C
+      F G`,
+    lead: { wave: 'triangle', vol: 0.2, echo: 0.2, vib: 5, seq: `
+      G5 - - A5 G5 - F5 - | G5 - - - - - . . | A5 - - B5 A5 - G5 - | G5 - - - D5 - B4 - |
+      C5 - D5 - E5 - G5 - | E5 - D5 - C5 - - - | D5 - E5 - F5 - E5 - | D5 - C5 - B4 - - - |
+      C5 - D5 - E5 - G5 - | A5 - G5 - E5 - D5 - | C5 - D5 - C5 - B4 - | C5 - - - - - . . |
+      A4 - - - C5 - B4 - | A4 - - - G4 - - - | F4 - - - G4 - A4 - | E4 - - - - - - - |
+      A4 - - - C5 - D5 - | E5 - - - D5 - C5 - | B4 - - - C5 - B4 - | A4 - - - . . . . |
+      C5 - D5 - E5 - G5 - | E5 - D5 - C5 - - - | D5 - E5 - F5 - E5 - | D5 - C5 - B4 - - - |
+      C5 - D5 - E5 - G5 - | A5 - G5 - E5 - D5 - | C5 - D5 - C5 - B4 - | C5 - - - - - . . |
+      A5 - - - C6 - - - | B5 - - - - - . .` },
+    // 前奏・A'・後奏だけ、1 オクターブ下で弦が重なる
+    lead2: { wave: 'sawtooth', det: 6, oct: -12, vol: 0.07, seq: `
+      G5 - - A5 G5 - F5 - | G5 - - - - - . . | A5 - - B5 A5 - G5 - | G5 - - - D5 - B4 - |
+      ${'. . . . . . . . | '.repeat(16)}
+      C5 - D5 - E5 - G5 - | E5 - D5 - C5 - - - | D5 - E5 - F5 - E5 - | D5 - C5 - B4 - - - |
+      C5 - D5 - E5 - G5 - | A5 - G5 - E5 - D5 - | C5 - D5 - C5 - B4 - | C5 - - - - - . . |
+      A5 - - - C6 - - - | B5 - - - - - . .` },
+    bass: { pat: 'r - - - f - o -', vol: 0.28 },
+    // 前奏はなし、A と A' は 16 分の上り下り、B はゆっくり、後奏はかけ上がる
+    arp: { pat: '. '.repeat(64) + '0 1 2 3 4 3 2 1 '.repeat(16) + '0 . 2 . 4 . 2 . '.repeat(16) + '0 1 2 3 4 3 2 1 '.repeat(16) + '0 1 2 3 4 5 6 7 '.repeat(4), vol: 0.035 },
+    pad: { wave: 'triangle', vol: 0.03 },
+    drums: {
+      vol: 0.65,
+      k: '.'.repeat(64) + 'x.......x.......'.repeat(8) + '.'.repeat(128) + 'x.......x.......'.repeat(8) + '.'.repeat(32),
+      s: '.'.repeat(320) + '....x.......x...'.repeat(7) + '....x...x.x.xxxx' + '.'.repeat(32),
+      h: '.'.repeat(320) + 'x.x.x.x.x.x.x.x.'.repeat(8) + '.'.repeat(32),
+      T: 'x.......x.......'.repeat(3) + 'x...x...x.x.xxxx' + '.'.repeat(128) + 'x...............'.repeat(7) + 'x.......x.x.xxxx' + '.'.repeat(128) + 'x...x...x...x...' + 'x.x.x.x.xxxxxxxx',
+      c: CR(4) + CR(8) + '.'.repeat(128) + CR(4).repeat(2) + CR(2),
+    },
+  },
   // ---- 物語の場面（昔からの曲） ----
   village: { bpm: 104, wave: 'triangle', mel: [72, 74, 76, 79, 76, 74, 72, 0, 74, 76, 77, 76, 74, 72, 71, 0, 72, 74, 76, 79, 81, 79, 76, 74, 72, 74, 72, 71, 72, 0, 0, 0], bass: [48, 0, 55, 0, 53, 0, 55, 0], chords: [[60, 64, 67], [65, 69, 72], [67, 71, 74], [60, 64, 67]] },
   field:   { bpm: 120, wave: 'square', mel: [76, 0, 79, 81, 79, 76, 74, 0, 72, 74, 76, 0, 74, 72, 69, 0, 76, 0, 79, 81, 84, 81, 79, 76, 74, 76, 74, 72, 74, 0, 0, 0], bass: [45, 45, 52, 52, 43, 43, 50, 50], chords: [[57, 60, 64], [52, 55, 59], [55, 59, 62], [57, 60, 64]] },
@@ -348,19 +387,37 @@ const TRACKS = {
     pad: { wave: 'sawtooth', vol: 0.015 },
     drums: { vol: 0.85, k: 'x...x...x...x...', s: '....x.......x..x', h: '..x...x...x...x.', c: CR(8) },
   },
-  // ラスボス戦（コドク）
+  // ラスボス戦（コドク）：タイトルのテーマ（ぽかぽか村とかなしい場面の旋律）を、ハ短調で。
+  //   前奏：回り音形の低いリフ → A：村の旋律を 4 分音符で大きく → B：かなしい場面の旋律（ドラムは半分の速さ）
+  //   → C：村の旋律をもとの速さで、回り音形を一段ずつ上げて前奏へ
   lastboss: {
-    bpm: 152, prog: 'Cm Ab Fm G Cm Ab Bb G Ab Bb Eb Cm Fm Db G G7',
+    bpm: 152,
+    prog: `Cm Ab Fm G
+      Cm Ab Bb G Cm Ab Gsus4,G Cm
+      Cm Cm/Bb Ab G Ab Cm,Bb G Cm,G
+      Cm G7 Cm,Ab Ab,Cm Ab Bb Cm G`,
     lead: { wave: 'sawtooth', vol: 0.11, det: 9, vib: 5, seq: `
-      C5 - - - G5 - - - | Ab5 - G5 - Eb5 - C5 - | F5 - - - Ab5 - C6 - | B5 - - - G5 - D5 - |
-      Eb5 - G5 - C6 - - D6 | Eb6 - - D6 C6 - Ab5 - | D6 - - C6 Bb5 - F5 - | G5 - - - B5 - D6 - |
-      C6 - - - Eb6 - - C6 | D6 - - - Bb5 - F5 - | G5 - - - Bb5 - Eb6 - | C6 - - - G5 - - . |
-      Ab5 - - G5 F5 - C5 - | F5 - - - Ab5 - Db6 - | B5 - - - D6 - - B5 | G5 - F5 - D5 - B4 -` },
+      C5 D5 C5 B4 C5 . G4 . | Ab4 Bb4 Ab4 G4 Ab4 . Eb4 . | F4 G4 F4 E4 F4 . C5 . | G5 . F5 . D5 . B4 . |
+      C5 - D5 - Eb5 - G5 - | Eb5 - D5 - C5 - - - | D5 - Eb5 - F5 - Eb5 - | D5 - C5 - B4 - - - |
+      C5 - D5 - Eb5 - G5 - | Ab5 - G5 - Eb5 - D5 - | C5 - D5 - C5 - B4 - | C5 - - - - - . . |
+      C5 - - - Eb5 - D5 - | C5 - - - Bb4 - - - | Ab4 - - - Bb4 - C5 - | G4 - - - - - - - |
+      C5 - - - Eb5 - F5 - | G5 - - - F5 - Eb5 - | D5 - - - Eb5 - D5 - | C5 - - - . . . . |
+      C5 D5 Eb5 G5 Eb5 D5 C5 . | D5 Eb5 F5 Eb5 D5 C5 B4 . | C5 D5 Eb5 G5 Ab5 G5 Eb5 D5 | C5 D5 C5 B4 C5 . . . |
+      Eb5 F5 Eb5 D5 Eb5 . C5 . | F5 G5 F5 Eb5 F5 . D5 . | G5 Ab5 G5 F5 G5 . Eb5 . | G5 - B5 - D6 - - - |` },
     lead2: { from: 'lead', wave: 'sawtooth', oct: -12, vol: 0.05 },
     arp: { pat: '0 1 2 3 4 3 2 1', wave: 'square', dec: 0.05, vol: 0.025 },
     bass: { pat: 'r - r r o - r r', wave: 'sawtooth', env: 'pluck', dec: 0.12, vol: 0.22 },
     pad: { wave: 'sawtooth', vol: 0.02 },
-    drums: { vol: 0.85, k: 'x.....x...x.....', s: '....x.......x...', h: '..x...x...x...x.', T: 'x...............', c: CR(8) },
+    // 各段の終わりに小太鼓のフィル。B は半分の速さ、C は 4 つ打ち
+    drums: {
+      vol: 0.85,
+      k: 'x.....x...x.....'.repeat(12) + 'x.........x.....'.repeat(8) + 'x...x...x...x...'.repeat(8),
+      s: '....x.......x...'.repeat(3) + '....x...x.x.xxxx' + '....x.......x...'.repeat(7) + '....x...x.x.xxxx' +
+        '........x.......'.repeat(7) + '....x...x.x.xxxx' + '....x.......x...'.repeat(7) + '....x...x.x.xxxx',
+      h: '..x...x...x...x.'.repeat(12) + 'x...x...x...x...'.repeat(8) + 'x.x.x.x.x.x.x.x.'.repeat(8),
+      T: 'x...............',
+      c: CR(4) + CR(8).repeat(3),
+    },
   },
 };
 
