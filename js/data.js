@@ -531,14 +531,14 @@ const CHAPTERS = [
 // ------------------------------------------------------------
 const ITEM_MAX = 9;
 const ITEMS = {
-  onigiri:  { name: 'にぼしおにぎり', icon: '🍙', price: 40, target: 'ally', desc: '味方単体のHPを最大HPの40%回復する。',
-    run: (B, s, t) => B.heal(s, t, t.maxHp * 0.4) },
-  katsuo:   { name: 'かつおぶし', icon: '🪵', price: 100, target: 'allies', desc: '味方全体のHPを最大HPの25%回復する。',
-    run: (B, s) => B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.25)) },
-  matatabi: { name: 'またたびの実', icon: '🫐', price: 80, target: 'ally', byEnergy: true, desc: '味方単体の必殺技エネルギーを最大値の50%ためる。',
-    run: (B, s, t) => { B.gainEnergy(t, t.energyMax * 0.5); B.float(t, 'ごろごろ', 'info'); } },
-  nekokan:  { name: 'ねこ缶', icon: '🥫', price: 150, target: 'down', desc: '戦闘不能の味方単体を、HP40%で起こす。',
-    run: (B, s, t) => B.revive(t, 0.4) },
+  onigiri:  { name: 'にぼしおにぎり', icon: '🍙', price: 40, target: 'ally', desc: '味方単体のHPを最大HPの30%回復する。',
+    run: (B, s, t) => B.heal(s, t, t.maxHp * 0.3) },
+  katsuo:   { name: 'かつおぶし', icon: '🪵', price: 100, target: 'allies', desc: '味方全体のHPを最大HPの20%回復する。',
+    run: (B, s) => B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.2)) },
+  matatabi: { name: 'またたびの実', icon: '🫐', price: 80, target: 'ally', byEnergy: true, desc: '味方単体の必殺技エネルギーを最大値の30%ためる。',
+    run: (B, s, t) => { B.gainEnergy(t, t.energyMax * 0.3); B.float(t, 'ごろごろ', 'info'); } },
+  nekokan:  { name: 'ねこ缶', icon: '🥫', price: 150, target: 'down', desc: '戦闘不能の味方単体を、HP10%で起こす。',
+    run: (B, s, t) => B.revive(t, 0.1) },
   jarashi:  { name: '猫じゃらし', icon: '🌾', key: true, has: () => storyCond('scene:c6_k3b'), target: 'single',
     desc: 'チョキチョキにもらった、だいじな猫じゃらし。敵の前で振る。猫じゃらしに目がない相手は、夢中になって1ターン行動できない（その敵には1戦闘に1回）。',
     run: (B, s, t) => {
