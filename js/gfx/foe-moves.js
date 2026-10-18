@@ -8,6 +8,16 @@
 //  2頭身の骨組みの敵（ネズミ・魔族・魔王など。model.critter）は、手足のポーズも動かす
 //  ボスの大技（ためる技のあとに撃つもの）は、ボスごとに専用の動きを持つ（ふだんの技と同じ動きにしない）
 // ============================================================
+// 黒い煙の形：まん中までしっかり濃く、ふちがもこもこした丸（glowTex だと、まん中しか黒くならない）
+function smokeTex() {
+  if (TexCache.smoke) return TexCache.smoke;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const blob = (x, y, r) => { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.85)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); };
+  blob(64, 64, 46);
+  for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; blob(64 + Math.cos(a) * 26, 64 + Math.sin(a) * 26, 26); }
+  return (TexCache.smoke = new THREE.CanvasTexture(c));
+}
 // ためる技（type: 'charge'）のあとに撃つ大技。撃つ前に、ボスを足もとからあおる（bigWindup）
 const BIG_FOE_MOVES = new Set(Object.values(ENEMY_MOVES).filter(m => m.type === 'charge').map(m => ENEMY_MOVES[m.next]));
 const FOE_MOVES = {
@@ -579,38 +589,42 @@ const FOE_MOVES = {
     g.rotation.x = 0;
     await GFX.delay(0.2);
   },
-  // 絶望（コドク専用）：コドクの足もとから黒い影が地面に広がり、みんなの足もとをのみこむ
+  // 絶望（コドク専用）：コドクの足もとから黒い闇が煙のように湧きだし、波になってみんなをのみこむ
+  //   暗い戦場では床に黒を敷いても見えないので、立ちのぼる黒い煙にする。煙のうしろにだけ紫の光を置いて、黒をふちどる
   async tide(e, ts, c) {
     const h = e.home, U = GFX.grade.uniforms, glow = '#a07bff';
     this.foeFlash(e, c.col);
     if (e.model.critter) this.foePose(e, POSES.open, 0.2);
-    const far = Math.max(...ts.map(t => h.distanceTo(t.home))) + 1.2;
-    const flat = (geo, mat, y, o) => { const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.set(h.x, y, h.z); m.scale.setScalar(0.01); m.renderOrder = o; this.fx.add(m, 1.9, null); return m; };
-    // 黒い影（ふつうの合成）の上に、加算で光る紫の紋様と、光るふちを重ねる（黒だけだと、何が起きたかわかりにくい）
-    const pool = flat(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ color: '#0a0612', transparent: true, opacity: 0.85, depthWrite: false }), 0.03, 2);
-    const runes = flat(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ color: hdr(glow, 1.8), map: runeTex(), transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }), 0.05, 3);
-    const edge = flat(new THREE.RingGeometry(0.93, 1, 64), new THREE.MeshBasicMaterial({ color: hdr(glow, 3), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }), 0.06, 4);
-    GFX.tween(0.3, k => { U.desat.value = 0.4 * k; }, Ease.out, true);
+    const far = Math.max(...ts.map(t => h.distanceTo(t.home))) + 1.0;
+    const pool = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ color: '#050208', transparent: true, opacity: 0.9, depthWrite: false }));
+    pool.rotation.x = -Math.PI / 2; pool.position.set(h.x, 0.03, h.z); pool.scale.setScalar(0.01); pool.renderOrder = 2;
+    this.fx.add(pool, 2.2, null);
+    GFX.tween(0.3, k => { U.desat.value = 0.35 * k; }, Ease.out, true);
+    Sfx.tone(60, 1.2, 'sawtooth', 0.07, -15); Sfx.noise(1.0, 0.07, 250);
+    // コドクの体からも、黒い煙があふれる
+    for (let i = 0; i < 8; i++) this.darkSmoke(h.clone().add(V3((Math.random() - 0.5) * e.model.radius * 2, 0, (Math.random() - 0.5) * e.model.radius)), 1.2 + Math.random() * 0.6, Math.random() * e.model.height * 0.6);
     const reached = new Set();
-    await GFX.tween(0.8, k => {
+    let front = 0;
+    await GFX.tween(0.9, k => {
       const r = far * Ease.inOut(k);
-      pool.scale.setScalar(Math.max(0.01, r)); runes.scale.setScalar(Math.max(0.01, r)); edge.scale.setScalar(Math.max(0.01, r));
-      runes.rotation.z = k * 1.5;
-      // ふちから、光る闇がゆらゆら立ちのぼる
-      for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.8, p = V3(h.x + Math.cos(a) * r, 0.1, h.z - Math.sin(a) * r); this.p.emit(p, V3(0, 1.4 + Math.random() * 1.2, 0), hdr(Math.random() < 0.5 ? glow : '#e0d0ff', 2.6), { life: 0.9, size: 0.26, drag: 0.5 }); }
+      pool.scale.setScalar(Math.max(0.01, r));
+      // 波の先で、黒い煙がもくもくと立ちのぼる（みんなのほうへ向かう側）
+      while (front < r) {
+        front += 0.45;
+        for (let i = 0; i < 4; i++) { const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.5; this.darkSmoke(V3(h.x + Math.cos(a) * front, 0, h.z - Math.sin(a) * front), 0.9 + Math.random() * 0.5, 0); }
+      }
       for (const t of ts) if (!reached.has(t) && h.distanceTo(t.home) < r) {
-        reached.add(t); t.model.flash(glow, 1.4); this.squash(t, 0.3);
-        // のみこまれた子の足もとから、紫の光の柱
-        this.fx.pillar(t.home, glow, { h: 3.2, r: 0.5, life: 0.7, k: 1.2 });
-        this.fx.ring(t.home.clone().add(V3(0, 0.07, 0)), glow, { r: 1.1, life: 0.5, width: 0.15, k: 2.5 });
-        for (let i = 0; i < 14; i++) this.p.emit(t.home.clone().add(V3((Math.random() - 0.5) * 0.7, 0.1, (Math.random() - 0.5) * 0.5)), V3(0, 1.8 + Math.random() * 1.2, 0), hdr(glow, 2.6), { life: 0.8, size: 0.18 });
+        reached.add(t); this.squash(t, 0.3);
+        // のみこまれた子のまわりで、黒い煙がうずを巻いてのぼる
+        for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; GFX.delay(i * 0.03).then(() => this.darkSmoke(t.home.clone().add(V3(Math.cos(a) * 0.45, 0, Math.sin(a) * 0.35)), 0.8, 0.2 + (i % 3) * 0.3)); }
+        t.model.flash('#140a24', 1.6);
+        this.fx.ring(t.home.clone().add(V3(0, 0.06, 0)), glow, { r: 1.0, life: 0.45, width: 0.1, k: 2 });
       }
     }, Ease.linear);
-    // しばらく、紋様が脈うつ
-    await GFX.tween(0.35, k => { runes.rotation.z = 1.5 + k * 0.6; runes.material.opacity = 0.7 + Math.sin(k * Math.PI * 3) * 0.25; });
-    GFX.tween(0.4, k => { U.desat.value = 0.4 * (1 - k); }, Ease.out, true);
-    await GFX.tween(0.4, k => { pool.material.opacity = 0.85 * (1 - k); runes.material.opacity = 0.7 * (1 - k); edge.material.opacity = 1 - k; });
-    pool.visible = runes.visible = edge.visible = false;
+    await GFX.delay(0.5);
+    GFX.tween(0.4, k => { U.desat.value = 0.35 * (1 - k); }, Ease.out, true);
+    await GFX.tween(0.4, k => { pool.material.opacity = 0.9 * (1 - k); });
+    pool.visible = false;
   },
 
   // ---------- ボスがためて撃つ大技 ----------
@@ -1085,6 +1099,23 @@ Object.assign(BattleView.prototype, {
       this.fx.ring(b, '#8a5aff', { r: 0.9, life: 0.35, face: this.camera.position, width: 0.1, k: 2 });
       if (hit) hit();
       return links;
+    });
+  },
+  // 黒い煙（絶望）：ふくらみながら立ちのぼる黒いかたまり。うしろに一回り大きな紫の光を置いて、ふちを光らせる
+  darkSmoke(at, size, y0 = 0) {
+    const v = V3((Math.random() - 0.5) * 0.4, 0.9 + Math.random() * 0.8, (Math.random() - 0.5) * 0.4), life = 1.0 + Math.random() * 0.5;
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#a07bff', 1.6), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+    const smoke = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex(), color: '#000000', transparent: true, depthWrite: false, opacity: 0 }));
+    halo.renderOrder = 10; smoke.renderOrder = 11;
+    const p = V3(at.x, size * 0.4 + y0, at.z), back = V3();
+    for (const [m, s] of [[halo, 1.2], [smoke, 1]]) this.fx.add(m, life, (k, o, dt) => {
+      if (s === 1) { p.addScaledVector(v, dt); v.multiplyScalar(1 - dt * 0.8); }
+      // 紫の光は、カメラから見て黒い煙のすぐうしろ
+      back.copy(p).sub(this.camera.position).normalize().multiplyScalar(s === 1 ? 0 : 0.15);
+      o.position.copy(p).add(back);
+      o.scale.setScalar(size * s * (0.5 + Ease.out(k) * 1.3));
+      const a = k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85;
+      o.material.opacity = a * (s === 1 ? 1 : 0.3);   // 紫が強いと、紫の霧に黒い穴があいたように見える
     });
   },
   // 土煙：ふくらみながら立ちのぼって、うすれていく土色のかたまり（光の粒だと明るい道で見えない）
