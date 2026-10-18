@@ -2827,7 +2827,8 @@ class FieldView extends BaseView {
     if (this.zone.portal) dot(this.zone.portal[0], this.zone.portal[1], '#e8c77a', 5);
     this.npcs.forEach(n => dot(n.pos.x, n.pos.z, '#6dff9e', 3));
     this.notes.forEach(n => dot(n.pos.x, n.pos.z, '#ffffff', 2.5, true));
-    this.chests.forEach(ch => { if (!ch.opened) dot(ch.pos.x, ch.pos.z, '#ffd66b', 3, true); });
+    // 宝箱の場所はデバッグのときだけ
+    if (Debug.on) this.chests.forEach(ch => { if (!ch.opened) dot(ch.pos.x, ch.pos.z, '#ffd66b', 3, true); });
     this.crystals.forEach(cr => { if (!cr.broken) dot(cr.pos.x, cr.pos.z, '#9d8cff', 2.5); });
     this.groups.forEach(gr => { if (gr.alive) dot(gr.pos.x, gr.pos.z, gr.state === 'chase' ? '#ff3040' : gr.elite ? '#ff9a4d' : '#ff6b81', gr.elite ? 4 : 3); });
     if (this.quest) {
@@ -2892,7 +2893,7 @@ class FieldView extends BaseView {
     if (Z.portal) dot(Z.portal[0], this.gy(Z.portal[0], Z.portal[1]), Z.portal[1], '#e8c77a', 5);
     this.npcs.forEach(n => dot(n.pos.x, n.pos.y, n.pos.z, '#6dff9e', 3));
     this.notes.forEach(n => dot(n.pos.x, n.pos.y, n.pos.z, '#ffffff', 2.5, true));
-    this.chests.forEach(ch => { if (!ch.opened) dot(ch.pos.x, ch.pos.y, ch.pos.z, '#ffd66b', 3, true); });
+    if (Debug.on) this.chests.forEach(ch => { if (!ch.opened) dot(ch.pos.x, ch.pos.y, ch.pos.z, '#ffd66b', 3, true); });
     this.crystals.forEach(cr => { if (!cr.broken) dot(cr.pos.x, cr.pos.y, cr.pos.z, '#9d8cff', 2.5); });
     this.groups.forEach(gr => { if (gr.alive) dot(gr.pos.x, gr.pos.y, gr.pos.z, gr.state === 'chase' ? '#ff3040' : gr.elite ? '#ff9a4d' : '#ff6b81', gr.elite ? 4 : 3); });
     (this.sealObjs || []).forEach(o => { if (!o.open && o.ready()) o.lamps.forEach(L => { if (!L.lit) dot(L.pos.x, L.pos.y, L.pos.z, { memory: '#ffe2a8', laugh: '#ffe07a', beacon: '#ff9a3a', bar: '#e8c080' }[o.S.look] || '#cfefff', 3.5); }); });
