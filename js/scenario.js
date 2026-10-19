@@ -125,7 +125,7 @@ const SCENES = {
       ['mike', 'スライムだ！　よーし、ぼくが——', { f: 'joy', g: 'fist', stance: { mike: 'ready' } }],
       ['kuro', '……下がってろ。俺一人でいい。', { f: 'serious', g: 'turnAway', move: { kuro: [0.4, 1.4] } }],
       ['mike', 'なんで！？　二人のほうが強いに決まってるじゃん！', { f: 'angry', g: 'fist', to: 'kuro' }],
-      ['n', '（ヒント：敵の頭の上に出ている属性が弱点。弱点で攻撃すると、白い「靭性ゲージ」が減って「弱点撃破」できる）', { cam: 'wide', dur: 6 }],
+      ['n', '（ヒント：敵の頭の上に出ている属性が弱点。弱点で攻撃すると、白い「弱点ゲージ」が減って「弱点撃破」できる）', { cam: 'wide', dur: 6 }],
     ] },
   c1_06: { title: '森の奥で', cast: ['e:risu', 'e:nezumi'], bgm: 'zone',
     stage: { zone: 'forest_deep', at: [-4, -4], face: 0,
