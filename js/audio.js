@@ -8,7 +8,11 @@ const Sfx = {
     setTimeout(() => { if (typeof Music !== 'undefined' && Music.want) { const w = Music.want; Music.want = null; Music.play(w); } }, 50);
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-      this.master = this.ctx.createGain(); this.master.gain.value = 0.5; this.master.connect(this.ctx.destination);
+      // master は大きめにして、重なった効果音が割れないよう出口でリミッターをかける（ほとんどの音はしきい値の下で、リミッターの持ち上げぶん 2 dB ほど大きくなる）
+      this.master = this.ctx.createGain(); this.master.gain.value = 2.5;
+      const lim = this.ctx.createDynamicsCompressor();
+      lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.2;
+      this.master.connect(lim); lim.connect(this.ctx.destination);
       for (const k of ['bgm', 'se']) { this[k] = this.ctx.createGain(); this[k].gain.value = this.vol[k]; this[k].connect(this.master); }
     } catch (e) { this.ctx = null; }
   },
