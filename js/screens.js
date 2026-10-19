@@ -190,7 +190,8 @@ function weaponIcon(id) {
   return `<span class="wp-ic" style="--wc:${c};--wg:${g}">${WEAPON_GLYPH[CHARS[w.owner].gear.weapon]}</span>`;
 }
 const weaponTier = id => '★'.repeat(WEAPONS[id].tier + 1);
-const weaponHint = id => { const g = WEAPONS[id].get || {}; return g.shop ? '武器屋で売っている' : g.chest ? `${FIELD_ZONES[g.chest[0]].mapName || FIELD_ZONES[g.chest[0]].name}の宝箱に眠っている` : ''; };
+// 宝箱の武器は、場所の名前がネタバレになるので、何章で手に入るかだけを出す（章の副題も出さない）
+const weaponHint = id => { const g = WEAPONS[id].get || {}; return g.shop ? '武器屋で売っている' : g.chest ? `${STORY[FIELD_ZONES[g.chest[0]].ci].title.split('　')[0]}の宝箱に眠っている` : ''; };
 // 武器の行：持っている武器には、その武器の技の名前と、持ちかえたときの HP・攻撃力・防御力の増減も出す
 function weaponList(key) {
   const eq = equippedWeapon(key), kind = WEAPON_KIND[CHARS[key].gear.weapon], o = Save.data.owned[key];
