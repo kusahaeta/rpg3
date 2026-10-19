@@ -172,10 +172,18 @@ function drawCatFeatures(g, L, st) {
     }
   }
 }
-const CAT_FACE_TEX = {};
+// 顔の画像は、表情・まばたき・口の開け閉めごとに 1 枚（1 枚 1.6MB ほど）。会話に出てくる組み合わせは全部で 900 ほどあり、
+// 全部とっておくと、遊び続けるうちにスマホのページがメモリの上限（iPhone でおよそ 2GB）を超えて落ちる。
+// 最近使った分だけとっておき（使うたびに後ろへ回す）、古いものは GPU からも手放す。まだ顔に貼ってあっても、次に描くときに画像から載せなおされる
+const CAT_FACE_TEX = new Map(), CAT_FACE_KEEP = 20000, CAT_FACE_MAX = 64;
 function catFeatureTex(key, L, st) {
-  const id = `${key}|${st.expr}|${st.closed ? 1 : 0}|${st.mouth ? 1 : 0}`;
-  if (CAT_FACE_TEX[id]) return CAT_FACE_TEX[id];
+  const id = `${key}|${st.expr}|${st.closed ? 1 : 0}|${st.mouth ? 1 : 0}`, now = performance.now();
+  const hit = CAT_FACE_TEX.get(id);
+  if (hit) { CAT_FACE_TEX.delete(id); CAT_FACE_TEX.set(id, hit); hit.userData.used = now; return hit; }
+  for (const [k, t] of CAT_FACE_TEX) {
+    if (CAT_FACE_TEX.size < CAT_FACE_MAX && now - t.userData.used < CAT_FACE_KEEP) break;
+    CAT_FACE_TEX.delete(k); t.dispose();
+  }
   const R = { x0: 40, y0: 90, w: 176, h: 100, S: 4 };
   const c = document.createElement('canvas'); c.width = R.w * R.S; c.height = R.h * R.S;
   const g = c.getContext('2d'); g.scale(R.S, R.S); g.translate(-R.x0, -R.y0);
@@ -184,7 +192,9 @@ function catFeatureTex(key, L, st) {
   t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
   t.repeat.set(512 / R.w, 256 / R.h);
   t.offset.set(-R.x0 / R.w, (R.y0 + R.h - 256) / R.h);
-  return (CAT_FACE_TEX[id] = t);
+  t.userData.used = now;
+  CAT_FACE_TEX.set(id, t);
+  return t;
 }
 class CatFace extends FaceRig {
   apply() { const t = catFeatureTex(this.key, this.L, this); if (this.mat.map !== t) { this.mat.map = t; this.mat.needsUpdate = true; } }
