@@ -1455,7 +1455,7 @@ const STORY = [
     { t: 'ending', g: 'Fin' },
   ] },
   // おまけ：ねこ神の寝所（雲のふとんと、光の輪）
-  { title: 'おまけ　ねこ神の夢', hidden: true, clearSet: { zone: 'dream_3', at: [0, -29], face: 0, cam: { pos: [1.5, 2.8, -8], look: [0, 0.4, 6] } }, steps: [
+  { title: 'おまけ　ねこ神の夢', hidden: true, dev: true, clearSet: { zone: 'dream_3', at: [0, -29], face: 0, cam: { pos: [1.5, 2.8, -8], look: [0, 0.4, 6] } }, steps: [
     { t: 'field', zone: 'dream', at: [0, 39], scene: 'c10_01', battle: '9-1', g: '猫神社の奥から、夢の世界へ' },
     { t: 'field', zone: 'dream_2', at: [0, -30], scene: 'c10_02', battle: '9-2', g: 'ちびクッキーとでかミルクで大きさを変えて、お菓子の庭の奥へ。へんてこ回廊は、へんなところがあれば引き返し、なければ進む' },
     { t: 'field', zone: 'dream_3', at: [0, -29], scene: 'c10_03', battle: '9-3', after: 'c10_04', g: '「ねこがころんだ」で、ねこ神がふりむいたら止まって、玉座の前へ' },

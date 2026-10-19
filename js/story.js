@@ -27,6 +27,8 @@ const Story = {
   },
   current() {
     const s = this.state, ch = STORY[s.ch];
+    // 開発中の章（dev）は、デバッグモードのときだけ進める。ほかのときは、すべてのお話を見終えたことにする
+    if (ch && ch.dev && !Debug.on) return null;
     return ch && ch.steps[s.step] ? { ch, chIdx: s.ch, step: ch.steps[s.step] } : null;
   },
   // エピローグを見終えたら「クリア後」
