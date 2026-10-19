@@ -192,7 +192,8 @@ function passCardHTML(n, fresh) {
   return `<b>魔王さま 面会許可証</b><div class="dc-slots">${PASS_STAMPS.map(([lab, st, cls], i) =>
     `<div class="dc-slot"><small>${lab}</small>${i < n ? `<i class="${cls || ''} ${fresh && i === n - 1 ? 'new' : ''}">${st}</i>` : ''}</div>`).join('')}</div>`;
 }
-function DialogueScreen(id, done) {
+// replay：あらすじから見直すとき。スキップはこのときだけ出す
+function DialogueScreen(id, done, replay) {
   const scene = SCENES[id];
   let v = GFX.ok ? (SCENE_STAGES[id] ? new StageView(scene, id) : new DialogueView(scene)) : null;
   if (v) { v.key = 'dialog:' + id; GFX.setView(v); }
@@ -201,7 +202,7 @@ function DialogueScreen(id, done) {
   const s = h(`<div class="screen dialog ${v ? '' : 'flat'}">
     <div class="dl-fade"></div>
     <div class="dl-title"><small>${scene.chapter || 'ぼうけん'}</small><b>${scene.title}</b></div>
-    <div class="dl-ctrl"><button class="ctl" data-auto>AUTO</button><button class="ctl" data-skip>スキップ</button></div>
+    <div class="dl-ctrl">${Debug.on ? '<button class="ctl" data-auto>AUTO</button>' : ''}${replay ? '<button class="ctl" data-skip>スキップ</button>' : ''}</div>
     <div class="dl-portrait"></div>
     <div class="dl-choices"></div>
     <div class="dl-card"></div>
@@ -335,15 +336,17 @@ function DialogueScreen(id, done) {
     advance();
   };
   s.addEventListener('click', e => { if (e.target.closest('button, .dl-skipask')) return; Sfx.init(); advance(); });
-  s.querySelector('[data-auto]').onclick = e => { auto = !auto; e.currentTarget.classList.toggle('on', auto); if (auto && !typing) scheduleAuto(); else clearTimeout(autoTimer); };
+  if (Debug.on) s.querySelector('[data-auto]').onclick = e => { auto = !auto; e.currentTarget.classList.toggle('on', auto); if (auto && !typing) scheduleAuto(); else clearTimeout(autoTimer); };
   // スキップの確認はゲーム画面の中に出す（ブラウザの confirm はダイアログを止めている環境だと何も出ずに「いいえ」になる）
   const ask = s.querySelector('.dl-skipask');
   const openAsk = () => { if (finished || asking) return; Sfx.click(); asking = true; clearTimeout(autoTimer); ask.classList.remove('hidden'); };
   const closeAsk = () => { if (!asking) return; asking = false; ask.classList.add('hidden'); if (!typing) scheduleAuto(); };
-  s.querySelector('[data-skip]').onclick = openAsk;
-  s.querySelector('[data-skip-yes]').onclick = () => { Sfx.click(); finish(); };
-  s.querySelector('[data-skip-no]').onclick = () => { Sfx.click(); closeAsk(); };
-  ask.addEventListener('click', e => { if (e.target === ask) closeAsk(); });
+  if (replay) {
+    s.querySelector('[data-skip]').onclick = openAsk;
+    s.querySelector('[data-skip-yes]').onclick = () => { Sfx.click(); finish(); };
+    s.querySelector('[data-skip-no]').onclick = () => { Sfx.click(); closeAsk(); };
+    ask.addEventListener('click', e => { if (e.target === ask) closeAsk(); });
+  }
   Game.activeDialog = {
     key(e) {
       const k = e.key;

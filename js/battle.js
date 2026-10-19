@@ -104,7 +104,7 @@ class Battle {
       ${this.v ? '<div class="world"></div>' : `<div class="bf-bg bg-${this.opts.bg || 'station'}"><div class="bf-floor"></div></div>`}
       <div class="bf-top"><div class="bf-title">${this.opts.title || ''}</div><div class="bf-wave"></div></div>
       <div class="bf-ctrl">
-        <button class="ctl" data-c="auto" title="オート (V)">AUTO</button>
+        ${Debug.on ? '<button class="ctl" data-c="auto" title="オート (V)">AUTO</button>' : ''}
         <button class="ctl" data-c="speed" title="倍速 (F)">×1</button>
         <button class="ctl" data-c="pause" title="メニュー (Esc)">❚❚</button>
       </div>
@@ -173,7 +173,7 @@ class Battle {
   }
 
   syncCtrl() {
-    this.$('[data-c=auto]').classList.toggle('on', Game.auto);
+    const a = this.$('[data-c=auto]'); if (a) a.classList.toggle('on', Game.auto);
     this.$('[data-c=speed]').textContent = '×' + Game.speed;
     this.$('[data-c=speed]').classList.toggle('on', Game.speed > 1);
   }
@@ -995,7 +995,7 @@ class Battle {
     else if (k === 'd' || k === 'arrowright') this.moveTarget(1);
     else if ('1234'.includes(k) && k.length === 1) this.requestUlt(+k - 1);
     else if (k === 'escape') { if (this.input && this.input.mode === 'ult') this.cancelUlt(); else this.togglePause(); }
-    else if (k === 'v') this.toggleAuto();
+    else if (k === 'v' && Debug.on) this.toggleAuto();
     else if (k === 'f') this.toggleSpeed();
   }
 
