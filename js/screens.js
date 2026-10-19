@@ -336,7 +336,7 @@ function renderShop(o, kind, name, close, field) {
           ? `<div class="dim">にぼしで武器を鍛えると（+1〜+${WEAPON_MAX}）、その武器を持ったときのHP・攻撃力・防御力が上がる。</div><div class="sh-list">${forge}</div>`
           : `<div class="dim">買った武器は「なかま」の画面で装備できる。武器を替えると、技がまるごと変わる。</div><div class="sh-list">${sale || '<div class="dim">いまは、売れる武器がないな。</div>'}</div>`);
     } else if (kind === 'item') {
-      const goods = Object.keys(ITEMS).filter(id => !ITEMS[id].key).map(id => {
+      const goods = Object.keys(ITEMS).filter(id => !ITEMS[id].key && !ITEMS[id].rare).map(id => {
         const it = ITEMS[id], n = itemCount(id), full = n >= ITEM_MAX;
         return `<div class="sh-row"><div class="sh-icon">${it.icon}</div><div class="sh-info"><b>${it.name}<em class="sh-have">持っている数 ${n}</em></b><small>${it.desc}</small></div><button class="btn small" data-ibuy="${id}" ${full || d.niboshi < it.price ? 'disabled' : ''}>${full ? 'もう持てない' : `にぼし ${it.price}`}</button></div>`;
       }).join('');

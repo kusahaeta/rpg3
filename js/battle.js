@@ -898,6 +898,9 @@ class Battle {
       return `<button data-item="${id}" class="${id === inp.item ? 'sel' : ''}" ${this.itemReady(inp.unit, id) ? '' : 'disabled'}><span class="im-ic">${it.icon}</span><b>${it.name}</b><em>${it.key ? '' : '×' + itemCount(id)}</em></button>`;
     }).join('');
     m.querySelectorAll('[data-item]').forEach(b => b.onclick = e => { e.stopPropagation(); this.selectItem(b.dataset.item); });
+    // R で選んだどうぐが見えるように、一覧の中だけスクロール（scrollIntoView は外側の画面までずらすことがある）
+    const sel = m.querySelector('.sel');
+    if (sel) m.scrollTop = clamp(m.scrollTop, sel.offsetTop + sel.offsetHeight - m.clientHeight + 10, sel.offsetTop - 10);
   }
 
   flashSp() {

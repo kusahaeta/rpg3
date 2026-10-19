@@ -857,7 +857,8 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .ab-btn { border-radius: 18px; }
 .ab-btn.item .ab-ic { font-size: 26px; }
 /* どうぐ：操作パネルの上に、持っているどうぐを並べる */
-.item-menu { position: absolute; right: 20px; bottom: 300px; width: 420px; z-index: 8; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: rgba(20, 24, 50, .92); border: 2px solid var(--gold); border-radius: 18px; padding: 10px; }
+/* どうぐが増えても画面からはみ出さないよう、高さをおさえて中でスクロール */
+.item-menu { position: absolute; right: 20px; bottom: 300px; width: 420px; max-height: 262px; overflow-y: auto; overscroll-behavior: contain; z-index: 8; display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 6px; background: rgba(20, 24, 50, .92); border: 2px solid var(--gold); border-radius: 18px; padding: 10px; }
 .item-menu button { display: flex; align-items: center; gap: 8px; text-align: left; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); padding: 7px 10px; color: var(--ink); }
 .item-menu button:hover:not([disabled]) { background: rgba(232, 199, 122, .2); }
 .item-menu button.sel { border-color: var(--gold); background: rgba(232, 199, 122, .28); box-shadow: 0 0 12px rgba(232, 199, 122, .4); }
