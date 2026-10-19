@@ -281,8 +281,8 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .impact i { position: absolute; left: -40px; top: -40px; width: 80px; height: 80px; border-radius: 50%; border: 4px solid var(--c);
   box-shadow: 0 0 20px var(--c), inset 0 0 20px var(--c); animation: ring .5s ease-out forwards; }
 .impact b { position: absolute; left: -90px; top: -3px; width: 180px; height: 6px; background: linear-gradient(90deg, transparent, #fff, var(--c), transparent);
-  transform: rotate(var(--r)); animation: slash .35s ease-out forwards; box-shadow: 0 0 12px var(--c); }
-.impact b.b2 { transform: rotate(calc(var(--r) + 70deg)); animation-delay: .06s; opacity: 0; }
+  animation: slash .35s ease-out forwards; box-shadow: 0 0 12px var(--c); }
+.impact b.b2 { animation-delay: .06s; opacity: 0; }
 .impact.big i { left: -80px; top: -80px; width: 160px; height: 160px; border-width: 6px; }
 .impact.big b { left: -150px; width: 300px; height: 9px; }
 @keyframes ring { from { transform: scale(.2); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
@@ -320,7 +320,9 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .ally .status { justify-content: flex-start; padding: 0 6px; margin-top: 1px; }
 .ult { position: absolute; right: 4px; top: 4px; width: 54px; height: 54px; border-radius: 50%; cursor: pointer; z-index: 3; background: rgba(255, 255, 255, .15); }
 /* 溜まった分のEP：3Dの対象サークルのように、白っぽい芯＋青いにじみで光らせる */
-.ally .ult::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#d4eaff calc(var(--e, 0) * 360deg), transparent 0);
+/*   （--e は中に何もない .ult-gauge にだけ置く。子に transition・animation・SVG がある要素のカスタムプロパティを
+      書きかえると、Safari（WebKit）は書きかえるたびに子のスタイルの分だけメモリを手放さなくなる） */
+.ult-gauge { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#d4eaff calc(var(--e, 0) * 360deg), transparent 0);
   filter: drop-shadow(0 0 2px #a8d4ff) drop-shadow(0 0 5px #4d9dff); }
 .ult-face { position: absolute; inset: 4px; border-radius: 50%; overflow: hidden; background: #0b1022; filter: grayscale(.8) brightness(.6); transition: .2s;
   display: flex; align-items: center; justify-content: center; }
@@ -429,7 +431,7 @@ img.avatar { display: block; width: 100%; height: 100%; object-fit: cover; objec
 .is3d .enemy { position: absolute; left: 0; top: 0; width: 0; height: 0; display: block; pointer-events: none; transition: none; }
 .is3d .enemy .e-info { position: absolute; bottom: 4px; left: 0; transform: translateX(-50%); width: 150px; margin: 0; pointer-events: auto; cursor: pointer; }
 .is3d .enemy.boss .e-info { width: 300px; }
-.is3d .e-hit { position: absolute; top: var(--dy, 0); left: 0; transform: translateX(-50%); pointer-events: auto; cursor: pointer; }
+.is3d .e-hit { position: absolute; top: 0; left: 0; transform: translateX(-50%); pointer-events: auto; cursor: pointer; }
 .is3d .e-hit .fx { inset: 0; }
 .is3d .e-hit .e-intent { bottom: auto; top: 30%; left: 50%; transform: translateX(-50%); }
 .is3d .tmark { display: none; }

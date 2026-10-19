@@ -1173,9 +1173,10 @@ class BattleView extends BaseView {
         v.copy(m.group.position); v.x += m.radius; v.project(cam);
         const w = Math.abs((v.x + 1) * 640 - x) * 2;
         el.style.transform = `translate(${clamp(x, 90, 1190).toFixed(1)}px, ${clamp(yTop, 150, 640).toFixed(1)}px)`;
-        el.style.setProperty('--dy', (yTop - clamp(yTop, 150, 640)).toFixed(1) + 'px');
+        // 当たりの枠のずれは .e-hit の top に直に書く（毎フレーム変わる値を el のカスタムプロパティにすると、
+        //   transition のある HP の帯などのぶん Safari がメモリを手放さない）
         const hit = el.querySelector('.e-hit');
-        if (hit) { hit.style.height = Math.max(40, yBot - yTop) + 'px'; hit.style.width = Math.max(60, w) + 'px'; }
+        if (hit) { hit.style.top = (yTop - clamp(yTop, 150, 640)).toFixed(1) + 'px'; hit.style.height = Math.max(40, yBot - yTop) + 'px'; hit.style.width = Math.max(60, w) + 'px'; }
       }
       if (e.ally && u.anchor) {
         v.copy(this.hitPoint(u)); v.y += 0.4; v.project(cam);
