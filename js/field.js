@@ -1241,8 +1241,8 @@ class FieldView extends BaseView {
       const all = Save.data.fieldChests || (Save.data.fieldChests = {});
       (all[this.zoneId] = all[this.zoneId] || []).push(c.id);
       const wid = (CHEST_WEAPONS[this.zoneId] || {})[c.id], gotW = wid && !hasWeapon(wid);
-      // 武器のない宝箱は、半分くらいがどうぐ。持ちきれないどうぐは、にぼしに替えてもらう
-      const iid = !gotW && Math.random() < 0.5 ? chestItem() : null, gi = iid && ITEMS[iid], full = gi && itemCount(iid) >= ITEM_MAX;
+      // 武器のない宝箱は、半分くらいがどうぐ（宝箱ごとに決まっている。chestItem）。持ちきれないどうぐは、にぼしに替えてもらう
+      const iid = gotW ? null : chestItem(this.zoneId, c.id), gi = iid && ITEMS[iid], full = gi && itemCount(iid) >= ITEM_MAX;
       const nib = gotW || (gi && !full) ? 0 : full ? gi.worth || gi.price : 40 + Math.floor(Math.random() * 7) * 10;
       if (gotW) gainWeapon(wid);
       if (gi && !full) { const items = Save.data.items || (Save.data.items = {}); items[iid] = itemCount(iid) + 1; }
