@@ -4,7 +4,7 @@
 //  - 行動値（AV）：距離10000 / 速度
 //  - SP共有（最大5）、通常攻撃+1 / スキル-1
 //  - 必殺技はEP満タンでいつでも割り込み可能（1〜4キー）
-//  - 靭性・弱点撃破・撃破効果（裂創/燃焼/凍結/感電/くらやみ/まぶしさ）
+//  - 弱点ゲージ・弱点撃破・撃破効果（裂創/燃焼/凍結/感電/くらやみ/まぶしさ）
 //  - にゃんこファンタジー：どうぐ（ITEMS）、友情ゲージとコンボスキル、にゃんこオールスターズ
 // ============================================================
 const Game = { speed: 1, auto: false, activeBattle: null, activeField: null };
@@ -1430,7 +1430,7 @@ class Battle {
 
   // ---------------- 敵ターン ----------------
   async enemyTurn(e) {
-    if (e.broken) { e.broken = false; e.toughness = e.maxTough; this.float(e, '靭性回復', 'info'); }
+    if (e.broken) { e.broken = false; e.toughness = e.maxTough; this.float(e, '弱点ゲージ回復', 'info'); }
     e.buffs = e.buffs.filter(b => b.key !== 'imprison');
     this.updateUnit(e);
     await this.tickDots(e);
