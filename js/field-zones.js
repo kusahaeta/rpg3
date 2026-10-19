@@ -5472,9 +5472,32 @@ class ZoneKit {
     for (const y of [1.4, h - 1.6]) this.mg(this.glow('#ff8ad8', 1.4), new THREE.CylinderGeometry(r * 0.94, r * 0.94, 0.1, 14), x, this.gy(x, z) + y, z);
     for (const sd of [-1, 1]) this.mg('gold', new THREE.ConeGeometry(r * 0.35, r * 0.7, 4), x + sd * r * 0.6, this.gy(x, z) + h + 0.3, z, [0, Math.PI / 4, -sd * 0.3]);
   }
-  // 壁のひっかき傷：四本の爪あと（ry = 壁の正面。岩肌の凹凸に埋もれないよう、壁の前後に厚みをもたせる）
+  // 壁のひっかき傷：四本の爪あと（ry = 壁の正面）。一本ずつ、まん中が太く両端がとがった、少し反った三日月形の溝。
+  // 削れたふちが淡く光り、溝の中は岩の地の色、片がわに影。四本は長さ・太さ・高さが少しずつちがう（四匹ぶん）。
+  // 岩肌の凹凸に埋もれないよう、一本ずつ上・まん中・下で壁の面を光線で調べ、面にそって傾けて貼り、奥へ厚みをもたせる
+  // （当たらなければ、壁の正面から 0.5 手前）。ふち・溝・影は、それぞれ一つのメッシュにまとめる
   scratches(x, z, ry, y = 1.5, col = '#d8c8f0') {
-    for (let i = 0; i < 4; i++) { const u = (i - 1.5) * 0.24; this.mesh(new THREE.BoxGeometry(0.07, 0.9, 1.0), this.glow(col, 0.9), x + Math.cos(ry) * u, y, z - Math.sin(ry) * u, { ry, rz: 0.25, noShadow: true }); }
+    const nx = Math.sin(ry), nz = Math.cos(ry), tx = Math.cos(ry), tz = -Math.sin(ry), y0 = this.gy(x, z) + y;
+    this.scene.updateMatrixWorld(true); const walls = []; this.scene.traverse(o => { if (o.isMesh && !o.material.isMeshBasicMaterial && !o.material.transparent) walls.push(o); });
+    const rc = new THREE.Raycaster(); rc.far = 4;
+    const depth = (u, v) => { rc.set(V3(x + tx * u + nx * 2, y0 + v, z + tz * u + nz * 2), V3(-nx, 0, -nz)); const h = rc.intersectObjects(walls, false)[0]; return h ? 2 - h.distance : 0.5; };
+    const lens = (L, w, front) => {
+      const s = new THREE.Shape(); s.moveTo(0, -L / 2); s.quadraticCurveTo(0.07 + w, 0, 0, L / 2); s.quadraticCurveTo(0.07 - w, 0, 0, -L / 2);
+      return new THREE.ExtrudeGeometry(s, { depth: 0.6, bevelEnabled: false, curveSegments: 10 }).translate(0, 0, front - 0.6);
+    };
+    const rims = [], cuts = [], shades = [], m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+    [[-0.36, -0.07, 0.76, 0.09], [-0.12, 0.03, 0.96, 0.11], [0.13, 0.05, 1.0, 0.12], [0.37, -0.05, 0.82, 0.095]].forEach(([u, v, L, w], i) => {
+      const lo = depth(u, v - L * 0.4), hi = depth(u, v + L * 0.4), mid = depth(u, v);
+      const lean = Math.atan2(hi - lo, L * 0.8), front = Math.max(mid, (lo + hi) / 2) + 0.015;
+      m4.compose(V3(u, v, front), q.setFromEuler(new THREE.Euler(lean, 0, 0.3 - i * 0.05)), V3(1, 1, 1));
+      rims.push(lens(L + 0.08, w + 0.035, 0).applyMatrix4(m4)); cuts.push(lens(L, w, 0.01).applyMatrix4(m4));
+      shades.push(lens(L * 0.9, w * 0.45, 0.02).translate(-w * 0.2, 0, 0).applyMatrix4(m4));
+    });
+    const g = new THREE.Group(); g.position.set(x, y0, z); g.rotation.y = ry;
+    const merge = THREEX.BufferGeometryUtils.mergeGeometries;
+    const flat = (k, c) => this.mc[k] || (this.mc[k] = new THREE.MeshBasicMaterial({ color: c }));
+    g.add(new THREE.Mesh(merge(rims), this.glow(col, 0.9)), new THREE.Mesh(merge(cuts), flat('scratchCut', '#6a5a88')), new THREE.Mesh(merge(shades), flat('scratchShade', '#1e1628')));
+    this.scene.add(g);
   }
   stall(x, z, ry = 0, cloth = 'clothRed', goods = ['#ffd27a', '#ff8a5a', '#6dff9e']) {
     this.box(x, z, 2.8, 1, 1.4, 'wood', { ry });
