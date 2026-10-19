@@ -4,7 +4,7 @@
 'use strict';
 const vm = require('vm'), fs = require('fs'), path = require('path');
 const root = path.resolve(__dirname, '..');
-const ctx = { clamp: (v, a, b) => Math.max(a, Math.min(b, v)), lerp: (a, b, t) => a + (b - a) * t, console, Math, document: { createElement: () => ({ getContext: () => ({}) }) }, localStorage: { getItem: () => null, setItem() {} }, location: { search: '' } };
+const ctx = { clamp: (v, a, b) => Math.max(a, Math.min(b, v)), lerp: (a, b, t) => a + (b - a) * t, console, Math, document: { createElement: () => ({ getContext: () => ({}) }), addEventListener() {} }, localStorage: { getItem: () => null, setItem() {} }, location: { search: '' } };
 ctx.window = ctx; vm.createContext(ctx);
 for (const f of ['data.js', 'screens.js', 'field-terrain.js', 'field-zones.js', 'npcs.js', 'scenario.js', 'scenario2.js'])
   vm.runInContext(fs.readFileSync(path.join(root, 'js', f), 'utf8'), ctx, { filename: f });
@@ -105,6 +105,20 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
     const h0 = s.ref ? T.groundAt(s.ref[0], s.ref[1]) - T.dentAt(s.ref[0], s.ref[1]) + T.dentAt(x, z) : undefined;
     if (!ok(x, z, s.r, h0)) bad.push(`${s.k} at ${x.toFixed(1)},${z.toFixed(1)} blocked`);
   }
+  // 宝箱が、調べるもの・住人の範囲（こちらが先に選ばれる）にかくれて、開けられなくなっていないか。宝箱から 2m 以内の立てる場所の 1/4 は空いていること
+  const claims = [...(Z.notes || []).flatMap(n => {
+    const mk = Array.isArray(n.mark) ? n.mark : [0, 0, 0], R = n.reach || 2.0;
+    return [{ k: 'note ' + n.title, x: n.at[0], z: n.at[1], r: R }, ...(mk[0] || mk[2] ? [{ k: 'mark ' + n.title, x: n.at[0] + mk[0], z: n.at[1] + mk[2], r: R + 0.4 }] : [])];
+  }), ...(Z.npcs || []).map(n => ({ k: 'npc ' + n.key, x: n.at[0], z: n.at[1], r: 2.2 }))];
+  (Z.chestAt || []).forEach((c, i) => {
+    let all = 0, free = 0; const hit = new Set();
+    for (let dx = -2; dx <= 2; dx += 0.25) for (let dz = -2; dz <= 2; dz += 0.25) {
+      const x = c[0] + dx, z = c[1] + dz;
+      if (Math.hypot(dx, dz) >= 2.0 || !ok(x, z, 0.4)) continue;
+      all++; const cl = claims.filter(q => Math.hypot(q.x - x, q.z - z) < q.r); cl.forEach(q => hit.add(q.k)); if (!cl.length) free++;
+    }
+    if (free < all / 4) bad.push(`chest${i} at ${c[0].toFixed(1)},${c[1].toFixed(1)} hidden by ${[...hit].join(' / ')} (free ${free}/${all})`);
+  });
   for (const e of Z.exits) { const E = T.exits[e.key]; if (!E) bad.push(`exit key ${e.key} missing in map`); else if (!E.cells.some(i => T.reach[i])) bad.push(`exit ${e.key} (${e.to}) unreachable`); }
   for (const key of Object.keys(T.exits)) if (!Z.exits.some(e => e.key === key)) bad.push(`map exit ${key} not in exits`);
   // 影の回廊：自分と影を、同時にそれぞれの光の輪へ入れられるか（いちばん少ない歩数。0.5m ずつ）

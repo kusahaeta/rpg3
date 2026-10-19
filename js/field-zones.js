@@ -2472,7 +2472,7 @@ const FIELD_ZONES = {
     map2d: [910, 30] },
   // 3F：南の謁見の廊下（両わきに、ひみつの遊び部屋と謁見の待合室）を抜けると、大きなクッションの玉座がある玉座の間
   demon_throne: { ci: 5, name: '魔王城・玉座の間', bgm: 'demonland', floor: '3F', parent: 'demon_castle', stage: '6-3', arenas: [[0, -14, 0]], build: 'demonThrone', arch: 'castle', bg: 'demon', groups: 0, chests: 2, crystals: 1, calmAfter: '6-3',
-    world: true, chestAt: [[-24, 8], [24, 8]],
+    world: true, chestAt: [[-24, 8], [18.5, 13.5]],
     th: { pattern: 'checker', floor: '#4a3a5a', floor2: '#3e304e', line: '#ff8ad8', floorGlow: 0.3, fog: '#2a1a38', fogD: 0.012, light: 1.1 },
     map: [
       '##############################',
