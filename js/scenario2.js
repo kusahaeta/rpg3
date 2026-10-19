@@ -671,7 +671,7 @@ Object.assign(SCENES, {
       ['kuro', '……消えない。……あいつらは、今も俺の中にいる。', { f: 'serious', stance: { kuro: 'ready' } }],
       ['shiro', 'はなれたって、何度でも、つなぎなおせばいいのよ！', { f: 'serious', g: 'fist', stance: { shiro: 'ready' } }],
       ['e:kodoku', 'ならば、試してみるがいい。孤独、絶望、疑心、思い出消去……すべての孤独を、受けてみろ。', { shake: 0.6, fx: 'darkness' }],
-      ['n', '（最終決戦：コドクが最後の姿になると、世界中の猫たちの声が届く。友情ゲージが満ちたら「にゃんこオールスターズ」を使おう！　Cキー）', { cam: 'wide', dur: 6, stance: { all: 'ready' } }],
+      ['n', '（最終決戦：コドクが最後の姿になると、世界中の猫たちの声が届く。友情ゲージが満ちたら「にゃんこオールスターズ」を使おう！）', { cam: 'wide', dur: 6, stance: { all: 'ready' } }],
     ] },
   c8_05: { title: 'みんなのにゃん力', cast: ['e:kodoku'], bgm: 'hope',
     stage: { zone: 'world_end', at: [0, -21], face: 0, cast: { 'e:kodoku': { at: [0, 9.5] } }, points: { sky: [0, 30, 60] } },
