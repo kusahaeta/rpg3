@@ -2693,7 +2693,7 @@ class FieldView extends BaseView {
     go('resume', () => this.closeOverlay());
     go('map', () => { this.closeOverlay(); this.mapMenu(); });
     go('recap', () => renderRecap(o, () => this.closeOverlay(),
-      id => this.leave(() => App.go(DialogueScreen, id, () => App.go(FieldScreen)))));
+      id => this.leave(() => App.go(DialogueScreen, id, () => App.go(FieldScreen), true))));
     go('opt', () => this.optionsMenu());
     for (const [m, scr] of [['chars', CharScreen], ['team', TeamScreen], ['bond', BondScreen]]) go(m, () => this.leave(() => App.go(scr)));
     // ジャンプ・セーブの差しもどしのあとは、いまの位置を記録しない（leave を通さない）

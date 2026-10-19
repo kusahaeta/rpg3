@@ -130,7 +130,8 @@ const Save = {
     this.migrate(this.data, ver);
     this.data.team = this.data.team.filter(k => this.data.owned[k]);
     if (!this.data.team.length) this.data.team = ['mike'];
-    Game.auto = !!this.data.auto; Game.speed = this.data.speed || 1;
+    // AUTO はデバッグのときだけ（?debug）。ふだんは前に入れたままの AUTO も切る
+    Game.auto = Debug.on && !!this.data.auto; Game.speed = this.data.speed || 1;
     Sfx.setVol('bgm', this.data.bgmVol); Sfx.setVol('se', this.data.seVol);
     if (Music.on !== this.data.bgm) Music.toggle();
   },
