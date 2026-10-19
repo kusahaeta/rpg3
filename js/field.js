@@ -2678,9 +2678,9 @@ class FieldView extends BaseView {
         ${item('opt', 'オプション', '音量・BGM・画質の設定')}
         ${Debug.on ? item('debug', 'デバッグ：章へジャンプ', '選んだ段階の直前まで進める') : ''}
       </div>
-      <div class="fm-foot">
+      ${Debug.on ? `<div class="fm-foot">
         <button class="link" data-reset>データを初期化</button>
-      </div></div>`;
+      </div>` : ''}</div>`;
     o.classList.remove('hidden');
     const go = (m, fn) => { o.querySelector(`[data-m=${m}]`).onclick = () => { Sfx.click(); fn(); }; };
     go('resume', () => this.closeOverlay());
@@ -2691,7 +2691,8 @@ class FieldView extends BaseView {
     for (const [m, scr] of [['chars', CharScreen], ['team', TeamScreen], ['bond', BondScreen]]) go(m, () => this.leave(() => App.go(scr)));
     // ジャンプ・セーブの差しもどしのあとは、いまの位置を記録しない（leave を通さない）
     if (Debug.on) go('debug', () => Debug.render(o, () => { this.persist = false; Story.resume(); }, () => this.closeOverlay()));
-    o.querySelector('[data-reset]').onclick = () => { if (confirm('セーブデータを初期化しますか？')) { this.persist = false; Save.reset(); App.go(TitleScreen); } };
+    // データの初期化は、デバッグモードのときだけ
+    if (Debug.on) o.querySelector('[data-reset]').onclick = () => { if (confirm('セーブデータを初期化しますか？')) { this.persist = false; Save.reset(); App.go(TitleScreen); } };
   }
   // オプション：BGM の ON/OFF、BGM・効果音の音量、画質（メニューの中から開き、もどるとメニューへ）
   optionsMenu() {
