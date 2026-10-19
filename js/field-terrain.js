@@ -712,8 +712,9 @@ function bulkheadTex() {
   return (TexCache.bulk = t);
 }
 // 看板（ホログラムの文字）
+//   TexCache にはためない（文字は区画ごとにちがい、1 枚 0.3MB の canvas が回った区画の数だけたまる）。区画を作るときに描くだけで、
+//   出るときに disposeTree で手放す
 function signTex(text, sub, color = '#ffd27a') {
-  const k = 'sign' + text + '|' + sub + color; if (TexCache[k]) return TexCache[k];
   const c = document.createElement('canvas'); c.width = 512; c.height = 128;
   const g = c.getContext('2d');
   // 木の看板
@@ -727,7 +728,7 @@ function signTex(text, sub, color = '#ffd27a') {
   g.strokeText(text, 60, sub ? 50 : 66, 430); g.fillText(text, 60, sub ? 50 : 66, 430);
   if (sub) { g.fillStyle = color; g.font = '800 24px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.lineWidth = 5; g.strokeText(sub, 62, 96, 430); g.fillText(sub, 62, 96, 430); }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-  return (TexCache[k] = t);
+  return t;
 }
 
 // 影の壁：うずまく闇のもや（白黒のノイズ。材質の色とかさねて使う）
