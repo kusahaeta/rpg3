@@ -1873,7 +1873,7 @@ class FieldView extends BaseView {
     const lead = this.team[this.leader].key, name = speakerName(S.who);
     if (lead === S.who) return true;
     const say = (S.tries || {})[lead], inTeam = this.team.some(m => m.key === S.who);
-    this.startTalk('', [...(say ? [[lead, say]] : []), ['n', (S.hint || `${name}なら、なんとかできそうだ。`) + (inTeam ? (Touch.on ? '（下の顔をタップして先頭の子を交代）' : '（1〜4で先頭の子を交代）') : `（${name}は、いま一行にいない。編成に入れよう）`)]]);
+    this.startTalk('', [...(say ? [[lead, say]] : []), ['n', (S.hint || `${name}なら、なんとかできそうだ。`) + (inTeam ? '（{1〜4で|下の顔をタップして}先頭の子を交代）' : `（${name}は、いま一行にいない。編成に入れよう）`)]]);
     return false;
   }
   // のろし台に火をつける／かんぬきを外す
@@ -1982,7 +1982,7 @@ class FieldView extends BaseView {
     if (lead !== 'tama') {
       const say = { mike: 'そーっと……そーっと……。……これ以上近づいたら、ほえられちゃう！', kuro: '……眠らせるか、見つからずに抜けるか、だな。', shiro: 'しーっ……。こういうときは、魔法より、子守歌よね。', maou: '……犬は苦手だ。' }[lead];
       const inTeam = this.team.some(m => m.key === 'tama');
-      this.startTalk('', [...(say ? [[lead, say]] : []), ['n', '見張りの番犬は、まだこちらに気づいていない。……タマのこもりうたなら、眠らせられるかもしれない。' + (inTeam ? (Touch.on ? '（下の顔をタップして先頭の子を交代）' : '（1〜4で先頭の子を交代）') : '（タマを編成に入れよう）')]]);
+      this.startTalk('', [...(say ? [[lead, say]] : []), ['n', '見張りの番犬は、まだこちらに気づいていない。……タマのこもりうたなら、眠らせられるかもしれない。' + (inTeam ? '（{1〜4で|下の顔をタップして}先頭の子を交代）' : '（タマを編成に入れよう）')]]);
       return;
     }
     g.asleep = true; (Save.data.flags || (Save.data.flags = {}))[g.G.id] = true; Save.save();
@@ -2305,11 +2305,11 @@ class FieldView extends BaseView {
   }
   // 台詞は文字列か、[話し手, 台詞]（掛け合い。話し手ごとに名前を出す）。[話し手, 台詞, 名前] なら、その名前を出す（影など）
   showTalkLine() {
-    const el = this.root.querySelector('.fd-talk'), t = this.talk, L = t.lines[t.i], text = Array.isArray(L) ? L[1] : L;
+    const el = this.root.querySelector('.fd-talk'), t = this.talk, L = t.lines[t.i], text = forInput(Array.isArray(L) ? L[1] : L);
     if (Array.isArray(L)) { el.querySelector('.fd-talk-name').textContent = L[2] || speakerName(L[0]); el.classList.toggle('note', L[0] === 'n'); if (L[0] !== 'n') Sfx.meow(L[0]); }
     el.querySelector('.fd-talk-text').textContent = text;
     if (t.npc && t.npc.m.face) { t.npc.m.face.talking = true; clearTimeout(this.talkT); this.talkT = setTimeout(() => { if (t.npc.m.face) t.npc.m.face.talking = false; }, 300 + text.length * 45); }
-    el.querySelector('.fd-talk-next').textContent = t.i < t.lines.length - 1 ? '▼ F' : '× F';
+    el.querySelector('.fd-talk-next').textContent = forInput(t.i < t.lines.length - 1 ? '▼{ F|}' : '×{ F|}');
   }
   advanceTalk() {
     const t = this.talk;
@@ -2659,7 +2659,7 @@ class FieldView extends BaseView {
   }
   toast(text) {
     const box = this.root.querySelector('.fd-toasts');
-    const t = document.createElement('div'); t.className = 'fd-toast'; t.textContent = text;
+    const t = document.createElement('div'); t.className = 'fd-toast'; t.textContent = forInput(text);
     box.appendChild(t);
     setTimeout(() => t.remove(), 3200);
   }

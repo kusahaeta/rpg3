@@ -255,7 +255,7 @@ function DialogueScreen(id, done, replay) {
   };
   const scheduleAuto = () => { clearTimeout(autoTimer); if (auto && !waitingChoice) autoTimer = setTimeout(advance, 1200 + full.length * 45); };
   const show = (speaker, text, nameOverride, dir) => {
-    full = text;
+    full = text = forInput(text);
     const nm = nameOverride || speakerName(speaker);
     nameEl.textContent = nm; nameEl.style.display = nm ? '' : 'none';
     box.classList.toggle('narr', speaker === 'n');
