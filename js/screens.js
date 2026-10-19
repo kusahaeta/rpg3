@@ -226,7 +226,9 @@ function CharScreen(sel) {
   const c = charKit(sel), o = Save.data.owned[sel], col = c.color, wid = equippedWeapon(sel);
   const st = charStats(sel, o.lv, o.eid);
   const ab = (label, a) => `<div class="ck-ab"><div class="ck-ab-h"><span class="ck-kind">${label}</span>${abElems(a).map(el => elemIcon(el)).join('')}<b>${a.name}</b>${a.target ? `<span class="ck-tg">${TARGET_NAME[a.target]}</span>` : ''}</div><p>${a.desc}</p></div>`;
-  const combos = COMBOS.filter(x => x.pair.includes(sel));
+  // 覚えたコンボだけ（相手と友情Lv3。「みんなと」は友情Lv3の仲間が2匹以上いれば、組み方しだいで戦闘で使える）
+  const learned = ([a, b]) => b === '*' ? keys.filter(k => k !== a && bondLv(a, k) >= 3).length >= 2 : bondLv(a, b) >= 3;
+  const combos = COMBOS.filter(x => x.pair.includes(sel) && learned(x.pair));
   const max = o.lv >= 80;
   const s = h(`<div class="screen chars">${topBar('なかま')}
     <div class="ck-list">${keys.map(k => charChip(k, (k === sel ? 'on ' : '') + (Save.data.team.includes(k) ? 'inteam' : ''))).join('')}</div>
