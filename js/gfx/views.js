@@ -151,9 +151,9 @@ function runeTex() {
 // 第二形態の演出の型：星核の番人は赤黒い雷、氷刃の女帝は吹雪と氷の棘
 // 第二形態の演出の型（ボスごと）：足もとの魔法陣・周りを巡る結晶・渦・稲妻や棘
 const P2_STYLES = {
-  guardian: { sub: '#fff8d8', dark: '#e8b830', crown: { color: '#e8d8a8', emissive: '#ffd24a', ei: 0.9 }, pulse: '#ffd24a', fog: '#8a8a60', swirl: ['#ffffff', '#8affe0', '#ffd24a'], tint: [0.15, 0.2, 0.5], desat: 0.2, charge: '#fff8d8', spikes: true, tone: [140, 110, 100] },
+  guardian: { sub: '#fff8d8', dark: '#e8b830', crown: { color: '#e8d8a8', emissive: '#ffd24a', ei: 0.9 }, pulse: '#ffd24a', fog: '#8a8a60', swirl: ['#ffffff', '#8affe0', '#ffd24a'], tint: [0.15, 0.2, 0.5], desat: 0.2, charge: '#fff8d8', glow: 0.4, tone: [140, 110, 100] },
   kodoku: { sub: '#e8e0ff', dark: '#1a0a4a', crown: { color: '#05020c', emissive: '#8a5aff', ei: 1.4 }, pulse: '#2a1070', fog: '#0c0620', swirl: ['#ffffff', '#ff8ab8', '#2a1070'], tint: [0.55, 0.6, 0.35], desat: 0.65, charge: '#020108', bolts: true, tone: [56, 44, 40] },
-  nekogami: { sub: '#fffff0', dark: '#ffd24a', crown: { color: '#fff4c8', emissive: '#ffe08a', ei: 1.0 }, pulse: '#ffe08a', fog: '#f8e8f0', swirl: ['#ffffff', '#ff9ad8', '#ffe08a'], tint: [0.05, 0.15, 0.4], desat: 0.1, charge: '#fffff0', spikes: false, tone: [220, 180, 160] },
+  nekogami: { sub: '#fffff0', dark: '#ffd24a', crown: { color: '#fff4c8', emissive: '#ffe08a', ei: 1.0 }, pulse: '#ffe08a', fog: '#f8e8f0', swirl: ['#ffffff', '#ff9ad8', '#ffe08a'], tint: [0.05, 0.15, 0.4], desat: 0.1, charge: '#fffff0', tone: [220, 180, 160] },
 };
 
 class BattleView extends BaseView {
@@ -635,7 +635,6 @@ class BattleView extends BaseView {
     suck();
     e.model.flash(S.charge, 1.5);
     if (S.bolts) for (let i = 0; i < 4; i++) GFX.delay(0.15 + i * 0.18).then(() => this.fx.bolt(core, core.clone().add(V3((Math.random() - 0.5) * 7, Math.random() * 3 - 2.5, (Math.random() - 0.5) * 5)), col, { life: 0.25, r: 0.03 }));
-    if (S.spikes) for (let i = 0; i < 3; i++) GFX.delay(0.2 + i * 0.25).then(() => this.fx.ring(h.clone().add(V3(0, 0.06, 0)), '#ffffff', { r: 3 + i * 1.5, life: 0.5, width: 0.08 }));
     await GFX.delay(1.0);
     pull = false;
     // ② 解放：閃光・幾重もの衝撃波・天を突く光柱・破片・稲妻
@@ -654,7 +653,6 @@ class BattleView extends BaseView {
     this.fx.shards(core, col, 26, 11);
     this.p.burst(core, col, 220, { speed: 14, life: 1.6, size: 0.16 });
     if (S.bolts) for (let i = 0; i < 10; i++) this.fx.bolt(core, h.clone().add(V3((Math.random() - 0.5) * 16, Math.random() * 6, (Math.random() - 0.5) * 10)), i % 3 ? col : '#ffffff', { life: 0.35, r: 0.04 });
-    if (S.spikes) for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2, r = 3 + (i % 3) * 2.2; GFX.delay(i * 0.04).then(() => this.iceSpike(V3(h.x + Math.cos(a) * r, 0, h.z + Math.sin(a) * r), 1.4 + Math.random() * 1.6, 1.3)); }
     e.model.flash('#ffffff', 2.4);
     if (this.set && this.set.hooks[S.hook]) this.set.hooks[S.hook]();
     await GFX.delay(1.2);
@@ -674,12 +672,12 @@ class BattleView extends BaseView {
       const halo = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 7.5), addMat(col, 1.2, 0.35)); halo.position.y = m.height * 0.64 + 0.2; halo.position.z = -1.2; g.add(halo);
       const veil = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.6, 16, 32, 1, true), new THREE.MeshBasicMaterial({ color: hdr(col, 0.8), transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
       veil.position.y = 8; g.add(veil);
-      const dark = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(S.dark, 0.7), blending: THREE.AdditiveBlending, depthWrite: false })); dark.scale.setScalar(9); dark.position.y = m.height * 0.64; g.add(dark);
+      const dark = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(S.dark, 0.7 * (S.glow || 1)), blending: THREE.AdditiveBlending, depthWrite: false })); dark.scale.setScalar(9); dark.position.y = m.height * 0.64; g.add(dark);
       const crowns = [];
       const cm = new THREE.MeshStandardMaterial({ color: S.crown.color, emissive: S.crown.emissive || col, emissiveIntensity: S.crown.ei, metalness: 0.4, roughness: 0.2, flatShading: true, transparent: !!S.crown.opacity, opacity: S.crown.opacity || 1 });
       for (let i = 0; i < 9; i++) { const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.35, 0), cm); c.scale.y = 2.4; g.add(c); crowns.push({ c, a: i / 9 * Math.PI * 2, y: 1.2 + (i % 3) * 1.6 }); }
       const light = new THREE.PointLight(col, 26, 22, 1.4); light.position.y = m.height * 0.6; g.add(light);
-      e.p2 = { g: root, body: g, big, small, halo, veil, dark, crowns, light, beat: 0, bolt: 0, spike: 1, scale0: m.group.scale.x, fog0: this.scene.fog ? this.scene.fog.color.clone() : null, k: 0 };
+      e.p2 = { g: root, body: g, big, small, halo, veil, dark, crowns, light, beat: 0, bolt: 0, scale0: m.group.scale.x, fog0: this.scene.fog ? this.scene.fog.color.clone() : null, k: 0 };
       if (u.key === 'boss_core' && this.set && this.set.hooks.coreSurge) this.set.hooks.coreSurge();
     }
     const P = e.p2;
@@ -691,13 +689,14 @@ class BattleView extends BaseView {
     P.body.position.set(m.group.position.x, 0, m.group.position.z);
     P.big.rotation.z = t * 0.25; P.small.rotation.z = -t * 0.6; P.halo.rotation.z = t * 0.4;
     P.big.material.opacity = (0.65 + Math.sin(t * 3) * 0.2) * k; P.small.material.opacity = 0.7 * k; P.halo.material.opacity = (0.22 + Math.sin(t * 2.4) * 0.08) * k;
-    P.veil.material.opacity = (0.08 + Math.sin(t * 5) * 0.03) * k; P.veil.rotation.y = t * 0.5;
+    const gl = S.glow || 1;   // 光の強さ（金の守護神は明るい色なので、白く飛ばないように弱める）
+    P.veil.material.opacity = (0.08 + Math.sin(t * 5) * 0.03) * k * gl; P.veil.rotation.y = t * 0.5;
     P.dark.scale.setScalar((8 + Math.sin(t * 4.8) * 1.4) * k); P.dark.position.y = core.y;
-    P.light.intensity = (22 + Math.sin(t * 13) * 5 + (Math.random() < 0.05 ? 20 : 0)) * k;
+    P.light.intensity = (22 + Math.sin(t * 13) * 5 + (Math.random() < 0.05 ? 20 : 0)) * k * gl;
     P.crowns.forEach((c, i) => { const a = c.a + t * 0.9; c.c.position.set(Math.cos(a) * 4.2, c.y + Math.sin(t * 2 + i) * 0.4, Math.sin(a) * 4.2); c.c.rotation.y = -a; c.c.scale.setScalar(k); c.c.scale.y = 2.4 * k; });
     m.group.scale.setScalar(P.scale0 * (1 + 0.12 * k));
     // 装甲の継ぎ目が赤黒く脈打つ
-    if (u.alive && !u.charging) m.flash(S.pulse, 0.08 + Math.max(0, Math.sin(t * 4.8)) * 0.22);
+    if (u.alive && !u.charging) m.flash(S.pulse, (0.08 + Math.max(0, Math.sin(t * 4.8)) * 0.22) * gl);
     if (this.scene.fog && P.fog0) this.scene.fog.color.lerpColors(P.fog0, new THREE.Color(S.fog), 0.7 * k);
     if (!u.alive) return;
     // 赤黒い渦（らせんに昇る）
@@ -713,13 +712,6 @@ class BattleView extends BaseView {
       // 灼けた空気：戦場全体に舞う火の粉
       this.p.emit(V3((Math.random() - 0.5) * 16, 0.1, (Math.random() - 0.5) * 12 - 1), V3((Math.random() - 0.5) * 0.4, 0.8 + Math.random(), 0), hdr(col, 1.8), { life: 2.6, size: 0.06, drag: 0 });
     }
-    // 氷の棘：味方の足もとから突き出し、砕け散る
-    if (S.spikes && (P.spike -= dt) <= 0) {
-      P.spike = 0.9 + Math.random() * 0.9;
-      const c = V3((Math.random() - 0.5) * 10, 0, 1 + Math.random() * 4);
-      for (let i = 0; i < 4; i++) this.iceSpike(c.clone().add(V3((Math.random() - 0.5) * 2, 0, (Math.random() - 0.5) * 1.5)), 0.8 + Math.random() * 1.2, 0.9);
-      this.fx.ring(c.clone().add(V3(0, 0.05, 0)), '#bfeaff', { r: 2.2, life: 0.6, width: 0.1 });
-    }
     // 稲妻
     if (S.bolts && (P.bolt -= dt) <= 0) {
       P.bolt = 0.12 + Math.random() * 0.3;
@@ -734,17 +726,6 @@ class BattleView extends BaseView {
       GFX.shake(0.07);
       Sfx.tone(S.tone[2], 0.4, 'sine', 0.14, -12); Sfx.tone(S.tone[2] - 4, 0.35, 'sine', 0.1, -10, 0.22);
     }
-  }
-  // 床から突き出す氷の棘（伸びて、少し留まり、砕けて消える）
-  iceSpike(p, h, hold = 1) {
-    const mat = this.iceMat || (this.iceMat = new THREE.MeshStandardMaterial({ color: '#cfefff', emissive: '#3aa0e0', emissiveIntensity: 0.6, metalness: 0.2, roughness: 0.1, transparent: true, opacity: 0.9, flatShading: true }));
-    const m = new THREE.Mesh(new THREE.ConeGeometry(0.28 + Math.random() * 0.15, 1, 5), mat);
-    m.position.copy(p); m.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * 3, (Math.random() - 0.5) * 0.5); m.scale.set(1, 0.01, 1);
-    this.scene.add(m);
-    Sfx.tone(900 + Math.random() * 400, 0.08, 'triangle', 0.03, -300);
-    GFX.tween(0.14, k => { m.scale.y = h * k; m.position.y = p.y + h * k / 2; }, Ease.out, true)
-      .then(() => GFX.delay(hold))
-      .then(() => { this.p.burst(m.position.clone(), '#dff4ff', 14, { speed: 3, life: 0.6, size: 0.08 }); this.scene.remove(m); m.geometry.dispose(); });
   }
   // 力をためる：ためる敵へ寄り、まわりの光が吸いこまれる（つぎの手番でカメラはもどる）
   chargeFx(t) {
