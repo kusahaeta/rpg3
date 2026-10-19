@@ -75,21 +75,25 @@ const MOVES = {
     },
   },
   // ---------------- ミケ（剣）：技ごとに、剣のふるい方を変える ----------------
-  // 勇者のつるぎ：敵の前へ駆けこみ、かかげた切っ先がきらり。横一文字に、となりの敵ごとなぎ払う
+  // 勇者のつるぎ：敵の前へ駆けこみ、剣を横へ引いて構えた切っ先がきらり。横一文字に、となりの敵ごとなぎ払う
   hero: {
     async attack(e, ts, c) {
       const t = ts[0], m = e.model, dest = this.meleeSpot(t, 0.8);
       const cx = ts.reduce((a, x) => a + x.home.x, 0) / ts.length;
+      // 横一文字を引く高さ（ねらう敵の列の、斬りつけるところ）
+      const ps = ts.map(x => this.hitPoint(x.u)), mid = ps.reduce((a, p) => a.add(p), V3()).multiplyScalar(1 / ps.length);
       this.setCam(V3(cx + 2.4, 2.3, dest.z + 3.4), V3(cx - 0.2, 0.7, t.home.z), { speed: 5 });
       await this.dashTo(e, dest, { pose: POSES.dash, dur: 0.26, hop: 0.15 });
       this.face(e, t.home);
-      await this.tweenPose(m, POSES.raise, 0.14);
-      this.glint(m.tipPos(), '#fff4c8', 1.1);
+      // 返す刀の構えで、切っ先を斬りつける高さまで上げる（POSES.raise だと 2頭身では切っ先が地面まで下がる）
+      await this.tweenPose(m, { ...POSES.strike2, armRx: -1.8, elbowR: -0.4 }, 0.14);
+      // きらりは横一文字と同じ高さに（大きな敵では、切っ先の真上の斬りつけるところに出る）
+      const tip = m.tipPos();
+      this.glint(V3(tip.x, mid.y, tip.z), '#fff4c8', 1.1);
       await GFX.delay(0.18);
       await this.tweenPose(m, POSES.strike2, 0.08);
       await this.sweep(m, POSES.strike, 0.16, c.col, { twist: -0.9 });
       // 横一文字：剣をふった向き（右から左）へ、細い光が敵の列をなぞっていく
-      const ps = ts.map(x => this.hitPoint(x.u)), mid = ps.reduce((a, p) => a.add(p), V3()).multiplyScalar(1 / ps.length);
       const span = Math.max(...ps.map(p => Math.abs(p.x - mid.x))) * 2, n = Math.max(2, Math.round(span / 1.1) + 2);
       for (let i = 0; i < n; i++) GFX.delay(i * 0.025).then(() => this.fx.slash(V3(mid.x + span / 2 + 0.6 - i * (span + 1.2) / (n - 1), mid.y, mid.z + 0.3), c.col, { cam: this.camera, size: 2.0, angle: 0.04, life: 0.36 }));
       for (const x of ts) this.squash(x, 0.15);
