@@ -529,6 +529,8 @@ const CHAPTERS = [
       { id: '8-3', name: 'コドク',           lv: 70, boss: true, waves: [['kagejuu', 'utsuro', 'kagejuu'], ['kodoku']] },
     ] },
   { id: 'c9', name: 'ねこ神の夢', bg: 'dream', desc: 'クリア後に見つかる、ふしぎな夢の世界。この世界を作った者が待つ。', hidden: true,
+    // dev：まだ開発中。デバッグモード（?debug）のときだけ入れる（zoneOpen・Story.current）
+    dev: true,
     stages: [
       { id: '9-1', name: '夢の入口',         lv: 72, waves: [['sakana', 'sakana'], ['purin']] },
       { id: '9-2', name: 'へんてこ回廊',     lv: 76, waves: [['nisemike', 'kuroPlush'], ['tamas']] },

@@ -3049,6 +3049,8 @@ function zonePath(from, to) {
 function zoneOpen(id) {
   const Z = FIELD_ZONES[id];
   if (!Z) return false;
+  // 開発中の章（CHAPTERS の dev）の区画は、デバッグモードのときだけ
+  if (CHAPTERS[Z.ci].dev && !(typeof Debug !== 'undefined' && Debug.on)) return false;
   return stageUnlocked(Z.stage) && (!Z.after || typeof Story === 'undefined' || Story.seen(Z.after));
 }
 // 区画の戦場（ワールド座標）。地形マップの区画はマス座標から直す
