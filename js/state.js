@@ -23,6 +23,7 @@ const Save = {
       auto: false, speed: 1, ver: 12,
       eco: null,          // 画質（false なめらか・true 省エネ・'low' 軽量）。null はおまかせ（スマホなら省エネ）
       gfxAuto: null,      // おまかせのとき、コマ数が足りなくて落とした画質の段階（GFX.watchFps）
+      bgm: true, bgmVol: 1, seVol: 1,   // オプション：BGM を鳴らすか・BGM と効果音の音量（0〜1）
       hp: {},             // HP の割合（にゃんこごと）。探索・物語の戦闘で引きつぐ（carried）
       energy: {},         // 奥義ゲージ（にゃんこごと）。ないときは戦闘のはじめの量
     };
@@ -130,6 +131,8 @@ const Save = {
     this.data.team = this.data.team.filter(k => this.data.owned[k]);
     if (!this.data.team.length) this.data.team = ['mike'];
     Game.auto = !!this.data.auto; Game.speed = this.data.speed || 1;
+    Sfx.setVol('bgm', this.data.bgmVol); Sfx.setVol('se', this.data.seVol);
+    if (Music.on !== this.data.bgm) Music.toggle();
   },
   save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { /* 保存不可の環境 */ } },
   reset() { localStorage.removeItem(SAVE_KEY); this.data = null; this.load(); },

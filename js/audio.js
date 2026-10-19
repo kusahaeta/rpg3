@@ -1,13 +1,15 @@
 'use strict';
 // WebAudio による効果音・にゃんこの声・BGM（外部ファイル不要）
+// 音量はオプション画面で決める（vol：bgm・se ともに 0〜1。1 がもとの大きさ）。BGM と効果音は別々の通り道（bgm・se）から master へ
 const Sfx = {
-  ctx: null, master: null, on: true,
+  ctx: null, master: null, se: null, bgm: null, on: true, vol: { bgm: 1, se: 1 },
   init() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     setTimeout(() => { if (typeof Music !== 'undefined' && Music.want) { const w = Music.want; Music.want = null; Music.play(w); } }, 50);
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.master = this.ctx.createGain(); this.master.gain.value = 0.5; this.master.connect(this.ctx.destination);
+      for (const k of ['bgm', 'se']) { this[k] = this.ctx.createGain(); this[k].gain.value = this.vol[k]; this[k].connect(this.master); }
     } catch (e) { this.ctx = null; }
   },
   tone(freq, dur, type = 'sine', vol = 0.15, slide = 0, delay = 0) {
@@ -17,7 +19,7 @@ const Sfx = {
     if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, freq + slide), t + dur);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.05);
+    o.connect(g); g.connect(this.se); o.start(t); o.stop(t + dur + 0.05);
   },
   noise(dur, vol = 0.2, freq = 2000, delay = 0) {
     if (!this.ctx || !this.on) return;
@@ -26,7 +28,11 @@ const Sfx = {
     for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
     const s = this.ctx.createBufferSource(), f = this.ctx.createBiquadFilter(), g = this.ctx.createGain();
     s.buffer = buf; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 0.8; g.gain.value = vol;
-    s.connect(f); f.connect(g); g.connect(this.master); s.start(t);
+    s.connect(f); f.connect(g); g.connect(this.se); s.start(t);
+  },
+  setVol(k, v) {
+    this.vol[k] = v;
+    if (this[k]) this[k].gain.setTargetAtTime(v, this.ctx.currentTime, 0.03);
   },
   click() { this.tone(880, 0.05, 'square', 0.04); },
   select() { this.tone(660, 0.06, 'triangle', 0.06); this.tone(990, 0.08, 'triangle', 0.05, 0, 0.04); },
@@ -71,7 +77,7 @@ const Sfx = {
     o.frequency.setValueAtTime(f0 * 0.85, t); o.frequency.exponentialRampToValueAtTime(f0 * 1.35, t + 0.09); o.frequency.exponentialRampToValueAtTime(f0 * 0.75, t + 0.34);
     bp.frequency.setValueAtTime(f0 * 1.8, t); bp.frequency.exponentialRampToValueAtTime(f0 * 3, t + 0.1); bp.frequency.exponentialRampToValueAtTime(f0 * 1.5, t + 0.34);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
-    o.connect(bp); bp.connect(g); g.connect(this.master); o.start(t); o.stop(t + 0.42);
+    o.connect(bp); bp.connect(g); g.connect(this.se); o.start(t); o.stop(t + 0.42);
   },
   win() { [523, 659, 784, 1046].forEach((f, i) => this.tone(f, 0.4, 'triangle', 0.08, 0, i * 0.12)); },
   lose() { [392, 330, 262].forEach((f, i) => this.tone(f, 0.5, 'sine', 0.08, 0, i * 0.2)); },
@@ -607,7 +613,7 @@ const Music = {
     this.stop(); this.cur = name;
     const T = TRACKS[name]; if (!T) return;
     const ctx = Sfx.ctx, out = this.out = ctx.createGain(), now = ctx.currentTime;
-    out.gain.setValueAtTime(0, now); out.gain.linearRampToValueAtTime(0.16 * this.vol, now + 1.2); out.connect(Sfx.master);
+    out.gain.setValueAtTime(0, now); out.gain.linearRampToValueAtTime(0.16 * this.vol, now + 1.2); out.connect(Sfx.bgm);
     const p = this.player = new MusicPlayer(ctx, out, T);
     // 画面が隠れているとタイマーが間引かれるので、そのぶん先まで書いておく
     const tick = () => p.schedule(ctx.currentTime + (document.hidden ? 1.5 : 0.4), ctx.currentTime);
@@ -623,7 +629,7 @@ const Music = {
     }
     this.timer = null; this.out = null; this.player = null; this.cur = null;
   },
-  toggle() { this.on = !this.on; if (!this.on) { const c = this.cur; this.stop(); this.want = c; } else if (this.want) this.play(this.want); return this.on; },
+  toggle() { this.on = !this.on; if (!this.on) { const c = this.cur; this.stop(); this.want = c || this.want; } else if (this.want) this.play(this.want); return this.on; },
 };
 // 戦いの曲：ラスボス（final）がいればラスボス戦、ボスがいればボス戦、ほかはふつうの戦い
 function battleBgm(waves) {
