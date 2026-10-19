@@ -249,7 +249,7 @@ const CHARS = {
 const HERO = 'mike';
 
 // ------------------------------------------------------------
-//  コンボスキル（友情Lv3で解禁）と、最終スキル
+//  コンボスキル（友情Lv3で解禁）と、最終決戦の最終スキル
 // ------------------------------------------------------------
 const COMBOS = [
   { id: 'nyankoBreak', pair: ['mike', 'kuro'], name: 'にゃんこブレイク', elem: 'physical', desc: 'ミケとクロの連携。指定した敵単体にミケの攻撃力250%＋クロの攻撃力250%の物理ダメージ。靭性を大きく削る。', target: 'single',
@@ -267,7 +267,7 @@ const ALLSTARS = { id: 'allstars', name: 'にゃんこオールスターズ', el
 
 // 友情（2匹の組み合わせごと）：一緒に旅をした時間
 const BOND_LV = [0, 30, 80, 150, 250];   // Lv1〜5 に必要な友情値
-const BOND_INFO = ['通常会話', '戦闘中の掛け合い', 'コンボスキル', '特別イベント', '最終スキル'];
+const BOND_INFO = ['通常会話', '戦闘中の掛け合い', 'コンボスキル', '特別イベント', '特別イベント'];
 const bondKey = (a, b) => [a, b].sort().join('|');
 function bondPts(a, b) { return ((Save.data && Save.data.bond) || {})[bondKey(a, b)] || 0; }
 function bondLv(a, b) { const p = bondPts(a, b); let lv = 1; for (let i = 1; i < BOND_LV.length; i++) if (p >= BOND_LV[i]) lv = i + 1; return lv; }

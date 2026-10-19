@@ -280,6 +280,8 @@ document.addEventListener('keydown', e => {
 // ------------------------------------------------------------
 //  友情：2匹の組み合わせごとの友情レベルと、特別イベント
 // ------------------------------------------------------------
+// 見た特別イベントの記録：Lv4 は組み合わせの名前のまま（前からのセーブと同じ）、Lv5 は「組み合わせ#5」
+const bondSeenKey = (k, n) => +n === 4 ? k : `${k}#${n}`;
 function BondScreen() {
   const v3 = GFX.show('scene:bond', () => new SceneryView('meadow'));
   if (v3) v3.setEnemies([]);
@@ -287,21 +289,22 @@ function BondScreen() {
   const pairs = []; for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) pairs.push([ks[i], ks[j]]);
   const s = h(`<div class="screen bondscr">${topBar('友情')}
     <div class="bd-intro">友情は「一緒に旅をした時間」。一緒に戦ったり、話したり、物語を進めると深まります。<br>
-      Lv2：戦闘中の掛け合い　Lv3：コンボスキル　Lv4：特別イベント　Lv5：最終スキル</div>
+      Lv2：戦闘中の掛け合い　Lv3：コンボスキル　Lv4・Lv5：特別イベント</div>
     <div class="bd-list">${pairs.length ? pairs.map(([a, b]) => {
       const lv = bondLv(a, b), p = bondPts(a, b), nx = BOND_LV[lv] ?? null, pr = nx ? (p - BOND_LV[lv - 1]) / (nx - BOND_LV[lv - 1]) : 1;
-      const ev = BOND_EVENTS[bondKey(a, b)], seen = Save.data.bondSeen[bondKey(a, b)];
+      const k = bondKey(a, b), ev = BOND_EVENTS[k];
       const combo = COMBOS.find(c => c.pair.join('|') === bondKey(a, b) || (c.pair[0] === b && c.pair[1] === a));
       return `<div class="bd-pair">
         <div class="bd-faces"><div>${avatarSVG(a)}</div><div>${avatarSVG(b)}</div></div>
         <div class="bd-info"><b>${CHARS[a].name} × ${CHARS[b].name}</b><small>${BOND_TAGS[bondKey(a, b)] || ''}</small>
           <div class="bd-hearts">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= lv ? 'on' : ''}">♥</i>`).join('')}<span>Lv.${lv}</span></div>
           <div class="bar bondbar"><i style="width:${pr * 100}%"></i></div>
-          <div class="bd-perks">${combo ? `<span class="${lv >= 3 ? 'on' : ''}">コンボ「${combo.name}」</span>` : ''}${ev ? `<button class="btn small ${lv >= 4 ? '' : 'dis'}" data-ev="${bondKey(a, b)}" ${lv >= 4 ? '' : 'disabled'}>${seen ? '♥ もう一度見る' : lv >= 4 ? '♥ 特別イベント' : '特別イベント（Lv4）'}</button>` : ''}</div>
+          <div class="bd-perks">${combo ? `<span class="${lv >= 3 ? 'on' : ''}">コンボ「${combo.name}」</span>` : ''}${ev ? Object.keys(BOND_EVENT_LV).map(n => { const seen = Save.data.bondSeen[bondSeenKey(k, n)], ok = lv >= n;
+            return `<button class="btn small ${ok ? '' : 'dis'}" data-ev="${k}" data-lv="${n}" ${ok ? '' : 'disabled'}>${seen ? `♥ もう一度見る（Lv${n}）` : ok ? `♥ 特別イベント（Lv${n}）` : `特別イベント（Lv${n}）`}</button>`; }).join('') : ''}</div>
         </div></div>`;
     }).join('') : '<div class="dim">仲間がふえると、ここに友情が記録されます。</div>'}</div></div>`);
   wireBack(s);
-  on(s, '[data-ev]', 'click', el => { const k = el.dataset.ev; Save.data.bondSeen[k] = true; Save.save(); App.go(DialogueScreen, BOND_EVENTS[k], () => App.go(BondScreen)); });
+  on(s, '[data-ev]', 'click', el => { const k = el.dataset.ev, n = el.dataset.lv; Save.data.bondSeen[bondSeenKey(k, n)] = true; Save.save(); App.go(DialogueScreen, BOND_EVENTS[k] + BOND_EVENT_LV[n], () => App.go(BondScreen)); });
   return s;
 }
 
