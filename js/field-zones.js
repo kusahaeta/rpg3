@@ -5291,10 +5291,10 @@ class ZoneKit {
     this.box(x, z, 0.18, 2.2, 0.18, 'wood2');
     this.sign(x + Math.sin(ry) * 0.12, z + Math.cos(ry) * 0.12, ry, text, sub, '#ffd27a', 1.8, 2.0);
   }
-  // 看板：二本の脚に横長の札（ry = 札の正面）
+  // 看板：二本の脚に横長の札（ry = 札の正面）。脚は札の裏に立てて、文字の前に出ないようにする
   board(x, z, ry, text, sub) {
     const c = Math.cos(ry), sn = Math.sin(ry);
-    for (const u of [-0.9, 0.9]) this.cyl(x + u * c, z - u * sn, 0.07, 1.9, 'wood2', { seg: 6 });
+    for (const u of [-0.9, 0.9]) this.cyl(x + u * c - sn * 0.13, z - u * sn - c * 0.13, 0.07, 1.9, 'wood2', { seg: 6 });
     this.box(x, z, 2.2, 0.62, 0.1, 'wood2', { y: 1.15, ry, col: false });
     this.sign(x + sn * 0.06, z + c * 0.06, ry, text, sub, '#ffd27a', 1.46, 2.1);
   }
@@ -7637,7 +7637,7 @@ const ZONE_BUILD = {
     // 店の看板（広場の西と東の家並み）
     const signCol = '#ffd27a';
     for (const [x, z, ry, t, sub] of [[-23.9, -10, Math.PI / 2, 'パン屋 こむぎ', '焼きたて'], [-23.9, 2, Math.PI / 2, '花屋', 'ねこじゃらしあります'],
-      [23.9, -11, -Math.PI / 2, '雑貨屋', 'なんでもあるにゃ'], [23.9, -1, -Math.PI / 2, 'ミルク屋', '本日も新鮮'], [9.9, 16, -Math.PI / 2, 'カフェ にゃんぷー', null], [9.9, 31, -Math.PI / 2, 'おみやげ', null]])
+      [23.9, -11, -Math.PI / 2, '雑貨屋', 'なんでもあるにゃ'], [23.9, -1, -Math.PI / 2, 'ミルク屋', '本日も新鮮'], [9.9, 15.6, -Math.PI / 2, 'カフェ にゃんぷー', null], [9.9, 31, -Math.PI / 2, 'おみやげ', null]])
       K.sign(x, z, ry, t, sub, signCol, 3.2, 2.4);
 
     // ---- 南の大通り：「ようこそ」のアーチ、並木、街灯、旗飾り ----
@@ -8878,7 +8878,7 @@ const ZONE_BUILD = {
     };
     for (const z of [-19, -16, -5, -2, 1, 4]) cask(-8.6, z, 0);
     for (const z of [-19, -16, -7, -4, -1, 2, 13, 16]) cask(12.6, z, Math.PI);
-    for (const x of [-6, 10]) K.sign(x, -21.8, 0, 'ミルク', '毎朝あたためること', '#ff8ad8', 3.4, 2.2);
+    for (const x of [0.7, 8.7]) K.sign(x, -21.8, 0, 'ミルク', '毎朝あたためること', '#ff8ad8', 3.4, 2.2);
     K.demonChandelier(2, -10, 1, '#ffa04a'); K.demonChandelier(2, 8, 1, '#ffa04a');
     for (const [x, z] of [[-2, 16.5], [6, 16.5]]) K.brazier(x, z, '#ffa04a', 1.2);
     // 牢屋：鉄格子（扉の所はあけたまま、扉は外へ開いている）・わらの寝床・鎖
@@ -9034,7 +9034,6 @@ const ZONE_BUILD = {
     K.root(-8, 36, 8, 40, 1.4, 7); K.root(-30, 20, -10, 28, 1.2, 4); K.root(30, 22, 12, 34, 1.1, 4);
     const flatLeaf = leafGeo(0.8, 0), groundLeaf = revived ? leafMat('#7ac860', '#1a3a14') : leafMat('#c0c0b2', '#3a3a34');
     for (let i = 0; i < 40; i++) K.mesh(flatLeaf, groundLeaf, (K.r() - 0.5) * 50, 0.04, -16 + (K.r() - 0.5) * 30, { rx: -Math.PI / 2, rz: K.r() * 6, noShadow: true });
-    K.signpost(-3, -24, 0.2, '↓ にゃんだーの樹', '→ 世界の果て');
     // 南の根のトンネルの奥の封印の扉：c7_01b でタマがふれると開き、そのあとは開いたまま（トンネルは幅 4m なので小さめ。北向きの面が正面）
     K.sealDoor(0, 40.5, Math.PI, storyCond('scene:c7_01b'), 0.7, { roots: true, moss: new THREE.MeshStandardMaterial({ color: new THREE.Color('#9a9a88').lerp(new THREE.Color('#5ad06a'), h), roughness: 0.9 }) });
     // 灰色に色あせた葉の吹きだまり（調べられる）
