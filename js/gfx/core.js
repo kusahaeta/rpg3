@@ -555,6 +555,18 @@ function streakTex() {
   g.globalCompositeOperation = 'destination-out'; g.fillStyle = v; g.fillRect(0, 0, 256, 64);
   return (TexCache.streak = new THREE.CanvasTexture(c));
 }
+// きらりの十字の一本（streakTex と同じ形で、いちばん明るいところを真ん中に。十字の交わりが光の中心にくる）
+function flareTex() {
+  if (TexCache.flare) return TexCache.flare;
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 256, 0);
+  gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 64);
+  const v = g.createLinearGradient(0, 0, 0, 64);
+  v.addColorStop(0, 'rgba(0,0,0,1)'); v.addColorStop(0.5, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,1)');
+  g.globalCompositeOperation = 'destination-out'; g.fillStyle = v; g.fillRect(0, 0, 256, 64);
+  return (TexCache.flare = new THREE.CanvasTexture(c));
+}
 
 // 雪の結晶の魔法陣（白、アルファ付き）
 function snowTex() {
@@ -706,8 +718,9 @@ class FX {
       if (t >= 1) { this.scene.remove(it.obj); disposeTree(it.obj); this.items.splice(i--, 1); }
     }
   }
-  sprite(pos, color, size, life, { k = 3, grow = 1.5 } = {}) {
-    const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(color, k), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  // top：地面や体にかくれず、いつも手前に描く（切っ先のきらりなど、地面すれすれに出る小さな光）
+  sprite(pos, color, size, life, { k = 3, grow = 1.5, top = false } = {}) {
+    const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(color, k), blending: THREE.AdditiveBlending, depthWrite: false, depthTest: !top, transparent: true }));
     m.position.copy(pos); m.scale.setScalar(size); m.renderOrder = 11;
     return this.add(m, life, t => { m.material.opacity = 1 - t; m.scale.setScalar(size * (1 + (grow - 1) * Ease.out(t))); });
   }
@@ -724,8 +737,9 @@ class FX {
       mat.opacity = 1 - t;
     });
   }
-  slash(pos, color, { size = 2.2, angle = Math.random() * Math.PI, life = 0.32, cam } = {}) {
-    const mat = new THREE.MeshBasicMaterial({ map: streakTex(), color: hdr(color, 4), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  // sym：光を真ん中に（十字のきらり）。ないときは斬撃らしく、進む先の側が明るい。top は sprite と同じ
+  slash(pos, color, { size = 2.2, angle = Math.random() * Math.PI, life = 0.32, cam, sym = false, top = false } = {}) {
+    const mat = new THREE.MeshBasicMaterial({ map: sym ? flareTex() : streakTex(), color: hdr(color, 4), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, depthTest: !top, side: THREE.DoubleSide });
     const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 0.14), mat);
     m.position.copy(pos);
     if (cam) m.quaternion.copy(cam.quaternion);

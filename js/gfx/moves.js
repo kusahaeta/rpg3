@@ -1279,10 +1279,10 @@ Object.assign(BattleView.prototype, {
       for (let i = 0; i < n; i++) this.p.emit(tp, V3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(0.4), c, { life: 0.3, size, drag: 4 });
     }, ease);
   },
-  // きらり：十字の光
+  // きらり：十字の光（真ん中が p にくるよう、光の中心がまんなかの模様で。地面すれすれでも下半分が地面にかくれないよう、手前に描く）
   glint(p, col, size = 1) {
-    this.fx.sprite(p, col, size * 0.8, 0.3, { k: 4, grow: 1.2 });
-    for (const a of [0, Math.PI / 2]) this.fx.slash(p, col, { cam: this.camera, size: size * 1.6, angle: a, life: 0.3 });
+    this.fx.sprite(p, col, size * 0.8, 0.3, { k: 4, grow: 1.2, top: true });
+    for (const a of [0, Math.PI / 2]) this.fx.slash(p, col, { cam: this.camera, size: size * 1.6, angle: a, life: 0.3, sym: true, top: true });
   },
   // 右手の武器を s 倍に（技のあいだだけ。終わったら 1 に戻す）
   weaponGrow(m, s, dur) {
