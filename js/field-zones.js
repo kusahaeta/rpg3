@@ -9034,7 +9034,6 @@ const ZONE_BUILD = {
     K.root(-8, 36, 8, 40, 1.4, 7); K.root(-30, 20, -10, 28, 1.2, 4); K.root(30, 22, 12, 34, 1.1, 4);
     const flatLeaf = leafGeo(0.8, 0), groundLeaf = revived ? leafMat('#7ac860', '#1a3a14') : leafMat('#c0c0b2', '#3a3a34');
     for (let i = 0; i < 40; i++) K.mesh(flatLeaf, groundLeaf, (K.r() - 0.5) * 50, 0.04, -16 + (K.r() - 0.5) * 30, { rx: -Math.PI / 2, rz: K.r() * 6, noShadow: true });
-    K.signpost(-3, -24, 0.2, '↓ にゃんだーの樹', '→ 世界の果て');
     // 南の根のトンネルの奥の封印の扉：c7_01b でタマがふれると開き、そのあとは開いたまま（トンネルは幅 4m なので小さめ。北向きの面が正面）
     K.sealDoor(0, 40.5, Math.PI, storyCond('scene:c7_01b'), 0.7, { roots: true, moss: new THREE.MeshStandardMaterial({ color: new THREE.Color('#9a9a88').lerp(new THREE.Color('#5ad06a'), h), roughness: 0.9 }) });
     // 灰色に色あせた葉の吹きだまり（調べられる）
