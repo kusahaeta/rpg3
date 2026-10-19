@@ -578,7 +578,7 @@ function itemCount(id) {
 //  RARE_CHESTS：レアどうぐの入った宝箱 [区画, 宝箱の番号]。各章の奥の区画に置く（大トロと金のまたたびは、宝箱でしか見つからない）
 //  それ以外の武器のない宝箱は、物語の順（FIELD_ZONES の順）に数えて、ひとつおきに CHEST_ITEM_CYCLE のどうぐ。あいだはにぼし
 const RARE_CHESTS = {
-  ootoro:  [['forest_deep', 2], ['sekisho', 3], ['cave_deep', 3], ['demon_cellar', 2], ['tree_under_2', 1]],
+  ootoro:  [['forest_deep', 2], ['sekisho', 3], ['cave_deep', 0], ['demon_cellar', 2], ['tree_under_2', 1]],
   kinmata: [['woods_deep', 2], ['tower_top', 2], ['ruins_maze', 2], ['demon_throne', 1], ['world_end', 2]],
 };
 const CHEST_ITEM_CYCLE = ['onigiri', 'matatabi', 'katsuo', 'onigiri', 'nekokan', 'matatabi', 'onigiri', 'katsuo'];
