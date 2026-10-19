@@ -2675,11 +2675,10 @@ class FieldView extends BaseView {
         ${item('team', 'へんせい', '戦いに出る4匹を決める')}
         ${item('bond', '友情', '一緒に旅をした時間')}
         ${item('recap', 'あらすじ', 'これまでのお話')}
+        ${item('opt', 'オプション', '音量・BGM・画質の設定')}
         ${Debug.on ? item('debug', 'デバッグ：章へジャンプ', '選んだ段階の直前まで進める') : ''}
       </div>
       <div class="fm-foot">
-        <button class="link" data-bgm>BGM：${Music.on ? 'ON' : 'OFF'}</button>
-        <button class="link" data-eco>画質：${GFX.Q.name}</button>
         <button class="link" data-reset>データを初期化</button>
       </div></div>`;
     o.classList.remove('hidden');
@@ -2688,17 +2687,54 @@ class FieldView extends BaseView {
     go('map', () => { this.closeOverlay(); this.mapMenu(); });
     go('recap', () => renderRecap(o, () => this.closeOverlay(),
       id => this.leave(() => App.go(DialogueScreen, id, () => App.go(FieldScreen)))));
+    go('opt', () => this.optionsMenu());
     for (const [m, scr] of [['chars', CharScreen], ['team', TeamScreen], ['bond', BondScreen]]) go(m, () => this.leave(() => App.go(scr)));
     // ジャンプ・セーブの差しもどしのあとは、いまの位置を記録しない（leave を通さない）
     if (Debug.on) go('debug', () => Debug.render(o, () => { this.persist = false; Story.resume(); }, () => this.closeOverlay()));
-    o.querySelector('[data-bgm]').onclick = e => { Music.toggle(); e.currentTarget.textContent = `BGM：${Music.on ? 'ON' : 'OFF'}`; };
-    // 画質：なめらか → 省エネ → 軽量 → なめらか…（選んだら、おまかせはやめる）
-    o.querySelector('[data-eco]').onclick = e => {
-      const n = (GFX.tier + 1) % GFX_TIERS.length;
-      GFX.setTier(n); Save.data.eco = [false, true, 'low'][n]; Save.save();
-      e.currentTarget.textContent = `画質：${GFX.Q.name}`;
-    };
     o.querySelector('[data-reset]').onclick = () => { if (confirm('セーブデータを初期化しますか？')) { this.persist = false; Save.reset(); App.go(TitleScreen); } };
+  }
+  // オプション：BGM の ON/OFF、BGM・効果音の音量、画質（メニューの中から開き、もどるとメニューへ）
+  optionsMenu() {
+    const o = this.root.querySelector('.overlay'), d = Save.data;
+    const vol = (k, label) => `<div class="op-row"><b>${label}</b>
+      <input type="range" min="0" max="10" step="1" value="${Math.round(d[k] * 10)}" data-vol="${k}"><span class="op-num">${Math.round(d[k] * 10)}</span></div>`;
+    // 画質の選び方：おまかせ（Save.data.eco が null）か、GFX_TIERS のどれか
+    const ecoOf = [false, true, 'low'], shortName = q => q.name.replace(/（.*/, '');
+    o.innerHTML = `<div class="ov-box fm-box op-box"><h2>オプション</h2>
+      <div class="op-list">
+        <div class="op-row"><b>BGM</b><div class="op-seg" data-bgm>
+          <button data-v="1">ON</button><button data-v="0">OFF</button></div></div>
+        ${vol('bgmVol', 'BGM の音量')}
+        ${vol('seVol', '効果音の音量')}
+        <div class="op-row"><b>画質</b><div class="op-seg" data-eco>
+          <button data-v="auto">おまかせ</button>${GFX_TIERS.map((q, i) => `<button data-v="${i}">${shortName(q)}</button>`).join('')}</div></div>
+        <div class="dim op-note"></div>
+      </div>
+      <button class="btn gold" data-back>メニューにもどる</button></div>`;
+    const seg = (sel, cur) => o.querySelectorAll(`[${sel}] button`).forEach(b => b.classList.toggle('on', b.dataset.v === cur));
+    const show = () => {
+      seg('data-bgm', Music.on ? '1' : '0');
+      seg('data-eco', d.eco == null ? 'auto' : String(GFX.tier));
+      o.querySelector('.op-note').textContent = `画質：${GFX.Q.name}${d.eco == null ? '（おまかせ）' : ''}`;
+    };
+    show();
+    o.querySelectorAll('[data-bgm] button').forEach(b => b.onclick = () => {
+      if (Music.on !== (b.dataset.v === '1')) Music.toggle();
+      d.bgm = Music.on; Save.save(); Sfx.click(); show();
+    });
+    // 動かしている間に音量を変え、効果音は手をはなしたときに鳴らして大きさを聞かせる
+    o.querySelectorAll('[data-vol]').forEach(r => {
+      const k = r.dataset.vol, bus = k === 'bgmVol' ? 'bgm' : 'se';
+      r.oninput = () => { d[k] = +r.value / 10; Sfx.setVol(bus, d[k]); r.nextElementSibling.textContent = r.value; };
+      r.onchange = () => { Save.save(); if (bus === 'se') Sfx.select(); };
+    });
+    // 画質：おまかせを選ぶと、スマホなら省エネ（遅ければ軽量）にもどる
+    o.querySelectorAll('[data-eco] button').forEach(b => b.onclick = () => {
+      const v = b.dataset.v;
+      d.eco = v === 'auto' ? null : ecoOf[+v]; Save.save();
+      GFX.setTier(GFX.savedTier()); Sfx.click(); show();
+    });
+    o.querySelector('[data-back]').onclick = () => { Sfx.click(); this.closeOverlay(); this.menu(); };
   }
   // ワールドマップ：訪れた場所へひとっとび
   mapMenu() {
