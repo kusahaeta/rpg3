@@ -539,17 +539,17 @@ const CHAPTERS = [
 // ------------------------------------------------------------
 //  戦闘で使うどうぐ（R キー）。持っている数は Save.data.items。道具屋で買える（ひとつ ITEM_MAX こまで）
 //  target：ally 味方単体 / allies 味方全体 / down 戦闘不能の味方 / single 敵単体。
-//  key：だいじなもの（使ってもなくならない。has で持っているか決まる）。once：その敵には一戦闘に一度だけ
+//  col：使うときの演出の色。key：だいじなもの（使ってもなくならない。has で持っているか決まる）。once：その敵には一戦闘に一度だけ
 // ------------------------------------------------------------
 const ITEM_MAX = 9;
 const ITEMS = {
-  onigiri:  { name: 'にぼしおにぎり', icon: '🍙', price: 40, target: 'ally', desc: '味方単体のHPを最大HPの30%回復する。',
+  onigiri:  { name: 'にぼしおにぎり', icon: '🍙', col: '#fff1c8', price: 40, target: 'ally', desc: '味方単体のHPを最大HPの30%回復する。',
     run: (B, s, t) => B.heal(s, t, t.maxHp * 0.3) },
-  katsuo:   { name: 'かつおぶし', icon: '🪵', price: 100, target: 'allies', desc: '味方全体のHPを最大HPの20%回復する。',
+  katsuo:   { name: 'かつおぶし', icon: '🪵', col: '#f0b070', price: 100, target: 'allies', desc: '味方全体のHPを最大HPの20%回復する。',
     run: (B, s) => B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.2)) },
-  matatabi: { name: 'またたびの実', icon: '🫐', price: 80, target: 'ally', byEnergy: true, desc: '味方単体の必殺技エネルギーを最大値の30%ためる。',
-    run: (B, s, t) => { B.gainEnergy(t, t.energyMax * 0.3); B.float(t, 'ごろごろ', 'info'); } },
-  nekokan:  { name: 'ねこ缶', icon: '🥫', price: 150, target: 'down', desc: '戦闘不能の味方単体を、HP10%で起こす。',
+  matatabi: { name: 'またたびの実', icon: '🫐', col: '#ff8ad8', price: 80, target: 'ally', byEnergy: true, desc: '味方単体の必殺技エネルギーを最大値の30%ためる。',
+    run: (B, s, t) => { B.gainEnergy(t, t.energyMax * 0.3); B.float(t, 'ごろごろ', 'info'); if (B.v) B.v.energyFx(t); } },
+  nekokan:  { name: 'ねこ缶', icon: '🥫', col: '#ffd166', price: 150, target: 'down', desc: '戦闘不能の味方単体を、HP10%で起こす。',
     run: (B, s, t) => B.revive(t, 0.1) },
   jarashi:  { name: '猫じゃらし', icon: '🌾', key: true, has: () => storyCond('scene:c6_k3b'), target: 'single',
     desc: 'チョキチョキにもらった、だいじな猫じゃらし。敵の前で振る。猫じゃらしに目がない相手は、夢中になって1ターン行動できない（その敵には1戦闘に1回）。',

@@ -569,7 +569,7 @@ class Battle {
     this.announce('どうぐ', `${it.icon} ${it.name}`, u.color);
     if (this.v) {
       if (it.target === 'single') await this.v.teaseFx(u, t);
-      else await this.v.support(u, it.target === 'allies' ? this.aliveAllies() : [t]);
+      else await this.v.itemFx(u, it, it.target === 'allies' ? this.aliveAllies() : [t]);
     }
     it.run(this, u, t);
     this.addBond(6);

@@ -826,16 +826,110 @@ class BattleView extends BaseView {
   }
 
   // ---------- にゃんこファンタジーの演出 ----------
-  // 敵にどうぐを使う（猫じゃらし）：敵のほうを向いて手を振る
+  // 味方にどうぐを使う：前から映し、どうぐを頭の上にかかげて見せてから、相手へぽーんと投げる。
+  //   全体（かつおぶし）は、かかげたどうぐがはじけて、みんなへ一つずつ飛んでいく。届いたところで効果（回復など）が出る
+  async itemFx(u, it, targets) {
+    const e = this.ent(u); if (!e) return;
+    const m = e.model, h = e.home, col = it.col || '#ffe9a8';
+    const ts = targets.map(t => this.ent(t)).filter(Boolean);
+    this.unfocus(); this.sway = 0; this.recall(u);
+    // カメラ：使う子と相手がおさまるように、敵がわから（とちゅうで仲間の体を通らないよう snap）
+    const xs = [h.x, ...ts.map(x => x.home.x)], lo = Math.min(...xs), hi = Math.max(...xs), cx = (lo + hi) / 2;
+    this.setFov(38); this.roll = 0;
+    this.setCam(V3(cx + 0.3, 1.35, h.z - Math.max(3.4, (hi - lo) * 0.85 + 2.4)), V3(cx, 0.95, h.z), { snap: true });
+    m.group.rotation.y = Math.PI;
+    const was = m.face && m.face.expr;
+    if (m.face) m.face.set('joy');
+    // かかげる
+    const top = () => V3(m.group.position.x, m.group.position.y + m.height + 0.38, m.group.position.z);
+    const icon = this.itemSprite(it.icon, 0.72);
+    this.fx.add(icon, 0.75, (k, o) => { o.position.copy(top()); o.position.y += Math.sin(k * Math.PI * 2) * 0.03; o.scale.setScalar(0.72 * (k < 0.2 ? Ease.out(k / 0.2) * 1.15 : 1.15 - Math.min(1, (k - 0.2) / 0.15) * 0.15)); });
+    this.tweenPose(m, POSES.hurrah, 0.18);
+    Sfx.item();
+    await GFX.delay(0.12);
+    this.fx.ring(top(), '#ffffff', { r: 0.42, life: 0.35, face: this.camera.position, width: 0.06, k: 1.5 });
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; this.p.emit(top(), V3(Math.cos(a) * 1.6, Math.sin(a) * 1.6, 0.4), hdr(col, 2.2), { life: 0.5, size: 0.09, drag: 3 }); }
+    await GFX.delay(0.6);
+    // 投げる（自分に使うときは、そのまま胸へ下ろす）
+    Sfx.toss();
+    this.tweenPose(m, ts.length === 1 && ts[0] === e ? POSES.hugPillow : { ...POSES.cheer, armLz: 0.9, armRz: -0.9 }, 0.15);
+    const from = top();
+    await Promise.all(ts.map((te, i) => {
+      const to = this.hitPoint(te.u), self = te === e, dur = self ? 0.3 : 0.42 + Math.abs(te.home.x - h.x) * 0.04;
+      const s = this.itemSprite(it.icon, ts.length > 1 ? 0.45 : 0.72);
+      const s0 = s.scale.x, peak = self ? 0 : 0.5;
+      return new Promise(res => this.fx.add(s, dur + 0.15, (k, o) => {
+        const t = Math.min(1, k * (dur + 0.15) / dur);
+        o.position.lerpVectors(from, to, t); o.position.y += Math.sin(t * Math.PI) * peak;
+        o.material.rotation = self ? 0 : -Math.sign(te.home.x - h.x || 1) * t * Math.PI * 2;
+        o.scale.setScalar(s0 * (t < 1 ? 1 : 1 - (k * (dur + 0.15) - dur) / 0.15));
+        if (t >= 1 && !o.userData.hit) { o.userData.hit = true; this.itemLand(te, col); res(); }
+        if (k >= 1 && !o.userData.hit) res();
+      }));
+    }));
+    await GFX.delay(0.1);
+    this.tweenPose(m, POSES.ready, 0.3);
+    if (m.face) GFX.delay(0.5).then(() => m.face.set(was || 'neutral'));
+  }
+  // どうぐが相手に届いた：その色の粒がはじけて、相手がぴかっと光る
+  itemLand(te, col) {
+    const p = this.hitPoint(te.u);
+    this.p.burst(p, col, 26, { speed: 3, up: 1, life: 0.6, size: 0.1 });
+    this.fx.ring(p, col, { r: 0.8, life: 0.4, face: this.camera.position, width: 0.1, k: 2 });
+    te.model.flash(col, 0.4);
+  }
+  // どうぐの絵文字を、地面や体にかくれない板にする（光らせない。明るい草原でも見えるように白いふちどり）
+  itemSprite(icon, size) {
+    const key = 'item' + icon;
+    if (!TexCache[key]) {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d'); g.font = '84px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.shadowColor = 'rgba(255,255,255,1)'; g.shadowBlur = 10;
+      for (let i = 0; i < 3; i++) g.fillText(icon, 64, 70);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; TexCache[key] = t;
+    }
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TexCache[key], transparent: true, depthTest: false, depthWrite: false, toneMapped: false }));
+    sp.scale.setScalar(size); sp.renderOrder = 12; return sp;
+  }
+  // またたびの実：相手のまわりを、ピンクの粒がくるくるのぼる（必殺技エネルギーがたまる）
+  energyFx(t) {
+    const e = this.ent(t); if (!e) return;
+    const g = e.model.group.position, r = (e.model.radius || 0.5) + 0.25;
+    for (let i = 0; i < 30; i++) GFX.delay(i * 0.02).then(() => { const a = i * 0.7; this.p.emit(V3(g.x + Math.cos(a) * r, g.y + 0.1 + i * 0.035, g.z + Math.sin(a) * r), V3(-Math.sin(a) * 0.8, 1.2, Math.cos(a) * 0.8), hdr('#ff8ad8', 2.4), { life: 0.8, size: 0.11, drag: 1 }); });
+    this.fx.ring(e.home.clone().add(V3(0, 0.05, 0)), '#ff8ad8', { r: 1.3, life: 0.7 });
+    e.model.flash('#ffb8e8', 0.8);
+    if (e.model.face) { const was = e.model.face.expr; e.model.face.set('joy'); GFX.delay(0.9).then(() => e.model.face.set(was || 'neutral')); }
+  }
+  // 猫じゃらし（棒の先にふさふさ）。o の原点が持ち手
+  jarashiModel() {
+    const g = new THREE.Group();
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.8, 6), toon('#c8a060')); stick.position.y = 0.4; g.add(stick);
+    const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), toon('#fff0a8')); tuft.scale.set(0.6, 1.4, 0.6); tuft.position.y = 0.85; g.add(tuft);
+    return g;
+  }
+  // 敵にどうぐを使う（猫じゃらし）：敵のほうを向いて、手に持った猫じゃらしを振る
   async teaseFx(u, t) {
     const e = this.ent(u), te = this.ent(t); if (!e || !te) return;
-    this.unfocus(); this.sway = 0.2;
+    // 肩越しの攻撃と同じく、ほかの味方はかくして切りかえる（仲間の体ごしに映すと、敵が帽子などでかくれる）
+    this.focus(e); this.sway = 0.2;
     const m = e.model;
     this.face(e, te.home);
     if (m.face) m.face.set('smile');
-    this.setCam(V3(e.home.x + 1.6, 1.3, e.home.z + 2.2), V3((e.home.x + te.home.x) / 2, 0.9, (e.home.z + te.home.z) / 2), { speed: 4 });
+    this.setCam(V3(e.home.x + 1.6, 1.3, e.home.z + 2.2), V3((e.home.x + te.home.x) / 2, 0.9, (e.home.z + te.home.z) / 2), { snap: true });
     const wave = { ...POSES.idle, armRx: -2.4, armRz: -0.75, elbowR: -0.9 };
+    // 手に持たせる（ふだんの武器はしまう）。振りおわるまで手について、左右にゆれる
+    const hold = m.extras && m.extras.hold, wasVis = hold && hold.visible;
+    if (hold) hold.visible = false;
+    const j = this.jarashiModel();
+    const dir = V3(te.home.x - e.home.x, 0, te.home.z - e.home.z).normalize();
+    this.fx.add(j, 1.3, (k, o) => {
+      o.position.copy(m.handPos());
+      o.rotation.set(0, Math.atan2(dir.x, dir.z), 0);
+      o.rotateX(0.35 + Math.sin(k * 26) * 0.5);
+      if (k >= 1 && hold) hold.visible = wasVis;
+    });
     await this.tweenPose(m, wave, 0.2);
+    Sfx.toss();
     for (let i = 0; i < 3; i++) this.fx.sprite(this.hitPoint(u).add(V3(0.2 + i * 0.25, 0.5 + i * 0.15, -0.3 - i * 0.4)), '#fff4c8', 0.3 + i * 0.1, 0.8, { k: 2 });
     await GFX.delay(0.35);
     te.model.flash('#ffe8f0', 0.8);
@@ -844,10 +938,8 @@ class BattleView extends BaseView {
   // 猫じゃらしに夢中（マオウ）
   lureFx(t) {
     const te = this.ent(t); if (!te) return;
-    const p = this.hitPoint(t).add(V3(0.6, 0.6, 0.8));
-    const g = new THREE.Group(); g.position.copy(p);
-    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.8, 6), toon('#c8a060')); stick.position.y = -0.4; g.add(stick);
-    const tuft = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), toon('#fff0a8')); tuft.scale.set(0.6, 1.4, 0.6); tuft.position.y = 0.05; g.add(tuft);
+    const p = this.hitPoint(t).add(V3(0.6, -0.2, 0.8));
+    const g = this.jarashiModel(); g.position.copy(p);
     this.fx.add(g, 2.2, (k, o) => { o.rotation.z = Math.sin(k * 30) * 0.6; o.position.x = p.x + Math.sin(k * 20) * 0.3; });
     for (let i = 0; i < 12; i++) GFX.delay(i * 0.12).then(() => this.p.emit(this.hitPoint(t).add(V3(0, 0.8, 0)), V3((Math.random() - 0.5), 1.2, 0), hdr('#ff8ab8', 2.4), { life: 0.9, size: 0.14 }));
   }
