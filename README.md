@@ -25,6 +25,18 @@ cd android && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/
 
 → `android/app/build/outputs/apk/debug/app-debug.apk`（`adb install -r` で入れる）。横画面固定・全画面・画面スリープなし。裏に回すと BGM を止め、戻るキーではゲームを終わらせず裏に回すだけ。セーブはアプリ内の localStorage に残ります。デバッグ版は Chrome の `chrome://inspect` から中身を調べられます。
 
+### iPhone アプリ
+
+`ios/` は、同じ Web 版を WKWebView で包んだ iPhone・iPad アプリ。ビルドのたびに `index.html`・`css/`・`js/`・`vendor/` をアプリの `web/` へ写し、`nyanko://localhost/` として配ります（サーバー不要）。`ios/Nyanko.xcodeproj` を Xcode で開いて、USB でつないだ iPhone を選んで実行するのがいちばん手軽です。コマンドでは：
+
+```bash
+cd ios && xcodebuild -project Nyanko.xcodeproj -scheme Nyanko -configuration Debug -destination 'generic/platform=iOS' -derivedDataPath build -allowProvisioningUpdates build
+xcrun devicectl device install app --device <iPhone の名前か ID> ios/build/Build/Products/Debug-iphoneos/Nyanko.app
+xcrun devicectl device process launch --console --device <iPhone の名前か ID> com.kusahaeta.nyanko
+```
+
+iPhone は「設定 → プライバシーとセキュリティ → デベロッパモード」をオンにしておく。横画面固定・全画面・画面スリープなし。裏に回すと BGM を止める。音は消音スイッチに従う。セーブはアプリ内の localStorage に残ります。デバッグ版は Mac の Safari の「開発」メニューから中身を調べられ、`--console` で起動するとページのエラーがそのまま出ます（起動引数 `-query debug` で `?debug` 付きで開く）。アイコンは `swift ios/tools/make-icon.swift ios/Nyanko/Assets.xcassets/AppIcon.appiconset/icon-1024.png` で描き直せます。
+
 ## 遊べる範囲
 
 第一章〜第二章は、通しで遊べることを確認済みです（会話 → フィールドの目的地 → 戦闘 → 章クリア）。
