@@ -32,6 +32,8 @@ const Touch = {
     document.addEventListener('contextmenu', e => { if (this.on) e.preventDefault(); });
   },
 };
+// 文言の中の {PCの文言|タッチの文言} を、いまの操作に合わせて選ぶ（キーの説明は、タッチの側を空にして消す）
+const forInput = s => typeof s === 'string' ? s.replace(/\{([^{}|]*)\|([^{}]*)\}/g, (_, pc, touch) => Touch.on ? touch : pc) : s;
 
 // 診断表示（?debug のときだけ）：スマホで 3D 表示が消えたときに、何が起きているかをスクリーンショットで分かるように
 function diagHud() {
