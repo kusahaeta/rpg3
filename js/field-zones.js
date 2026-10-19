@@ -8108,12 +8108,52 @@ const ZONE_BUILD = {
   caveLake(K) {
     for (const [x, z, n] of [[-45, -39, 4], [33, -39, 3], [-29, -39, 3], [53, -15, 4], [-49, 45, 3], [49, 43, 3], [-15, 45, 3], [15, 45, 3]]) K.ore(x, z, n, '#a07bff', 1);
     for (const [x, z] of [[-35, 12], [35, 12], [-20, 21], [20, 21], [38, 19], [-25, -40], [25, -40], [45, 39], [-40, 40]]) K.stalag(x, z, 1.8 + K.r() * 1.8);
-    // 岸に打ち上げられた、ゴロウの割れた盾とリンのリボン
-    K.mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.12, 20, 1, false, 0, Math.PI), '#8a7a6a', -13.4, 0.3, 13, { rx: 1.2, rz: 0.3 });
-    K.mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.12, 20, 1, false, Math.PI + 0.3, Math.PI - 0.3), '#8a7a6a', -13, 0.12, 13.4, { rx: 1.45, rz: -0.2 });
-    K.mesh(new THREE.TorusGeometry(0.16, 0.05, 6, 14), '#5a8ad8', -12.2, 0.08, 11.8, { rx: Math.PI / 2 });
-    K.mesh(new THREE.BoxGeometry(0.5, 0.02, 0.1), '#5a8ad8', -12, 0.06, 12.1, { ry: 0.6 });
-    K.mesh(new THREE.OctahedronGeometry(0.08), K.glow('#cfefff', 2.4), -12.2, 0.2, 11.8, { noShadow: true });
+    // 岸の岩に引っかかった、ゴロウの割れた盾とリンのリボン（c4_03c）
+    K.rock(-12.9, 12.2, 0.5, 'rockDark');
+    // ゴロウの盾：板を張った丸い木の盾に、鉄のふちとまん中のこぶ、ハチマキと同じ赤の輪（色あせている）。
+    // ぎざぎざにまっぷたつに割れ、影の爪あとの残った半分は岩に立てかかり、こぶの残った半分は砂に伏せている
+    const SR = 0.5, SD = 0.05, crack = [[0, SR], [-0.04, 0.33], [0.05, 0.18], [-0.03, 0.02], [0.04, -0.15], [-0.05, -0.3], [0, -SR]];
+    const shieldHalf = (side, x, z, y, rot) => {
+      const g = new THREE.Group(); g.position.set(x, K.gy(x, z) + y, z); g.rotation.set(rot[0], rot[1], rot[2], 'YXZ');
+      const sh = new THREE.Shape();
+      if (side > 0) { sh.moveTo(0, SR); sh.absarc(0, 0, SR, Math.PI / 2, -Math.PI / 2, true); for (let i = crack.length - 2; i > 0; i--) sh.lineTo(...crack[i]); }
+      else { sh.moveTo(0, -SR); sh.absarc(0, 0, SR, -Math.PI / 2, Math.PI / 2, true); for (let i = 1; i < crack.length - 1; i++) sh.lineTo(...crack[i]); }
+      const at = (geo, mat, px, py, pz, o = {}) => K.mesh(geo, mat, px, py, pz, { ...o, parent: g });
+      at(new THREE.ExtrudeGeometry(sh, { depth: SD, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 1, curveSegments: 10 }), '#9a6a42', 0, 0, 0);
+      const face = SD + 0.014;
+      for (const px of [0.13, 0.27, 0.4]) at(new THREE.BoxGeometry(0.012, 2 * Math.sqrt(SR * SR - px * px) * 0.94, 0.004), '#7a5232', side * px, 0, face, { noShadow: true });   // 板のさかい目
+      at(new THREE.RingGeometry(0.29, 0.35, 20, 1, side > 0 ? -Math.PI / 2 : Math.PI / 2, Math.PI), '#b8584a', 0, 0, face + 0.002, { noShadow: true });
+      at(new THREE.TorusGeometry(SR, 0.035, 6, 20, Math.PI), '#6a6a78', 0, 0, SD / 2, { rz: side > 0 ? -Math.PI / 2 : Math.PI / 2 });   // 鉄のふち
+      for (const a of [0.5, 1.57, 2.64]) at(new THREE.SphereGeometry(0.022, 6, 4), '#6a6a78', side * Math.sin(a) * (SR - 0.06), Math.cos(a) * (SR - 0.06), face, { noShadow: true });
+      if (side > 0) at(new THREE.SphereGeometry(0.1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), '#6a6a78', 0.03, 0, face - 0.01, { rx: Math.PI / 2 });   // まん中のこぶ
+      else {   // 影の爪あと：ななめに走る、細長い三本の裂け目
+        const cl = new THREE.Shape(); cl.moveTo(-0.2, 0); cl.quadraticCurveTo(0, 0.022, 0.2, 0); cl.quadraticCurveTo(0, -0.022, -0.2, 0);
+        for (const k of [0, 1, 2]) at(new THREE.ShapeGeometry(cl, 6), '#1a1024', -0.2 - k * 0.02, 0.14 - k * 0.1, face + 0.004, { rz: -0.95, noShadow: true });
+      }
+      K.add(g);
+    };
+    shieldHalf(-1, -12.65, 12.8, 0.02, [-0.4, 0.48, -Math.PI / 2]);   // 岩に立てかけた半分（割れ目を下に、岸に来た人のほうを向く）
+    shieldHalf(1, -13.7, 13.3, 0.05, [-Math.PI / 2 + 0.1, 2.3, 0.08]);   // 砂に伏せた半分
+    // リンのリボン：首もとの水色が色あせた蝶結び。輪が二つ、結び目、先をV字に切った垂れが二本。結び目に光の水晶のかけら
+    {
+      const x = -12.3, z = 11.8, g = new THREE.Group(); g.position.set(x, K.gy(x, z) + 0.035, z); g.rotation.set(-Math.PI / 2 + 0.05, 0.5, 0, 'YXZ');
+      const rib = K.mc.ribbon || (K.mc.ribbon = toon('#8ab4d0', { side: THREE.DoubleSide }));
+      const at = (geo, mat, px, py, pz, o = {}) => K.mesh(geo, mat, px, py, pz, { ...o, parent: g });
+      for (const s of [-1, 1]) at(new THREE.TorusGeometry(0.075, 0.024, 6, 18), rib, s * 0.095, 0.02, 0, { rz: s * 0.3 }).scale.set(1.35, 0.8, 0.4);
+      at(new THREE.SphereGeometry(0.036, 10, 8), rib, 0, 0.02, 0.005).scale.set(1, 1.2, 0.6);
+      for (const s of [-1, 1]) {
+        const t = new THREE.Shape(); t.moveTo(-0.026, 0); t.lineTo(0.026, 0); t.lineTo(0.032, -0.24); t.lineTo(0, -0.2); t.lineTo(-0.032, -0.24); t.lineTo(-0.026, 0);
+        const tg = new THREE.ShapeGeometry(t);
+        const p = tg.attributes.position; for (let i = 0; i < p.count; i++) p.setZ(i, Math.sin(p.getY(i) * 18) * 0.012);   // ゆるく波打つ
+        at(tg, rib, s * 0.02, 0.0, -0.004, { rz: s * 0.35 });
+      }
+      at(new THREE.TorusGeometry(0.018, 0.004, 4, 10), '#e8e0d0', 0, -0.045, 0.01, { noShadow: true });   // かけらを結んだ糸
+      const shard = at(new THREE.OctahedronGeometry(0.035), K.glow('#cfefff', 2.2), 0, -0.08, 0.012, { noShadow: true }); shard.scale.y = 1.7;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#9ad8ff', 0.6), blending: THREE.AdditiveBlending, depthWrite: false })); sp.scale.setScalar(0.4); shard.add(sp);
+      K.add(g); g.updateMatrixWorld(true);
+      const sw = shard.getWorldPosition(V3());
+      K.v.emitters.push(dt => { if (Math.random() < dt * 1.2) K.v.p.emit(V3(sw.x + (Math.random() - 0.5) * 0.1, sw.y + 0.05, sw.z + (Math.random() - 0.5) * 0.1), V3(0, 0.35, 0), hdr('#cfefff', 1.6), { life: 1.6, size: 0.04, drag: 0.3 }); });
+    }
     K.v.emitters.push(dt => { if (Math.random() < dt * 14) K.v.p.emit(V3((Math.random() - 0.5) * 80, -0.3, -11 + (Math.random() - 0.5) * 34), V3(0, 0.7, 0), hdr('#8a6aff', 2.2), { life: 2.5, size: 0.08, drag: 0 }); });
     K.seals(); K.rubbles();
     K.light(0, 6, -10, '#8a6aff', 10, 40); K.light(0, 5, 43, '#a07bff', 6, 16); K.light(-45, 4, -35, '#6a8aff', 6, 16); K.light(51, 5, -20, '#b89aff', 6, 16);
