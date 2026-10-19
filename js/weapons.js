@@ -111,7 +111,7 @@ const WEAPONS = {
         B.shield(s, s, s.stat('def') * 0.5, 2);
         return r;
       } } },
-  kuro_moon: { owner: 'kuro', name: '月影の刀', tier: 2, get: { chest: ['cave_deep', 0] },
+  kuro_moon: { owner: 'kuro', name: '月影の刀', tier: 2, get: { chest: ['cave_deep', 3] },
     desc: '黒影洞窟の奥にしまわれていた刀。むかし、だれかがクロのために打ったものらしい。', look: { c: '#2a2840', g: '#c8b8ff' },
     basic: { name: '月の爪', elem: 'physical', target: 'single', anim: 'moonClaw', desc: '指定した敵単体に攻撃力100%の物理ダメージ。40%の基礎確率で裂創（攻撃力40%、2ターン）。',
       run: async (B, s, t) => { const r = await B.single(s, t, 1.0, 10, 'basic'); B.dot(s, t, { type: 'bleed', mult: 0.4, turns: 2, chance: 0.4, quiet: true }); return r; } },
