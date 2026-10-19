@@ -37,6 +37,8 @@ const Sfx = {
   ult() { [392, 494, 587, 784].forEach((f, i) => this.tone(f, 0.5, 'sawtooth', 0.04, 0, i * 0.06)); this.noise(0.8, 0.12, 800, 0.2); },
   slam() { this.noise(0.7, 0.5, 350); this.noise(0.35, 0.3, 3200); this.tone(85, 0.6, 'sawtooth', 0.1, -45); this.tone(1500, 0.3, 'triangle', 0.05, -1000, 0.03); },
   zap() { this.noise(0.1, 0.12, 6500); this.tone(2200, 0.06, 'square', 0.02, -900); },
+  item() { [784, 988, 1319].forEach((f, i) => this.tone(f, 0.2, 'triangle', 0.05, 0, i * 0.07)); },   // どうぐをかかげる
+  toss() { this.noise(0.18, 0.06, 3500); this.tone(520, 0.18, 'sine', 0.03, 420); },   // ぽーんと投げる
   heal() { this.tone(660, 0.2, 'sine', 0.08); this.tone(990, 0.3, 'sine', 0.07, 0, 0.08); },
   shield() { this.tone(440, 0.25, 'triangle', 0.07, 300); },
   kill() { this.tone(300, 0.35, 'sine', 0.1, -240); },
