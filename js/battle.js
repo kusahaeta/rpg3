@@ -142,7 +142,7 @@ class Battle {
       c.style.setProperty('--c', u.color);
       c.innerHTML = `
         <div class="a-face">${avatarSVG(u.key, { wide: true })}</div>
-        <div class="ult" data-ult="${i}" title="${u.def.ult.name}"><div class="ult-ring"></div><div class="ult-face">${ultIcon(u.key)}</div><span class="ult-key">${i + 1}</span></div>
+        <div class="ult" data-ult="${i}" title="${u.def.ult.name}"><div class="ult-gauge"></div><div class="ult-ring"></div><div class="ult-face">${ultIcon(u.key)}</div><span class="ult-key">${i + 1}</span></div>
         <div class="a-name">${u.name}<span>Lv.${u.level}</span></div>
         <div class="bar hp"><i></i><s></s></div>
         <div class="a-hp"></div>
@@ -230,7 +230,7 @@ class Battle {
       el.querySelector('.bar.hp s').style.width = clamp(u.shield / u.maxHp, 0, 1) * 100 + '%';
       el.querySelector('.a-hp').textContent = `${fmt(u.hp)} / ${fmt(u.maxHp)}`;
       const ult = el.querySelector('.ult');
-      ult.style.setProperty('--e', u.energy / u.energyMax);
+      el.querySelector('.ult-gauge').style.setProperty('--e', u.energy / u.energyMax);
       ult.classList.toggle('ready', u.alive && u.energy >= u.energyMax);
       ult.classList.toggle('queued', this.ultQueue.includes(u));
     } else {
@@ -310,8 +310,10 @@ class Battle {
     const d = document.createElement('div');
     d.className = 'impact' + (big ? ' big' : '');
     d.style.setProperty('--c', ELEMENTS[elem].color);
-    d.style.setProperty('--r', (Math.random() * 180) + 'deg');
-    d.innerHTML = '<i></i><b></b><b class="b2"></b>';
+    // 斜めの線の向きは、カスタムプロパティでなく transform に直に書く（毎回ちがう値のカスタムプロパティは、
+    //   アニメーションする子があると Safari がメモリを手放さない）
+    const r = Math.random() * 180;
+    d.innerHTML = `<i></i><b style="transform:rotate(${r}deg)"></b><b class="b2" style="transform:rotate(${r + 70}deg)"></b>`;
     u.el.querySelector('.fx').appendChild(d);
     setTimeout(() => d.remove(), 700);
   }
@@ -945,7 +947,8 @@ class Battle {
     this.renderItemMenu();
     if (!inp) return;
     const ab = this.abilityOf(inp), u = inp.unit;
-    panel.style.setProperty('--c', u.color);
+    // 色は使う .ab-info にだけ置く（パネルごと書きかえると、transition のある SP の宝石やボタンのぶん Safari がメモリを手放さない）
+    this.$('.ab-info').style.setProperty('--c', u.color);
     this.$('.ab-kind').textContent = inp.mode === 'ult' ? `${u.name}・必殺技` : `${u.name}・${inp.sel === 'basic' ? '通常攻撃' : inp.sel === 'item' ? 'どうぐ' : '戦闘スキル'}`;
     this.$('.ab-name b').textContent = ab.name;
     this.$('.ab-name .ab-el').innerHTML = abElems(ab).map(el => elemIcon(el)).join('');
