@@ -937,6 +937,7 @@ body.touch .chip:hover { transform: none; }
 .fd-stick, .fd-pad { display: none; }
 body.touch .field { touch-action: none; }
 body.touch .fd-actions, body.touch .fd-help, body.touch .fd-key, body.touch .fd-prompt kbd { display: none; }
+body.touch .dl-choice kbd { display: none; }
 body.touch .fd-pad { display: block; }
 body.touch .fd-stick:not(.hidden) { display: block; }
 body.touch .fd-team { left: 50%; bottom: 14px; transform: translateX(-50%); }

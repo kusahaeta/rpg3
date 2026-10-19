@@ -1365,7 +1365,7 @@ class Battle {
     }
     for (const v of F.chorus || []) if (await voice(v, true, 1100)) return;
     this.bond = 100; this.renderBond();
-    this.announce('友情ゲージ MAX', '「にゃんこオールスターズ」が使える！（C キー）', '#ffcf4a');
+    this.announce('友情ゲージ MAX', '「にゃんこオールスターズ」が使える！<span class="pc-only">（C キー）</span>', '#ffcf4a');
     Music.play('hope');   // みんなの声がとどいたら、希望の曲に
     this.aliveAllies().forEach(a => { a.flags.isolated = 0; a.buffs = a.buffs.filter(b => b.key !== 'e_iso'); this.say(a, '「一人じゃない！」'); this.updateUnit(a); });
     Sfx.win();

@@ -134,7 +134,7 @@ function TeamScreen() {
   if (v3) v3.setEnemies([]);
   const s = h(`<div class="screen team">${topBar('へんせい')}
     <div class="tm-slots"></div>
-    <div class="tm-hint">枠を選んでから、下のにゃんこをクリック。先頭の子が、冒険でみんなを連れて歩きます。</div>
+    <div class="tm-hint">枠を選んでから、下のにゃんこを<span class="pc-only">クリック</span><span class="touch-only">タップ</span>。先頭の子が、冒険でみんなを連れて歩きます。</div>
     <div class="tm-roster"></div></div>`);
   wireBack(s);
   // 物語の都合で一行を離れている子（awayNow）は、枠をとったまま動かせない
@@ -144,9 +144,9 @@ function TeamScreen() {
   // 探索で戦闘不能の子（宿・焼き魚で回復するまで）。全員が戦闘不能になる編成はできない
   const isDown = k => (Save.data.hp || {})[k] <= 0;
   const canForm = team => team.some(k => k && !isAway(k) && !isDown(k));
-  const hint = s.querySelector('.tm-hint'), hintText = hint.textContent;
+  const hint = s.querySelector('.tm-hint'), hintText = hint.innerHTML;
   const refuse = () => { hint.textContent = 'みんな戦闘不能になってしまう。元気な子を一匹は入れておこう。'; hint.classList.add('warn'); };
-  const unrefuse = () => { hint.textContent = hintText; hint.classList.remove('warn'); };
+  const unrefuse = () => { hint.innerHTML = hintText; hint.classList.remove('warn'); };
   const render = () => {
     const t = Save.data.team, lead = t.findIndex(k => !isAway(k));
     s.querySelector('.tm-slots').innerHTML = [0, 1, 2, 3].map(i => isAway(t[i]) ? `
@@ -340,7 +340,7 @@ function renderShop(o, kind, name, close, field) {
         const it = ITEMS[id], n = itemCount(id), full = n >= ITEM_MAX;
         return `<div class="sh-row"><div class="sh-icon">${it.icon}</div><div class="sh-info"><b>${it.name}<em class="sh-have">持っている数 ${n}</em></b><small>${it.desc}</small></div><button class="btn small" data-ibuy="${id}" ${full || d.niboshi < it.price ? 'disabled' : ''}>${full ? 'もう持てない' : `にぼし ${it.price}`}</button></div>`;
       }).join('');
-      body = `<div class="dim">どうぐは、戦闘中に「どうぐ」（Rキー）で使える。ひとつにつき ${ITEM_MAX} こまで持てる。</div><div class="sh-list">
+      body = `<div class="dim">どうぐは、戦闘中に「どうぐ」<span class="pc-only">（Rキー）</span>で使える。ひとつにつき ${ITEM_MAX} こまで持てる。</div><div class="sh-list">
         ${goods}
       </div>`;
     } else if (kind === 'fish') {

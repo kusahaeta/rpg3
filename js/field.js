@@ -1866,7 +1866,7 @@ class FieldView extends BaseView {
     const lead = this.team[this.leader].key, name = speakerName(S.who);
     if (lead === S.who) return true;
     const say = (S.tries || {})[lead], inTeam = this.team.some(m => m.key === S.who);
-    this.startTalk('', [...(say ? [[lead, say]] : []), ['n', (S.hint || `${name}なら、なんとかできそうだ。`) + (inTeam ? '（1〜4で先頭の子を交代）' : `（${name}は、いま一行にいない。編成に入れよう）`)]]);
+    this.startTalk('', [...(say ? [[lead, say]] : []), ['n', (S.hint || `${name}なら、なんとかできそうだ。`) + (inTeam ? (Touch.on ? '（下の顔をタップして先頭の子を交代）' : '（1〜4で先頭の子を交代）') : `（${name}は、いま一行にいない。編成に入れよう）`)]]);
     return false;
   }
   // のろし台に火をつける／かんぬきを外す
@@ -1975,7 +1975,7 @@ class FieldView extends BaseView {
     if (lead !== 'tama') {
       const say = { mike: 'そーっと……そーっと……。……これ以上近づいたら、ほえられちゃう！', kuro: '……眠らせるか、見つからずに抜けるか、だな。', shiro: 'しーっ……。こういうときは、魔法より、子守歌よね。', maou: '……犬は苦手だ。' }[lead];
       const inTeam = this.team.some(m => m.key === 'tama');
-      this.startTalk('', [...(say ? [[lead, say]] : []), ['n', '見張りの番犬は、まだこちらに気づいていない。……タマのこもりうたなら、眠らせられるかもしれない。' + (inTeam ? '（1〜4で先頭の子を交代）' : '（タマを編成に入れよう）')]]);
+      this.startTalk('', [...(say ? [[lead, say]] : []), ['n', '見張りの番犬は、まだこちらに気づいていない。……タマのこもりうたなら、眠らせられるかもしれない。' + (inTeam ? (Touch.on ? '（下の顔をタップして先頭の子を交代）' : '（1〜4で先頭の子を交代）') : '（タマを編成に入れよう）')]]);
       return;
     }
     g.asleep = true; (Save.data.flags || (Save.data.flags = {}))[g.G.id] = true; Save.save();
@@ -2754,7 +2754,7 @@ class FieldView extends BaseView {
     if (this.busy) return;
     this.busy = true; this.overlayOpen = true; this.keys.clear();
     o.innerHTML = `<div class="ov-box zm-box"><h2>${this.zone.name}</h2><canvas class="zm-map" width="1000" height="520"></canvas>
-      <div class="wm-foot"><span class="dim">地図をクリックしても閉じられる</span><button class="btn gold" data-close>閉じる</button></div></div>`;
+      <div class="wm-foot"><span class="dim">地図を<span class="pc-only">クリック</span><span class="touch-only">タップ</span>しても閉じられる</span><button class="btn gold" data-close>閉じる</button></div></div>`;
     o.classList.remove('hidden');
     this.zoneMap = o.querySelector('.zm-map').getContext('2d');
     this.drawZoneMap();
