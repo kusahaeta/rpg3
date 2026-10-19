@@ -187,26 +187,171 @@ function buildEnemy(key) {
       update = (dt, t) => { lid.rotation.x = -0.25 - Math.max(0, Math.sin(t * 5 + root.userData.ph)) * 0.55; inner.position.y = Math.abs(Math.sin(t * 5)) * 0.04; };
       height = 1.3; radius = 0.75; scale = 1.1; break;
     }
-    case 'armor':       // さまよう鎧：中身のない、猫耳かぶとの鎧
-    case 'maouarmor': { // 魔王城の飾り甲冑：紫の鎧に桃色の目の光、金のふち
-      const maou = d.shape === 'maouarmor', eyeCol = maou ? '#ff8ad8' : '#8affe0';
-      const am = new THREE.MeshStandardMaterial({ color: col, metalness: 0.7, roughness: 0.35 }); am.userData.e0 = new THREE.Color(0); am.userData.ei0 = 0; mats.push(am);
-      for (const s of [-1, 1]) add(P(new THREE.CylinderGeometry(0.1, 0.12, 0.5, 10), am), s * 0.15, 0.25, 0);
-      add(P(new THREEX.RoundedBoxGeometry(0.6, 0.55, 0.4, 2, 0.08), am), 0, 0.8, 0);
-      const helm = add(P(new THREE.SphereGeometry(0.3, 18, 12), am), 0, 1.32, 0.02);
-      catEars(0.17, 1.58, 0, 1.1, am);
-      add(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.06, 0.05), glowMat(eyeCol, 3)), 0, 1.32, 0.29);
-      for (const s of [-1, 1]) add(P(new THREE.SphereGeometry(0.15, 12, 8), am), s * 0.4, 1.02, 0);
-      if (maou) {   // 金のふち（胸と肩）と、かぶとの上の桃色の羽飾り。剣のかわりに長い槍
-        const gold = tm('#ffcf4a', { emissive: new THREE.Color('#ffcf4a'), emissiveIntensity: 0.2 });
-        add(P(new THREE.TorusGeometry(0.13, 0.022, 6, 20), gold), 0, 0.86, 0.2);
-        for (const s of [-1, 1]) add(P(new THREE.TorusGeometry(0.12, 0.02, 6, 16), gold), s * 0.4, 1.1, 0).rotation.x = Math.PI / 2;
-        const plume = add(P(new THREE.ConeGeometry(0.08, 0.36, 10), tm('#ff8ad8')), 0, 1.72, -0.08); plume.rotation.x = -0.5;
-        const pole = add(P(new THREE.CylinderGeometry(0.025, 0.025, 1.7, 8), tm('#4a3a5a')), -0.52, 0.9, 0.2);
-        add(P(new THREE.ConeGeometry(0.07, 0.24, 4), tm('#c8d0e0')), 0, 0.96, 0, pole);
-      } else { const sw = add(P(new THREE.BoxGeometry(0.08, 1.1, 0.02), tm('#c8d0e0')), -0.5, 0.8, 0.3); sw.rotation.set(0.5, 0, 0.2); }
-      emitFn = (p, pos) => { if (Math.random() < 0.3) p.emit(V3(pos.x + (Math.random() - 0.5) * 0.4, pos.y + 1.3, pos.z), V3(0, 0.6, 0), hdr(eyeCol, 1.4), { life: 1, size: 0.1, drag: 0.5 }); };
-      height = 1.8; radius = 0.6; scale = 1.15; break;
+    case 'armor':       // さまよう鎧：中身のない古い鎧。部品は少しずつ浮いて、すき間と首の穴から青白い光がもれる。猫耳のかぶと、欠けた大剣、肉球の盾
+    case 'maouarmor': { // 魔王城の飾り甲冑：同じ作りを、魔王の色（紫・赤い裏地のマント・金のふち）で。角と桃色の羽飾りのかぶと、斧槍
+      const maou = d.shape === 'maouarmor';
+      const C = maou
+        ? { eye: '#ff8ad8', steel: '#8a76b8', steel2: '#7c6aa8', trim: '#46346a', cloth: '#3a1850', hollow: '#140a1c' }
+        : { eye: '#8affe0', steel: '#949cbc', steel2: '#8890b0', trim: '#565e80', cloth: '#3e6a7a', hollow: '#0a0e18' };
+      const eyeCol = C.eye;
+      const steel = tm(C.steel), trim = tm(C.trim);
+      const brass = maou ? tm('#ffcf4a', { emissive: new THREE.Color('#ffcf4a'), emissiveIntensity: 0.2 }) : tm('#c8a45a');
+      const cloth = tm(C.cloth, { side: THREE.DoubleSide }), leather = tm('#5a3a2a');
+      const hollow = new THREE.MeshBasicMaterial({ color: C.hollow, side: THREE.DoubleSide });
+      const rim = maou ? brass : trim;   // 胸・かぶとのふち（魔王城のものは金）
+      const ring = (r, tube, y, parent, m = trim) => { const o = add(P(new THREE.TorusGeometry(r, tube, 6, 24), m), 0, y, 0, parent); o.rotation.x = Math.PI / 2; return o; };
+      const rivet = (x, y, z, parent, r = 0.018) => add(new THREE.Mesh(new THREE.SphereGeometry(r, 6, 4), brass), x, y, z, parent);
+      // 足：すね当て・ひざ当て・鉄の靴。腰とのあいだは少しあく
+      const legs = [-1, 1].map(s => {
+        const g = new THREE.Group(); g.position.set(s * 0.15, 0.72, 0); inner.add(g);
+        add(P(new THREE.CylinderGeometry(0.1, 0.088, 0.24, 14), steel), 0, -0.12, 0, g);
+        const knee = add(P(new THREE.SphereGeometry(0.085, 14, 10), trim), 0, -0.29, 0.035, g); knee.scale.set(1, 0.9, 0.8);
+        add(P(new THREE.CylinderGeometry(0.092, 0.072, 0.3, 14), steel), 0, -0.47, 0, g);
+        add(P(new THREEX.RoundedBoxGeometry(0.16, 0.1, 0.28, 2, 0.04), steel), 0, -0.67, 0.05, g);
+        return g;
+      });
+      // 腰：重ねた板のスカート、ベルト、紋の入ったぼろぼろの前垂れ
+      const skirt = new THREE.Group(); inner.add(skirt);
+      add(P(new THREE.CylinderGeometry(0.255, 0.29, 0.11, 18, 1, true), tm(C.steel, { side: THREE.DoubleSide })), 0, 0.8, 0, skirt).scale.z = 0.82;
+      add(P(new THREE.CylinderGeometry(0.29, 0.325, 0.11, 18, 1, true), tm(C.steel2, { side: THREE.DoubleSide })), 0, 0.7, 0, skirt).scale.z = 0.82;
+      add(new THREE.Mesh(new THREE.CircleGeometry(0.29, 18).rotateX(Math.PI / 2), hollow), 0, 0.66, 0, skirt).scale.z = 0.82;
+      const tabard = (z, flip) => {
+        const sh = new THREE.Shape(); sh.moveTo(-0.11, 0); sh.lineTo(0.11, 0);
+        const bot = [[0.13, -0.4], [0.08, -0.34], [0.05, -0.42], [0, -0.36], [-0.04, -0.43], [-0.08, -0.35], [-0.13, -0.41]];
+        for (const [x, y] of bot) sh.lineTo(x, y);
+        const g = new THREE.Group(); g.position.set(0, 0.86, z); g.rotation.y = flip ? Math.PI : 0; inner.add(g);
+        add(new THREE.Mesh(new THREE.ShapeGeometry(sh), cloth), 0, 0, 0, g);
+        return g;
+      };
+      const front = tabard(0.29, false), back = maou ? null : tabard(-0.29, true);
+      // 紋は一つのメッシュにまとめる（大きさ k 倍、中心が原点）。さまよう鎧は肉球、魔王城のものは赤い玉の王冠
+      const pawM = tm('#d8c08a');
+      const paw = k => THREEX.BufferGeometryUtils.mergeGeometries([new THREE.CircleGeometry(0.045 * k, 14).scale(1, 0.85, 1), ...[[-0.055, 0.065], [-0.02, 0.09], [0.02, 0.09], [0.055, 0.065]].map(([x, y]) => new THREE.CircleGeometry(0.019 * k, 10).translate(x * k, y * k, 0))]);
+      if (maou) {
+        const cr = new THREE.Shape(); cr.moveTo(-0.07, -0.04); cr.lineTo(0.07, -0.04); cr.lineTo(0.085, 0.05); cr.lineTo(0.04, 0.005); cr.lineTo(0, 0.065); cr.lineTo(-0.04, 0.005); cr.lineTo(-0.085, 0.05); cr.lineTo(-0.07, -0.04);
+        add(new THREE.Mesh(new THREE.ShapeGeometry(cr), brass), 0, -0.19, 0.004, front);
+        add(new THREE.Mesh(new THREE.CircleGeometry(0.018, 10), tm('#d8303c')), 0, -0.2, 0.006, front);
+      } else add(new THREE.Mesh(paw(1), pawM), 0, -0.2, 0.004, front);
+      // 上半身：胸当て・肩当て・腕・かぶと。足とは別にゆれる
+      const upper = new THREE.Group(); upper.position.y = 0.86; inner.add(upper);
+      ring(0.25, 0.03, 0, upper, leather).scale.y = 0.82;
+      add(P(new THREEX.RoundedBoxGeometry(0.1, 0.08, 0.03, 2, 0.01), brass), 0, 0, 0.215, upper);
+      const chest = add(P(lathe([[0.245, 0.02], [0.285, 0.14], [0.305, 0.26], [0.29, 0.4], [0.2, 0.5], [0.13, 0.53]], 24), steel), 0, 0, 0, upper); chest.scale.z = 0.78;
+      add(new THREE.Mesh(new THREE.CircleGeometry(0.13, 18).rotateX(-Math.PI / 2), hollow), 0, 0.525, 0, upper).scale.z = 0.78;
+      // 胸のまん中の稜線と、横に走る板のさかい目
+      const ridge = add(P(new THREE.CylinderGeometry(0.016, 0.016, 0.36, 6), trim), 0, 0.27, 0.233, upper); ridge.rotation.x = 0.12;
+      ring(0.287, 0.012, 0.14, upper, rim).scale.y = 0.79;
+      ring(0.13, 0.035, 0.53, upper);   // のど当て
+      // 首の穴の奥の光（中身がないしるし）
+      const soul = add(new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), glowMat(eyeCol, 1.6)), 0, 0.56, 0, upper);
+      const soulSp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(eyeCol, 1.2), blending: THREE.AdditiveBlending, depthWrite: false })); soulSp.scale.setScalar(0.9); soul.add(soulSp);
+      // 肩当て：二枚重ねのおわん。体から浮いている
+      const pauls = [-1, 1].map(s => {
+        const g = new THREE.Group(); g.position.set(s * 0.33, 0.44, 0); g.rotation.z = -s * 0.42; upper.add(g);
+        const dome = new THREE.SphereGeometry(0.16, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+        add(P(dome, steel), 0, 0, 0, g).scale.set(1.1, 0.75, 0.95);
+        add(P(dome.clone(), trim), s * 0.06, -0.07, 0, g).scale.set(1.05, 0.6, 0.9);
+        if (maou) ring(0.165, 0.014, 0.005, g, brass).scale.set(1.1, 0.95, 1);
+        rivet(0, 0.12, 0, g, 0.022);
+        return g;
+      });
+      // 腕：肩の玉を軸に、二の腕・ひじ当て・こて・手甲。つなぎ目に少しすき間
+      const arms = [-1, 1].map(s => {
+        const g = new THREE.Group(); g.position.set(s * 0.35, 0.38, 0); upper.add(g);
+        add(P(new THREE.CylinderGeometry(0.072, 0.066, 0.2, 12), steel), 0, -0.12, 0, g);
+        const elbow = new THREE.Group(); elbow.position.y = -0.25; g.add(elbow);
+        add(P(new THREE.SphereGeometry(0.07, 12, 8), trim), 0, 0, 0, elbow);
+        add(P(new THREE.CylinderGeometry(0.068, 0.088, 0.2, 12), steel), 0, -0.13, 0, elbow);
+        const hand = add(P(new THREEX.RoundedBoxGeometry(0.12, 0.12, 0.14, 2, 0.035), trim), 0, -0.3, 0.01, elbow);
+        return { g, elbow, hand };
+      });
+      // 右手の持ち物は、にぎりが原点で上へのびる
+      const held = new THREE.Group(); held.position.set(0, -0.02, 0.02); held.rotation.set(Math.PI / 2 - 0.35, 0, 0); arms[0].hand.add(held);
+      let cape = null;
+      if (maou) {
+        // 斧槍：石突きが地面に届く長い柄、金の口金、穂先と三日月の斧、うしろのとげ、桃色の房
+        add(P(new THREE.CylinderGeometry(0.022, 0.022, 1.9, 8), tm('#3a2a4a')), 0, 0.1, 0, held);
+        add(P(new THREE.CylinderGeometry(0.03, 0.03, 0.08, 8), brass), 0, -0.84, 0, held);
+        add(P(new THREE.CylinderGeometry(0.035, 0.035, 0.1, 8), brass), 0, 1.04, 0, held);
+        const tip = new THREE.ConeGeometry(0.045, 0.3, 4); tip.rotateY(Math.PI / 4); add(P(tip, tm('#d8dce8')), 0, 1.24, 0, held).scale.z = 0.4;
+        const ax = new THREE.Shape(); ax.moveTo(0, 0.12); ax.quadraticCurveTo(-0.12, 0.14, -0.2, 0.2); ax.quadraticCurveTo(-0.12, 0, -0.2, -0.16); ax.quadraticCurveTo(-0.1, -0.08, 0, -0.06); ax.lineTo(0, 0.12);
+        const axGeo = new THREE.ExtrudeGeometry(ax, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.005, bevelSegments: 1 }); axGeo.translate(-0.015, 0, -0.006);
+        add(P(axGeo, tm('#d8dce8')), 0, 1.02, 0, held);
+        add(P(new THREE.ConeGeometry(0.025, 0.14, 6), tm('#d8dce8')), 0.08, 1.02, 0, held).rotation.z = -Math.PI / 2;
+        add(P(new THREE.ConeGeometry(0.05, 0.16, 8), tm('#ff8ad8')), 0, 0.92, 0, held).rotation.x = Math.PI;
+        // 背中のマント：外は紫、裏は赤。肩の金の留め金からさがる
+        cape = new THREE.Group(); cape.position.set(0, 0.47, -0.25); upper.add(cape);
+        const cs = new THREE.Shape(); cs.moveTo(-0.22, 0); cs.lineTo(0.22, 0); cs.lineTo(0.32, -0.74); cs.quadraticCurveTo(0.24, -0.82, 0.16, -0.76); cs.quadraticCurveTo(0.08, -0.84, 0, -0.77); cs.quadraticCurveTo(-0.08, -0.84, -0.16, -0.76); cs.quadraticCurveTo(-0.24, -0.82, -0.32, -0.74); cs.lineTo(-0.22, 0);
+        add(new THREE.Mesh(new THREE.ShapeGeometry(cs, 4), tm('#4a2468')), 0, 0, 0, cape).rotation.y = Math.PI;
+        add(new THREE.Mesh(new THREE.ShapeGeometry(cs, 4), tm('#d8303c')), 0, 0, 0.004, cape);
+        for (const s of [-1, 1]) rivet(s * 0.2, 0.47, -0.23, upper, 0.03);
+      } else {
+        // 欠けた大剣（刃の片がわに欠けのくぼみ）
+        add(P(new THREE.CylinderGeometry(0.02, 0.022, 0.2, 8), leather), 0, 0, 0, held);
+        add(P(new THREE.SphereGeometry(0.035, 10, 8), brass), 0, -0.12, 0, held);
+        add(P(new THREEX.RoundedBoxGeometry(0.3, 0.04, 0.05, 2, 0.015), brass), 0, 0.11, 0, held);
+        const bl = new THREE.Shape(); bl.moveTo(-0.055, 0); bl.lineTo(0.055, 0); bl.lineTo(0.05, 0.42); bl.lineTo(0.025, 0.46); bl.lineTo(0.048, 0.52); bl.lineTo(0.04, 0.78); bl.lineTo(0, 0.9); bl.lineTo(-0.045, 0.76); bl.lineTo(-0.05, 0.3); bl.lineTo(-0.055, 0);
+        const bladeGeo = new THREE.ExtrudeGeometry(bl, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.006, bevelSegments: 1 }); bladeGeo.translate(0, 0, -0.006);
+        add(P(bladeGeo, tm('#d4dae8')), 0, 0.13, 0, held);
+        add(new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.5, 0.03), trim), 0, 0.42, 0, held);   // 刃のみぞ
+        // 左手：肉球の紋の盾（青い地に、鉄のふち）
+        const sh = new THREE.Shape(); sh.moveTo(-0.19, 0.22); sh.lineTo(0.19, 0.22); sh.lineTo(0.19, 0.02); sh.quadraticCurveTo(0.17, -0.18, 0, -0.27); sh.quadraticCurveTo(-0.17, -0.18, -0.19, 0.02); sh.lineTo(-0.19, 0.22);
+        const shield = new THREE.Group(); shield.position.set(0.04, -0.2, 0.17); shield.rotation.set(0.8, -0.2, 0); arms[1].elbow.add(shield);
+        const rimGeo = new THREE.ExtrudeGeometry(sh, { depth: 0.04, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 1 }); rimGeo.translate(0, 0, -0.03);
+        add(P(rimGeo, steel), 0, 0, 0, shield);
+        const face = add(new THREE.Mesh(new THREE.ShapeGeometry(sh), tm(C.cloth)), 0, 0.005, 0.027, shield); face.scale.setScalar(0.86);
+        add(new THREE.Mesh(paw(1.6), pawM), 0, -0.04, 0.03, shield);
+        rivet(-0.15, 0.18, 0.04, shield); rivet(0.15, 0.18, 0.04, shield); rivet(0, -0.21, 0.04, shield);
+      }
+      // かぶと：首から浮いてふわふわ。猫耳、のぞき穴の奥に光る目、頭の上の稜
+      const helm = new THREE.Group(); helm.position.y = 0.8; upper.add(helm);
+      add(P(lathe([[0.2, -0.17], [0.215, -0.05], [0.218, 0.06], [0.2, 0.15], [0.14, 0.23], [0.001, 0.265]], 24), steel), 0, 0, 0, helm).scale.z = 0.96;
+      add(new THREE.Mesh(new THREE.CircleGeometry(0.2, 18).rotateX(Math.PI / 2), hollow), 0, -0.168, 0, helm);
+      ring(0.205, 0.016, -0.16, helm, rim);
+      const slit = add(new THREE.Mesh(new THREE.CylinderGeometry(0.221, 0.221, 0.065, 16, 1, true, -0.85, 1.7), hollow), 0, 0.0, 0, helm); slit.scale.z = 0.96;
+      const nose = add(P(new THREE.BoxGeometry(0.03, 0.15, 0.03), trim), 0, -0.1, 0.208, helm); nose.rotation.x = 0.06;
+      const crest = add(P(new THREE.TorusGeometry(0.222, 0.02, 6, 20, Math.PI), rim), 0, 0.03, 0, helm); crest.rotation.y = Math.PI / 2; crest.scale.set(1, 1.07, 0.96);
+      const holes = []; for (const s of [-1, 1]) for (let i = 0; i < 3; i++) holes.push(new THREE.CircleGeometry(0.011, 8).rotateY(s * (0.58 + i * 0.1)).translate(s * (0.12 + i * 0.022), -0.08 - (i % 2) * 0.025, 0.177 - i * 0.012));
+      add(new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(holes), hollow), 0, 0, 0, helm);   // 息の穴
+      const helmEyes = [-1, 1].map(s => { const e = add(new THREE.Mesh(new THREE.SphereGeometry(0.034, 12, 8), glowMat(eyeCol, 1.8)), s * 0.075, 0.002, 0.212, helm); e.scale.set(1.25, 0.85, 0.35); return e; });
+      for (const s of [-1, 1]) {
+        const eg = new THREE.ConeGeometry(0.085, 0.17, 4); eg.rotateY(Math.PI / 4);
+        const ear = add(P(eg, steel), s * 0.125, 0.25, -0.01, helm); ear.scale.z = 0.5; ear.rotation.z = -s * 0.38;
+        const ei = new THREE.ConeGeometry(0.05, 0.1, 4); ei.rotateY(Math.PI / 4);
+        const inn = add(new THREE.Mesh(ei, maou ? tm('#d8303c') : trim), 0, -0.02, 0.025, ear); inn.scale.z = 0.4;
+      }
+      let sway = [];   // ゆれる飾り（さまよう鎧は片耳に結んだ布、魔王城のものは羽飾り）
+      if (maou) {
+        // 横の角（魔王と同じクリーム色）と、頭のうしろの桃色の羽飾り
+        const horn = tm('#f0e6d0');
+        for (const s of [-1, 1]) { const h = add(P(new THREE.ConeGeometry(0.045, 0.2, 8), horn), s * 0.27, 0.1, 0, helm); h.rotation.z = -s * 0.75; const h2 = add(P(new THREE.ConeGeometry(0.03, 0.1, 8), horn), 0, 0.12, 0, h); h2.rotation.z = s * 0.5; }
+        const plume = new THREE.Group(); plume.position.set(0, 0.24, -0.08); helm.add(plume);
+        sway = [0, -0.35, 0.35].map((rz, i) => { const q = new THREE.Group(); q.rotation.z = rz; plume.add(q); add(P(new THREE.ConeGeometry(0.06 - i * 0.012, 0.36 - i * 0.06, 10), tm(i ? '#ffb0e4' : '#ff8ad8')), 0, 0.15, 0, q); return q; });
+      } else {
+        const ribbon = new THREE.Group(); ribbon.position.set(0.17, 0.27, -0.03); helm.add(ribbon);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), cloth), 0, 0, 0, ribbon);
+        sway = [0.3, -0.3].map((ry, i) => { const q = new THREE.Group(); q.rotation.y = ry; ribbon.add(q); add(new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.012, 0.2 - i * 0.04), cloth), 0, 0, -0.1 + i * 0.02, q); return q; });
+      }
+      update = (dt, t) => {
+        const ph = root.userData.ph, b = Math.sin(t * 2 + ph);
+        // 体は少しかしいで、かちゃかちゃゆれる。かぶと・肩当ては、それぞれ遅れて浮きしずみ
+        upper.position.y = 0.86 + b * 0.012; upper.rotation.z = Math.sin(t * 1.3 + ph) * 0.035; upper.rotation.y = Math.sin(t * 0.7 + ph) * 0.08;
+        helm.position.y = 0.8 + Math.sin(t * 2 + ph - 0.9) * 0.028; helm.rotation.z = Math.sin(t * 0.9 + ph) * 0.1; helm.rotation.x = Math.sin(t * 1.1 + ph) * 0.05;
+        pauls.forEach((g, i) => { g.position.y = 0.44 + Math.sin(t * 2 + ph - 0.5 - i * 0.6) * 0.016; });
+        arms[0].g.rotation.set(-0.35 + b * 0.04, 0, -0.18); arms[0].elbow.rotation.x = -0.75 + b * 0.05;
+        if (maou) { arms[1].g.rotation.set(-0.05 - b * 0.03, 0, 0.2); arms[1].elbow.rotation.x = -0.3 - b * 0.04; }
+        else { arms[1].g.rotation.set(-0.2 - b * 0.03, 0, 0.22); arms[1].elbow.rotation.x = -0.6 - b * 0.04; }
+        legs.forEach((g, i) => { g.rotation.z = (i ? 1 : -1) * 0.04; });
+        front.rotation.x = Math.sin(t * 1.7 + ph) * 0.06 - 0.04; if (back) back.rotation.x = Math.sin(t * 1.7 + ph + 1) * 0.06 - 0.04;
+        if (cape) cape.rotation.x = 0.2 + Math.sin(t * 1.7 + ph + 1) * 0.04;
+        if (maou) sway.forEach((q, i) => { q.rotation.x = -0.85 + Math.sin(t * 3 + i * 1.1) * 0.12; });
+        else sway.forEach((g, i) => { g.rotation.x = Math.sin(t * 6 + i * 1.3) * 0.2 - 1.1; });
+        // まばたき（光がふっと細くなる）と、首の光のゆらぎ
+        const blink = (t * 0.37 + ph) % 4 > 3.85 ? 0.15 : 1; helmEyes.forEach(e => { e.scale.y = 0.85 * blink; });
+        soul.scale.setScalar(1 + Math.sin(t * 5 + ph) * 0.15);
+      };
+      emitFn = (p, pos) => { if (Math.random() < 0.3) p.emit(V3(pos.x + (Math.random() - 0.5) * 0.25, pos.y + 1.45, pos.z), V3(0, 0.5, 0), hdr(eyeCol, 1.3), { life: 1, size: 0.09, drag: 0.5 }); };
+      height = 1.9; radius = 0.6; scale = maou ? 1.15 : 1.1; break;
     }
     case 'wisp': {   // 古代ほたる：光る玉に小さな羽
       coreGlow(1.1, 0, 0.18);
