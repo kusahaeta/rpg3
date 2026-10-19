@@ -463,10 +463,11 @@ function ChapterClearScreen(ci, niboshi) {
 function EndingScreen() {
   const v3 = GFX.ok ? GFX.show('title', () => new TitleView()) : null;
   Music.stop();   // Fin は曲なしで、静かに
+  // 夢の世界への道のお知らせは、夢に入れるとき（開発中のあいだは、デバッグモード）だけ
   const s = h(`<div class="screen ending">
     <div class="en-roll">
       <h1>Fin</h1>
-      <p class="dim">クリアおめでとう！　村の猫神社の奥で、ふしぎな夢の世界への道が開いたらしい……</p>
+      <p class="dim">クリアおめでとう！${zoneOpen('dream') ? '　村の猫神社の奥で、ふしぎな夢の世界への道が開いたらしい……' : ''}</p>
     </div>
     <button class="btn gold" data-ok>冒険にもどる</button></div>`);
   s.querySelector('[data-ok]').onclick = () => { Sfx.click(); App.go(FieldScreen); };
