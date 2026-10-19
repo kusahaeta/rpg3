@@ -1241,8 +1241,11 @@ class FieldView extends BaseView {
       const all = Save.data.fieldChests || (Save.data.fieldChests = {});
       (all[this.zoneId] = all[this.zoneId] || []).push(c.id);
       const wid = (CHEST_WEAPONS[this.zoneId] || {})[c.id], gotW = wid && !hasWeapon(wid);
-      const nib = gotW ? 0 : 40 + Math.floor(Math.random() * 7) * 10;
+      // 武器のない宝箱は、半分くらいがどうぐ。持ちきれないどうぐは、にぼしに替えてもらう
+      const iid = !gotW && Math.random() < 0.5 ? chestItem() : null, gi = iid && ITEMS[iid], full = gi && itemCount(iid) >= ITEM_MAX;
+      const nib = gotW || (gi && !full) ? 0 : full ? gi.worth || gi.price : 40 + Math.floor(Math.random() * 7) * 10;
       if (gotW) gainWeapon(wid);
+      if (gi && !full) { const items = Save.data.items || (Save.data.items = {}); items[iid] = itemCount(iid) + 1; }
       Save.data.niboshi += nib; Save.save();
       GFX.tween(0.5, t => { c.lid.rotation.x = -1.9 * t; }, Ease.back);
       c.glow.visible = false;
@@ -1252,7 +1255,11 @@ class FieldView extends BaseView {
       if (gotW) {
         const w = WEAPONS[wid], own = Save.data.owned[w.owner];
         this.startTalk('宝箱', [`「${w.name}」を手に入れた！`, w.desc, own ? `${CHARS[w.owner].name}の${WEAPON_KIND[CHARS[w.owner].gear.weapon]}だ。メニューの「なかま」で装備すると、技がまるごと変わる。` : 'いまの仲間には、使えそうな子がいない……。いつか、使える子に出会えるかもしれない。'], null, true);
-      } else this.toast(`宝箱：にぼし +${nib}`);
+      } else if (gi && gi.rare && !full) {
+        this.startTalk('宝箱', [`めずらしいどうぐ「${gi.icon} ${gi.name}」を手に入れた！（持っている数 ${itemCount(iid)}）`, gi.desc, '戦闘中に「どうぐ」で使える。'], null, true);
+      } else if (gi && !full) this.toast(`宝箱：${gi.icon} ${gi.name}を手に入れた！（持っている数 ${itemCount(iid)}）`);
+      else if (gi) this.toast(`宝箱：${gi.icon} ${gi.name}……もう持てないので、にぼし +${nib}`);
+      else this.toast(`宝箱：にぼし +${nib}`);
       this.renderHud();
     } else if (it.type === 'lift') this.rideLift(it.L);
     else if (it.type === 'call') { this.moveLift(it.L, it.lv); this.toast('エレベーターを呼んだ'); }

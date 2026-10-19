@@ -542,6 +542,7 @@ const CHAPTERS = [
 //  戦闘で使うどうぐ（R キー）。持っている数は Save.data.items。道具屋で買える（ひとつ ITEM_MAX こまで）
 //  target：ally 味方単体 / allies 味方全体 / down 戦闘不能の味方 / single 敵単体。
 //  col：使うときの演出の色。key：だいじなもの（使ってもなくならない。has で持っているか決まる）。once：その敵には一戦闘に一度だけ
+//  rare：宝箱でしか見つからない（道具屋には並ばない）。worth：持ちきれないときに代わりにもらえるにぼし
 // ------------------------------------------------------------
 const ITEM_MAX = 9;
 const ITEMS = {
@@ -553,6 +554,10 @@ const ITEMS = {
     run: (B, s, t) => { B.gainEnergy(t, t.energyMax * 0.3); B.float(t, 'ごろごろ', 'info'); if (B.v) B.v.energyFx(t); } },
   nekokan:  { name: 'ねこ缶', icon: '🥫', col: '#ffd166', price: 150, target: 'down', desc: '戦闘不能の味方単体を、HP10%で起こす。',
     run: (B, s, t) => B.revive(t, 0.1) },
+  ootoro:   { name: 'まぐろの大トロ', icon: '🍣', col: '#ff9c9c', rare: true, worth: 300, target: 'ally', desc: '宝箱でしか見つからない、とろける大トロ。味方単体のHPを100%回復する。',
+    run: (B, s, t) => B.heal(s, t, t.maxHp) },
+  kinmata:  { name: '金のまたたび', icon: '✨', col: '#ffe066', rare: true, worth: 300, target: 'ally', byEnergy: true, desc: '宝箱でしか見つからない、金色にかがやくまたたび。味方単体の奥義ゲージを満タンにする。',
+    run: (B, s, t) => { B.gainEnergy(t, t.energyMax); B.float(t, 'ごろごろ♪', 'info'); if (B.v) B.v.energyFx(t); } },
   jarashi:  { name: '猫じゃらし', icon: '🌾', key: true, has: () => storyCond('scene:c6_k3b'), target: 'single',
     desc: 'チョキチョキにもらった、だいじな猫じゃらし。敵の前で振る。猫じゃらしに目がない相手は、夢中になって1ターン行動できない（その敵には1戦闘に1回）。',
     run: (B, s, t) => {
@@ -568,6 +573,13 @@ function itemCount(id) {
   const it = ITEMS[id];
   if (it.key) return it.has() ? 1 : 0;
   return (Save.data.items || {})[id] || 0;
+}
+// 宝箱から出るどうぐ（重み）。大トロと金のまたたびは、宝箱でしか見つからない
+const CHEST_ITEMS = { onigiri: 30, matatabi: 22, katsuo: 18, nekokan: 14, ootoro: 8, kinmata: 8 };
+function chestItem() {
+  let r = Math.random() * Object.values(CHEST_ITEMS).reduce((a, b) => a + b, 0);
+  for (const id in CHEST_ITEMS) if ((r -= CHEST_ITEMS[id]) < 0) return id;
+  return 'onigiri';
 }
 
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
