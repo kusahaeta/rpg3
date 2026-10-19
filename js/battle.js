@@ -561,12 +561,12 @@ class Battle {
   itemReady(u, id) { const it = ITEMS[id]; return itemCount(id) > 0 && (it.target === 'allies' || this.targetList(u, it).length > 0); }
   readyItems(u) { return Object.keys(ITEMS).filter(id => this.itemReady(u, id)); }
   itemAb(id) {
+    if (!id) return { name: 'どうぐを選ぶ', desc: '使うどうぐを一覧から選ぶ。', target: 'none' };
     const it = ITEMS[id];
     return { ...it, name: `${it.icon} ${it.name}${it.key ? '（だいじなもの）' : `（のこり ${itemCount(id)}）`}`, desc: it.desc + '　SPは増減しない。' };
   }
   async useItem(u, id, t) {
     const it = ITEMS[id];
-    this.lastItem = id;
     if (!it.key) { Save.data.items[id] = Math.max(0, itemCount(id) - 1); Save.save(); }
     this.announce('どうぐ', `${it.icon} ${it.name}`, u.color);
     if (this.v) {
@@ -866,14 +866,20 @@ class Battle {
     this.renderInput();
   }
 
-  // どうぐ：はじめは前に使ったどうぐ（なければ一つ目）。R をもう一度押すと次のどうぐへ。メニューで選んでいるどうぐをもう一度選ぶと決定
+  // どうぐ：はじめは何も選ばずに一覧を開く。R をもう一度押すと次のどうぐへ。メニューで選んでいるどうぐをもう一度選ぶと決定
   selectItem(id) {
     const inp = this.input;
     if (!inp || inp.mode !== 'turn') return;
     const list = this.readyItems(inp.unit);
     if (!list.length) { this.announce('どうぐ', 'いま使えるどうぐがない', '#ff6b6b'); return; }
     if (id && inp.sel === 'item' && inp.item === id) { this.confirm(); return; }
-    if (!id) id = inp.sel === 'item' ? list[(list.indexOf(inp.item) + 1) % list.length] : list.includes(this.lastItem) ? this.lastItem : list[0];
+    if (!id && inp.sel !== 'item') {
+      Sfx.click();
+      inp.sel = 'item'; inp.item = null; inp.target = null;
+      this.renderInput();
+      return;
+    }
+    if (!id) id = list[(list.indexOf(inp.item) + 1) % list.length];
     if (!list.includes(id)) return;
     Sfx.click();
     const prev = this.abilityOf(inp).target;
@@ -903,6 +909,7 @@ class Battle {
     const inp = this.input; if (!inp) return;
     const ab = this.abilityOf(inp);
     if (inp.mode === 'turn' && inp.sel === 'skill' && this.sp < 1) { this.flashSp(); return; }
+    if (inp.mode === 'turn' && inp.sel === 'item' && !inp.item) return;
     if (NEEDS_TARGET.has(ab.target) && !this.targetList(inp.unit, ab).includes(inp.target)) return;
     Sfx.select();
     this.input = null; this.renderInput();
@@ -934,7 +941,8 @@ class Battle {
       if (!NEEDS_TARGET.has(ab.target) && ((ab.target === 'aoe' && u.side === 'enemy') || (ab.target !== 'aoe' && u.side === 'ally'))) this.confirm();
       return;
     }
-    if (inp.target === u) this.confirm();
+    // どうぐと味方単体の技（回復など）は、はじめから選ばれている相手かどうかにかかわらず、押した相手にすぐ使う
+    if (inp.target === u || (inp.mode === 'turn' && inp.sel === 'item') || ab.target === 'ally' || ab.target === 'down') { inp.target = u; this.confirm(); }
     else { Sfx.click(); inp.target = u; this.renderInput(); }
   }
 
