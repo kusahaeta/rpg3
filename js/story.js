@@ -132,7 +132,7 @@ function renderRecap(o, onClose, onReplay) {
     <div class="rc-list">${body}
       ${cur ? `<div class="rc-now"><small>いまの目的</small>◆ ${cur.step.g}</div>` : '<div class="rc-now"><small>ぼうけん</small>すべてのお話を見終えた</div>'}
     </div>
-    <button class="btn gold" data-close>閉じる</button></div>`;
+    <div class="rc-foot"><button class="btn gold" data-close>閉じる</button></div></div>`;
   o.classList.remove('hidden');
   const listEl = o.querySelector('.rc-list');
   listEl.scrollTop = listEl.scrollHeight;
