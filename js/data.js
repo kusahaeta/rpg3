@@ -448,16 +448,16 @@ const ENEMIES = {
     turn: { at: 0.5, name: '剪定', cry: 'チョキチョキ「ほっほっ、のびすぎた枝は、切りそろえんとな！」', strip: true, buffs: [{ stat: 'spd', value: 0.2 }] }, summon: 'mazoku', moves: [['snip', 2], ['leafStorm', 2], ['pruneCharge', 1], ['summon', 1]] },
   k_dodon:  { name: '四天王 大地のドドン', shape: 'k_dodon', color: '#c8884a', boss: true, hp: 44000, atk: 1500, spd: 98, tough: 170, eres: 0.25, weak: ['fire', 'ice', 'quantum'],
     turn: { at: 0.5, name: 'ひとっ風呂', cry: 'ドドン「ちょいと、ひとっ風呂……ぬおお、のぼせてきたわい！」', heal: 0.2, buffs: [{ stat: 'atk', value: 0.35 }, { stat: 'spd', value: -0.2, debuff: true }] }, summon: 'mazoku', moves: [['yuagariPunch', 2], ['manjuToss', 2], ['onsenCharge', 1], ['summon', 1]] },
-  boss_maou:{ name: '魔王マオウ',     shape: 'maou',     color: '#b04aff', boss: true, lure: true, hp: 84000, atk: 1600, spd: 108, tough: 190, eres: 0.35, weak: ['imaginary', 'fire', 'physical'],
+  boss_maou:{ name: '魔王マオウ',     shape: 'maou',     color: '#b04aff', boss: true, lure: true, hp: 84000, atk: 1600, spd: 108, tough: 190, eres: 0.4, weak: ['imaginary', 'fire', 'physical'],
     turn: { at: 0.5, name: 'ぬいぐるみの守り', cry: '魔王マオウ「ぬいぐるみたちよ……余のそばにいろ！」', summon: ['nuigurumi', 2], guard: 0.5, until: 'summon', end: ['守りが消えた！', '「……みんな、いなくなった……」'] }, summon: 'mazoku', moves: [['darkPaw', 2], ['darkWave', 2], ['maouCharge', 1], ['summon', 1]] },
   // 第七章：にゃんだーの樹の根
   kakera:   { name: 'コドクのかけら', shape: 'shard',    color: '#5a4a8a', hp: 6200, atk: 1500, spd: 110, tough: 40, weak: ['imaginary', 'fire', 'lightning'], moves: [['hollow', 2], ['strike', 1]] },
   utsuro:   { name: '虚ろ',           shape: 'void',     color: '#3a2a5a', elite: true, hp: 22000, atk: 1600, spd: 100, tough: 110, eres: 0.25, weak: ['imaginary', 'lightning', 'physical'], moves: [['hollow', 2], ['voidSwirl', 1], ['cleave', 1]] },
-  kodoku_kage: { name: 'コドクの影',  shape: 'kodoku',   color: '#2a1a4a', boss: true, hp: 100000, atk: 1700, spd: 105, tough: 200, eres: 0.35, weak: ['imaginary', 'fire', 'physical'],
+  kodoku_kage: { name: 'コドクの影',  shape: 'kodoku',   color: '#2a1a4a', boss: true, hp: 100000, atk: 1700, spd: 105, tough: 200, eres: 0.4, weak: ['imaginary', 'fire', 'physical'],
     turn: { at: 0.5, name: '孤独の闇', cry: 'コドクの影がふくれあがった！「……見るな。わたしを、見るな」', isolate: true, buffs: [{ stat: 'atk', value: 0.2 }] }, summon: 'kakera', moves: [['isolate', 2], ['despair', 2], ['erase', 1], ['kodokuCharge', 1], ['summon', 1]] },
   // 第八章：世界の果て
   kagejuu:  { name: 'コドクの獣',     shape: 'shadowbeast', color: '#4a2a6a', hp: 7200, atk: 1650, spd: 108, tough: 40, weak: ['imaginary', 'fire', 'physical'], moves: [['bite', 2], ['shadowRake', 1]] },
-  kodoku:   { name: 'コドク',         shape: 'kodoku',   color: '#1a0a36', boss: true, final: true, hp: 80000, atk: 1800, spd: 112, tough: 220, eres: 0.4, weak: ['imaginary', 'fire', 'physical'],
+  kodoku:   { name: 'コドク',         shape: 'kodoku',   color: '#1a0a36', boss: true, final: true, hp: 80000, atk: 1800, spd: 112, tough: 220, eres: 0.5, weak: ['imaginary', 'fire', 'physical'],
     phases: [{ weak: ['lightning', 'ice', 'quantum'], cry: 'コドク「まだ手を伸ばすか。ならば、闇の底まで沈めてやろう」' }, { weak: ['imaginary', 'ice', 'fire'], cry: 'コドク「消えろ……ひとりのほうが、楽だと言っている！」' }], summon: 'kakera', moves: [['isolate', 2], ['despair', 2], ['doubt', 1], ['erase', 1], ['eclipseCharge', 1], ['summon', 1]] },
   // 隠しダンジョン：ねこ神の夢
   purin:    { name: '超巨大プリン',   shape: 'pudding',  color: '#ffd27a', elite: true, hp: 30000, atk: 1600, spd: 80, tough: 120, eres: 0.2, weak: ['fire', 'lightning', 'physical'], moves: [['purin', 2], ['heavy', 1]] },
@@ -465,7 +465,7 @@ const ENEMIES = {
   tamas:    { name: '100匹のタマ',    shape: 'tamas',    color: '#fff4d8', elite: true, hp: 36000, atk: 1650, spd: 95, tough: 120, eres: 0.2, weak: ['quantum', 'fire', 'ice'], moves: [['swarm', 2], ['heavy', 1]] },
   nisemike: { name: 'ミケそっくりの偽物', shape: 'fakemike', color: '#f29a3e', hp: 9000, atk: 1800, spd: 105, tough: 40, weak: ['ice', 'quantum', 'physical'], moves: [['copycat', 2], ['strike', 1]] },
   kuroPlush:{ name: 'クロのぬいぐるみ', shape: 'plush',  color: '#3a3844', hp: 9500, atk: 1650, spd: 100, tough: 40, weak: ['fire', 'ice', 'lightning'], moves: [['plushHug', 2], ['strike', 1]] },
-  nekogami: { name: 'ねこ神',         shape: 'nekogami', color: '#ffe08a', boss: true, hp: 110000, atk: 1900, spd: 112, tough: 240, eres: 0.4, weak: ['quantum', 'physical', 'ice'],
+  nekogami: { name: 'ねこ神',         shape: 'nekogami', color: '#ffe08a', boss: true, hp: 110000, atk: 1900, spd: 112, tough: 240, eres: 0.5, weak: ['quantum', 'physical', 'ice'],
     phases: [{ weak: ['fire', 'lightning', 'ice'], cry: 'ねこ神「ふむ。少しは本気で遊んでやろう」' }, { weak: ['imaginary', 'quantum', 'physical'], cry: 'ねこ神「よかろう。世界をもう一度作るつもりで、相手をしてやる！」' }], summon: 'sakana', moves: [['godPaw', 2], ['chatter', 1], ['purin', 1], ['godCharge', 1], ['summon', 1]] },
 };
 
