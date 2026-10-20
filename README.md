@@ -37,7 +37,7 @@ xcrun devicectl device process launch --console --device <iPhone の名前か ID
 
 iPhone は「設定 → プライバシーとセキュリティ → デベロッパモード」をオンにしておく。横画面固定・全画面・画面スリープなし。裏に回すと BGM を止める。音は消音スイッチに従う。セーブはアプリ内の localStorage に残ります。デバッグ版は Mac の Safari の「開発」メニューから中身を調べられ、`--console` で起動するとページのエラーがそのまま出ます（起動引数 `-query debug` で `?debug` 付きで開く）。アイコンは `swift ios/tools/make-icon.swift ios/Nyanko/Assets.xcassets/AppIcon.appiconset/icon-1024.png` で描き直せます。
 
-App Store に出すリリース版は `sh ios/tools/release.sh` で `ios/build/export/Nyanko.ipa` に書き出し、`sh ios/tools/release.sh upload` で App Store Connect へ送ります（ビルド番号は main のコミット数）。iPhone 専用で、ストアの文面・年齢レーティング・審査へのメモ・出すまでの手順は `ios/AppStore.md`、スクリーンショットは `ios/screenshots/`、プライバシーポリシーとサポートのページは `privacy.html`・`support.html`（GitHub Pages で公開）にあります。
+App Store に出すリリース版は `sh ios/tools/release.sh` で `ios/build/export/Nyanko.ipa` に書き出し、`sh ios/tools/release.sh upload` で App Store Connect へ送ります（ビルド番号は main のコミット数）。iPhone 専用で、ストアの文面・年齢レーティング・審査へのメモ・出すまでの手順は `ios/AppStore.md`、スクリーンショットは `ios/screenshots/`、プライバシーポリシーとサポートのページは `privacy.html`・`support.html`（GitHub Pages で公開。`.github/workflows/pages.yml` がこの2ページだけを出すので、ゲーム本体は Pages では遊べない）にあります。
 
 ## 遊べる範囲
 
