@@ -1356,8 +1356,8 @@ const STORY = [
     { t: 'field', zone: 'pokapoka', at: [0, 5], scene: 'c1_09', g: '村に帰って、村長に報告する' },
     { t: 'reward', niboshi: 300, g: '第一章 おしまい' },
   ] },
-  // 第二章：切り通しの見晴らし台から、関所の砦のむこうの、ニャハハ王国のお城と笑顔の塔（つぎの章の行き先）を見る
-  { title: '第二章　にゃんこ大集合', clearBgm: 'fort', clearSet: { zone: 'road2_gate', at: [-22, -26.5], face: 0, full: true, fog: 0.3, cam: { pos: [-1.5, 2.6, -3.6], look: [20, -22, 314], fov: 20 } }, steps: [
+  // 第二章：切り通しの見晴らし台から、関所の砦のむこうの、ニャハハ王国のお城と笑顔の塔（つぎの章の行き先）を見る（お城と塔は、まん中の札より上に。下には、野の川と石の橋）
+  { title: '第二章　にゃんこ大集合', clearBgm: 'fort', clearSet: { zone: 'road2_gate', at: [-22, -26.5], face: 0, full: true, fog: 0.3, cam: { pos: [6, 5, -4], look: [46, -36, 314], fov: 30 } }, steps: [
     { t: 'scene', id: 'c2_01', g: 'ミャオ街道へ' },
     { t: 'field', zone: 'road1', at: [9, 17], start: ['road1', -1, 68], near: ['road1', 'road1_hill', 'road_rest'], yaw: Math.PI, scene: 'c2_01b', g: '街道を北へ進む' },
     { t: 'field', zone: 'road_rest', at: [0, -1.5], scene: 'c2_02', battle: '2-1', after: 'c2_02b', g: '街道の宿場へ' },

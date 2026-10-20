@@ -1133,6 +1133,9 @@ function buildBattleSet(view, loc) {
   const h = pv.T ? pv.T.groundAt(cx, cz) : 0, a = loc.face * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
   root.rotation.y = a;
   root.position.set(-(cx * c + cz * s), -h, -(-cx * s + cz * c));
+  // 区画をまるごと組み立てるとき（章のおしまいの画面）は、地図の外の地面（環境の床）も区画といっしょに下げる。
+  //   下げないと、高いところ（見晴らし台など）から見下ろす景色が、すぐ下の一面の地面にふさがれる
+  if (loc.full && view.env.floor.visible) view.env.floor.position.y -= h;
   // 戦場の近くの自動扉は閉じたまま、区画の出入口は封鎖の表示のまま
   view.set = { root, pv, lp, hooks: pv.hooks || {}, update(dt, t) { for (const f of pv.zoneTicks) f(dt, t); for (const f of pv.emitters) f(dt); lp.update(dt); } };
   return view.set;

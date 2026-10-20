@@ -7493,53 +7493,40 @@ const ZONE_BUILD = {
     // 倒れた関所の札（地面に倒れている。調べられる）
     K.box(-12, 22, 3.4, 0.14, 0.9, 'wood', { ry: 0.3, col: false });
     K.mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: signTex('ニャハハ王国まで あと少し', '笑顔でお越しください'), transparent: true, toneMapped: false }), -12, 0.15, 22, { rx: -Math.PI / 2, rz: 0.3, noShadow: true });
-    // 遠景（見晴らし台から見える）：北に、ニャハハ王国関所の砦。そのずっとむこうに、ニャハハ王国の城と笑顔の塔（総長と戦う広場からは、まわりの高い崖にかくれる）
-    //   関所の区画（arch: 'fort'）の城壁と同じ作り：灰色の石積み（stoneTex・'#c4c8d2'）、石の土台・上の縁どり・狭間。
-    //   門（x = 10）は北の出口からまっすぐで、関所の南の門（makeGate）と同じ石の枠・要石・閉じた木の扉
-    //   砦は遠くに置き、城壁は高さ 14（狭間のてっぺんまで、見晴らし台の床より低い）、横幅は広く。
-    //   砦の奥行きは関所の区画と同じ 84。その北の門を出ると城下町（ニャハハ王国の区画と同じ並び）で、お城と笑顔の塔は城下町の北の奥。
-    //   見晴らし台から見下ろすと、砦の城壁ごしに城下町の屋根が見え、お城の下のほうは城壁と家並みにかくれる
-    const G0 = -1.3, WH = 14, FZ = -148, FX = 10, FW = 110, FD = 2;
-    const stoneM = (col) => K.stdM(col, 0.9, { map: stoneTex(), metalness: 0.02 });
-    // 石積みの箱：面ごとに、4m で模様一枚になるよう uv をのばす（区画の壁と同じ大きさの石）
-    const stoneBox = (mat, w, h, d, x, y, z) => {
-      const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv, size = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
-      for (let f = 0; f < 6; f++) for (let k = 0; k < 4; k++) { const n = f * 4 + k; uv.setXY(n, uv.getX(n) * size[f][0] / 4, uv.getY(n) * size[f][1] / 4); }
-      K.mg(mat, geo, x, y, z);
+    // ---- 遠景（見晴らし台から見える。総長と戦う広場からは、まわりの高い崖にかくれる） ----
+    //   北の出口の先は、左右を緑の尾根にはさまれた谷の野。川が西から東へ横切り（道は石の橋で渡る）、川ぞいと野のところどころに木立。
+    //   野の先にニャハハ王国関所の砦。砦のむこうに城下町と、お城・笑顔の塔。いちばん奥は、雪をかぶった山なみ（お城のうしろは低く、左右ほど高い）
+    //   遠景の地面・木・岩は材質ごとにまとめて描き（描く回数を少なく）、影は落とさない
+    const G0 = -1.3, GY = -1.26, FX = 10, FZ = -148;
+    const sm = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t), pk = a => a[Math.floor(K.r() * a.length)];
+    const farM = (color, o = {}) => { const m = new THREE.MeshStandardMaterial({ color, roughness: 1, metalness: 0, ...o }); m.userData.noShadow = true; return m; };
+    // 谷の野の地形：川の通り道・谷の野の半幅（道のまわり。奥ほど広い）・高さ
+    const riverZ = x => -92 + Math.sin(x * 0.018 + 0.6) * 12 + Math.sin(x * 0.047) * 3;
+    const valley = z => 62 + sm((-z - 40) / 260) * 70;
+    const farH = (x, z) => {
+      const n = -z, ax = Math.abs(x - FX), out = ax - valley(z);
+      // 左右の尾根：谷の野のふちから上って、てっぺん（高さ 22 ほど）をこえると、また下る（区画のすぐ北は平ら）
+      const crest = 22 + Math.sin(z * 0.023 + x * 0.004) * 6 + Math.sin(z * 0.061 + 1.7) * 3;
+      let h = (sm(out / 70) - sm((out - 120) / 140) * 0.8) * crest * sm((n - 34) / 50);
+      // 尾根のふもとの、ゆるい起伏（道・畑・砦・城下町のあたりは平ら）
+      h += sm((out + 30) / 20) * (Math.sin(x * 0.09 + z * 0.05) + Math.sin(z * 0.11 - x * 0.03) + 1.2) * 0.7;
+      // 奥の山すそ：お城のうしろから、山なみへ上っていく（左右ほど高い）
+      h += sm((n - 380) / 240) * (20 + sm(ax / 260) * 16 + Math.sin(x * 0.017) * 5);
+      // 川の通るところは尾根も切れて、川のまわり（12m）は川面の高さ
+      return GY + h * sm((Math.abs(z - riverZ(x)) - 12) / 26);
     };
-    const wallM = stoneM('#c4c8d2'), baseM = stoneM('#a4a8b4'), trimM = K.stdM('#5c5660', 0.55), capM = K.stdM('#f2f6ff', 0.95);
-    // 正面の城壁（門の左右）と、北へ折れる両わきの城壁
-    const GW = 8, side = (FW - GW) / 2;
-    for (const sd of [-1, 1]) {
-      const cx = FX + sd * (GW / 2 + side / 2);
-      stoneBox(wallM, side, WH, FD, cx, G0 + WH / 2, FZ - FD / 2);
-      stoneBox(baseM, side, 0.9, FD + 0.2, cx, G0 + 0.45, FZ - FD / 2);
-      K.mg(trimM, new THREE.BoxGeometry(side, 0.35, FD + 0.44), cx, G0 + WH - 0.22, FZ - FD / 2);
-      stoneBox(wallM, FD, WH, 30, FX + sd * (FW / 2 - FD / 2), G0 + WH / 2, FZ - 15);
-    }
-    // 門の上の壁と、石の枠（柱・まぐさ石・要石）。閉じた木の観音開きの扉（鉄の帯と輪の取っ手）。関所の南の門と同じ作り
-    stoneBox(wallM, GW, WH - 4.6, FD, FX, G0 + 4.6 + (WH - 4.6) / 2, FZ - FD / 2);
-    K.mg(trimM, new THREE.BoxGeometry(GW, 0.35, FD + 0.44), FX, G0 + WH - 0.22, FZ - FD / 2);
-    for (const sd of [-1, 1]) stoneBox(baseM, 0.7, 5.2, 0.7 + FD, FX + sd * (GW / 2 - 0.35), G0 + 2.6, FZ - FD / 2 + 0.15);
-    stoneBox(baseM, GW + 0.2, 0.8, FD + 0.8, FX, G0 + 4.9, FZ - FD / 2 + 0.15);
-    stoneBox(baseM, 0.6, 0.9, 0.9, FX, G0 + 5.1, FZ + 0.4);
-    const doorW = GW / 2 - 0.6, doorM = K.stdM('#7a5436', 0.85, { map: woodTex() }), ironM = K.stdM('#3a3a44', 0.5);
-    for (const sd of [-1, 1]) {
-      const cx = FX + sd * (doorW / 2 + 0.02);
-      K.mg(doorM, new THREE.BoxGeometry(doorW, 4.55, 0.18), cx, G0 + 2.275, FZ - 0.4);
-      for (const y of [0.2, 0.8]) K.mg(ironM, new THREE.BoxGeometry(doorW - 0.1, 0.12, 0.21), cx, G0 + 4.6 * y, FZ - 0.4);
-      K.mg(ironM, new THREE.TorusGeometry(0.13, 0.025, 6, 14), FX + sd * 0.35, G0 + 4.6 * 0.45, FZ - 0.28);
-    }
-    // 狭間：4m ごとに、白い笠石をのせた石の凸
-    for (let x = FX - FW / 2 + 1; x <= FX + FW / 2 - 1; x += 4) {
-      stoneBox(wallM, 1, 1.1, 1, x, G0 + WH + 0.55, FZ - 0.5);
-      K.mg(capM, new THREE.BoxGeometry(1.1, 0.12, 1.1), x, G0 + WH + 1.16, FZ - 0.5);
-    }
-    // 北の出口から砦の門までの道：出口（高さ2）から、なだらかに下って野の道へ。両脇は草地と、まばらな木
-    //   草地と坂は、区画の地面と同じ床の模様（地形の床の材質。模様一枚 16m）。道は、区画の土の道（,）と同じく、ふちをぼかした土の色と小石を重ねる
-    const floorM = K.v.arch ? K.v.arch.mats.floor : K.stdM('#8ab060', 1);
+    // 地面：区画の床と同じ模様（一枚 16m）。見晴らし台に近いところと川のまわりは 6m、遠くは 20m の格子
+    const ticks = (a, f0, f1, b, step, coarse) => { const v = []; for (let t = a; t < f0; t += coarse) v.push(t); for (let t = f0; t < f1; t += step) v.push(t); for (let t = f1; t < b; t += coarse) v.push(t); v.push(b); return v; };
+    const xs = ticks(-450, -200, 220, 470, 6, 20), zs = ticks(-780, -470, -32, -32, 6, 20);
+    const gpos = [], guv = [], gidx = [], NX = xs.length;
+    for (const z of zs) for (const x of xs) { gpos.push(x, farH(x, z), z); guv.push(x / 16, -z / 16); }
+    for (let j = 0; j < zs.length - 1; j++) for (let i = 0; i < NX - 1; i++) { const a = j * NX + i, b = a + 1, c = a + NX, d = c + 1; gidx.push(a, c, b, b, c, d); }
+    const ground = new THREE.BufferGeometry();
+    ground.setAttribute('position', new THREE.Float32BufferAttribute(gpos, 3)); ground.setAttribute('uv', new THREE.Float32BufferAttribute(guv, 2)); ground.setIndex(gidx); ground.computeVertexNormals();
+    const floorM = K.v.arch ? K.v.arch.mats.floor : K.stdM('#8ab060', 1), groundM = floorM.clone(); groundM.userData = { noShadow: true };
+    K.mg(groundM, ground, 0, 0, 0);
+    // 出口から野へ下る坂：区画の床と同じ模様。道は、区画の土の道（,）と同じく、ふちをぼかした土の色と小石を重ねる
     const tiled = (geo, w, d) => { const uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 16, uv.getY(k) * d / 16); return geo; };
-    K.mg(floorM, tiled(new THREE.PlaneGeometry(320, 400), 320, 400), 10, -1.26, -232, [-Math.PI / 2, 0, 0]);
     const rampL = 13, drop = 3.2, ang = Math.atan2(drop, rampL), rampLen = Math.hypot(rampL, drop);
     K.mg(floorM, tiled(new THREE.BoxGeometry(8, 0.6, rampLen), 8, rampLen), 10, 2 - drop / 2 - 0.3, -32 - rampL / 2, [-ang, 0, 0]);
     const pathTex = (() => {
@@ -7552,27 +7539,218 @@ const ZONE_BUILD = {
     const pathStrip = (len, x, y, z, rx) => { const geo = new THREE.PlaneGeometry(8, len), uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setY(k, uv.getY(k) * len / 32); const m = K.mesh(geo, pathM, x, y, z, { abs: true, rx, noShadow: true }); m.renderOrder = 1; };
     pathStrip(rampLen, 10, 2 - drop / 2 + 0.02, -32 - rampL / 2, -Math.PI / 2 - ang);
     pathStrip(6, 10, 2.02, -30, -Math.PI / 2);   // 出口のマス（区画の土の道の塗りは , のマスだけ）から坂の上までを、道でつなぐ
-    const roadL = -45 - FZ;
-    pathStrip(roadL + 1, 10, -1.24, -45 - roadL / 2 + 0.5, -Math.PI / 2);
-    const trunkM = K.stdM('#6a4a2a', 1), leafM = K.stdM('#6aa850', 1);
-    for (const [x, z, sc] of [[22, -44, 1.2], [27, -56, 1], [24, -74, 1.3], [33, -48, 0.9], [-2, -50, 1], [-6, -66, 0.8],
-      [20, -90, 1.1], [30, -106, 1.2], [-4, -98, 1], [24, -124, 0.9], [-8, -120, 1.1], [36, -134, 1]]) {
-      K.mg(trunkM, new THREE.CylinderGeometry(0.3 * sc, 0.4 * sc, 2.4 * sc, 6), x, -1.3 + 1.2 * sc, z);
-      K.mg(leafM, new THREE.SphereGeometry(1.6 * sc, 10, 8), x, -1.3 + 3.2 * sc, z, null, [1, 1.1, 1]);
+    // 野の道：坂の下から石の橋まで、橋の先から砦の門まで
+    const BZ = riverZ(FX), BL = 18, road = (z0, z1) => pathStrip(z0 - z1, FX, GY + 0.02, (z0 + z1) / 2, -Math.PI / 2);
+    road(-45, BZ + BL / 2 - 0.5); road(BZ - BL / 2 + 0.5, FZ);
+    // 崖のふもと：くずれ落ちた岩と、茂み
+    const rockG = new THREE.DodecahedronGeometry(1, 0), blob = new THREE.IcosahedronGeometry(1, 1), coneG = new THREE.ConeGeometry(1, 1, 7, 1, true), trunkG = new THREE.CylinderGeometry(0.7, 1, 1, 5, 1, true);   // 遠くの木の幹と葉の円錐は、見えない底をはぶく
+    const screeM = farM('#a29c90'), bushM = farM('#5a9a48');
+    for (let i = 0; i < 46; i++) {
+      const x = -46 + K.r() * 96, z = -33 - K.r() * 11 * K.r(), s = 0.5 + K.r() * 1.6 * (1 - (-33 - z) / 12);
+      if (Math.abs(x - FX) < 6) continue;
+      K.mg(screeM, rockG.clone(), x, GY + s * 0.25, z, [K.r() * 3, K.r() * 3, 0], [s, s * 0.7, s * 0.9]);
+      if (K.r() < 0.4) K.mg(bushM, blob.clone(), x + 1 + K.r(), GY + 0.3, z - 0.8 - K.r(), null, [0.9, 0.6, 0.9]);
     }
+    // 野に置くものが重ならないよう、場所をとっておく（道・砦・城下町・お城と笑顔の塔）
+    const WH = 11, FW = 110, FD = 2, FDEP = 84, FB = FZ - FDEP, TX = FX, TZ = FZ - FDEP - 36;
+    const used = [[FX - 7, FZ, FX + 7, -32], [FX - FW / 2 - 4, FB - 4, FX + FW / 2 + 4, FZ + 4], [TX - 42, TZ - 40, TX + 42, TZ + 38], [TX - 42, TZ - 94, TX + 50, TZ - 40]];
+    const free = (x, z, pad = 0) => Math.abs(z - riverZ(x)) > 8 + pad && !used.some(([x0, z0, x1, z1]) => x > x0 - pad && x < x1 + pad && z > z0 - pad && z < z1 + pad);
+    // 遠くの木：丸い木と針葉樹（色は数色から）。部品ごとに一つの InstancedMesh にまとめて描く（遠景は、いつもほとんど全体が画面に入るので、区画の木立のように区切らない）
+    //   見晴らし台から 130m より遠い丸い木は、葉の玉を粗く（三角形を少なく）
+    const treeParts = { trunk: [trunkG, []], blob: [blob, []], blob0: [new THREE.IcosahedronGeometry(1, 0), []], cone: [coneG, []] };
+    const leafCols = ['#5d9c4a', '#4e8c42', '#6aa954', '#78b25a'], pineCols = ['#3c7646', '#33683c', '#4a804a'];
+    const tp = (k, x, y, z, sx, sy, sz, col, ry = 0) => treeParts[k][1].push([x, y, z, sx, sy, sz, col, ry]);
+    const farTree = (x, z, s, pine) => {
+      const y = farH(x, z), b = Math.hypot(x + 22, z + 26) < 130 ? 'blob' : 'blob0';
+      tp('trunk', x, y + 0.9 * s, z, 0.3 * s, 1.8 * s, 0.3 * s, '#6a4a2e');
+      if (pine) { const c = pk(pineCols); tp('cone', x, y + 2.6 * s, z, 1.5 * s, 3 * s, 1.5 * s, c); tp('cone', x, y + 4 * s, z, 1.05 * s, 2.4 * s, 1.05 * s, c); return; }
+      const c = pk(leafCols); tp(b, x, y + 2.7 * s, z, 1.5 * s, 1.3 * s, 1.5 * s, c, K.r() * 3);
+      if (K.r() < 0.5) tp(b, x + (K.r() - 0.5) * 1.6 * s, y + 2.1 * s, z + (K.r() - 0.5) * 1.6 * s, 1.0 * s, 0.85 * s, 1.0 * s, c);
+    };
+    // 川：川岸の砂利と、空を映す水面（両はしは細くなって、尾根の切れ目の奥へ消える）
+    const ribbon = (mat, x0, x1, half, y) => {
+      const pos = [], idx = [];
+      for (let x = x0, n = 0; x <= x1 + 0.01; x += 4, n++) {
+        const z = riverZ(x), dz = riverZ(x + 0.5) - riverZ(x - 0.5), len = Math.hypot(1, dz), w = half * (0.7 + 0.3 * sm((valley(z) - Math.abs(x - FX)) / 30)) * sm((x - x0) / 50) * sm((x1 - x) / 50);
+        pos.push(x - dz / len * w, y, z + w / len, x + dz / len * w, y, z - w / len);
+        if (n) { const a = (n - 1) * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+      }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+      K.mg(mat, g, 0, 0, 0);
+    };
+    ribbon(farM('#c8b98e', { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), -210, 230, 6.8, GY + 0.03);
+    const waterM = farM('#7cc6ea', { roughness: 0.12, metalness: 0.2, emissive: '#4a9ad0', emissiveIntensity: 0.3, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+    ribbon(waterM, -210, 230, 4.6, GY + 0.06);
+    K.tick((dt, t) => { waterM.emissiveIntensity = 0.28 + Math.sin(t * 1.3) * 0.04; });
+    // 石の橋：川をまたぐ、ゆるい太鼓橋（平たいアーチ）。両わきに低い欄干
+    const bridgeM = K.stdM('#b4b0a6', 0.9, { map: stoneTex() }), BW = 8.6;
+    const arch = new THREE.Shape(); arch.moveTo(-BL / 2, 0); arch.lineTo(-BL / 2, 0.25); arch.quadraticCurveTo(0, 4.3, BL / 2, 0.25); arch.lineTo(BL / 2, 0); arch.lineTo(5, 0); arch.absellipse(0, 0, 5, 1.6, 0, Math.PI, false); arch.lineTo(-BL / 2, 0);
+    const rail = new THREE.Shape(); rail.moveTo(-BL / 2, 0.25); rail.quadraticCurveTo(0, 4.3, BL / 2, 0.25); rail.lineTo(BL / 2, 1.05); rail.quadraticCurveTo(0, 5.1, -BL / 2, 1.05); rail.lineTo(-BL / 2, 0.25);
+    const bridgeGeo = (shape, depth, off) => { const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false }); g.translate(0, 0, off - depth / 2); return g; };
+    // 押し出しの uv は m 単位なので、石の模様が 4m で一枚になるよう 1/4 に
+    const bridgeAt = geo => { const uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) / 4, uv.getY(k) / 4); K.mg(bridgeM, geo, FX, GY, BZ, [0, Math.PI / 2, 0]); };
+    bridgeAt(bridgeGeo(arch, BW, 0)); for (const sd of [-1, 1]) bridgeAt(bridgeGeo(rail, 0.5, sd * (BW / 2 - 0.25)));
+    // 川ぞいの木（橋のまわりはあける）と、野のところどころの木立
+    for (let x = -190; x < 210; x += 6) for (const sd of [-1, 1]) {
+      if (Math.abs(x - FX) < 16 || K.r() < 0.55) continue;
+      const px = x + K.r() * 3, pz = riverZ(px) + sd * (8.5 + K.r() * 3);
+      if (!used.some(([x0, z0, x1, z1]) => px > x0 && px < x1 && pz > z0 && pz < z1)) farTree(px, pz, 1.2 + K.r() * 0.7, K.r() < 0.15);
+    }
+    for (const [cx, cz, cr, n] of [[-42, -46, 7, 3], [60, -46, 10, 7], [-54, -108, 10, 8], [76, -104, 9, 7], [-62, -170, 12, 10], [84, -176, 12, 10], [-64, -226, 10, 8],
+      [80, -238, 12, 9], [-52, -290, 12, 9], [72, -296, 10, 8], [-44, -150, 7, 4], [30, -50, 5, 3], [-28, -122, 9, 7], [44, -120, 9, 7], [50, -62, 7, 5], [-12, -138, 4, 2], [32, -136, 4, 2]]) {
+      for (let i = 0; i < n; i++) { const a = K.r() * Math.PI * 2, d = Math.sqrt(K.r()) * cr, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d; if (free(x, z, 1.5)) farTree(x, z, 1.3 + K.r() * 0.9, K.r() < 0.3); }
+    }
+    // 野の花：ふちのぼけた花の模様を、野のところどころに敷く
+    const flowerTexP = (() => {
+      const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), rnd = seeded(11);
+      for (let i = 0; i < 260; i++) {
+        const a = rnd() * Math.PI * 2, d = Math.pow(rnd(), 0.7) * 58, x = 64 + Math.cos(a) * d, y = 64 + Math.sin(a) * d * 0.8;
+        g.globalAlpha = 1 - d / 62; g.fillStyle = ['#ffffff', '#ffe066', '#ffb0d0', '#c8b0ff'][Math.floor(rnd() * 4)]; g.beginPath(); g.arc(x, y, 2 + rnd() * 2, 0, Math.PI * 2); g.fill();
+      }
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+    })();
+    const flowerM = farM('#ffffff', { map: flowerTexP, emissiveMap: flowerTexP, emissive: '#ffffff', emissiveIntensity: 0.3, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+    for (let i = 0; i < 44; i++) {
+      const x = -60 + K.r() * 130, z = -40 - K.r() * 105, s = 6 + K.r() * 10;
+      if (Math.abs(x - FX) - valley(z) > -12 || !free(x, z, 3)) continue;
+      K.mg(flowerM, new THREE.PlaneGeometry(s * 1.6, s), x, GY + 0.04, z, [-Math.PI / 2, 0, K.r() * 3]);
+    }
+    // 尾根と山すその林：まだらに茂らせる（高いところほど針葉樹）。尾根のてっぺんのあたりには、岩も顔を出す
+    const crestRockM = farM('#a8a296');
+    for (let z = -50; z > -470; z -= 8) for (let x = -400; x < 420; x += 8) {
+      const px = x + (K.r() - 0.5) * 7, pz = z + (K.r() - 0.5) * 7, out = Math.abs(px - FX) - valley(pz), foot = pz < -372;
+      if (!foot && (out < -14 || out > 130)) continue;
+      if (foot && Math.abs(px - FX) < 70 && pz > -400) continue;
+      if (!free(px, pz, 1) || Math.hypot(px + 22, pz + 26) < 42) continue;   // 見晴らし台のすぐ前は、大きな木で見晴らしをふさがない
+      const dens = Math.sin(px * 0.035 + 0.8) * Math.sin(pz * 0.03 - 0.4) + Math.sin(px * 0.011 - pz * 0.02) * 0.6, hgt = farH(px, pz) - GY;
+      if (out > 40 && out < 120 && K.r() < 0.04) { const s = 2 + K.r() * 3; K.mg(crestRockM, rockG.clone(), px, GY + hgt + s * 0.2, pz, [K.r() * 3, K.r() * 3, 0], [s * 1.3, s * 0.8, s]); }
+      if (dens < 0.1 || K.r() < 0.35) continue;
+      farTree(px, pz, 1.5 + K.r() * 1.1, K.r() < 0.3 + hgt / 40);
+    }
+    // 遠くの山なみ：見晴らし台を中心に、北の弧にならべる。お城の向きはあけ、そのまわりは低く、左右ほど高い。高い山は雪をかぶる
+    //   山はだは、高さで三つの色に分ける（ふもとは林の緑、なかほどは岩、てっぺんは雪）
+    //   霧にとけて見えなくならないよう、霧はかけず、はじめから遠くのうすい色にする
+    const mtMs = [farM('#93ab9c', { fog: false }), farM('#a4afc4', { fog: false }), farM('#f6f8ff', { roughness: 0.8, fog: false })];
+    const peak = (x, z, r, h, seed) => {
+      const g = new THREE.ConeGeometry(r, h, 16, 6, true), p = g.attributes.position, k = 2.6 / r;
+      for (let i = 0; i < p.count; i++) {
+        const px = p.getX(i), py = p.getY(i), pz = p.getZ(i), t = (py + h / 2) / h;
+        const n1 = Math.sin(px * k + seed) * Math.cos(pz * k * 1.3 + seed * 1.7), n2 = Math.sin((px - pz) * k * 2.1 + seed * 0.7), sc = 1 + (n1 * 0.22 + n2 * 0.1) * (1 - t * 0.5);
+        p.setXYZ(i, px * sc, py + (n1 * 0.05 + n2 * 0.04) * h * Math.sin(t * Math.PI), pz * sc);
+      }
+      const q = g.toNonIndexed().attributes.position, parts = [[], [], []];
+      for (let i = 0; i < q.count; i += 3) {
+        let cy = 0; for (let j = 0; j < 3; j++) cy += q.getY(i + j) / 3;
+        const t = (cy + h / 2) / h, cx = q.getX(i), band = h > 75 && t > 0.66 + Math.sin(cx * 0.3 + seed) * 0.06 ? 2 : t < 0.3 + Math.sin(cx * 0.2 + seed) * 0.07 ? 0 : 1;
+        for (let j = 0; j < 3; j++) parts[band].push(q.getX(i + j), q.getY(i + j), q.getZ(i + j));
+      }
+      const base = farH(x, z) - 8;
+      parts.forEach((list, b) => { if (!list.length) return; const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(list, 3)); bg.computeVertexNormals(); K.mg(mtMs[b], bg, x, base + h / 2, z); });
+    };
+    for (const [row, R0, n] of [[0, 590, 24], [1, 690, 14]]) for (let i = 0; i <= n; i++) {
+      const a = -1.42 + i * 2.84 / n + (K.r() - 0.5) * 0.08 + row * 0.05, R = R0 + K.r() * 50, side = sm((Math.abs(a - 0.06) - 0.2) / 0.75);
+      if (Math.abs(a - 0.06) < 0.26) continue;   // お城と笑顔の塔のうしろはあけて、空を背に見せる
+      const h = 42 + row * 14 + side * (85 + row * 25) + K.r() * (8 + side * 25);
+      peak(-22 + Math.sin(a) * R, -26 - Math.cos(a) * R, h * (1.5 + K.r() * 0.4), h, i * 1.7 + row * 5);
+    }
+    // ニャハハ王国関所の砦：関所の区画（arch: 'fort'）の城壁と同じ作り：灰色の石積み（stoneTex・'#c4c8d2'）、石の土台・上の縁どり・白い笠石の狭間。
+    //   門（x = 10）は北の出口からまっすぐで、関所の南の門（makeGate）と同じ石の枠・要石・閉じた木の扉。
+    //   城壁は区画の壁と同じ高さ 11。横幅は広く、奥行きは関所の区画と同じ 84。門の両わきと四すみに塔、正面の城壁に王国の旗。
+    //   中には、関所の区画のように内門と門楼の城壁がならび、西と東の櫓・門楼の上に、火の消えたのろし台（見晴らし台から、城壁ごしに頭が見える）。
+    //   その北の門を出ると城下町（ニャハハ王国の区画と同じ並び）で、お城と笑顔の塔は城下町の北の奥。見晴らし台から見下ろすと、砦の城壁ごしに城下町の屋根が見え、
+    //   お城の下のほうは城壁と家並みにかくれる
+    const stoneM = (col) => K.stdM(col, 0.9, { map: stoneTex(), metalness: 0.02 });
+    // 石積みの箱：面ごとに、4m で模様一枚になるよう uv をのばす（区画の壁と同じ大きさの石）
+    const stoneBox = (mat, w, h, d, x, y, z) => {
+      const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv, size = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+      for (let f = 0; f < 6; f++) for (let k = 0; k < 4; k++) { const n = f * 4 + k; uv.setXY(n, uv.getX(n) * size[f][0] / 4, uv.getY(n) * size[f][1] / 4); }
+      K.mg(mat, geo, x, y, z);
+    };
+    const wallM = stoneM('#c4c8d2'), baseM = stoneM('#a4a8b4'), trimM = K.stdM('#5c5660', 0.55), capM = K.stdM('#f2f6ff', 0.95), ironM = K.stdM('#3a3a44', 0.5);
+    const flagCols = ['#ff6a8a', '#ffd27a', '#6ad8ff'];
+    const merlon = (x, y, z) => { stoneBox(wallM, 1, 1.1, 1, x, y + 0.55, z); K.mg(capM, new THREE.BoxGeometry(1.1, 0.12, 1.1), x, y + 1.16, z); };
+    // 城壁（x0〜x1 の東西、または z0〜z1 の南北）：土台・上の縁どり・4m ごとの狭間
+    const wallX = (x0, x1, z, h) => {
+      stoneBox(wallM, x1 - x0, h, FD, (x0 + x1) / 2, G0 + h / 2, z); stoneBox(baseM, x1 - x0, 0.9, FD + 0.2, (x0 + x1) / 2, G0 + 0.45, z);
+      K.mg(trimM, new THREE.BoxGeometry(x1 - x0, 0.35, FD + 0.44), (x0 + x1) / 2, G0 + h - 0.22, z);
+      for (let x = x0 + 1; x <= x1 - 1; x += 4) merlon(x, G0 + h, z + FD / 2 - 0.5);
+    };
+    const wallZ = (x, z0, z1, h) => {
+      stoneBox(wallM, FD, h, z1 - z0, x, G0 + h / 2, (z0 + z1) / 2);
+      K.mg(trimM, new THREE.BoxGeometry(FD + 0.44, 0.35, z1 - z0), x, G0 + h - 0.22, (z0 + z1) / 2);
+      for (let z = z1 - 3; z >= z0 + 1; z -= 4) merlon(x, G0 + h, z);
+    };
+    // 塔：四角い石の塔に土台・縁どり・狭間、正面に細い窓。flag：てっぺんに王国の旗。beacon：てっぺんに、火の消えたのろし台
+    const tower = (x, z, w, h, o = {}) => {
+      stoneBox(wallM, w, h, w, x, G0 + h / 2, z); stoneBox(baseM, w + 0.5, 1.2, w + 0.5, x, G0 + 0.6, z);
+      K.mg(trimM, new THREE.BoxGeometry(w + 0.6, 0.45, w + 0.6), x, G0 + h - 0.25, z);
+      const n = Math.max(2, Math.round(w / 2.2)), e = w / 2 - 0.5;
+      for (let i = 0; i < n; i++) { const u = -e + i * 2 * e / (n - 1); merlon(x + u, G0 + h, z + e); merlon(x + u, G0 + h, z - e); if (i > 0 && i < n - 1) { merlon(x + e, G0 + h, z + u); merlon(x - e, G0 + h, z + u); } }
+      for (const y of [h - 3.4, h - 7.4]) if (y > 4) K.mg(ironM, new THREE.BoxGeometry(0.5, 1.6, 0.1), x, G0 + y, z + w / 2 + 0.03);
+      if (o.flag) {
+        K.mg(ironM, new THREE.CylinderGeometry(0.12, 0.12, 6, 6), x, G0 + h + 3, z);
+        K.mg(K.stdM(o.flag, 0.9, { side: THREE.DoubleSide }), new THREE.PlaneGeometry(3.2, 1.9), x + 1.7, G0 + h + 5, z, [0, 0.35, 0]);
+      }
+      if (o.beacon) {
+        K.mg(ironM, new THREE.CylinderGeometry(1.3, 0.7, 1.0, 10), x, G0 + h + 0.9, z);
+        K.mg(K.stdM('#5a4030', 1), new THREE.ConeGeometry(0.9, 0.9, 6), x, G0 + h + 1.7, z);
+      }
+    };
+    // 正面の城壁（門の左右）と、両わき・奥の城壁
+    const GW = 8;
+    for (const sd of [-1, 1]) {
+      wallX(sd < 0 ? FX - FW / 2 : FX + GW / 2, sd < 0 ? FX - GW / 2 : FX + FW / 2, FZ - FD / 2, WH);
+      wallZ(FX + sd * (FW / 2 - FD / 2), FB, FZ - FD, WH);
+    }
+    wallX(FX - FW / 2, FX + FW / 2, FB + FD / 2, WH);
+    // 中の城壁：内門の城壁と、門楼の城壁（区画の内門・大門の並び）
+    wallX(FX - 34, FX - 3, FZ - 30, 8); wallX(FX + 3, FX + 40, FZ - 30, 8);
+    wallX(FX - FW / 2, FX - 6, FZ - 64, 9); wallX(FX + 6, FX + FW / 2, FZ - 64, 9);
+    // 門の上の壁と、石の枠（柱・まぐさ石・要石）。閉じた木の観音開きの扉（鉄の帯と輪の取っ手）。関所の南の門と同じ作り
+    stoneBox(wallM, GW, WH - 4.6, FD, FX, G0 + 4.6 + (WH - 4.6) / 2, FZ - FD / 2);
+    K.mg(trimM, new THREE.BoxGeometry(GW, 0.35, FD + 0.44), FX, G0 + WH - 0.22, FZ - FD / 2);
+    for (let x = FX - GW / 2 + 1; x <= FX + GW / 2 - 1; x += 2) merlon(x, G0 + WH, FZ - 0.5);
+    for (const sd of [-1, 1]) stoneBox(baseM, 0.7, 5.2, 0.7 + FD, FX + sd * (GW / 2 - 0.35), G0 + 2.6, FZ - FD / 2 + 0.15);
+    stoneBox(baseM, GW + 0.2, 0.8, FD + 0.8, FX, G0 + 4.9, FZ - FD / 2 + 0.15);
+    stoneBox(baseM, 0.6, 0.9, 0.9, FX, G0 + 5.1, FZ + 0.4);
+    const doorW = GW / 2 - 0.6, doorM = K.stdM('#7a5436', 0.85, { map: woodTex() });
+    for (const sd of [-1, 1]) {
+      const cx = FX + sd * (doorW / 2 + 0.02);
+      K.mg(doorM, new THREE.BoxGeometry(doorW, 4.55, 0.18), cx, G0 + 2.275, FZ - 0.4);
+      for (const y of [0.2, 0.8]) K.mg(ironM, new THREE.BoxGeometry(doorW - 0.1, 0.12, 0.21), cx, G0 + 4.6 * y, FZ - 0.4);
+      K.mg(ironM, new THREE.TorusGeometry(0.13, 0.025, 6, 14), FX + sd * 0.35, G0 + 4.6 * 0.45, FZ - 0.28);
+    }
+    // 正面の城壁の控え壁（のっぺりしないよう、13m ごと）と、王国の旗（笑う猫の旗と同じ三色）
+    for (let u = 19; u < FW / 2 - 6; u += 13) for (const sd of [-1, 1]) stoneBox(baseM, 1.4, WH - 0.4, 0.8, FX + sd * u, G0 + (WH - 0.4) / 2, FZ + 0.4);
+    [-38, -25.5, 25.5, 38].forEach((u, i) => K.banner(FX + u, FZ + 0.06, 0, G0 + WH - 1, 5.5, flagCols[i % 3], '#ffd27a', 2.6));
+    // 塔：門の両わき（旗）、四すみ、中の西と東の櫓と門楼（のろし台）
+    for (const sd of [-1, 1]) {
+      tower(FX + sd * 7.2, FZ - 1.6, 5.6, 15, { flag: flagCols[sd < 0 ? 0 : 2] });
+      K.banner(FX + sd * 7.2, FZ + 1.26, 0, G0 + 13.4, 6, flagCols[1], '#ffd27a', 2.6);
+      tower(FX + sd * FW / 2, FZ - 1.5, 8, 15.5, { flag: flagCols[1] });
+      tower(FX + sd * FW / 2, FB + 1.5, 8, 14.5);
+      tower(FX + sd * 27, FZ - 62 - (sd > 0 ? 2 : 0), 7, 17, { beacon: true });
+    }
+    tower(FX - 4.5, FZ - 64, 6, 18, { beacon: true }); tower(FX + 4.5, FZ - 64, 6, 18, { flag: flagCols[0] });
+    stoneBox(wallM, 3, 9, FD, FX, G0 + 9.5, FZ - 64);   // 門楼の二つの塔のあいだ、大門の上の壁
+    tower(FX, FB + 1.5, 7, 15, { flag: flagCols[2] });
     // ニャハハ王国の城下町：関所の北の門（砦の正面から 84 奥）を出た先。城下町のまん中は、そこから 36 奥（区画 nyahaha と同じ並び：
-    //   南門がまん中から 36 南、お城は (-12, -72)、笑顔の塔は (30, -62)）。家は区画の広さ（76 × 72）に、大通り（まん中）をあけて並べる
-    const TX = FX, TZ = FZ - 84 - 36;
+    //   南門がまん中から 36 南、お城は (-12, -72)、笑顔の塔は (30, -62)）。家は区画の広さ（76 × 72）に、大通り（まん中）をあけて並べ、庭の木を植える
     const houseWalls = ['#fff4e2', '#ffe8d4', '#fde2e8', '#e8f0ff', '#fff2c8'], houseRoofs = ['#e05a4a', '#5a8ad8', '#5aa860', '#f09a4a', '#e87aa8'];
     for (let x = -35; x <= 35; x += 7) for (let z = -32; z <= 32; z += 7) {
       if (Math.abs(x) < 5 || K.r() < 0.15) continue;
       const w = 4 + K.r() * 3, d = 4 + K.r() * 3, h = 6 + K.r() * 7;
       K.farHouse(TX + x + (K.r() - 0.5) * 2, TZ + z + (K.r() - 0.5) * 2, w, d, h, houseWalls[Math.floor(K.r() * houseWalls.length)], houseRoofs[Math.floor(K.r() * houseRoofs.length)]);
     }
+    for (let i = 0; i < 16; i++) { const x = TX + (K.r() < 0.5 ? -1 : 1) * (6 + K.r() * 32), z = TZ - 34 + K.r() * 68; farTree(x, z, 1.1 + K.r() * 0.4, false); }
     K.castleKeep(TX - 12, TZ - 72, { s: 1.1 }); K.smileTower(TX + 30, TZ - 62);
-    // お城のうしろの、なだらかな丘（空の遠景の丘のかわり。お城より奥にだけ置く）
-    const hillM = K.stdM('#9ab868', 1);
-    for (const [x, z, r, sy] of [[-150, -448, 70, 0.35], [-60, -473, 80, 0.3], [40, -463, 75, 0.32], [130, -443, 70, 0.36], [-220, -398, 60, 0.4], [210, -388, 60, 0.42]]) K.mg(hillM, new THREE.SphereGeometry(r, 18, 10), x, -14, z, null, [1, sy, 1]);
+    const treeM = farM('#ffffff'), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), col = new THREE.Color(), up = V3(0, 1, 0);
+    for (const [geo, list] of Object.values(treeParts)) {
+      if (!list.length) continue;
+      const im = new THREE.InstancedMesh(geo, treeM, list.length);
+      list.forEach(([x, y, z, sx, sy, sz, c, ry], i) => { im.setMatrixAt(i, m4.compose(V3(x, y, z), q.setFromAxisAngle(up, ry), V3(sx, sy, sz))); im.setColorAt(i, col.set(c)); });
+      im.computeBoundingSphere(); K.scene.add(im);
+    }
     // 東の遠く：まどろみの林
     for (let i = 0; i < 30; i++) { const x = 52 + K.r() * 50, z = 66 + K.r() * 70; K.pine(x, z, 2.2 + K.r() * 1.6, i % 3 ? 'leafDark' : 'leaf2'); }
     // 崖くずれ：外門の先の道を、大岩が道幅いっぱいに埋めている（ごろごろ団の岩が、何度もぶつかって崩した）。上に小さな岩が積もり、手前の道にも岩がころがり出ている
