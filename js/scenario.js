@@ -14,7 +14,7 @@
 //  bgm：シーンの曲（js/audio.js の TRACKS）。'zone' は舞台の区画の曲（探索から続けて流れる）
 // ============================================================
 const SCENES = {
-  // ================= 第一章　勇者、拾われる =================
+  // ================= 第一章　流れ星と黒猫 =================
   c1_01: { title: '魚どろぼう', bgm: 'village',
     stage: { zone: 'pokapoka', at: [12, 1.5], face: 90, host: 'sakanaya',
       cast: { mike: { at: [0, 0], item: 'fish' }, sakanaya: { at: [0.2, 2.6], face: 'mike' }, sonchou: { at: [-2.5, -5], hidden: true, face: 'mike' } },

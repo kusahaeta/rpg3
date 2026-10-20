@@ -53,7 +53,7 @@ function charStats(key, lv, eid, wid) {
 // ------------------------------------------------------------
 const CHARS = {
   mike: {
-    name: 'ミケ', title: '拾われ勇者の三毛猫', rarity: 5, color: '#ff6a3c', path: 'destruction',
+    name: 'ミケ', title: 'ぽかぽか村の食いしん坊', rarity: 5, color: '#ff6a3c', path: 'destruction',
     base: { hp: 3800, atk: 1450, def: 1050, spd: 102, crit: 0.18, critDmg: 0.7, be: 0.3 },
     energyMax: 120,
     look: { fur: '#fffaf2', pattern: 'calico', patches: ['#f29a3e', '#3b302c'], eye: '#f2a91e', muzzle: '#ffffff', paws: '#ffffff', earIn: '#f7b3bd',

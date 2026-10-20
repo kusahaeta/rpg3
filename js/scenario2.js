@@ -1345,7 +1345,7 @@ const STORY = [
   //   full：区画をまるごと組み立てる（軽い戦闘用の背景を使わない）。fog：もやの倍率。bloom：光のにじみ。flags：区画の組み立ての印
   // clearBgm：章のおしまいの画面の曲（なければ hope）
   // 第一章：ぽかぽか村の井戸の広場から、南の大きな木のほうを見る
-  { title: '第一章　勇者、拾われる', clearSet: { zone: 'pokapoka', at: [0, 4], face: 180, radius: 12, height: 4.5, lookY: 4 }, steps: [
+  { title: '第一章　流れ星と黒猫', clearSet: { zone: 'pokapoka', at: [0, 4], face: 180, radius: 12, height: 4.5, lookY: 4 }, steps: [
     { t: 'scene', id: 'c1_01', g: '魚どろぼう' },
     { t: 'scene', id: 'c1_02', g: '流れ星の夜' },
     { t: 'field', zone: 'hill', at: [-1, -6.6], start: ['pokapoka', -17, -4], near: ['pokapoka', 'hill'], yaw: 1.3, scene: 'c1_03', g: '流れ星の落ちた、村はずれの丘へ行く' },
