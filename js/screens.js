@@ -45,7 +45,7 @@ function TitleScreen() {
     <div class="t-logo">
       <div class="t-en">NYANKO FANTASY</div>
       <h1><span>に</span><span>ゃ</span><span>ん</span><span>こ</span><br><span>フ</span><span>ァ</span><span>ン</span><span>タ</span><span>ジ</span><span>ー</span></h1>
-      <div class="t-name">〜 一匹では弱くても 〜</div>
+      <div class="t-name">〜 流れ星のおちた丘から 〜</div>
     </div>
     <div class="t-start">— <span class="pc-only">クリック</span><span class="touch-only">タップ</span>して はじめる —</div>
   </div>`);
