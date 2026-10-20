@@ -1371,7 +1371,7 @@ const STORY = [
     { t: 'field', zone: 'road1_hill', at: [-3, -10], start: ['road_rest', 1, 0], near: ['road_rest', 'road1', 'road1_hill'], away: ['shiro'], scene: 'c2_03e', battle: '2-3', after: 'c2_03f', g: '宿場の南、街道の丘の上の風車の畑でシロをさがす' },
     { t: 'field', zone: 'road2', at: [0, 58], enter: true, scene: 'c2_03k', g: '宿場の北、ごろごろ切り通しへ' },
     { t: 'field', zone: 'road2_gate', at: [0, 19], scene: 'c2_04', battle: '2-4', after: 'c2_05', g: '宿場の北、ごろごろ岩をよけて、ごろごろ切り通しを抜ける' },
-    { t: 'field', zone: 'road2_gate', at: [-22, -26.5], scene: 'c2_05b', g: '外門の先は崖くずれ。西へ折れて、崖の石段を上った見晴らし台へ' },
+    { t: 'field', zone: 'road2_gate', at: [-14, -25.5], scene: 'c2_05b', g: '外門の先は崖くずれ。西へ折れて、崖の石段を上った見晴らし台へ' },
     { t: 'field', zone: 'sekisho', at: [0, 28], scene: 'c2_04a', g: '切り通しの北、ニャハハ王国関所へ' },
     { t: 'field', zone: 'sekisho', at: [0, -28], scene: 'c2_06', g: 'ゴン爺の仕事を手伝って関所の門を開け、北の大門へ' },
     { t: 'reward', niboshi: 400, g: '第二章 おしまい' },
