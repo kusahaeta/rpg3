@@ -149,7 +149,7 @@ const WEAPONS = {
     desc: '笑顔の塔の大舞台にあった、ひんやりした杖。この杖の魔法は、すべて氷になる。', look: { c: '#d8f4ff', g: '#6fd6f5' },
     basic: { name: 'つらら', elem: 'ice', target: 'single', desc: '指定した敵単体に攻撃力100%の氷ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
-    skill: { name: 'ブリザド・改', elem: 'ice', target: 'blast', anim: 'ice', desc: '指定した敵単体に攻撃力150%、隣接する敵に攻撃力60%の氷ダメージ。指定した敵を30%の基礎確率で凍結。',
+    skill: { name: 'アイス・改', elem: 'ice', target: 'blast', anim: 'ice', desc: '指定した敵単体に攻撃力150%、隣接する敵に攻撃力60%の氷ダメージ。指定した敵を30%の基礎確率で凍結。',
       run: async (B, s, t) => {
         const r = await B.blast(s, t, 1.5, 0.6, 20, 10, 'skill');
         if (t.alive) B.freeze(s, t, 0.3, s.stat('atk') * 0.5);

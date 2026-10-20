@@ -132,11 +132,11 @@ const CHARS = {
     basic: { name: 'マジックアロー', elem: 'lightning', target: 'single', desc: '指定した敵単体に攻撃力100%の雷ダメージ。',
       run: (B, s, t) => B.single(s, t, 1.0, 10, 'basic') },
     skill: { name: '天才魔法', elem: ['fire', 'lightning', 'ice'], target: 'single',
-      desc: 'ファイア（敵全体に炎110%）・サンダー（単体に雷240%）・ブリザド（単体に氷140%、隣接に60%、凍結）のどれかを唱える。ただし25%の確率で失敗する（魚が降ってきたり、静電気が起きたりする）。',
+      desc: 'ファイア（敵全体に炎110%）・サンダー（単体に雷240%）・アイス（単体に氷140%、隣接に60%、凍結）のどれかを唱える。ただし25%の確率で失敗する（魚が降ってきたり、静電気が起きたりする）。',
       run: async (B, s, t) => {
         const spells = ['fire', 'thunder', 'blizzard'];
         const sp = pick(spells), fail = Math.random() < (flag('shiroGrow') ? 0.2 : 0.25);
-        const name = { fire: 'ファイア', thunder: 'サンダー', blizzard: 'ブリザド' }[sp];
+        const name = { fire: 'ファイア', thunder: 'サンダー', blizzard: 'アイス' }[sp];
         let r = [];
         if (!fail) {
           B.announce('天才魔法', name + '！', ELEMENTS[{ fire: 'fire', thunder: 'lightning', blizzard: 'ice' }[sp]].color);
@@ -156,7 +156,7 @@ const CHARS = {
           r = await B.single(s, t, 0.5, 5, 'skill', { elem: 'lightning' });
           if (t.alive) B.debuff(s, t, 1, { key: 'static', name: '毛が逆立った', stat: 'spd', value: -0.12, turns: 2 });
         } else {
-          B.announce('ブリザド……？', 'かき氷ができた', '#bfeaff');
+          B.announce('アイス……？', 'かき氷ができた', '#bfeaff');
           await B.motion(s, 'snow', B.aliveAllies());
           B.aliveAllies().forEach(a => B.shield(s, a, s.stat('atk') * 0.25, 2));
           B.float(s, 'おいしい……', 'info');
