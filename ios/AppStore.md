@@ -83,11 +83,39 @@ RPG,ねこ,猫,にゃんこ,コマンドバトル,ターン制,3D,冒険,ファ�
 
 ## 審査へのメモ（App Review Information の Notes）
 
+はじめての提出では「審査の記録が少ないアカウントなので、くわしく教えて」と、iPhone 実機での画面収録と 5 つの問いへの答えを求められた（2026-10）。下の英文を App Store Connect の返信と Notes の両方に入れ、画面収録を返信に添える。次の提出からも Notes に残しておく。
+
 ```
-ログインは不要です。アプリを開いてタイトル画面をタップすると、すぐ遊べます。
-横画面で遊ぶ RPG です。画面の左半分をなぞると移動、右半分をドラッグで視点の回転、「調べる」ボタンで会話・宝箱を調べます。
-ゲームはすべてアプリの中に入っていて、インターネットにはつながりません。
+Thank you for reviewing our app. Below is the information you requested. A screen recording captured on a physical iPhone running the latest iOS is attached to this reply.
+
+1. Screen recording
+The recording starts from the Home Screen, launches the app, and shows the typical flow: title screen, new game, the opening story scene, exploring the field (moving, talking to villagers, opening a treasure chest), a turn-based battle, and the menu.
+The app has no account registration, no login, no user-generated content, and no paid content or In-App Purchases, so none of those flows exist.
+
+2. Purpose and target audience
+Nyanko Fantasy is an offline, single-player 3D turn-based RPG in which a party of cute two-head-tall cats travels from their village to the end of the world. It is meant for players of all ages (rated 9+) who enjoy story-driven RPGs. It provides a complete adventure with exploration, puzzles and turn-based battles, and the bonds between party members unlock combo skills and special events. The game is free, with no ads and no In-App Purchases.
+
+3. Setup and how to access the main features
+No login, account or sample files are needed. Launch the app and tap the title screen to start a new game; progress is saved automatically on the device.
+The game is played in landscape. Field: drag on the left half of the screen to move, drag on the right half to rotate the camera, tap "攻撃" (Attack) to strike enemies, and tap "調べる" (Examine) to talk to characters and open chests. Running into an enemy starts a battle (hitting it with "攻撃" first gives a first strike); in battle, tap the skill buttons to act.
+The game text is in Japanese only.
+
+4. External services
+None. All game content is bundled in the app. The app does not connect to the internet and uses no third-party services such as analytics, advertising, authentication, payment or AI services. It uses the open-source three.js library (MIT License) inside the app for 3D rendering.
+
+5. Regional differences
+The app is distributed only on the Japan App Store. There are no regional differences in features or content; the app works the same way everywhere.
+
+6. Regulated industry / third-party material
+Not applicable. The app is a game and is not in a regulated industry. The characters, story, 3D models, art and music are original works created by the developer; three.js is used under the MIT License.
 ```
+
+画面収録の撮り方（iPhone 実機・最新の iOS）：
+
+- 審査に出したのと同じビルドを TestFlight で入れ、セーブを消して（アプリを入れなおす）はじめから撮る
+- コントロールセンターの「画面収録」で撮る。マイクはオフ。ホーム画面から始めて、アイコンをタップして開くところを必ず入れる
+- 流れ：タイトル → はじめから → 最初の会話（何回か送れば十分） → フィールドを歩く・住人と話す・宝箱を開ける → 戦闘を 1 回勝つ → メニューを開く。2〜4 分におさめる
+- 写真アプリで頭とおしりを切って、返信に添付する。大きすぎて添付できないときは、限定公開の動画（YouTube の限定公開など）のリンクを返信に書く
 
 ## スクリーンショット
 
