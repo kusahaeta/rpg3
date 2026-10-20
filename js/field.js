@@ -2701,7 +2701,7 @@ class FieldView extends BaseView {
     // データの初期化は、デバッグモードのときだけ
     if (Debug.on) o.querySelector('[data-reset]').onclick = () => { if (confirm('セーブデータを初期化しますか？')) { this.persist = false; Save.reset(); App.go(TitleScreen); } };
   }
-  // オプション：BGM の ON/OFF、BGM・効果音の音量、画質（メニューの中から開き、もどるとメニューへ）
+  // オプション：BGM の ON/OFF、BGM・効果音の音量、画質（メニューの中から開き、閉じると冒険へ）
   optionsMenu() {
     const o = this.root.querySelector('.overlay'), d = Save.data;
     const vol = (k, label) => `<div class="op-row"><b>${label}</b>
@@ -2718,7 +2718,7 @@ class FieldView extends BaseView {
           <button data-v="auto">おまかせ</button>${GFX_TIERS.map((q, i) => `<button data-v="${i}">${shortName(q)}</button>`).join('')}</div></div>
         <div class="dim op-note"></div>
       </div>
-      <button class="btn gold" data-back>メニューにもどる</button></div>`;
+      <button class="btn gold" data-close>閉じる</button></div>`;
     const seg = (sel, cur) => o.querySelectorAll(`[${sel}] button`).forEach(b => b.classList.toggle('on', b.dataset.v === cur));
     const show = () => {
       seg('data-bgm', Music.on ? '1' : '0');
@@ -2742,7 +2742,7 @@ class FieldView extends BaseView {
       d.eco = v === 'auto' ? null : ecoOf[+v]; Save.save();
       GFX.setTier(GFX.savedTier()); Sfx.click(); show();
     });
-    o.querySelector('[data-back]').onclick = () => { Sfx.click(); this.closeOverlay(); this.menu(); };
+    o.querySelector('[data-close]').onclick = () => { Sfx.click(); this.closeOverlay(); };
   }
   // ワールドマップ：訪れた場所へひとっとび
   mapMenu() {
