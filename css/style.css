@@ -167,6 +167,7 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .rc-none { color: var(--dim); font-size: 13px; }
 .rc-now { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--gold); background: rgba(232, 199, 122, .12); font-weight: 700; color: var(--gold2); }
 .rc-now small { display: block; font-size: 11px; color: var(--gold); font-weight: 400; letter-spacing: .1em; }
+.rc-foot { display: flex; justify-content: flex-end; align-self: stretch; }
 .result .res-title { font-size: 48px; font-weight: 900; letter-spacing: .3em; }
 .result.win .res-title { background: linear-gradient(180deg, #fff, var(--gold)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .result.lose .res-title { color: #ff8a9a; }
