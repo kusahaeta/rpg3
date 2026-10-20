@@ -2716,9 +2716,8 @@ class FieldView extends BaseView {
         ${vol('seVol', '効果音の音量')}
         <div class="op-row"><b>画質</b><div class="op-seg" data-eco>
           <button data-v="auto">おまかせ</button>${GFX_TIERS.map((q, i) => `<button data-v="${i}">${shortName(q)}</button>`).join('')}</div></div>
-        <div class="dim op-note"></div>
       </div>
-      <button class="btn gold" data-close>閉じる</button></div>`;
+      <div class="op-foot"><span class="dim op-note"></span><button class="btn gold" data-close>閉じる</button></div></div>`;
     const seg = (sel, cur) => o.querySelectorAll(`[${sel}] button`).forEach(b => b.classList.toggle('on', b.dataset.v === cur));
     const show = () => {
       seg('data-bgm', Music.on ? '1' : '0');

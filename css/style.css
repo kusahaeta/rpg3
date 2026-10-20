@@ -759,6 +759,7 @@ html, body { background: #2a1c18; font-family: "Hiragino Maru Gothic ProN", "Hir
 .op-seg button { flex: 1; padding: 7px 4px; border-radius: 999px; border: 2px solid rgba(255, 236, 214, .35); background: rgba(255, 246, 232, .08); color: #f0dcc8; font-weight: 700; font-size: 14px; }
 .op-seg button.on { background: linear-gradient(180deg, #ffd98a, #ff9a6a); color: #4a2410; border-color: #fff0c8; }
 .op-note { font-size: 12px; }
+.op-foot { display: flex; justify-content: space-between; align-items: center; align-self: stretch; }
 
 /* チップ */
 .chip { border-radius: 16px; background: linear-gradient(180deg, #fff3e2, #f0d8c0 70%); border: 2px solid rgba(255, 236, 214, .5); color: #4a2c20; }
