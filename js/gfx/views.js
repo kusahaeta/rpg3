@@ -289,10 +289,13 @@ class BattleView extends BaseView {
   // ---------- 壁の切り取り ----------
   // 戦場の区画の壁・柱・天井は、カメラと味方・敵のあいだに入ると、視線に垂直な面で手前を切り落とす
   // （床・水面は切らない。切らないときは面をカメラの位置に置く）
+  //   材質には、探索フィールドと使い回すもの（魔王城の重い扉の HEAVY_DOOR_M など）がある。
+  //   付けた切り取り面は、戦闘のあと dispose で元に戻す（戻さないと、フィールドの扉が切り落とされて消える）
   initCutaway() {
     const S = this.set, outl = new Set(Object.values(OutlineCache)), nm = new THREE.Matrix3(), n = V3();
     GFX.renderer.localClippingEnabled = true;
     this.cutPlane = new THREE.Plane(V3(0, 0, -1), 0); this.cutDepth = 0;
+    this.clipped = new Map();   // 切り取り面を付けた材質 → もとの clippingPlanes
     S.root.updateMatrixWorld(true);
     this.toSet = S.root.matrixWorld.clone().invert();
     S.root.traverse(o => {
@@ -304,8 +307,15 @@ class BattleView extends BaseView {
         for (let i = 0; i < na.count && flat; i++) if (n.fromBufferAttribute(na, i).applyMatrix3(nm).normalize().y < 0.9) flat = false;
         if (flat) return;
       }
-      for (const m of [].concat(o.material)) if (!outl.has(m)) { m.clippingPlanes = [this.cutPlane]; m.needsUpdate = true; }
+      for (const m of [].concat(o.material)) if (!outl.has(m)) {
+        if (!this.clipped.has(m)) this.clipped.set(m, m.clippingPlanes);
+        m.clippingPlanes = [this.cutPlane]; m.needsUpdate = true;
+      }
     });
+  }
+  dispose() {
+    if (this.clipped) { this.clipped.forEach((was, m) => { m.clippingPlanes = was; m.needsUpdate = true; }); this.clipped = null; }
+    super.dispose();
   }
   // カメラから点 p までの視線をさえぎる地形・大きな小物のうち、いちばん奥のものの深さ（なければ 0）
   //   戦闘のあいだ自動扉は閉じたままなので、扉のマス（D）は床から上の壁まで、まるごと視線をさえぎる
