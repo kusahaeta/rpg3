@@ -563,7 +563,7 @@ class Battle {
   itemAb(id) {
     if (!id) return { name: 'どうぐを選ぶ', desc: '使うどうぐを一覧から選ぶ。', target: 'none' };
     const it = ITEMS[id];
-    return { ...it, name: `${it.icon} ${it.name}${it.key ? '（だいじなもの）' : `（のこり ${itemCount(id)}）`}`, desc: it.desc + '　SPは増減しない。' };
+    return { ...it, name: `${it.icon} ${it.name}${it.key ? '（だいじなもの）' : `（のこり ${itemCount(id)}）`}`, desc: it.desc };
   }
   async useItem(u, id, t) {
     const it = ITEMS[id];
