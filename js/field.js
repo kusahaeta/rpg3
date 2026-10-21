@@ -34,9 +34,16 @@ class FieldSession {
     if (this.team.every(m => m.hpRatio <= 0)) this.team.forEach(m => { m.hpRatio = 1; });
     this.leader = Math.max(0, this.team.findIndex(m => m.hpRatio > 0)); this.techs = new Set();
     this.defeated = {}; this.broken = {};
+    // 探索のメニュー（なかま・へんせい・友情・会話）から戻ったときは、倒した敵・研いだ丸太・整った初手技をそのまま引きつぐ（敵と丸太は同じ区画にいるあいだだけ。enter）
+    const c = FieldSession.carry; FieldSession.carry = null;
+    if (c) { this.defeated = c.defeated; this.broken = c.broken; this.techs = c.techs; }
     this.keep();
   }
+  // 探索を離れる前に呼ぶ。次に作るセッションが引きつぐ
+  stash() { FieldSession.carry = { defeated: this.defeated, broken: this.broken, techs: this.techs }; }
   set(map, zone) { return map[zone] || (map[zone] = new Set()); }
+  // 区画に入るとき：ほかの区画で倒した敵・研いだ丸太は元にもどす（区画を移ると敵がよみがえり、丸太も研げる）
+  enter(zone) { for (const map of [this.defeated, this.broken]) for (const k of Object.keys(map)) if (k !== zone) delete map[k]; }
   // いまの HP と必殺技ゲージをセーブに書く（保存はよび出し側で）
   keep() { keepCarried(this.team); }
 }
@@ -66,6 +73,7 @@ class FieldView extends BaseView {
     this.town = zoneCalm(zone);
     this.safe = (zone.safe || []).map(a => ({ x: a.at[0], z: a.at[1], r: a.r, name: a.name }));
     (Save.data.fieldVisited || (Save.data.fieldVisited = {}))[zoneId] = true; Save.save();
+    session.enter(zoneId);
     this.buildWorld();
     this.setupQuest();
     this.buildUI();
@@ -2518,6 +2526,7 @@ class FieldView extends BaseView {
 
   leave(then) {
     this.rememberPos();
+    this.s.stash();
     this.persist = false;
     Game.activeField = null;
     then();
