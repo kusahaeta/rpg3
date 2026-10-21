@@ -272,10 +272,10 @@ const WEAPONS = {
     desc: '魔王城の宝物庫にしまってあった笏。「さわるな」と書いた紙がはってある。', look: { c: '#3a4a2a', g: '#8aff6a' },
     basic: { name: 'のろいのしっぽ', elem: 'quantum', target: 'single', anim: 'tail', desc: '指定した敵単体に攻撃力100%の闇ダメージ。40%の基礎確率で感電（攻撃力30%、2ターン）。',
       run: async (B, s, t) => { const r = await B.single(s, t, 1.0, 10, 'basic'); B.dot(s, t, { type: 'shock', mult: 0.3, turns: 2, chance: 0.4, quiet: true }); return r; } },
-    skill: { name: '三つののろい', elem: 'quantum', target: 'single', anim: 'curse3', desc: '指定した敵単体に攻撃力130%の闇ダメージ。燃焼・感電・裂創（攻撃力40%、2ターン）を、それぞれ70%の基礎確率で付与。',
+    skill: { name: '三つののろい', elem: 'quantum', target: 'single', anim: 'curse3', desc: '指定した敵単体に攻撃力130%の闇ダメージ。燃焼・感電・裂創（攻撃力40%、2ターン）を、それぞれ40%の基礎確率で付与。',
       run: async (B, s, t) => {
         const r = await B.single(s, t, 1.3, 20, 'skill');
-        ['burn', 'shock', 'bleed'].forEach(type => B.dot(s, t, { type, mult: 0.4, turns: 2, chance: 0.7 }));
+        ['burn', 'shock', 'bleed'].forEach(type => B.dot(s, t, { type, mult: 0.4, turns: 2, chance: 0.4 }));
         return r;
       } },
     ult: { name: 'のろい返し', elem: 'quantum', target: 'aoe', anim: 'aura', desc: '敵全体に攻撃力150%の闇ダメージ。持続ダメージを受けている敵は、それが150%の威力でその場でもう一度発生する。',
@@ -289,11 +289,11 @@ const WEAPONS = {
     desc: '世界の果てに突きささっていた、大きな笏。持つと、少しだけ昔の魔王にもどった気がする。', look: { c: '#1a1424', g: '#ff3a5a' },
     basic: { name: '闇のつぶて', elem: 'quantum', target: 'blast', desc: '指定した敵単体に攻撃力80%、隣接する敵に攻撃力30%の闇ダメージ。',
       run: (B, s, t) => B.blast(s, t, 0.8, 0.3, 10, 5, 'basic') },
-    skill: { name: '闇の重圧', elem: 'quantum', target: 'aoe', anim: 'aura', desc: '敵全体に攻撃力100%の闇ダメージ。80%の基礎確率で防御力-30%・速度-10%（2ターン）。',
+    skill: { name: '闇の重圧', elem: 'quantum', target: 'aoe', anim: 'aura', desc: '敵全体に攻撃力100%の闇ダメージ。50%の基礎確率で防御力-30%・速度-10%（2ターン）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 1.0, 10, 'skill');
         B.aliveEnemies().forEach(e => {
-          if (B.debuff(s, e, 0.8, { key: 'maou_def', name: '重圧', stat: 'defDown', value: 0.3, turns: 2 }, true))
+          if (B.debuff(s, e, 0.5, { key: 'maou_def', name: '重圧', stat: 'defDown', value: 0.3, turns: 2 }, true))
             B.buff(e, { key: 'maou_spd', name: '重圧', stat: 'spd', value: -0.1, turns: 2, debuff: true });
         });
         return r;
