@@ -15,6 +15,19 @@ const DASHI = '#d8943c';   // だしの色（だしの大波）
 const KURO_SHADOW = '#6a58c8';   // クロの影の色（残像・黒い気）
 const MOON = '#c8b8ff';   // 月の光（月影の刀・居合）
 const TWIN = '#d8e4ff';   // 双子の小太刀の刃の光
+// つぶれる演出の元の形：つぶれているあいだに次が当たっても、最初につぶれる前の形を返す
+// （つぶれた途中の形を覚えて戻すと、連続で当たるたびに背が縮んで横に広がっていく）
+// 演出が終わったら squashEnd。最後のひとつが終わったときだけ元の形に戻す
+function squashStart(g) {
+  const ud = g.userData;
+  if (!ud.sqN) ud.sq0 = g.scale.clone();
+  ud.sqN = (ud.sqN || 0) + 1;
+  return ud.sq0;
+}
+function squashEnd(g, restore = true) {
+  const ud = g.userData;
+  if (--ud.sqN <= 0) { ud.sqN = 0; if (restore) g.scale.copy(ud.sq0); }
+}
 const MOVES = {
   // ねこパンチ：剣を持たない左の手で、ぽかっと
   punch: {
@@ -1492,12 +1505,12 @@ Object.assign(BattleView.prototype, {
   },
   // ぽよんとつぶれる
   squash(t, amt = 0.25) {
-    const g = t.model.group, s0 = g.scale.clone();
+    const g = t.model.group, s0 = squashStart(g);
     GFX.tween(0.4, k => {
       if (t.dying) return;
       const s = Math.sin(k * Math.PI) * amt * (1 - k * 0.5);
       g.scale.set(s0.x * (1 + s * 0.6), s0.y * (1 - s), s0.z * (1 + s * 0.6));
-    }, Ease.out).then(() => { if (!t.dying) g.scale.copy(s0); });
+    }, Ease.out).then(() => squashEnd(g, !t.dying));
   },
   // 歌う：体を左右にゆらしながら、dur 秒のあいだに 8 回 fn
   async sing(m, dur, fn) {

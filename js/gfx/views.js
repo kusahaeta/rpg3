@@ -259,18 +259,31 @@ class BattleView extends BaseView {
     if (!es.length) return V3(0, 0, -3);
     return es.reduce((a, e) => a.add(e.home), V3()).multiplyScalar(1 / es.length);
   }
+  // 敵の背が、ふつうのカメラに収まる高さ（3.4）をどれだけ超えているか
+  //   コドク・ねこ神は第二形態で 5.6 ほどになり、ふつうのカメラでは頭が名前と HP のバーの裏や画面の外へ出る
+  enemyTall() {
+    let top = 0;
+    for (const u of this.b.aliveEnemies()) {
+      const e = this.ent(u); if (!e) continue;
+      const g = e.model.group;
+      if (e.top0 == null) { g.updateMatrixWorld(true); e.top0 = (new THREE.Box3().setFromObject(e.model.inner).max.y - g.position.y) / g.scale.y; }
+      top = Math.max(top, e.top0 * g.scale.y);
+    }
+    return Math.max(0, top - 3.4);
+  }
   wide() {
-    const hasBoss = this.b.enemies.some(e => e.def.boss);
+    const hasBoss = this.b.enemies.some(e => e.def.boss), tall = this.enemyTall();
     this.unfocus(); this.setFov(38); this.roll = 0; this.sway = 0.4;
-    this.setCam(V3(0, hasBoss ? 2.8 : 2.1, hasBoss ? 10.2 : 8.2), V3(0, hasBoss ? 2.1 : 1.0, -2.5), { speed: 2.5 });
+    this.setCam(V3(0, hasBoss ? 2.8 : 2.1, (hasBoss ? 10.2 : 8.2) + tall), V3(0, hasBoss ? 2.1 : 1.0, -2.5), { speed: 2.5 });
   }
   // 本家風の肩越し視点：手前左に行動キャラ、奥の中央に敵
+  //   背の高い敵は、うしろへ引いて視野を広げ、少し上を見る（頭を HP のバーの下に、足もとを仲間のカードの上に）
   shoulder(e, { snap = false, speed = 2.6 } = {}) {
-    const h = e.home, c = this.enemyCenter(), boss = this.b.enemies.some(x => x.def.boss);
+    const h = e.home, c = this.enemyCenter(), boss = this.b.enemies.some(x => x.def.boss), tall = this.enemyTall();
     const f = V3(c.x - h.x, 0, c.z - h.z).normalize(), r = V3(-f.z, 0, f.x);
-    const pos = h.clone().addScaledVector(f, -3.5).addScaledVector(r, 2.0); pos.y = 1.4;
-    const look = h.clone().addScaledVector(f, 6).addScaledVector(r, 1.0); look.y = boss ? 1.6 : 0.8;
-    this.setFov(38); this.roll = 0; this.sway = 1;
+    const pos = h.clone().addScaledVector(f, -3.5 - tall * 1.5).addScaledVector(r, 2.0); pos.y = 1.4;
+    const look = h.clone().addScaledVector(f, 6).addScaledVector(r, 1.0); look.y = (boss ? 1.6 : 0.8) + tall * 0.15;
+    this.setFov(38 + tall * 1.8); this.roll = 0; this.sway = 1;
     this.setCam(pos, look, { snap, speed });
   }
   // 行動キャラ以外の味方を隠す（肩越し視点で敵が隠れないように）
@@ -687,7 +700,7 @@ class BattleView extends BaseView {
       const cm = new THREE.MeshStandardMaterial({ color: S.crown.color, emissive: S.crown.emissive || col, emissiveIntensity: S.crown.ei, metalness: 0.4, roughness: 0.2, flatShading: true, transparent: !!S.crown.opacity, opacity: S.crown.opacity || 1 });
       for (let i = 0; i < 9; i++) { const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.35, 0), cm); c.scale.y = 2.4; g.add(c); crowns.push({ c, a: i / 9 * Math.PI * 2, y: 1.2 + (i % 3) * 1.6 }); }
       const light = new THREE.PointLight(col, 26, 22, 1.4); light.position.y = m.height * 0.6; g.add(light);
-      e.p2 = { g: root, body: g, big, small, halo, veil, dark, crowns, light, beat: 0, bolt: 0, scale0: m.group.scale.x, fog0: this.scene.fog ? this.scene.fog.color.clone() : null, k: 0 };
+      e.p2 = { g: root, body: g, big, small, halo, veil, dark, crowns, light, beat: 0, bolt: 0, scale0: m.group.userData.s0 || 1, fog0: this.scene.fog ? this.scene.fog.color.clone() : null, k: 0 };
       if (u.key === 'boss_core' && this.set && this.set.hooks.coreSurge) this.set.hooks.coreSurge();
     }
     const P = e.p2;

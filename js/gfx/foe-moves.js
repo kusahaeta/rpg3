@@ -925,8 +925,8 @@ Object.assign(BattleView.prototype, {
     GFX.tween(0.4, k => { const s = Math.sin(k * Math.PI) * d; g.position.set(h.x + dir.x * s, Math.sin(k * Math.PI) * d * 0.5, h.z + dir.z * s); }, Ease.out).then(() => g.position.copy(h));
   },
   squashFoe(e, amt) {
-    const g = e.model.inner, s0 = g.scale.clone();
-    GFX.tween(0.35, k => { const s = Math.sin(k * Math.PI) * amt; g.scale.set(s0.x * (1 + s * 0.5), s0.y * (1 - s), s0.z * (1 + s * 0.5)); }).then(() => g.scale.copy(s0));
+    const g = e.model.inner, s0 = squashStart(g);
+    GFX.tween(0.35, k => { const s = Math.sin(k * Math.PI) * amt; g.scale.set(s0.x * (1 + s * 0.5), s0.y * (1 - s), s0.z * (1 + s * 0.5)); }).then(() => squashEnd(g));
   },
   dustFx(at, n) { for (let i = 0; i < n; i++) this.p.emit(V3(at.x + (Math.random() - 0.5) * 0.6, 0.08, at.z + (Math.random() - 0.5) * 0.6), V3((Math.random() - 0.5) * 2, 0.6 + Math.random(), (Math.random() - 0.5) * 2), hdr('#d8c8a8', 1.1), { life: 0.7, size: 0.22, drag: 2 }); },
   // 三本の爪あと
