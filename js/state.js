@@ -25,7 +25,7 @@ const Save = {
       gfxAuto: null,      // おまかせのとき、コマ数が足りなくて落とした画質の段階（GFX.watchFps）
       bgm: true, bgmVol: 1, seVol: 1,   // オプション：BGM を鳴らすか・BGM と効果音の音量（0〜1）
       hp: {},             // HP の割合（にゃんこごと）。探索・物語の戦闘で引きつぐ（carried）
-      energy: {},         // 奥義ゲージ（にゃんこごと）。ないときは戦闘のはじめの量
+      energy: {},         // 必殺技ゲージ（にゃんこごと）。ないときは戦闘のはじめの量
     };
   },
   // 古いセーブを今の台本に合わせる
@@ -149,7 +149,7 @@ function grantExp(key, amount) {
   return o.lv - before;
 }
 
-// HP と奥義ゲージは、探索を離れても・物語の戦闘でも引きつぐ。回復するのは宿・焼き魚・やられたときだけ
+// HP と必殺技ゲージは、探索を離れても・物語の戦闘でも引きつぐ。回復するのは宿・焼き魚・やられたときだけ
 function carried(m) {
   const d = Save.data;
   return { ...m, hpRatio: (d.hp || {})[m.key] ?? 1, energy: (d.energy || {})[m.key] ?? null };
