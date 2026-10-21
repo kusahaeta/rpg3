@@ -245,12 +245,11 @@ function CharScreen(sel) {
           <div><span>HP</span><b>${fmt(st.maxHp)}</b></div><div><span>攻撃力</span><b>${fmt(st.atk)}</b></div>
           <div><span>防御力</span><b>${fmt(st.def)}</b></div><div><span>速度</span><b>${st.spd}</b></div>
           <div><span>会心率</span><b>${Math.round(st.crit * 100)}%</b></div><div><span>会心ダメージ</span><b>${Math.round(st.critDmg * 100)}%</b></div>
-          <div><span>撃破特効</span><b>${Math.round(st.be * 100)}%</b></div><div><span>EP上限</span><b>${c.energyMax}</b></div>
         </div>
         ${weaponList(sel)}
       </div>
       <div class="ck-pane ck-abs" data-pane="abs">
-        ${ab('通常攻撃', c.basic)}${ab('戦闘スキル', c.skill)}${ab(`必殺技（EP${c.energyMax}）`, c.ult)}
+        ${ab('通常攻撃', c.basic)}${ab('戦闘スキル', c.skill)}${ab('必殺技', c.ult)}
         ${ab('とくせい', c.talent)}${ab('初手技', c.technique)}
         ${combos.map(x => ab(`コンボ（${x.pair[1] === '*' ? 'みんなと' : CHARS[x.pair.find(p => p !== sel)].name + 'と'}・友情Lv3）`, x)).join('')}
       </div>
