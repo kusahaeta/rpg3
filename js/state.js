@@ -152,7 +152,7 @@ function grantExp(key, amount, foeLv) {
   return o.lv - before;
 }
 
-// HP と必殺技ゲージは、探索を離れても・物語の戦闘でも引きつぐ。回復するのは宿・焼き魚・やられたときだけ
+// HP と必殺技ゲージは、探索を離れても・物語の戦闘でも引きつぐ。回復するのは宿・焼き魚・やられたとき・章が進んだとき（Story.advance）だけ
 function carried(m) {
   const d = Save.data;
   return { ...m, hpRatio: (d.hp || {})[m.key] ?? 1, energy: (d.energy || {})[m.key] ?? null };
