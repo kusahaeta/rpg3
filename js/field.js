@@ -2479,7 +2479,7 @@ class FieldView extends BaseView {
     const nib = 10 + g.lv * 2 + (g.elite ? 40 : 0); d.niboshi += nib;
     html += `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}${g.elite ? '（つよい敵）' : ''}</div>`;
     html += '<div class="rw-team">' + this.team.map(m => {
-      const up = grantExp(m.key, exp);
+      const up = grantExp(m.key, exp, g.lv);
       m.lv = d.owned[m.key].lv;
       return `<div class="rw-mem">${avatarSVG(m.key)}<span>Lv.${m.lv}${up ? `<b> ▲${up}</b>` : ''}</span></div>`;
     }).join('') + '</div>';

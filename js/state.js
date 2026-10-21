@@ -139,11 +139,14 @@ const Save = {
   reset() { localStorage.removeItem(SAVE_KEY); this.data = null; this.load(); },
 };
 
-// 経験値付与。上がったレベル数を返す
-function grantExp(key, amount) {
+// 敵より上のレベルの子は、もらえる経験値が減る（1 レベル上で 8 割、2 で 6 割 … 5 以上は 1 割）
+const expScale = (lv, foeLv) => lv <= foeLv ? 1 : Math.max(0.1, 1 - 0.2 * (lv - foeLv));
+
+// 経験値付与。foeLv（敵のレベル）を渡すと、レベル差で減らす。上がったレベル数を返す
+function grantExp(key, amount, foeLv) {
   const o = Save.data.owned[key]; if (!o) return 0;
   const before = o.lv;
-  o.exp += amount;
+  o.exp += foeLv == null ? amount : Math.round(amount * expScale(o.lv, foeLv));
   while (o.lv < 80 && o.exp >= expToNext(o.lv)) { o.exp -= expToNext(o.lv); o.lv++; }
   if (o.lv >= 80) o.exp = 0;
   return o.lv - before;
