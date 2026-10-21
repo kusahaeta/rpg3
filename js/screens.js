@@ -112,7 +112,7 @@ function startStage(ci, st, techs, after) {
       d.cleared[st.id] = true;
       d.niboshi += nib;
       let html = `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}</div>`;
-      html += '<div class="rw-team">' + d.team.map(k => { const up = grantExp(k, exp); return `<div class="rw-mem">${avatarSVG(k)}<span>Lv.${d.owned[k].lv}${up ? `<b> ▲${up}</b>` : ''}</span></div>`; }).join('') + '</div>';
+      html += '<div class="rw-team">' + d.team.map(k => { const up = grantExp(k, exp, st.lv); return `<div class="rw-mem">${avatarSVG(k)}<span>Lv.${d.owned[k].lv}${up ? `<b> ▲${up}</b>` : ''}</span></div>`; }).join('') + '</div>';
       Save.save();
       return html;
     },
