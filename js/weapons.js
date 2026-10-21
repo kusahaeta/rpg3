@@ -155,7 +155,7 @@ const WEAPONS = {
         if (t.alive) B.freeze(s, t, 0.3, s.stat('atk') * 0.5);
         return r;
       } },
-    ult: { name: 'ダイヤモンドダスト', elem: 'ice', target: 'aoe', anim: 'ice', desc: '敵全体に攻撃力210%の氷ダメージ。敵全体を35%の基礎確率で凍結。',
+    ult: { name: 'ダイヤモンドダスト', elem: 'ice', target: 'aoe', anim: 'diamondDust', desc: '敵全体に攻撃力210%の氷ダメージ。敵全体を35%の基礎確率で凍結。',
       run: async (B, s) => {
         const r = await B.aoe(s, 2.1, 20, 'ult', { heavy: true });
         B.aliveEnemies().forEach(e => B.freeze(s, e, 0.35, s.stat('atk') * 0.5));
@@ -163,19 +163,20 @@ const WEAPONS = {
       } } },
   shiro_boom: { owner: 'shiro', name: '大ばくはつの杖', tier: 3, get: { chest: ['ruins_maze', 0] }, mod: { atk: 1.1, hp: 0.92 },
     desc: '古代の魔法使いが「危ないので封印」と書き残した杖。シロは大よろこび。', look: { c: '#4a2a3a', g: '#ff8a3a' },
-    basic: { name: 'ぼんっ', elem: 'fire', target: 'blast', desc: '指定した敵単体に攻撃力80%、隣接する敵に攻撃力30%の炎ダメージ。',
+    basic: { name: 'ぼんっ', elem: 'fire', target: 'blast', anim: 'pon', desc: '指定した敵単体に攻撃力80%、隣接する敵に攻撃力30%の炎ダメージ。',
       run: (B, s, t) => B.blast(s, t, 0.8, 0.3, 10, 5, 'basic') },
-    skill: { name: 'ばくはつ魔法', elem: 'fire', target: 'aoe', desc: '敵全体に攻撃力150%の炎ダメージ。25%の確率で大成功（与ダメージ+60%）、25%の確率で自分もまきこまれる（最大HP10%のダメージ）。',
+    skill: { name: 'ばくはつ魔法', elem: 'fire', target: 'aoe', anim: 'bakuhatsu', desc: '敵全体に攻撃力150%の炎ダメージ。25%の確率で大成功（与ダメージ+60%）、25%の確率で自分もまきこまれる（最大HP10%のダメージ）。',
       run: async (B, s) => {
         const roll = Math.random();
         if (roll < 0.25) B.announce('ばくはつ魔法', '大成功！', ELEMENTS.fire.color);
-        const r = await B.aoe(s, 1.5, 15, 'skill', { dmgBonus: roll < 0.25 ? 0.6 : 0 });
-        if (roll >= 0.75) { B.float(s, 'けほっ', 'info'); selfHurt(B, s, 0.1); }
+        const r = await B.aoe(s, 1.5, 15, 'skill', { dmgBonus: roll < 0.25 ? 0.6 : 0, boom: roll < 0.25 ? 'great' : '' });
+        if (roll >= 0.75) { await B.motion(s, 'soot'); B.float(s, 'けほっ', 'info'); selfHurt(B, s, 0.1); }
         return r;
       } },
-    ult: { name: 'ちょう大ばくはつ', elem: 'fire', target: 'aoe', desc: '敵全体に攻撃力300%の炎ダメージ。自身も最大HP15%のダメージを受ける（倒れはしない）。',
+    ult: { name: 'ちょう大ばくはつ', elem: 'fire', target: 'aoe', anim: 'chouBakuhatsu', desc: '敵全体に攻撃力300%の炎ダメージ。自身も最大HP15%のダメージを受ける（倒れはしない）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 3.0, 25, 'ult', { heavy: true });
+        await B.motion(s, 'frizz');
         selfHurt(B, s, 0.15); B.float(s, '毛が爆発した！', 'info');
         return r;
       } } },
