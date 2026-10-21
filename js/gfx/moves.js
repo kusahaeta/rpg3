@@ -28,6 +28,23 @@ function squashEnd(g, restore = true) {
   const ud = g.userData;
   if (--ud.sqN <= 0) { ud.sqN = 0; if (restore) g.scale.copy(ud.sq0); }
 }
+// 霜の模様（白、アルファ付き）：まんなかから外へうすれる円に、霜の結晶の細い筋を散らす
+function frostTex() {
+  if (TexCache.frost) return TexCache.frost;
+  const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  gr.addColorStop(0, 'rgba(255,255,255,0.75)'); gr.addColorStop(0.65, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineCap = 'round';
+  for (let i = 0; i < 70; i++) {   // 小さな雪の結晶の形（六本の枝）
+    const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * S * 0.42, x = S / 2 + Math.cos(a) * d, y = S / 2 + Math.sin(a) * d, l = 3 + Math.random() * 7, r0 = Math.random();
+    g.lineWidth = 1 + Math.random();
+    g.beginPath();
+    for (let k = 0; k < 6; k++) { const b = r0 + k * Math.PI / 3; g.moveTo(x, y); g.lineTo(x + Math.cos(b) * l, y + Math.sin(b) * l); }
+    g.stroke();
+  }
+  return (TexCache.frost = new THREE.CanvasTexture(c));
+}
 const MOVES = {
   // ねこパンチ：剣を持たない左の手で、ぽかっと
   punch: {
@@ -804,17 +821,185 @@ const MOVES = {
       this.fx.swirl(m.tipPos(), c.col, { r: 0.25, life: 0.5 });
       this.foeCam(ts, 1.0);
       for (const t of ts) this.fx.sigil(t.home.clone().add(V3(0, 0.06, 0)), c.col, { r: t.model.radius * 1.8 + 0.6, life: 0.9 });
-      if (c.ult) for (let i = 0; i < 80; i++) this.p.emit(V3((Math.random() - 0.5) * 12, 3 + Math.random() * 4, -3 + (Math.random() - 0.5) * 6), V3(0, -2, 0), hdr('#ffffff', 2.5), { life: 1.4, size: 0.06, drag: 0.5 });
       await GFX.delay(0.3);
       ts.forEach((t, ti) => {
-        const r = t.model.radius, n = ti === 0 || c.ult ? 6 : 4;
+        const r = t.model.radius, n = ti === 0 ? 6 : 4;
         for (let j = 0; j < n; j++) {
           const a = j / n * Math.PI * 2 + Math.random() * 0.5, d = r * (0.5 + Math.random() * 0.5);
-          this.fx.iceSpike(t.home.clone().add(V3(Math.cos(a) * d, 0, Math.sin(a) * d)), { h: (0.7 + Math.random() * 0.7) * (c.ult ? 1.6 : 1) * Math.max(1, r), r: 0.16 * Math.max(1, r), dir: a, tilt: 0.4, life: 1.1, color: c.col });
+          this.fx.iceSpike(t.home.clone().add(V3(Math.cos(a) * d, 0, Math.sin(a) * d)), { h: (0.7 + Math.random() * 0.7) * Math.max(1, r), r: 0.16 * Math.max(1, r), dir: a, tilt: 0.4, life: 1.1, color: c.col });
         }
       });
       await GFX.delay(0.12);
     },
+  },
+  // ダイヤモンドダスト：杖を掲げると空気が凍り、きらめく氷の粒が敵のまわりで渦を巻く。
+  //   粒が敵へ吸いこまれると体から氷の結晶がはじけ出し、砕けて、きらきら舞いおちる（アイス・改の「足もとの魔法陣と氷柱」とは別の見せ方）
+  diamondDust: {
+    async attack(e, ts, c) {
+      const m = e.model, h = e.home, cen = this.enemyCenter(), tall = this.enemyTall();
+      this.focus(e); this.face(e, cen);
+      this.dim(1, 0.5, [0.72, 0.84, 1.0]);
+      // 杖を立てると、まわりの空気から氷の粒が杖の先へ集まる
+      this.staffCam(e);
+      this.fx.swirl(h.clone(), '#cfefff', { r: 0.5, life: 0.7, tilt: 0.1, y0: 0.1, y1: 1.1, width: 0.015, k: 1.6 });
+      await this.tweenPose(m, POSES.staffUp, 0.2);
+      const tip = m.tipPos(), from = [];
+      for (let i = 0; i < 36; i++) from.push(tip.clone().add(V3(Math.random() - 0.5, Math.random() * 0.8 - 0.2, -Math.random()).normalize().multiplyScalar(0.8 + Math.random() * 0.8)));   // カメラのない奥がわから
+      this.frostDust(36, 0.5, (i, t, P) => { const k = Ease.in(Math.min(1, t * 1.15)); P.lerpVectors(from[i], tip, k); return Math.min(1, t * 6) * (1 - k * 0.8); }, { size: 0.045 });
+      [1319, 1568, 1976, 2349].forEach((f, i) => Sfx.tone(f, 0.35, 'triangle', 0.035, 0, i * 0.09));
+      await GFX.delay(0.45);
+      this.glint(tip, '#e8fbff', 0.45);
+      Sfx.tone(2637, 0.5, 'sine', 0.05);
+      await GFX.delay(0.22);
+      // 敵がわへ切りかえ：地面が白く凍りつき、無数の氷の粒がきらめきながら敵のまわりで渦を巻く
+      const R = Math.max(...ts.map(t => Math.abs(t.home.x - cen.x) + t.model.radius)) + 1.2, top = 2.6 + tall;
+      const camP = V3(cen.x + 1.2, 2.2 + tall * 0.5, cen.z + 7.4 + tall * 1.2), camL = V3(cen.x, 1.3 + tall * 0.4, cen.z);
+      this.setCam(camP, camL, { snap: true });
+      this.setCam(camP.clone().lerp(camL, 0.15), camL, { speed: 1.2 });   // ゆっくり寄る
+      this.frostGround(cen.clone().add(V3(0, 0.03, 0)), R + 0.6, 2.2);
+      Sfx.noise(1.3, 0.07, 5200);
+      for (let i = 0; i < 2; i++) this.fx.swirl(cen.clone().add(V3(0, 0.5 + i * 1.0, 0)), '#cfefff', { r: R * (0.85 - i * 0.2), life: 1.1, tilt: 0.12, speed: 3.5, arc: 3, width: 0.012, k: 2.5, y1: 0.5 });
+      const hp = ts.map(t => this.hitPoint(t.u)), N = 150, TB = 1.0, TC = 0.3;
+      const mo = Array.from({ length: N }, (_, i) => ({ a: Math.random() * Math.PI * 2, r: R * (0.25 + Math.random() * 0.75), y: 0.2 + Math.random() * top, w: (1.2 + Math.random() * 1.4) * (i % 2 ? 1 : 0.8),
+        to: hp[i % hp.length].clone().add(V3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(0.4)) }));
+      const swirlAt = (o, sec, P) => { const a = o.a + o.w * sec, r = o.r * (1 - sec * 0.15); return P.set(cen.x + Math.cos(a) * r, o.y + Math.sin(sec * 3 + o.a) * 0.15, cen.z + Math.sin(a) * r * 0.6); };
+      this.frostDust(N, TB + TC, (i, t, P) => {
+        const o = mo[i], sec = t * (TB + TC);
+        if (sec < TB) { swirlAt(o, sec, P); return Math.min(1, sec * 4); }
+        const k = Ease.in((sec - TB) / TC);
+        swirlAt(o, TB, P).lerp(o.to, k);
+        return 1 - k * 0.6;
+      }, { size: 0.06 });
+      for (let i = 0; i < 12; i++) {
+        const sec = 0.12 + i * 0.07;
+        GFX.delay(sec).then(() => { this.glint(swirlAt(mo[(Math.random() * N) | 0], sec, V3()), '#ffffff', 0.45); Sfx.tone(2000 + Math.random() * 1500, 0.2, 'sine', 0.02); });
+      }
+      await GFX.delay(TB);
+      Sfx.tone(880, 0.3, 'sine', 0.04, 1400);   // 粒が吸いこまれる
+      await GFX.delay(TC);
+      // 粒が敵に吸いこまれると、体から氷の結晶がはじけ出して閉じこめる
+      Sfx.noise(0.25, 0.25, 6500); Sfx.tone(3200, 0.25, 'triangle', 0.04, -1200);
+      const hold = 0.36;
+      this.iceBloom(ts, hold);
+      for (const t of ts) this.squash(t, 0.3);
+      GFX.shake(0.12);
+      await GFX.delay(hold);
+      // 砕けて、きらきら舞いおちる（ダメージの数字が出るあいだも舞いつづける）
+      Sfx.noise(0.6, 0.28, 7000); [3136, 2637, 2093].forEach((f, i) => Sfx.tone(f, 0.4, 'triangle', 0.035, -300, i * 0.05));
+      for (const p of hp) this.fx.shards(p, '#bfefff', 8, 4.5);
+      const M = Math.min(180, ts.length * 36), fall = Array.from({ length: M }, (_, i) => ({ p: hp[i % hp.length], v: V3(Math.random() - 0.5, Math.random() * 0.8 + 0.1, Math.random() - 0.5).normalize().multiplyScalar(1.5 + Math.random() * 3) }));
+      this.frostDust(M, 1.8, (i, t, P) => {
+        const o = fall[i], sec = t * 1.8, d = (1 - Math.exp(-2.5 * sec)) / 2.5;
+        P.copy(o.p).addScaledVector(o.v, d); P.y -= sec * 0.35;
+        return t < 0.6 ? 1 : (1 - t) / 0.4;
+      }, { size: 0.055 });
+      GFX.flash('#e8fbff', 0.25, 0.3);
+      this.dim(0, 0.8);
+      await GFX.delay(0.1);
+    },
+  },
+  // ---------------- シロ（大ばくはつの杖）：まんがの爆発。火の玉と、もくもくの黒い煙 ----------------
+  // ぼんっ：火花をちらす玉がぽーんと山なりに飛んでいき、敵の前でぼんっ（となりの敵にも小さく）
+  pon: {
+    async attack(e, ts, c) {
+      const m = e.model, h = e.home, t = ts[0];
+      this.setCam(V3(h.x + 1.3, 1.4, h.z + 2.6), V3(t.home.x * 0.7, 1.0, t.home.z), { speed: 5 });
+      this.face(e, t.home);
+      await this.tweenPose(m, POSES.cast, 0.18);
+      const tip = m.tipPos(), to = this.hitPoint(t.u);
+      this.p.burst(tip, hdr('#ffd060', 3), 10, { speed: 1.5, up: 1, life: 0.35, size: 0.07, grav: 4 });
+      Sfx.toss();
+      this.foeCam(ts, 0.9, 4);
+      await this.fx.projectile(tip, to, c.col, { dur: 0.42, size: 0.35, arc: 1.1 });
+      this.boom(to, 0.5 + t.model.radius * 0.4, { smoke: 6 });
+      this.boomSfx(0.6);
+      this.squash(t, 0.25);
+      ts.slice(1).forEach((a, i) => GFX.delay(0.08 + i * 0.05).then(() => { this.boom(this.hitPoint(a.u), 0.3 + a.model.radius * 0.25, { smoke: 3, ring: false, sparks: 10 }); this.squash(a, 0.15); }));
+      await GFX.delay(0.12);
+    },
+  },
+  // ばくはつ魔法：杖の先で導火線のように火花がちりちり。赤い魔法の玉が敵のまんなかへ落ちて、ピッ、ピッ、ピピッと光り、敵から敵へ爆発が走る
+  //   大成功（opt.boom === 'great'）は大きく、金の星が散る。自分もまきこまれたときは、技の run から B.motion(s, 'soot')
+  bakuhatsu: {
+    async attack(e, ts, c) {
+      const m = e.model, cen = this.enemyCenter(), great = c.opt.boom === 'great', g = great ? 1.35 : 1;
+      this.focus(e); this.face(e, cen);
+      this.staffCam(e);
+      await this.tweenPose(m, POSES.staffUp, 0.18);
+      const tip = m.tipPos();
+      Sfx.noise(0.5, 0.05, 6500);
+      this.fx.sprite(tip, '#ffa040', 0.5, 0.5, { k: 2.5, grow: 1.4 });
+      await this.every(0.45, 24, () => this.p.emit(tip, V3((Math.random() - 0.5) * 2.4, 1 + Math.random() * 1.8, (Math.random() - 0.5) * 2.4), hdr(Math.random() < 0.5 ? '#ffd060' : '#ff7a2a', 3), { life: 0.4, size: 0.12, grav: 5, drag: 0.5 }));
+      this.focus(null);   // 敵がわの画では、手前の仲間を隠す
+      const core = cen.clone().add(V3(0, 1.0, 0));
+      this.boomCam(ts, 0);
+      Sfx.toss();
+      await this.fx.projectile(cen.clone().add(V3(-2.5, 6, 1.5)), core, '#ff4a2a', { dur: 0.35, size: 0.8, arc: 0 });
+      // 魔法の玉：赤い玉がふくらみながら、だんだん速く白く光る
+      const orb = this.magicOrb(core, 0.6);
+      await GFX.delay(0.6);
+      orb.visible = false;
+      // ばくはつ：まんなかで大きく。そこから外へ、敵から敵へ
+      this.boom(core, 1.3 * g, { smoke: 9 });
+      this.boomSfx(1.2 * g);
+      GFX.shake(0.25 * g);
+      for (const t of ts) GFX.delay(0.05 + Math.abs(t.home.x - cen.x) * 0.04).then(() => { this.boom(this.hitPoint(t.u), (0.55 + t.model.radius * 0.4) * g, { smoke: 4, ring: false, sparks: 14 }); this.squash(t, 0.3); });
+      if (great) for (let i = 0; i < 9; i++) GFX.delay(0.1 + i * 0.04).then(() => this.glint(core.clone().add(V3((Math.random() - 0.5) * 6, Math.random() * 2.2, 0.5)), '#ffd84a', 0.6));
+      await GFX.delay(0.2);   // 仲間は attackEnd（wide）で戻る
+    },
+  },
+  // ちょう大ばくはつ：画面が赤黒く沈み、杖の先へ力が集まる。玉が空へ上がって、敵のまんなかへ落ちる。
+  //   真っ白に光ったあと、敵全体をのみこむ火の玉と、きのこ雲。毛が爆発するのは、技の run から B.motion(s, 'frizz')
+  chouBakuhatsu: {
+    async attack(e, ts, c) {
+      const m = e.model, cen = this.enemyCenter(), was = m.face && m.face.expr;
+      this.focus(e); this.face(e, cen);
+      this.dim(1, 0.5, [0.86, 0.6, 0.55]);
+      this.staffCam(e);
+      if (m.face) m.face.set('joy');
+      await this.tweenPose(m, POSES.staffUp, 0.2);
+      const tip = m.tipPos();
+      Sfx.tone(70, 1.0, 'sawtooth', 0.08, 30); Sfx.tone(300, 0.9, 'triangle', 0.04, 900);
+      // 杖の先に赤い光がふくらみ、まわりから火の粉が吸いこまれる（顔にかからないよう、奥がわ・上がわから）
+      const glow = this.fx.sprite(tip, '#ff5a2a', 0.2, 1.0, { k: 2.5, grow: 4 });
+      this.fx.swirl(tip, '#ff6a2a', { r: 0.28, life: 0.9, tilt: 0.4, speed: 12, width: 0.008, k: 2 });
+      for (let i = 0; i < 3; i++) GFX.delay(i * 0.26).then(() => this.fx.ring(e.home.clone().add(V3(0, 0.05, 0)), '#ff6a2a', { r: 1.6 - i * 0.3, life: 0.5, width: 0.1, k: 2.5 }));   // 足もとから熱の輪
+      await this.every(0.85, 36, i => {
+        const d = V3(Math.random() - 0.5, Math.random() * 0.8, -Math.random()).normalize().multiplyScalar(0.8 + Math.random() * 0.4);
+        this.p.emit(tip.clone().add(d), d.multiplyScalar(-2.4), hdr(i % 3 ? '#ff7a2a' : '#ffd060', 3), { life: 0.36, size: 0.12, drag: 0 });
+        if (i % 6 === 0) GFX.shake(0.04);
+      });
+      glow.visible = false;
+      // 玉が空へ
+      Sfx.toss(); Sfx.tone(600, 0.35, 'sine', 0.05, 1400);
+      await this.fx.projectile(tip, tip.clone().add(V3(0, 5, -1)), '#ffb04a', { dur: 0.3, size: 0.5, arc: 0 });
+      // 引きの画で：空から落ちてくる（手前の仲間は隠す）
+      this.focus(null); if (m.face) m.face.set(was || 'neutral');
+      const core = cen.clone().add(V3(0, 0.6, 0)), R = Math.max(2.2, ...ts.map(t => Math.abs(t.home.x - cen.x) + t.model.radius + 0.6));
+      this.boomCam(ts, 1);
+      Sfx.tone(2200, 0.5, 'sine', 0.05, -1800);
+      await this.fx.projectile(cen.clone().add(V3(1.0, 10, 0)), core, '#fff0b0', { dur: 0.5, size: 1.0, arc: 0 });
+      // どかーん
+      GFX.flash('#ffffff', 0.6, 0.25);
+      Sfx.slam(); this.boomSfx(2);
+      GFX.shake(0.5);
+      this.boom(core, R * 0.6, { smoke: 0, ring: false, sparks: 0, k: 1.25, life: 0.85, lumps: 9, glow: false });
+      this.fx.ring(cen.clone().add(V3(0, 0.06, 0)), '#ffb060', { r: R * 2.6, life: 0.8, width: 0.4 });
+      this.fx.ring(cen.clone().add(V3(0, 0.06, 0)), '#ffffff', { r: R * 1.8, life: 0.6, width: 0.2 });
+      this.p.burst(core, hdr('#ffc060', 3), 90, { speed: 12, up: 0.5, life: 0.9, size: 0.14, grav: 5 });
+      this.mushroom(cen, R);
+      for (const t of ts) { this.squash(t, 0.35); GFX.delay(0.15 + Math.random() * 0.15).then(() => this.boom(this.hitPoint(t.u), 0.5 + t.model.radius * 0.4, { smoke: 3, ring: false, sparks: 10 })); }
+      this.dim(0, 1.0);
+      await GFX.delay(0.45);   // 仲間は attackEnd（wide）で戻る
+    },
+  },
+  // 爆発のあおりで、自分もまきこまれる：煙につつまれて、すすけて、けほっ（ばくはつ魔法）
+  soot: {
+    async attack(e) { await this.blowback(e, false); },
+  },
+  // 毛が爆発：煙が晴れると、頭の毛がぼわっとふくらんでいる（ちょう大ばくはつ）
+  frizz: {
+    async attack(e) { await this.blowback(e, true); },
   },
   // 失敗した魔法：魚が降ってくる
   fish: {
@@ -1300,6 +1485,181 @@ Object.assign(BattleView.prototype, {
   glint(p, col, size = 1) {
     this.fx.sprite(p, col, size * 0.8, 0.3, { k: 4, grow: 1.2, top: true });
     for (const a of [0, Math.PI / 2]) this.fx.slash(p, col, { cam: this.camera, size: size * 1.6, angle: a, life: 0.3, sym: true, top: true });
+  },
+  // ---------- シロ（大ばくはつの杖）の技の部品 ----------
+  // 杖を立てたシロを、前の斜め下から（顔と杖の先が見えるように）
+  staffCam(e) { const h = e.home; this.setCam(V3(h.x + 2.3, 0.5, h.z - 1.3), V3(h.x - 0.1, 0.95, h.z - 0.5), { snap: true }); },
+  // 爆発を映す引きの画（big：ちょう大ばくはつのきのこ雲が入るよう、もっと引いて上を見る）
+  boomCam(ts, big) {
+    const cen = this.enemyCenter(), tall = this.enemyTall(), wide = Math.max(...ts.map(t => Math.abs(t.home.x - cen.x)));
+    this.setCam(V3(cen.x + 1.2, 2.2 + tall * 0.5 + big * 0.8, cen.z + 6.8 + wide * (0.6 + big * 0.7) + tall * 1.2 + big * 3.2), V3(cen.x, 1.2 + tall * 0.4 + big * 1.4, cen.z), { snap: true });
+  },
+  // 爆発の音（k：大きさ）
+  boomSfx(k = 1) {
+    Sfx.noise(0.35 + k * 0.25, Math.min(0.5, 0.2 + k * 0.12), 420);
+    Sfx.noise(0.2 + k * 0.1, 0.15, 2600);
+    Sfx.tone(110, 0.3 + k * 0.2, 'sawtooth', 0.06 + k * 0.02, -70);
+  },
+  // まんがの爆発：でこぼこの火の玉が、黄→橙→赤と色を変えながらふくらんではじけ、黒い煙がもくもく上がる
+  //   size：火の玉の半径。明るい草原でも形が見えるよう、火も煙も不透明な面で描く（加算の光だけだと白くぼやける）
+  //   火の玉は大小の玉を寄せたかたまり（一つの球だと、平たい円盤に見える）。外がわの玉ほど早く赤くなる
+  boom(p, size, { smoke = 6, ring = true, sparks = 30, k = 1.6, life = 0.45, lumps = 6, glow = true } = {}) {
+    const C0 = new THREE.Color('#fff2a8'), C1 = new THREE.Color('#ffa020'), C2 = new THREE.Color('#c8301a'), geo = new THREE.IcosahedronGeometry(1, 2);
+    for (let i = 0; i <= lumps; i++) {
+      const out = i ? 1 : 0, mat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, depthWrite: false, fog: false });
+      const ball = new THREE.Mesh(geo, mat); ball.renderOrder = 12 - out;
+      const d = V3(Math.random() - 0.5, Math.random() * 0.7 - 0.2, Math.random() - 0.5).normalize(), r = size * (i ? 0.5 + Math.random() * 0.25 : 0.75), off = i ? size * (0.45 + Math.random() * 0.2) : 0;
+      const at = i ? Math.random() * 0.06 : 0, early = i ? 0.55 : 1;   // 外がわは少しおくれてふくらみ、早く赤くなる
+      this.fx.add(ball, life + at, t0 => {
+        const t = Math.max(0, (t0 * (life + at) - at) / life);
+        ball.position.copy(p).addScaledVector(d, off * (0.6 + 0.4 * Ease.out(Math.min(1, t * 3))));
+        ball.scale.setScalar(Math.max(1e-3, r * (t < 0.22 ? Ease.out(t / 0.22) : 1 - Ease.in((t - 0.22) / 0.78) * 0.55)));
+        const u = Math.min(1, t / early);
+        (u < 0.3 ? mat.color.lerpColors(C0, C1, u / 0.3) : mat.color.lerpColors(C1, C2, (u - 0.3) / 0.7)).multiplyScalar(k * (1 - t * 0.45));
+        mat.opacity = t0 === 0 ? 0 : t < 0.55 ? 1 : (1 - t) / 0.45;
+      });
+    }
+    if (glow) this.fx.sprite(p, '#ffc070', size * 1.8, 0.2, { k: 1.2, grow: 1.3 });
+    if (smoke) this.smokePuffs(p, size, smoke);
+    if (sparks) this.p.burst(p, hdr('#ffc060', 3), sparks, { speed: 3 + size * 4, up: 0.6, life: 0.6, size: 0.09, grav: 5 });
+    if (ring) this.fx.ring(V3(p.x, 0.06, p.z), '#ffb060', { r: size * 2.6, life: 0.5, width: 0.15 });
+  },
+  // 魔法の玉：赤い玉がふくらみながら、ピッ、ピッ、ピピッと白く光る（life 秒。爆発の前ぶれ）
+  magicOrb(p, life) {
+    const mat = new THREE.MeshBasicMaterial({ color: hdr('#ff3a1a', 1.4), fog: false });
+    const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 2), mat); orb.position.copy(p); orb.renderOrder = 12;
+    const halo = this.fx.sprite(p, '#ff5a2a', 1.4, life, { k: 1.5, grow: 1.6 });
+    const beeps = [0, 0.4, 0.66, 0.83];
+    let n = 0;
+    this.fx.add(orb, life, t => {
+      while (n < beeps.length && t >= beeps[n]) { Sfx.tone(1400 + n * 120, 0.06, 'square', 0.04); n++; }
+      const since = Math.min(...beeps.filter(b => b <= t).map(b => (t - b) * life));
+      const w = Math.max(0, 1 - since / 0.08);
+      mat.color.set('#ff3a1a').lerp(new THREE.Color('#ffffff'), w).multiplyScalar(1.4 + w);
+      orb.scale.setScalar(0.3 + 0.25 * t + w * 0.06);
+      halo.material.opacity = 0.6 + w * 0.4;
+    });
+    return orb;
+  },
+  // もくもくの煙：n 個の灰色の玉が、ふくらみながら外へ広がって上がり、うすれて消える
+  smokePuffs(p, size, n, { up = 1, spread = 1, life = 1.1, dark = 0 } = {}) {
+    for (let i = 0; i < n; i++) {
+      const c = new THREE.Color().setHSL(0.9, 0.04, (0.3 + Math.random() * 0.25) * (1 - dark));
+      const mat = new THREE.MeshToonMaterial({ color: c, gradientMap: TOON_GRAD, transparent: true });
+      const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), mat);
+      const d = V3(Math.random() - 0.5, Math.random() * 0.6, Math.random() - 0.5).normalize();
+      const from = p.clone().addScaledVector(d, size * 0.3), v = d.clone().multiplyScalar(size * 1.6 * spread).add(V3(0, (0.6 + Math.random() * 0.6) * up, 0));
+      const s1 = size * (0.45 + Math.random() * 0.35), L = life * (0.8 + Math.random() * 0.4), rot = Math.random() * 3;
+      m.position.copy(from); m.rotation.set(rot, rot * 2, 0);
+      this.fx.add(m, L, t => {
+        m.position.copy(from).addScaledVector(v, Ease.out(t));
+        m.scale.setScalar(Math.max(1e-3, s1 * (0.3 + 0.7 * Ease.out(Math.min(1, t * 2.5))) * (1 - t * 0.2)));
+        mat.opacity = t < 0.55 ? 1 : (1 - t) / 0.45;
+      });
+    }
+  },
+  // きのこ雲：火の玉の上へ太い煙の柱がのびて、てっぺんで傘のように横へ広がる
+  mushroom(cen, R) {
+    const H = 2.4 + R * 0.4;
+    for (let i = 0; i < 7; i++) GFX.delay(0.08 + i * 0.05).then(() => this.smokePuffs(V3(cen.x + (Math.random() - 0.5) * 0.4, 0.8 + i / 7 * H, cen.z), R * 0.32, 3, { up: 0.5, spread: 0.25, life: 1.8 }));
+    GFX.delay(0.4).then(() => {
+      for (let i = 0; i < 10; i++) {
+        const a = i / 10 * Math.PI * 2, p = V3(cen.x + Math.cos(a) * R * 0.3, H + 0.5 + Math.random() * 0.4, cen.z + Math.sin(a) * R * 0.18);
+        this.smokePuffs(p, R * 0.4, 1, { up: 0.3, spread: 1.6, life: 1.7 });
+      }
+    });
+  },
+  // 爆発のあおり：煙がつつむ → すすけた顔でけほっ。big：頭の毛がぼわっとふくらむ（すすけた毛のかたまりが頭をかこむ）
+  async blowback(e, big) {
+    const m = e.model, h = e.home, g = m.group, was = m.face && m.face.expr;
+    this.focus(e);
+    g.rotation.y = Math.PI;   // 敵がわを向いたまま、前（敵がわ）から映す（0 にすると背中が映る）
+    this.setCam(V3(h.x + 0.9, 0.75, h.z - 2.9), V3(h.x, 1.0, h.z), { snap: true });
+    this.tweenPose(m, POSES.hurt, 0.12);
+    const hp = this.headPos(e);
+    this.smokePuffs(hp.clone().add(V3(0, -0.2, 0)), 0.4, 6, { up: 0.5, spread: 0.8, life: 0.9, dark: 0.3 });
+    this.p.burst(hp, hdr('#ffb050', 3), 16, { speed: 2.5, up: 0.6, life: 0.4, size: 0.07, grav: 4 });
+    this.boomSfx(0.5);
+    if (m.face) m.face.set(big ? 'surprise' : 'pained');
+    const s0 = squashStart(g);
+    GFX.tween(0.35, k => { const s = Math.sin(k * Math.PI) * 0.12; g.scale.set(s0.x * (1 + s), s0.y * (1 - s * 0.5), s0.z * (1 + s)); }, Ease.out).then(() => squashEnd(g));
+    if (big) {
+      // ぼわっ：すすけた毛のかたまりが、頭のてっぺんから横・うしろへふくらむ（顔の前にはかからない。顔は -Z 向き）
+      const mat = new THREE.MeshToonMaterial({ color: '#8a8286', gradientMap: TOON_GRAD }), geo = new THREE.IcosahedronGeometry(1, 1);
+      const tuft = new THREE.Group(), hc = m.eyePos(1, 0);   // 頭の球の中心
+      for (let i = 0; i < 26; i++) {
+        let d; do { d = V3(Math.random() - 0.5, Math.random() * 0.9 - 0.1, Math.random() - 0.5).normalize(); } while (d.z < -0.2);
+        const b = new THREE.Mesh(geo, mat); b.position.copy(d).multiplyScalar(0.36 + Math.random() * 0.06); b.scale.setScalar(0.11 + Math.random() * 0.05); b.rotation.set(Math.random() * 3, Math.random() * 3, 0); tuft.add(b);
+      }
+      tuft.position.copy(hc);
+      this.fx.add(tuft, 1.3, t => {
+        tuft.position.copy(m.eyePos(1, 0));   // のけぞる頭についていく
+        tuft.scale.setScalar(Math.max(1e-3, t < 0.15 ? Ease.back(t / 0.15) : t > 0.85 ? 1 - (t - 0.85) / 0.15 : 1));
+      });
+    }
+    await GFX.delay(0.4);
+    Sfx.tone(520, 0.12, 'square', 0.03, -200); Sfx.tone(480, 0.12, 'square', 0.03, -200, 0.16);   // けほっ
+    this.smokePuffs(hp.clone().add(V3(0, -0.1, 0.35)), 0.12, 2, { up: 0.6, spread: 0.6, life: 0.7 });
+    await GFX.delay(big ? 0.75 : 0.45);
+    if (m.face) m.face.set(was || 'neutral');
+  },
+  // ---------- シロ（こおりの杖）の技の部品 ----------
+  // 氷の粒（ダイヤモンドダスト）：n 個の小さな八面体を一度に描く（粒ごとに描くと、非力なスマホで重い）
+  //   at(i, t, P)：t（0〜1）での i 個目の位置を P に入れ、大きさの倍率を返す（0 で見えない）。粒ごとに光り方をずらして、ときどき強くきらめかせる
+  frostDust(n, life, at, { size = 0.05 } = {}) {
+    const geo = new THREE.OctahedronGeometry(1, 0); geo.scale(0.6, 1, 0.6);
+    const mat = new THREE.MeshBasicMaterial({ color: '#ffffff', fog: false });
+    const mesh = new THREE.InstancedMesh(geo, mat, n); mesh.frustumCulled = false; mesh.renderOrder = 11;
+    const ph = Array.from({ length: n }, () => Math.random() * 10), sp = Array.from({ length: n }, () => 5 + Math.random() * 9);
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), P = V3(), S = V3(), C = new THREE.Color();
+    let time = 0;
+    const set = t => {
+      for (let i = 0; i < n; i++) {
+        const s = Math.max(1e-4, at(i, t, P) * size);
+        Q.setFromEuler(E.set(ph[i] + time * 3, ph[i] * 2 + time * 4, 0));
+        mesh.setMatrixAt(i, M.compose(P, Q, S.setScalar(s)));
+        const tw = Math.pow(0.5 + 0.5 * Math.sin(ph[i] * 7 + time * sp[i]), 8) * 2.2;
+        mesh.setColorAt(i, C.setRGB(0.78 + tw, 0.92 + tw, 1.0 + tw));
+      }
+      mesh.instanceMatrix.needsUpdate = true; mesh.instanceColor.needsUpdate = true;
+    };
+    set(0);
+    return this.fx.add(mesh, life, (t, o, dt) => { time += dt; set(t); });
+  },
+  // 地面が白く凍りつく（中心から広がって、life 秒の終わりに消える）
+  frostGround(p, r, life) {
+    const mat = new THREE.MeshBasicMaterial({ map: frostTex(), color: '#e4f6ff', transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+    m.position.copy(p); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * Math.PI; m.renderOrder = 2;
+    return this.fx.add(m, life, t => {
+      m.scale.setScalar(r * (0.15 + 0.85 * Ease.out(Math.min(1, t * 2.2))));
+      mat.opacity = 0.8 * Math.min(1, t * 6) * (t > 0.7 ? (1 - t) / 0.3 : 1);
+    });
+  },
+  // 氷の結晶の花：敵の体から大きな氷の結晶がいくつもはじけ出す（life 秒で消える。砕ける演出は呼んだ側で）
+  iceBloom(ts, life) {
+    const list = [];
+    for (const t of ts) {
+      const p = this.hitPoint(t.u), s = 0.75 + t.model.radius * 0.9, n = 8;
+      for (let j = 0; j < n; j++) {
+        const a = j / n * Math.PI * 2 + Math.random() * 0.5, el = -0.25 + Math.random() * 1.1;
+        list.push({ p, d: V3(Math.cos(el) * Math.cos(a), Math.sin(el), Math.cos(el) * Math.sin(a)), len: (0.8 + Math.random() * 0.5) * s, w: (0.12 + Math.random() * 0.05) * s, spin: Math.random() * Math.PI, delay: Math.random() * 0.06 });
+      }
+    }
+    const geo = new THREE.OctahedronGeometry(1, 0); geo.translate(0, 1, 0);   // 根もとを原点に、上へ長さ 2
+    const mat = new THREE.MeshStandardMaterial({ color: '#f0fbff', emissive: '#8fe0ff', emissiveIntensity: 0.8, roughness: 0.05, metalness: 0.35, transparent: true, opacity: 0.95, flatShading: true });
+    const mesh = new THREE.InstancedMesh(geo, mat, list.length); mesh.frustumCulled = false;
+    const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), Q2 = new THREE.Quaternion(), S = V3(), up = V3(0, 1, 0);
+    const set = t => {
+      list.forEach((o, i) => {
+        const k = Ease.back(Math.min(1, Math.max(0, (t * life - o.delay) / 0.14)));
+        Q.setFromUnitVectors(up, o.d).multiply(Q2.setFromAxisAngle(up, o.spin));
+        mesh.setMatrixAt(i, M.compose(o.p, Q, S.set(Math.max(1e-4, o.w * k), Math.max(1e-4, o.len * 0.5 * k), Math.max(1e-4, o.w * k))));
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+    };
+    set(0);
+    return this.fx.add(mesh, life, set);
   },
   // 右手の武器を s 倍に（技のあいだだけ。終わったら 1 に戻す）
   weaponGrow(m, s, dur) {

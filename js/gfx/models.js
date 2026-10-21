@@ -38,6 +38,7 @@ const POSES = {
   plant:   { hipsY: -0.24, lean: 0.5, headX: -0.15, armRx: -0.9, armRz: 0.1, elbowR: 0.3, armLx: -0.9, armLz: -0.1, elbowL: 0.3, legLx: -0.8, kneeL: 0.8, legRx: 0.6, kneeR: 0.6 },   // 両手で刀を地面に突き立てる
   offStrike: { hipsY: -0.1, twist: 0.65, lean: 0.3, armLx: -1.3, armLz: -1.1, elbowL: -0.2, armRx: -0.4, armRz: 0.4, elbowR: -0.6, legLx: -0.7, kneeL: 0.5, legRx: 0.45, kneeR: 0.2 },   // 左手の刀で斬る（二刀）
   raise:   { lean: -0.12, headX: -0.2, armRx: -3.0, armRz: -0.1, elbowR: -0.1, armLx: -0.6, armLz: 0.6, elbowL: -0.5, legLx: -0.3, legRx: 0.2 },   // 杖・笏を高く掲げる
+  staffUp: { lean: -0.06, headX: -0.1, armRx: -2.2, armRz: -0.15, elbowR: -0.9, armLx: -0.5, armLz: 0.55, elbowL: -0.4, legLx: -0.2, legRx: 0.15 },   // 杖を顔の横に立てる（2頭身では raise だと杖の先が下を向く。肘を曲げて前腕を立てる）
   tailSpin:{ hipsY: -0.1, lean: 0.35, headX: 0.1, armLx: 0.3, armLz: 0.7, elbowL: -0.4, armRx: 0.3, armRz: -0.7, elbowR: -0.4, legLx: -0.5, kneeL: 0.6, legRx: 0.4, kneeR: 0.6 },
   guard:   { hipsY: -0.14, lean: 0.08, armRx: -1.35, armRz: 0.55, elbowR: -0.7, armLx: -1.3, armLz: -0.35, elbowL: -0.7, legLx: -0.55, kneeL: 0.55, legRx: 0.45, kneeR: 0.55 },   // 刀を横に構えて受けとめる
   patUp:   { lean: 0.12, armRx: -2.3, armRz: -0.05, elbowR: -0.9, armLx: -0.8, armLz: 0.3, elbowL: -1.2 },
