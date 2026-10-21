@@ -45,7 +45,8 @@ const Story = {
   advance() {
     const s = this.state;
     s.step++;
-    if (s.step >= STORY[s.ch].steps.length) { s.ch++; s.step = 0; }
+    // 章が進んだら、みんなの HP を全回復する（やられた子も起きる。必殺技ゲージは宿と同じく、そのまま）
+    if (s.step >= STORY[s.ch].steps.length) { s.ch++; s.step = 0; Save.data.hp = {}; }
     Save.save();
   },
   progress(ci) {
