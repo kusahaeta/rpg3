@@ -2692,7 +2692,7 @@ class FieldView extends BaseView {
         ${item('bond', '友情', '一緒に旅をした時間')}
         ${item('recap', 'あらすじ', 'これまでのお話')}
         ${item('opt', 'オプション', '音量・BGM・画質の設定')}
-        ${Debug.on ? item('debug', 'デバッグ：章へジャンプ', '選んだ段階の直前まで進める') : ''}
+        ${Debug.on ? item('debug', 'デバッグ', '章へジャンプ・全ての武器を入手') : ''}
       </div>
       ${Debug.on ? `<div class="fm-foot">
         <button class="link" data-reset>データを初期化</button>

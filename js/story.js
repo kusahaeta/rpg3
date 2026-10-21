@@ -417,6 +417,13 @@ const Debug = {
     }
     Save.save();
   },
+  // まだ持っていない武器をすべて手に入れる（はじめの武器はいつも持っている）。手に入れた本数を返す
+  giveAllWeapons() {
+    const ids = Object.keys(WEAPONS).filter(id => !hasWeapon(id));
+    ids.forEach(gainWeapon);
+    Save.save();
+    return ids.length;
+  },
   restore() {
     try { const b = localStorage.getItem(this.BACKUP); if (!b) return false; localStorage.setItem(SAVE_KEY, b); localStorage.removeItem(this.BACKUP); } catch (e) { return false; }
     Save.load();
@@ -425,17 +432,21 @@ const Debug = {
   render(o, onDone, onClose = () => o.classList.add('hidden')) {
     const cur = Story.current(), icon = { scene: '💬', battle: '⚔', field: '◆', reward: '★', ending: '✿' };
     const btn = (ci, si, label, now) => `<button class="dbg-step ${now ? 'now' : ''}" data-j="${ci},${si}">${label}</button>`;
-    o.innerHTML = `<div class="ov-box dbg"><h2>デバッグ：章へジャンプ</h2>
+    o.innerHTML = `<div class="ov-box dbg"><h2>デバッグ</h2>
       <div class="dbg-note">選んだ段階の直前まで進めた状態にします。前の章のステージはクリア済み、途中で加わる仲間も加入します。最初のジャンプの前にセーブデータを退避します。</div>
       <label class="dbg-opt"><input type="checkbox" data-lv checked>仲間のレベルを推奨レベルまで上げる</label>
       <div class="dbg-list">${STORY.map((ch, ci) => `<section><h3>${ch.title}<small>推奨 Lv.${this.levelAt(ci, 0)}</small></h3>
         ${ch.steps.map((st, si) => btn(ci, si, `<span>${icon[st.t]}</span>${st.g}`, cur && cur.chIdx === ci && Story.state.step === si)).join('')}</section>`).join('')}
         <section><h3>クリア後</h3>${btn(STORY.length, 0, '<span>★</span>すべてのお話を見終えた状態', !cur)}</section></div>
-      <div class="dbg-foot">${this.hasBackup ? '<button class="btn small" data-restore>ジャンプ前のセーブに戻す</button>' : ''}<button class="btn gold" data-close>閉じる</button></div></div>`;
+      <div class="dbg-foot"><button class="btn small" data-weapons>全ての武器を入手</button>${this.hasBackup ? '<button class="btn small" data-restore>ジャンプ前のセーブに戻す</button>' : ''}<button class="btn gold" data-close>閉じる</button></div></div>`;
     o.classList.remove('hidden');
     const now = o.querySelector('.dbg-step.now'); if (now) now.scrollIntoView({ block: 'center' });
     o.querySelector('[data-close]').onclick = () => { Sfx.click(); onClose(); };
     o.querySelectorAll('[data-j]').forEach(b => b.onclick = () => { const [ci, si] = b.dataset.j.split(',').map(Number); Sfx.select(); this.jump(ci, si, { level: o.querySelector('[data-lv]').checked }); onDone(); });
+    o.querySelector('[data-weapons]').onclick = e => {
+      const n = this.giveAllWeapons(), b = e.currentTarget;
+      Sfx.win(); b.disabled = true; b.textContent = n ? `武器を${n}本 手に入れた` : 'すべて持っている';
+    };
     const r = o.querySelector('[data-restore]');
     if (r) r.onclick = () => { Sfx.click(); if (this.restore()) onDone(); };
   },
