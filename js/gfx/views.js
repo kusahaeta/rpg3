@@ -914,7 +914,7 @@ class BattleView extends BaseView {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TexCache[key], transparent: true, depthTest: false, depthWrite: false, toneMapped: false }));
     sp.scale.setScalar(size); sp.renderOrder = 12; return sp;
   }
-  // またたびの実：相手のまわりを、ピンクの粒がくるくるのぼる（必殺技エネルギーがたまる）
+  // またたびの実：相手のまわりを、ピンクの粒がくるくるのぼる（必殺技ゲージがたまる）
   energyFx(t) {
     const e = this.ent(t); if (!e) return;
     const g = e.model.group.position, r = (e.model.radius || 0.5) + 0.25;

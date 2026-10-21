@@ -522,7 +522,7 @@ const FOE_MOVES = {
     this.fx.shards(above, '#8a80a8', 18, 3);
     this.fx.shards(above, '#5a5070', 12, 2.5);
     t.model.flash('#2a2238', 1.5);
-    // 光（EP）が、コドクへ吸いとられる
+    // 光（必殺技ゲージ）が、コドクへ吸いとられる
     const to = this.hitPoint(e.u), from = this.hitPoint(t.u);
     await this.every(0.35, 14, () => this.p.emit(from.clone().add(V3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, 0)), to.clone().sub(from).multiplyScalar(1.6).add(V3((Math.random() - 0.5), Math.random(), 0)), hdr('#ffe08a', 2), { life: 0.6, size: 0.1, drag: 0 }));
   },

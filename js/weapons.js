@@ -262,7 +262,7 @@ const WEAPONS = {
         B.aliveAllies().forEach(a => B.buff(a, { key: 'maou_flag', name: 'がんばれ', stat: 'atk', value: 0.25, turns: 2 }));
         return [];
       } },
-    ult: { name: 'びっくり箱の行進', elem: 'physical', target: 'bounce', anim: 'box', desc: 'ランダムな敵に攻撃力50%の物理ダメージを10回。味方全体のEP+15。',
+    ult: { name: 'びっくり箱の行進', elem: 'physical', target: 'bounce', anim: 'box', desc: 'ランダムな敵に攻撃力50%の物理ダメージを10回。味方全体の必殺技ゲージ+15。',
       run: async (B, s, t) => {
         const r = await B.bounce(s, 10, 0.5, 5, 'ult', { heavy: true }, t);
         B.aliveAllies().filter(a => a !== s).forEach(a => B.gainEnergy(a, 15));

@@ -321,7 +321,7 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .a-hp { font-size: 11px; text-align: right; padding: 1px 8px; color: #cfd5f0; }
 .ally .status { justify-content: flex-start; padding: 0 6px; margin-top: 1px; }
 .ult { position: absolute; right: 4px; top: 4px; width: 54px; height: 54px; border-radius: 50%; cursor: pointer; z-index: 3; background: rgba(255, 255, 255, .15); }
-/* 溜まった分のEP：3Dの対象サークルのように、白っぽい芯＋青いにじみで光らせる */
+/* 溜まった分の必殺技ゲージ：3Dの対象サークルのように、白っぽい芯＋青いにじみで光らせる */
 /*   （--e は中に何もない .ult-gauge にだけ置く。子に transition・animation・SVG がある要素のカスタムプロパティを
       書きかえると、Safari（WebKit）は書きかえるたびに子のスタイルの分だけメモリを手放さなくなる） */
 .ult-gauge { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(#d4eaff calc(var(--e, 0) * 360deg), transparent 0);
@@ -332,7 +332,7 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .ult-key { position: absolute; left: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 50%; background: #000; border: 1px solid var(--line); font-size: 11px; text-align: center; line-height: 16px; }
 .ult.ready .ult-face { filter: none; }
 .ult.queued { box-shadow: 0 0 0 3px #fff, 0 0 20px 6px var(--c); }
-/* 必殺技がたまったら（対象選択中も）、使い切るEPのリングと中身を点滅 */
+/* 必殺技がたまったら（対象選択中も）、使い切る必殺技ゲージのリングと中身を点滅 */
 .ult.ready .ult-ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid #e4f2ff; mix-blend-mode: screen;
   box-shadow: 0 0 3px 1px #a8d4ff, 0 0 10px 3px #4d9dff, 0 0 20px 6px rgba(40, 120, 255, .5), inset 0 0 4px 1px #a8d4ff;
   animation: gaugeCost 1.2s ease-in-out infinite; }

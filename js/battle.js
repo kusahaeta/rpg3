@@ -3,7 +3,7 @@
 //  バトルエンジン
 //  - 行動値（AV）：距離10000 / 速度
 //  - SP共有（最大5）、通常攻撃+1 / スキル-1
-//  - 必殺技はEP満タンでいつでも割り込み可能（1〜4キー）
+//  - 必殺技は必殺技ゲージ満タンでいつでも割り込み可能（1〜4キー）
 //  - 弱点ゲージ・弱点撃破・撃破効果（裂創/燃焼/凍結/感電/くらやみ/まぶしさ）
 //  - にゃんこファンタジー：どうぐ（ITEMS）、友情ゲージとコンボスキル、にゃんこオールスターズ
 // ============================================================
@@ -14,7 +14,7 @@ const fmt = n => Math.round(n).toLocaleString();
 
 const MULT_STATS = new Set(['atk', 'def', 'maxHp', 'spd']);
 const STAT_LABEL = { atk: '攻撃', def: '防御', maxHp: 'HP', spd: '速度', crit: '会心', critDmg: '会ダメ', dmg: '与ダメ', be: '撃破',
-  vuln: '被ダメ', defDown: '防御', resDown: '耐性', err: 'EP', dmg_dot: '持続', dmg_ult: '必殺' };
+  vuln: '被ダメ', defDown: '防御', resDown: '耐性', err: '必殺技ゲージ', dmg_dot: '持続', dmg_ult: '必殺' };
 const DOWN_STATS = new Set(['defDown', 'resDown']);
 const DOT_INFO = { burn: ['燃焼', 'fire'], shock: ['感電', 'lightning'], bleed: ['裂創', 'physical'] };
 const BREAK_COEF = { physical: 2, fire: 2, ice: 1, lightning: 1, quantum: 0.5, imaginary: 0.5 };
@@ -1531,7 +1531,7 @@ class Battle {
         else if (f.kind === 'freeze') this.freeze(e, t, f.chance, e.stat('atk') * 0.5);
         else if (f.kind === 'buff') this.debuff(e, t, f.chance, f.buff);
         else if (f.kind === 'isolate') { t.flags.isolated = 2; this.float(t, 'ひとりぼっち', 'res'); this.debuff(e, t, 1, { key: 'e_iso', name: 'ひとりぼっち', stat: 'dmg', value: -0.3, turns: 2 }, true); }
-        else if (f.kind === 'energy') { t.energy = Math.max(0, t.energy - f.value); this.float(t, f.value >= 30 ? '思い出が薄れる…' : 'EP減少', 'res'); }
+        else if (f.kind === 'energy') { t.energy = Math.max(0, t.energy - f.value); this.float(t, f.value >= 30 ? '思い出が薄れる…' : '必殺技ゲージ減少', 'res'); }
         else if (f.kind === 'bondDrain') { if (this.bond > 0) { this.bond = Math.max(0, this.bond - f.value); this.renderBond(); this.float(t, '疑心…', 'res'); } }
       }
     }

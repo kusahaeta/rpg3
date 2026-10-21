@@ -28,7 +28,7 @@ function stagePools(stageId) {
 class FieldSession {
   constructor(ci) {
     this.ci = ci;
-    // HP と奥義ゲージは、探索を離れても（なかまの画面・会話・物語の戦闘・読みなおし）引きつぐ（carried）
+    // HP と必殺技ゲージは、探索を離れても（なかまの画面・会話・物語の戦闘・読みなおし）引きつぐ（carried）
     this.team = teamMembers().map(carried);
     // 全員が戦闘不能の編成は、へんせいの画面でできない。物語で元気な子が一行を離れてそうなったときだけ、やられたときと同じく目を覚ます
     if (this.team.every(m => m.hpRatio <= 0)) this.team.forEach(m => { m.hpRatio = 1; });
@@ -37,7 +37,7 @@ class FieldSession {
     this.keep();
   }
   set(map, zone) { return map[zone] || (map[zone] = new Set()); }
-  // いまの HP と奥義ゲージをセーブに書く（保存はよび出し側で）
+  // いまの HP と必殺技ゲージをセーブに書く（保存はよび出し側で）
   keep() { keepCarried(this.team); }
 }
 
