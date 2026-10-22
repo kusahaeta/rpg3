@@ -628,6 +628,9 @@ class Battle {
       Sfx.click(); return;
     }
     const c = id ? list.find(x => x.id === id) : list[0]; if (!c) return;
+    // 選んでいる敵がいれば、コンボもその敵へ撃つ
+    const t = this.input && this.input.target;
+    if (t && t.side === 'enemy' && t.alive && this.enemies.includes(t)) this.lastTarget = t;
     this.comboQueue.push(c); Sfx.select();
     if (this.input && this.input.mode === 'turn') { const r = this.input.resolve; this.input = null; this.renderInput(); r({ kind: 'combo' }); }
   }
