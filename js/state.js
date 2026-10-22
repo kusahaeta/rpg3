@@ -142,11 +142,14 @@ const Save = {
 // 敵より上のレベルの子は、もらえる経験値が減る（1 レベル上で 8 割、2 で 6 割 … 5 以上は 1 割）
 const expScale = (lv, foeLv) => lv <= foeLv ? 1 : Math.max(0.1, 1 - 0.2 * (lv - foeLv));
 
+// 戦闘でもらえる経験値の倍率（1 戦で 1 レベル上がらないくらい）
+const EXP_RATE = 0.6;
+
 // 経験値付与。foeLv（敵のレベル）を渡すと、レベル差で減らす。上がったレベル数を返す
 function grantExp(key, amount, foeLv) {
   const o = Save.data.owned[key]; if (!o) return 0;
   const before = o.lv;
-  o.exp += foeLv == null ? amount : Math.round(amount * expScale(o.lv, foeLv));
+  o.exp += Math.round(amount * EXP_RATE * (foeLv == null ? 1 : expScale(o.lv, foeLv)));
   while (o.lv < 80 && o.exp >= expToNext(o.lv)) { o.exp -= expToNext(o.lv); o.lv++; }
   if (o.lv >= 80) o.exp = 0;
   return o.lv - before;
