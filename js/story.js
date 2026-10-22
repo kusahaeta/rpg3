@@ -103,6 +103,8 @@ const Story = {
       if (step.clear && !Save.data.cleared[step.clear]) { Save.data.cleared[step.clear] = true; Save.save(); }
       if (step.battle) this.battle(step.battle, step.after ? () => App.go(DialogueScreen, step.after, next) : next); else next();
     };
+    // heal：みんなの HP を全回復する（必殺技ゲージは宿と同じく、そのまま）。つぎに作る探索のセッションが、セーブから読む
+    if (step.heal) { Save.data.hp = {}; Save.save(); }
     if (step.scene) App.go(DialogueScreen, step.scene, fight); else fight();
   },
 };

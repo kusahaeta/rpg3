@@ -1338,6 +1338,7 @@ const RECAP_2 = {
 // ------------------------------------------------------------
 //  物語の進行
 //  away：その段階のあいだ、一行を離れている子（フィールドの隊列と戦闘に出ない。js/state.js の teamMembers）
+//  heal：目的地に着いたら、会話の前にみんなの HP を全回復する（やられた子も起きる。全員の力がいる仕掛けの前など。js/story.js の arrive）
 // ------------------------------------------------------------
 const STORY = [
   // clearSet：章のおしまいの画面の背景（SceneryView の loc）。区画のその場所を中心に、face の向きを見る。
@@ -1372,7 +1373,7 @@ const STORY = [
     { t: 'field', zone: 'road2', at: [0, 58], enter: true, scene: 'c2_03k', g: '宿場の北、ごろごろ切り通しへ' },
     { t: 'field', zone: 'road2_gate', at: [0, 19], scene: 'c2_04', battle: '2-4', after: 'c2_05', g: '宿場の北、ごろごろ岩をよけて、ごろごろ切り通しを抜ける' },
     { t: 'field', zone: 'road2_gate', at: [-14, -25.5], scene: 'c2_05b', g: '外門の先は崖くずれ。西へ折れて、崖の石段を上った見晴らし台へ' },
-    { t: 'field', zone: 'sekisho', at: [0, 28], scene: 'c2_04a', g: '切り通しの北、ニャハハ王国関所へ' },
+    { t: 'field', zone: 'sekisho', at: [0, 28], heal: true, scene: 'c2_04a', g: '切り通しの北、ニャハハ王国関所へ' },
     { t: 'field', zone: 'sekisho', at: [0, -28], scene: 'c2_06', g: 'ゴン爺の仕事を手伝って関所の門を開け、北の大門へ' },
     { t: 'reward', niboshi: 400, g: '第二章 おしまい' },
   ] },
