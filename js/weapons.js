@@ -279,7 +279,7 @@ const WEAPONS = {
         ['burn', 'shock', 'bleed'].forEach(type => B.dot(s, t, { type, mult: 0.4, turns: 2, chance: 0.4 }));
         return r;
       } },
-    ult: { name: 'のろい返し', elem: 'quantum', target: 'aoe', anim: 'aura', desc: '敵全体に攻撃力150%の闇ダメージ。持続ダメージを受けている敵は、それが150%の威力でその場でもう一度発生する。',
+    ult: { name: 'のろい返し', elem: 'quantum', target: 'aoe', anim: 'curseBack', desc: '敵全体に攻撃力150%の闇ダメージ。持続ダメージを受けている敵は、それが150%の威力でその場でもう一度発生する。',
       run: async (B, s) => {
         const r = await B.aoe(s, 1.5, 20, 'ult', { heavy: true });
         for (const e of B.aliveEnemies()) if (e.dots.length) await B.detonate(e, 1.5);
@@ -288,9 +288,9 @@ const WEAPONS = {
       } } },
   maou_dark: { owner: 'maou', name: '漆黒の大笏', tier: 3, get: { chest: ['world_end', 0] }, mod: { atk: 1.08 },
     desc: '世界の果てに突きささっていた、大きな笏。持つと、少しだけ昔の魔王にもどった気がする。', look: { c: '#1a1424', g: '#ff3a5a' },
-    basic: { name: '闇のつぶて', elem: 'quantum', target: 'blast', desc: '指定した敵単体に攻撃力80%、隣接する敵に攻撃力30%の闇ダメージ。',
+    basic: { name: '闇のつぶて', elem: 'quantum', target: 'blast', anim: 'tsubute', desc: '指定した敵単体に攻撃力80%、隣接する敵に攻撃力30%の闇ダメージ。',
       run: (B, s, t) => B.blast(s, t, 0.8, 0.3, 10, 5, 'basic') },
-    skill: { name: '闇の重圧', elem: 'quantum', target: 'aoe', anim: 'aura', desc: '敵全体に攻撃力100%の闇ダメージ。50%の基礎確率で防御力-30%・速度-10%（2ターン）。',
+    skill: { name: '闇の重圧', elem: 'quantum', target: 'aoe', anim: 'gravity', desc: '敵全体に攻撃力100%の闇ダメージ。50%の基礎確率で防御力-30%・速度-10%（2ターン）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 1.0, 10, 'skill');
         B.aliveEnemies().forEach(e => {

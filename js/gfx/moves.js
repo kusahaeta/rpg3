@@ -83,25 +83,47 @@ const MOVES = {
       }
     },
   },
-  // しっぽ：敵の前で背を向け、くるりと一回転してなぎ払う
+  // 魔王のしっぽ・のろいのしっぽ：えらそうに歩みよって「ふん」と背を向け、ぴんと立てたしっぽで、ぺしっとはたく
+  //   のろいの笏：しっぽが緑に光り、はたいたところに小さな稲妻（感電）
   tail: {
     async attack(e, ts, c) {
-      const t = ts[0], m = e.model, dest = this.meleeSpot(t, 0.6);
+      const t = ts[0], m = e.model, dest = this.meleeSpot(t, 0.55), was = m.face && m.face.expr;
+      const curse = equippedWeapon(e.u.key) === 'maou_curse', glow = curse ? '#8aff6a' : '#a07bff';
       this.sideCam(dest, t);
-      await this.dashTo(e, dest, { pose: POSES.ready, dur: 0.28, hop: 0.3 });
-      const y0 = Math.atan2(t.home.x - dest.x, t.home.z - dest.z);
-      this.tweenPose(m, POSES.tailSpin, 0.12);
-      await GFX.tween(0.12, k => { m.tailOut = k; m.group.rotation.y = y0 + k * 0.5; });
-      let swept = false;
-      await GFX.tween(0.34, (k, p) => {
-        m.group.rotation.y = y0 + 0.5 + k * (Math.PI * 2 - 0.5);
-        if (!swept && p > 0.4) {
-          swept = true;
-          this.fx.slash(this.hitPoint(t.u).add(V3(0, -0.15, 0)), c.col, { cam: this.camera, size: 2.6, angle: 0.08 });
-          this.squash(t, 0.15);
+      if (m.face) m.face.set('smug');
+      await this.dashTo(e, dest, { pose: POSES.ready, dur: 0.34, hop: 0.12, trail: false });
+      const y0 = Math.atan2(t.home.x - dest.x, t.home.z - dest.z), tip = () => m.tail[m.tail.length - 1].localToWorld(V3(0, 0.09, 0));
+      // ふん：背を向けて、しっぽをぴんと立てる。先が光る
+      this.huff(e);
+      Sfx.tone(240, 0.12, 'triangle', 0.05, -60);
+      const shine = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(glow, 2.6), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+      shine.renderOrder = 12;
+      this.fx.add(shine, 1.0, k => { shine.position.copy(tip()); shine.scale.setScalar(0.3 + Math.sin(k * 30) * 0.05); shine.material.opacity = k > 0.8 ? (1 - k) / 0.2 : 1; });
+      await GFX.tween(0.2, k => { m.tailOut = k; m.group.rotation.y = y0 + (Math.PI - 0.9) * Ease.out(k); });
+      await GFX.delay(0.18);
+      // ぺしっ：しっぽを横へ振りぬく（しっぽの先の通り道に光の帯）
+      Sfx.noise(0.12, 0.12, 3200);
+      let hit = false;
+      await GFX.tween(0.16, (k, p) => {
+        m.group.rotation.y = y0 + Math.PI - 0.9 + 2.0 * k;
+        const q = tip();
+        for (let i = 0; i < 4; i++) this.p.emit(q, V3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3), hdr(glow, 2.4), { life: 0.3, size: 0.16, drag: 6 });
+        if (!hit && p > 0.45) {
+          hit = true;
+          const hp = this.hitPoint(t.u).add(V3(0, -0.1, 0));
+          this.fx.slash(hp, glow, { cam: this.camera, size: 2.4, angle: 0.12 });
+          this.starFx(hp, glow);
+          this.squash(t, 0.25);
+          Sfx.tone(900, 0.06, 'square', 0.05, -500); Sfx.noise(0.08, 0.2, 2000);
+          if (curse) for (let i = 0; i < 3; i++) GFX.delay(i * 0.06).then(() => { const a = Math.random() * Math.PI * 2; this.fx.bolt(hp.clone().add(V3(Math.cos(a) * 0.5, 0.4, 0.2)), hp.clone().add(V3(-Math.cos(a) * 0.3, -0.3, 0.2)), glow, { life: 0.18, segs: 7, jag: 0.1, r: 0.02, k: 3 }); });
         }
-      }, Ease.inOut);
+      }, Ease.in);
+      // 向きなおって、すまし顔
+      const r1 = m.group.rotation.y;
       GFX.tween(0.25, k => { m.tailOut = 1 - k; });
+      await GFX.tween(0.22, k => { m.group.rotation.y = lerp(r1, y0 + Math.PI * 2, Ease.out(k)); });
+      m.group.rotation.y = y0;
+      if (m.face) GFX.delay(0.5).then(() => { if (m.face.expr === 'smug') m.face.set(was || 'neutral'); });
     },
   },
   // ---------------- ミケ（剣）：技ごとに、剣のふるい方を変える ----------------
@@ -681,23 +703,47 @@ const MOVES = {
       GFX.shake(0.25);
     },
   },
-  // 波：振りおろした剣・笏から、大きな波が敵へ押しよせる
-  wave: {
+  // 暗黒ねこ波：笏をかかげると足もとに闇がたまり、振りおろすと、ねこの顔をした闇の大波が、口をあけて敵へ押しよせ、
+  //   とびかかって、がぶり。あとに大きな肉球のあと
+  nekoWave: {
     async attack(e, ts, c) {
-      const m = e.model, h = e.home, cen = this.enemyCenter();
-      this.focus(e);
-      this.setCam(V3(h.x + 1.8, 1.6, h.z + 2.6), V3(cen.x, 0.7, cen.z), { speed: 4 });
-      this.face(e, cen);
+      const m = e.model, h = e.home, cen = this.enemyCenter(), vio = c.col, ink = '#3a1850', was = m.face && m.face.expr;
+      this.focus(e); this.face(e, cen);
+      this.setCam(V3(h.x + 1.5, 1.2, h.z + 2.5), V3(cen.x, 1.6, cen.z), { snap: true });
+      if (m.face) m.face.set('smug');
       await this.tweenPose(m, POSES.raise, 0.25);
-      m.flash(c.col, 1);
-      await GFX.delay(0.15);
-      await this.tweenPose(m, POSES.cleave, 0.08);
-      const far = Math.max(...ts.map(t => h.distanceTo(t.home))) + 1.5;
-      this.waveFx(h, c.col, { to: far, dur: 0.6 });
-      GFX.delay(0.12).then(() => this.waveFx(h, c.col, { to: far, dur: 0.6, h: 0.8 }));
-      GFX.shake(0.15);
-      await GFX.delay(0.5);
-      this.unfocus();
+      this.fx.sprite(m.tipPos(), vio, 1.2, 0.5, { k: 3 });
+      this.smokePuffs(h.clone().add(V3(0, 0.05, 0.2)), 0.22, 12, { up: 0.6, spread: 1.6, life: 0.5, dark: 0.85 });
+      Sfx.noise(0.9, 0.08, 300); Sfx.tone(80, 0.9, 'sawtooth', 0.05, 30);
+      await GFX.delay(0.4);
+      await this.tweenPose(m, POSES.cleave, 0.1);
+      // ねこの顔をした闇の大波が、敵へ押しよせる
+      const tall = this.enemyTall();
+      Sfx.noise(1.0, 0.12, 500);
+      const cat = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.nekoWaveTex(), transparent: true, depthWrite: false })); cat.renderOrder = 12;
+      const from = V3(h.x, 1.0, h.z - 0.8), land = V3(cen.x, 1.2 + tall * 0.5, cen.z + 0.6), S0 = 1.4, S1 = 3.6 + tall * 0.8;
+      this.fx.add(cat, 1.25, k => {
+        if (k < 0.65) { const f = k / 0.65; cat.position.copy(from).lerp(land, Ease.in(f)); cat.position.y += Math.sin(f * Math.PI * 3) * 0.15 + f * 0.6; cat.scale.setScalar(S0 + (S1 - S0) * f); }
+        else { const f = (k - 0.65) / 0.35; cat.position.copy(land); cat.position.y += 0.6 + Math.sin(Math.min(1, f * 2.2) * Math.PI) * 1.2 - f * 0.9; cat.scale.setScalar(S1 * (1 + f * 0.15)); cat.material.opacity = f > 0.55 ? 1 - (f - 0.55) / 0.45 : 1; }
+        if (Math.random() < 0.8) this.p.emit(cat.position.clone().add(V3((Math.random() - 0.5) * cat.scale.x * 0.8, -cat.scale.y * 0.35, 0)), V3(0, 1.5, 0), hdr(vio, 2), { life: 0.4, size: 0.16 });
+      });
+      await GFX.delay(1.25 * 0.62);
+      // とびかかる：上からの引きの画で、着地と肉球のあとまで見せる（仲間は隠す）
+      const xs = ts.map(t => t.home.x), wide = (Math.max(...xs) - Math.min(...xs)) / 2;
+      this.focus(null);
+      this.setCam(V3(cen.x + 0.8, 4.2 + tall * 0.6, cen.z + 5.8 + wide * 0.6), V3(cen.x, 0.6, cen.z), { snap: true });
+      await GFX.delay(0.35 * 1.25 * 0.45 + 0.03);
+      // がぶり
+      GFX.flash(vio, 0.3, 0.3); GFX.shake(0.3); Sfx.slam(); Sfx.meow && Sfx.meow('maou');
+      this.pawPrint(cen, Math.max(3.6, wide * 2 + 2.6), ink);
+      for (const t of ts) {
+        const hp = this.hitPoint(t.u);
+        this.p.burst(hp, vio, 30, { speed: 6, up: 1, life: 0.6, size: 0.14 });
+        this.smokePuffs(t.home.clone().add(V3(0, 0.2, 0)), 0.3, 4, { up: 1, spread: 1.2, life: 0.6, dark: 0.85 });
+        this.squash(t, 0.4);
+      }
+      await GFX.delay(0.35);
+      if (m.face) GFX.delay(0.4).then(() => { if (m.face.expr === 'smug') m.face.set(was || 'neutral'); });
     },
   },
   // だしの大波：剣を立てると足もとにだしがわき、振りおろすと、削りぶしを乗せたこはく色の大波が巻きながら敵へ押しよせる
@@ -744,53 +790,190 @@ const MOVES = {
       this.setCam(V3(0, boss ? 2.8 : 2.1, boss ? 10.2 : 8.2), V3(0, boss ? 2.1 : 1.0, -2.5), { snap: true });
     },
   },
-  // 漆黒の帳：まっ黒な帳が敵を包み、内側から裂ける
+  // 漆黒の帳：大笏をかかげると、空が夜に沈み、笏の紅い石がかがやく。空から黒と紅の帯が渦を巻いて降り、
+  //   敵を包みこんで締めつける。すきまから紅い光がもれ、帯がはじけ飛んで、空がもどる
   curtain: {
     async attack(e, ts, c) {
-      const m = e.model, cen = this.enemyCenter();
-      this.face(e, cen);
-      this.setCam(V3(cen.x + 1.5, 3.0, cen.z + 8.5), V3(cen.x, 1.4, cen.z), { speed: 3 });
-      await this.tweenPose(m, POSES.raise, 0.25);
-      this.fx.sprite(m.tipPos(), c.col, 1.4, 0.5, { k: 3 });
-      const r = Math.max(3, ...ts.map(t => Math.hypot(t.home.x - cen.x, t.home.z - cen.z) + t.model.radius * 1.6));
-      const mat = new THREE.MeshBasicMaterial({ color: '#07040c', transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
-      const dome = new THREE.Mesh(new THREE.SphereGeometry(r, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2), mat);
-      dome.scale.set(1, 0.85, 0.7);
-      this.fx.add(dome, 1.3, k => {
-        const d = Math.min(1, k / 0.45);
-        dome.position.set(cen.x, (1 - Ease.out(d)) * 6, cen.z);
-        mat.opacity = k < 0.75 ? Ease.out(d) * 0.88 : 0.88 * (1 - (k - 0.75) / 0.25);
-      });
-      await this.every(0.75, 18, () => this.p.emit(V3(cen.x + (Math.random() - 0.5) * r * 1.6, Math.random() * 2, cen.z + (Math.random() - 0.5) * r), V3(0, 1.5, 0), hdr(c.col, 4), { life: 0.5, size: 0.12 }));
-      GFX.flash(c.col, 0.35, 0.3);
-      for (let i = 0; i < 4; i++) this.fx.slash(V3(cen.x + (Math.random() - 0.5) * r, 1 + Math.random(), cen.z), c.col, { cam: this.camera, size: 5, angle: Math.random() * Math.PI });
-      this.p.burst(V3(cen.x, 1, cen.z), c.col, 90, { speed: 9, life: 0.8, size: 0.12 });
+      const m = e.model, h = e.home, cen = this.enemyCenter(), vio = c.col, red = '#ff3a5a', was = m.face && m.face.expr;
+      const xs = ts.map(t => t.home.x), wide = (Math.max(...xs) - Math.min(...xs)) / 2, tall = this.enemyTall(), zMax = Math.max(...ts.map(t => t.home.z));
+      // ① 笏をかかげると、空が夜に沈む
+      this.focus(e); this.face(e, cen);
+      this.staffCam(e);   // 横の低いところから、顔の横に立てた笏の先まで
+      if (m.face) m.face.set('angry');
+      await this.tweenPose(m, POSES.staffUp, 0.25);
+      this.dim(1, 0.6, [0.3, 0.26, 0.42]);
+      Sfx.tone(60, 1.2, 'sawtooth', 0.07, 20); Sfx.noise(1.0, 0.05, 300);
+      const tip = m.tipPos();
+      this.fx.sprite(tip, red, 0.7, 0.7, { k: 3, grow: 2 });
+      for (let i = 0; i < 18; i++) GFX.delay(i * 0.03).then(() => { const a = Math.random() * Math.PI * 2, q = tip.clone().add(V3(Math.cos(a) * 1.2, Math.sin(a) * 1.2, 0)); this.p.emit(q, tip.clone().sub(q).multiplyScalar(3), hdr(i % 3 ? vio : red, 2.5), { life: 0.33, size: 0.1, drag: 0 }); });
+      await GFX.delay(0.45);
+      this.eyeGlint(e);
+      await GFX.delay(0.3);
+      // ② 空から、黒と紅の帯が渦を巻いて降りてくる
+      this.focus(null);
+      this.setCam(V3(cen.x + 1.0, 2.4 + tall * 0.4, zMax + 7.0 + wide * 0.6), V3(cen.x, 1.3 + tall * 0.3, cen.z), { snap: true });
+      const R = wide + 1.7, H = Math.max(2.6, tall + 1.4), st = { drop: 0, spin: 0, squeeze: 0, burst: 0 };
+      const ribbons = Array.from({ length: 6 }, (_, i) => this.veilRibbon(cen, R, H, i / 6 * Math.PI * 2, (i % 2) * 0.5, st));
+      Sfx.noise(0.8, 0.08, 700);
+      let last = GFX.time;
+      const spinFx = () => { const dt = Math.min(0.05, GFX.time - last); last = GFX.time; st.spin += dt * (2.2 + st.squeeze * 7); };
+      await GFX.tween(0.65, k => { st.drop = k; spinFx(); }, Ease.out);
+      // ③ 締めつける。すきまから紅い光がもれる
+      Sfx.noise(0.9, 0.1, 400); Sfx.tone(90, 0.9, 'sawtooth', 0.06, 40);
+      let flick = 0;
+      await GFX.tween(0.85, (k, p) => {
+        st.squeeze = k; spinFx();
+        if (p > flick) { flick += 0.18; for (const t of ts) this.fx.sprite(this.hitPoint(t.u), red, 1.0 + p * 1.2, 0.2, { k: 2.5 }); }
+        if (Math.random() < 0.7) { const a = Math.random() * Math.PI * 2, r = R * (1 - 0.45 * k); this.p.emit(V3(cen.x + Math.cos(a) * r, Math.random() * H, cen.z + Math.sin(a) * r * 0.8), V3(-Math.sin(a) * 3, 0.5, Math.cos(a) * 3), hdr(Math.random() < 0.5 ? red : vio, 2.2), { life: 0.4, size: 0.12 }); }
+      }, Ease.in);
+      for (const t of ts) t.model.flash('#2a0a14', 1.4);
+      await GFX.delay(0.1);
+      // ④ 帯がはじけ飛ぶ
+      GFX.flash(red, 0.16, 0.3); GFX.shake(0.35); Sfx.slam(); Sfx.brk();
+      for (let i = 0; i < 3; i++) GFX.delay(i * 0.08).then(() => this.fx.ring(cen.clone().add(V3(0, 0.06, 0)), i === 1 ? red : vio, { r: R * 2 + i * 1.5, life: 0.7, width: 0.35 - i * 0.08, k: 2.5 }));
+      this.p.burst(V3(cen.x, H * 0.45, cen.z), red, 50, { speed: 9, life: 0.7, size: 0.14 });
+      this.p.burst(V3(cen.x, H * 0.45, cen.z), vio, 50, { speed: 7, life: 0.8, size: 0.14 });
+      for (const t of ts) { this.fx.sprite(this.hitPoint(t.u), red, 1.4, 0.35, { k: 2 }); this.squash(t, 0.35); }
+      await GFX.tween(0.5, k => { st.burst = k; spinFx(); }, Ease.out);
+      this.dim(0, 0.5);
+      await GFX.delay(0.2);
+      if (m.face) GFX.delay(0.3).then(() => { if (m.face.expr === 'angry') m.face.set(was || 'neutral'); });
     },
   },
-  // 威圧：笏を高く掲げ、上から押さえつける闇で敵をすくませる
+  // 魔王のいあつ：笏を立てて、黒い気をまとい、赤い目がぎらり。敵の向こうに巨大なマオウの影がそびえ、
+  //   すくんだ敵の上へ、闇がずしんとのしかかる
   aura: {
     async attack(e, ts, c) {
-      const m = e.model, h = e.home, cen = this.enemyCenter();
-      const was = m.face && m.face.expr;
+      const m = e.model, h = e.home, cen = this.enemyCenter(), vio = c.col, was = m.face && m.face.expr;
       this.focus(e); this.face(e, cen);
-      this.setCam(V3(h.x + 0.8, 0.45, h.z - 2.0), V3(h.x, 1.0, h.z), { snap: true });
+      this.setCam(V3(h.x + 0.75, 0.6, h.z - 1.9), V3(h.x, 1.0, h.z), { snap: true });
       if (m.face) m.face.set('angry');
-      await this.tweenPose(m, POSES.raise, 0.25);
-      m.flash(c.col, 1);
-      this.fx.ring(h.clone().add(V3(0, 0.05, 0)), c.col, { r: 2.6, life: 0.6, width: 0.2 });
-      await this.every(0.45, 12, () => { const a = Math.random() * Math.PI * 2; this.p.emit(h.clone().add(V3(Math.cos(a) * 0.6, 0.1, Math.sin(a) * 0.6)), V3(0, 2.5, 0), hdr(c.col, 3), { life: 0.6, size: 0.12 }); });
-      this.unfocus();
-      this.foeCam(ts, 0.8, 5);
-      await GFX.delay(0.15);
+      await this.tweenPose(m, POSES.staffUp, 0.22);
+      this.smokePuffs(h.clone().add(V3(0, 0.1, 0.5)), 0.3, 14, { up: 1.4, spread: 0.5, life: 0.45, dark: 0.85 });
+      m.flash(vio, 1);
+      Sfx.tone(90, 0.9, 'sawtooth', 0.06, -20); Sfx.noise(0.7, 0.06, 380);
+      await GFX.delay(0.3);
+      this.eyeGlint(e);
+      Sfx.tone(1400, 0.18, 'triangle', 0.04, 500);
+      await GFX.delay(0.35);
+      // 敵の向こうに、巨大なマオウの影（カメラが仲間のうしろに来るので、仲間は隠す）
+      this.focus(null);
+      const xs = ts.map(t => t.home.x), wide = (Math.max(...xs) - Math.min(...xs)) / 2, zMin = Math.min(...ts.map(t => t.home.z)), zMax = Math.max(...ts.map(t => t.home.z));
+      const S = Math.max(6, wide * 2 + 4.5) + this.enemyTall() * 0.6, sz = zMin - 2.6;
+      this.setCam(V3(cen.x + 0.9, 1.5, zMax + 5.6 + wide * 0.7), V3(cen.x, 2.1, zMin - 1), { snap: true });
+      const sh = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.maouShadowTex(), transparent: true, depthWrite: false, opacity: 0 }));
+      this.fx.add(sh, 1.7, k => {
+        const r = Ease.out(Math.min(1, k / 0.35));
+        sh.scale.set(S, S, 1); sh.position.set(cen.x, S * (0.1 + 0.32 * r), sz);
+        sh.material.opacity = (k < 0.25 ? k / 0.25 : k > 0.8 ? (1 - k) / 0.2 : 1) * 0.92;
+      });
+      Sfx.tone(55, 1.1, 'sawtooth', 0.08, 10);
+      await GFX.delay(0.5);
+      // 影の目が光り、敵がすくむ
+      for (const s of [-1, 1]) { const p = V3(cen.x + s * S * 30 / 256, S * 0.42 + S * (0.5 - 128 / 256), sz + 0.05); this.fx.sprite(p, '#ff3a5a', S * 0.12, 0.45, { k: 3, grow: 0.5 }); }
+      Sfx.tone(1800, 0.15, 'triangle', 0.04, -600);
       for (const t of ts) {
-        const g = t.home.clone().add(V3(0, 0.05, 0)), r = t.model.radius;
-        this.fx.ring(g, c.col, { r: r * 2.6, life: 0.6, width: 0.2 });
-        for (let i = 0; i < 16; i++) this.p.emit(V3(g.x + (Math.random() - 0.5) * r * 2, t.model.height + 1.5 + Math.random(), g.z + (Math.random() - 0.5) * r), V3(0, -7, 0), hdr(c.col, 3), { life: 0.35, size: 0.12, drag: 0 });
-        this.squash(t, 0.3);
+        const g = t.model.group, s0 = g.scale.clone();   // びくっとすくんで、ふるえる
+        GFX.tween(0.4, k => { g.position.x = t.home.x + Math.sin(k * 70) * 0.05 * (1 - k); g.scale.set(s0.x * (1 + 0.08 * Math.sin(Math.min(1, k * 4) * Math.PI)), s0.y * (1 - 0.1 * Math.sin(Math.min(1, k * 4) * Math.PI)), s0.z); }).then(() => { g.position.x = t.home.x; g.scale.copy(s0); });
       }
-      GFX.shake(0.15); GFX.flash(c.col, 0.2, 0.3);
-      await GFX.delay(0.1);
-      if (m.face) GFX.delay(0.6).then(() => m.face.set(was || 'neutral'));
+      await GFX.delay(0.35);
+      // 上から、闇がずしんとのしかかる
+      for (const t of ts) {
+        const r = t.model.radius * 1.5 + 0.3, top = t.model.height + 3.5;
+        const disc = new THREE.Mesh(new THREE.PlaneGeometry(r * 2.6, r * 2.6), new THREE.MeshBasicMaterial({ map: glowTex(), color: '#1a0a24', transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }));
+        disc.rotation.x = -Math.PI / 2; disc.renderOrder = 11;
+        this.fx.add(disc, 0.5, k => { const f = Math.min(1, k / 0.35); disc.position.set(t.home.x, 0.06 + top * (1 - f * f), t.home.z); disc.material.opacity = 0.8 * (k < 0.35 ? 1 : 1 - (k - 0.35) / 0.65); });
+      }
+      await GFX.delay(0.17);
+      for (const t of ts) {
+        this.squash(t, 0.45);
+        this.fx.ring(t.home.clone().add(V3(0, 0.06, 0)), vio, { r: t.model.radius * 3 + 0.6, life: 0.5, width: 0.25 });
+        this.dustFx(t.home, 10);
+      }
+      GFX.shake(0.22); GFX.flash(vio, 0.15, 0.25); Sfx.slam();
+      await GFX.delay(0.2);
+      if (m.face) GFX.delay(0.5).then(() => { if (m.face.expr === 'angry') m.face.set(was || 'neutral'); });
+    },
+  },
+  // 闇の重圧（漆黒の大笏）：笏を地面に突き立てると、敵の足もとに魔法陣。天から黒い闇の柱が落ちて、敵を地面へ押しつぶし、地面がひび割れる
+  gravity: {
+    async attack(e, ts, c) {
+      const m = e.model, h = e.home, cen = this.enemyCenter(), vio = c.col;
+      this.focus(e); this.face(e, cen);
+      this.setCam(V3(h.x + 2.0, 0.9, h.z - 1.0), V3(h.x - 0.1, 0.65, h.z - 0.3), { snap: true });
+      await this.tweenPose(m, POSES.staffUp, 0.2);
+      m.flash(vio, 1);
+      await GFX.delay(0.15);
+      await this.tweenPose(m, POSES.plant, 0.08);
+      const foot = h.clone().add(V3(0, 0.05, -0.45));
+      this.fx.ring(foot, vio, { r: 1.8, life: 0.5, width: 0.18 });
+      this.groundCracks(foot, 0.9);
+      this.dustFx(foot, 10);
+      GFX.shake(0.15); Sfx.slam();
+      await GFX.delay(0.3);
+      this.focus(null);
+      const xs = ts.map(t => t.home.x), wide = (Math.max(...xs) - Math.min(...xs)) / 2, zMax = Math.max(...ts.map(t => t.home.z));
+      this.setCam(V3(cen.x + 1.2, 3.2 + this.enemyTall() * 0.4, zMax + 5.4 + wide * 0.6), V3(cen.x, 0.5, cen.z), { snap: true });
+      for (const t of ts) this.fx.sigil(t.home.clone().add(V3(0, 0.06, 0)), vio, { r: t.model.radius * 1.6 + 0.5, life: 1.2, spin: 2 });
+      Sfx.tone(70, 0.8, 'sawtooth', 0.06, 30);
+      await GFX.delay(0.35);
+      // 天から、重い闇の柱
+      ts.forEach((t, i) => GFX.delay(i * 0.06).then(() => {
+        const r = t.model.radius * 1.2 + 0.25, H = 7;
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.15, H, 28, 1, true), new THREE.MeshBasicMaterial({ map: this.fadeUpTex(), color: '#2a1238', transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide }));
+        col.renderOrder = 11;
+        this.fx.add(col, 0.55, k => {
+          const f = Math.min(1, k / 0.3);
+          col.position.set(t.home.x, H / 2 + 7 * (1 - f * f), t.home.z);
+          if (k > 0.3) { const q = (k - 0.3) / 0.7; col.scale.set(1 + q * 0.5, 1, 1 + q * 0.5); col.material.opacity = 0.85 * (1 - q); }
+        });
+        GFX.delay(0.165).then(() => {
+          this.squash(t, 0.55);
+          this.groundCracks(t.home.clone().add(V3(0, 0.03, 0)), t.model.radius + 0.9);
+          this.fx.ring(t.home.clone().add(V3(0, 0.06, 0)), vio, { r: t.model.radius * 3 + 0.8, life: 0.5, width: 0.3 });
+          this.dustFx(t.home, 14);
+          for (let j = 0; j < 6; j++) this.p.emit(t.home.clone().add(V3((Math.random() - 0.5) * 1.2, 0.1, (Math.random() - 0.5) * 1.2)), V3(0, 2 + Math.random() * 2, 0), hdr(vio, 2), { life: 0.5, size: 0.14, grav: 6 });
+        });
+      }));
+      await GFX.delay(0.2 + ts.length * 0.06);
+      GFX.shake(0.3); Sfx.slam(); Sfx.tone(50, 0.6, 'sawtooth', 0.08, -10);
+      await GFX.delay(0.35);
+    },
+  },
+  // 闇のつぶて（漆黒の大笏）：笏を立てると、先に黒い石のつぶてが三つ。笏をふるたびに一つずつ撃ちこみ、
+  //   最後の一つがはじけて、となりの敵へもかけらが飛ぶ
+  tsubute: {
+    async attack(e, ts, c) {
+      const m = e.model, h = e.home, t = ts[0], vio = c.col, red = '#ff3a5a';
+      this.setCam(V3(h.x + 1.4, 1.4, h.z + 2.6), V3(t.home.x * 0.7, 0.9, t.home.z), { speed: 5 });
+      this.face(e, t.home);
+      await this.tweenPose(m, POSES.staffUp, 0.16);
+      const tip = m.tipPos(), to = this.hitPoint(t.u);
+      const stones = [0, 1, 2].map(i => {
+        const g = new THREE.Group();
+        const s = new THREE.Mesh(new THREE.OctahedronGeometry(i === 2 ? 0.15 : 0.11), new THREE.MeshBasicMaterial({ color: '#1a0f24' }));
+        s.scale.y = 1.5; g.add(s);
+        const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(red, 2.2), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); gl.scale.setScalar(0.42); gl.renderOrder = 11; g.add(gl);
+        const a = i / 3 * Math.PI * 2; g.userData.at = tip.clone().add(V3(Math.cos(a) * 0.3, 0.25 + Math.sin(a) * 0.22, 0));
+        g.scale.setScalar(0.01); this.fx.add(g, 1.6, (k, o, dt) => { s.rotation.y += dt * 8; });
+        return g;
+      });
+      Sfx.tone(300, 0.2, 'triangle', 0.04, 300);
+      await GFX.tween(0.18, k => stones.forEach(g => { g.position.copy(g.userData.at); g.scale.setScalar(Math.max(0.01, Ease.back(k))); }));
+      await GFX.delay(0.12);
+      for (let i = 0; i < 3; i++) {
+        const g = stones[i], p0 = g.position.clone(), aim = to.clone().add(V3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, 0)), last = i === 2;
+        this.tweenPose(m, i % 2 ? POSES.staffUp : POSES.cast, 0.06);
+        Sfx.noise(0.08, 0.1, 4000);
+        await GFX.tween(0.13, k => { g.position.copy(p0).lerp(aim, k); this.p.emit(g.position, V3(0, 0, 0), hdr(i % 2 ? vio : red, 2), { life: 0.25, size: 0.13 }); }, Ease.in);
+        g.visible = false;
+        this.fx.sprite(aim, vio, last ? 1.6 : 0.8, 0.3, { k: 3 });
+        this.fx.shards(aim, '#1a0f24', last ? 10 : 4, last ? 4 : 2.5);
+        this.squash(t, last ? 0.25 : 0.1);
+        Sfx.tone(last ? 160 : 220, 0.1, 'square', 0.05, -80);
+        if (last) for (const a of ts.slice(1)) this.fx.projectile(aim, this.hitPoint(a.u), vio, { dur: 0.22, size: 0.35, arc: 0.5 });
+      }
+      await GFX.delay(0.15);
     },
   },
   // 稲妻：杖を掲げると、空から雷が落ちる
@@ -1012,33 +1195,106 @@ const MOVES = {
       await GFX.delay(0.55);
     },
   },
-  // 三つののろい：燃焼・感電・裂創の三つの玉が、うずを巻いて飛ぶ
+  // 三つののろい：マオウの肩ごしに。笏の先から、三つののろいの火の玉（炎・雷・裂）が一つずつ出て、マオウのまわりを回り、
+  //   順に敵へ飛びこんで、それぞれのしるしをつける
   curse3: {
     async attack(e, ts, c) {
-      const m = e.model, h = e.home, t = ts[0];
-      this.focus(e);
-      this.setCam(V3(h.x + 1.2, 1.3, h.z + 2.4), V3(t.home.x * 0.7, 1.0, t.home.z), { speed: 5 });
-      this.face(e, t.home);
-      await this.tweenPose(m, POSES.cast, 0.2);
-      // 三つの玉が、うずを巻きながら敵へ
-      const tip = m.tipPos(), to = this.hitPoint(t.u), dir = to.clone().sub(tip).normalize();
-      const u = V3(0, 1, 0).cross(dir).normalize(), w = dir.clone().cross(u);
-      const cols = ['fire', 'lightning', 'physical'].map(k => ELEMENTS[k].color);
-      await new Promise(res => {
-        const orbs = cols.map(col => { const o = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 3), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); o.scale.setScalar(0.75); o.renderOrder = 12; return o; });
-        const g = new THREE.Group(); orbs.forEach(o => g.add(o));
-        this.fx.add(g, 0.55, k => {
-          const p = tip.clone().lerp(to, Ease.inOut(k)), r = 0.35 * Math.sin(k * Math.PI) + 0.04;
-          orbs.forEach((o, i) => {
-            const a = k * 14 + i * Math.PI * 2 / 3;
-            o.position.copy(p).addScaledVector(u, Math.cos(a) * r).addScaledVector(w, Math.sin(a) * r);
-            this.p.emit(o.position, V3(0, 0, 0), hdr(cols[i], 2.5), { life: 0.35, size: 0.16 });
-          });
-          if (k >= 1) res();
+      const m = e.model, h = e.home, t = ts[0], was = m.face && m.face.expr;
+      const look = h.clone().lerp(t.home, 0.5);
+      this.focus(e); this.face(e, t.home);
+      this.setCam(V3(h.x - 1.5, 1.45, h.z + 2.1), V3(look.x, 0.9, look.z), { snap: true });   // マオウの肩ごしに、奥の敵まで
+      if (m.face) m.face.set('smug');
+      await this.tweenPose(m, POSES.staffUp, 0.2);
+      this.chuckle(e, 0.4);
+      Sfx.tone(700, 0.08, 'square', 0.03, 200); Sfx.tone(760, 0.08, 'square', 0.03, 200, 0.12); Sfx.tone(820, 0.08, 'square', 0.03, 200, 0.24);
+      const kinds = [['#ff6a3c'], ['#ffd23c'], ['#e83a5a']], to = this.hitPoint(t.u), head = this.headPos(e).add(V3(0, 0.45, 0));
+      const tip = m.tipPos(), APPEAR = 0.12, ORBIT = 0.8, GAP = 0.14, FLY = 0.32, D = ORBIT + GAP * 2 + FLY + 0.05;
+      const wisps = kinds.map(([col]) => { const f = this.curseFlame(col); f.scale.setScalar(0.01); return f; });
+      const done = kinds.map(() => false), g = new THREE.Group(); wisps.forEach(s => g.add(s));
+      this.fx.add(g, D + 0.1, null);
+      const P = V3();
+      await GFX.tween(D, (_, p) => {
+        const s = p * D;
+        wisps.forEach((w, i) => {
+          const t0 = i * APPEAR, tf = ORBIT + i * GAP;
+          if (s < t0) return;
+          const a = (s - t0) * 7 + i * 2.1, orbit = V3(head.x + Math.cos(a) * 0.55, head.y + Math.sin(s * 6 + i) * 0.12, head.z + Math.sin(a) * 0.45);
+          if (s < tf) {
+            const f = Math.min(1, (s - t0) / 0.15);
+            P.copy(tip).lerp(orbit, Ease.out(f));
+          } else {
+            const f = Math.min(1, (s - tf) / FLY), from = V3(head.x + Math.cos((tf - t0) * 7 + i * 2.1) * 0.55, head.y, head.z + Math.sin((tf - t0) * 7 + i * 2.1) * 0.45);
+            P.copy(from).lerp(to, Ease.in(f)); P.y += Math.sin(f * Math.PI) * 0.9;
+            if (f >= 1 && !done[i]) {
+              done[i] = true; w.visible = false;
+              const [col] = kinds[i];
+              this.fx.sprite(to, col, 1.1, 0.3, { k: 3 });
+              this.fx.ring(to, col, { r: 0.9, life: 0.35, face: this.camera.position, width: 0.1 });
+              this.p.burst(to, col, 16, { speed: 3, life: 0.5, size: 0.12 });
+              this.squash(t, 0.12);
+              Sfx.tone(300 + i * 160, 0.12, 'square', 0.04, -200);
+            }
+          }
+          if (!done[i]) {
+            w.position.copy(P);
+            w.scale.setScalar(Math.max(0.01, Math.min(1, (s - t0) / 0.12)) * (1 + Math.sin(s * 30 + i) * 0.1));
+            this.flameTrail(P, kinds[i][0]);
+          }
         });
-      });
-      cols.forEach((col, i) => this.fx.ring(to, col, { r: 0.9 + i * 0.3, life: 0.4, face: this.camera.position, width: 0.08 }));
+      }, Ease.linear);
       this.unfocus();
+      if (m.face) GFX.delay(0.4).then(() => { if (m.face.expr === 'smug') m.face.set(was || 'neutral'); });
+    },
+  },
+  // のろい返し：肩をゆらして笑い、笏をかかげると、敵の上にのろいの紋。三つの火の玉が敵のまわりをめぐって飛びこみ、
+  //   紋から緑の稲妻が落ちる（このあと、持続ダメージがその場でもう一度はじける）
+  curseBack: {
+    async attack(e, ts, c) {
+      const m = e.model, h = e.home, cen = this.enemyCenter(), gc = '#8aff6a', was = m.face && m.face.expr;
+      this.focus(e); this.face(e, cen);
+      this.setCam(V3(h.x + 0.85, 0.7, h.z - 2.0), V3(h.x, 1.0, h.z), { snap: true });
+      if (m.face) m.face.set('smug');
+      await this.tweenPose(m, POSES.staffUp, 0.2);
+      this.chuckle(e, 0.55);
+      [520, 480, 440].forEach((f, i) => Sfx.tone(f, 0.14, 'square', 0.03, -60, i * 0.16));
+      this.smokePuffs(h.clone().add(V3(0, 0.1, 0.5)), 0.3, 12, { up: 1.3, spread: 0.5, life: 0.5, dark: 0.8 });
+      await GFX.delay(0.6);
+      this.focus(null);
+      const xs = ts.map(t => t.home.x), wide = (Math.max(...xs) - Math.min(...xs)) / 2, zMax = Math.max(...ts.map(t => t.home.z)), top = 2.7 + this.enemyTall() * 0.7;
+      this.setCam(V3(cen.x + 1.0, 2.0, zMax + 6.4 + wide * 0.7), V3(cen.x, 1.9, cen.z), { snap: true });
+      // 敵の上に、のろいの紋
+      const R = wide + 2.2, sig = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: this.curseSigilTex(), color: gc, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+      sig.rotation.x = -Math.PI / 2; sig.renderOrder = 11; sig.position.set(cen.x, top, cen.z);
+      this.fx.add(sig, 1.9, (k, o, dt) => { sig.rotation.z += dt * 1.5; sig.scale.setScalar(R * Ease.back(Math.min(1, k * 4))); sig.material.opacity = k > 0.8 ? (1 - k) / 0.2 : 1; });
+      Sfx.tone(110, 1.0, 'sawtooth', 0.05, 40);
+      await GFX.delay(0.3);
+      // 三つの火の玉が、敵のまわりをめぐって飛びこむ
+      const kinds = ['#ff6a3c', '#ffd23c', '#e83a5a'];
+      for (const t of ts) {
+        const hp = this.hitPoint(t.u), r0 = t.model.radius + 0.6;
+        kinds.forEach((col, i) => {
+          const w = this.curseFlame(col, 1.5);
+          this.fx.add(w, 0.7, k => {
+            const a = k * 9 + i * 2.1, r = r0 * (1 - Ease.in(k));
+            w.position.set(hp.x + Math.cos(a) * r, hp.y + 0.3 * (1 - k), hp.z + Math.sin(a) * r * 0.6);
+            w.visible = k < 0.97;
+            if (w.visible) this.flameTrail(w.position, col);
+          });
+        });
+      }
+      Sfx.noise(0.7, 0.05, 1800);
+      await GFX.delay(0.68);
+      // 紋から緑の稲妻
+      ts.forEach((t, i) => GFX.delay(i * 0.05).then(() => {
+        const hp = this.hitPoint(t.u);
+        this.fx.bolt(V3(t.home.x, top, t.home.z), hp, gc, { life: 0.3, segs: 12, jag: 0.25, r: 0.04, k: 3 });
+        this.fx.sprite(hp, gc, 2.2, 0.4, { k: 3 });
+        kinds.forEach((col, j) => this.fx.ring(hp, col, { r: 1.0 + j * 0.35, life: 0.45, face: this.camera.position, width: 0.1 }));
+        this.squash(t, 0.3);
+      }));
+      GFX.flash(gc, 0.18, 0.3); GFX.shake(0.25); Sfx.zap(); Sfx.slam();
+      await GFX.delay(0.3);
+      if (m.face) GFX.delay(0.5).then(() => { if (m.face.expr === 'smug') m.face.set(was || 'neutral'); });
     },
   },
   // 影分身：印を結ぶように刀を立てると、影の分身が左右へ散る。1 発目は本人と分身がはさんで斬り、2 発目からは分身が敵のまわりにあらわれて斬る
@@ -2085,5 +2341,171 @@ Object.assign(BattleView.prototype, {
       m.scale.set(1 + b, 1 - b, 1);
       if (s > 1.2) m.scale.setScalar((1.5 - s) / 0.3);
     }));
+  },
+  // ---------- マオウの技の部品 ----------
+  // 下が濃く、上へ行くほど消える縦のグラデーション（闇の柱）
+  fadeUpTex() {
+    if (TexCache.fadeUp) return TexCache.fadeUp;
+    const c = document.createElement('canvas'); c.width = 4; c.height = 128;
+    const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128);
+    gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.55, 'rgba(255,255,255,0.75)'); gr.addColorStop(1, 'rgba(255,255,255,1)');
+    g.fillStyle = gr; g.fillRect(0, 0, 4, 128);
+    return (TexCache.fadeUp = new THREE.CanvasTexture(c));
+  },
+  // ふんっ：鼻から、小さな白い息が二つ
+  huff(e) {
+    const m = e.model; m.group.updateMatrixWorld(true);
+    for (const sd of [-1, 1]) {
+      const p = m.headPivot.localToWorld(V3(sd * 0.05, 0.22, 0.34)), d = m.headPivot.localToWorld(V3(sd * 0.25, 0.12, 0.6)).sub(p);
+      const s = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, depthWrite: false })); s.renderOrder = 12;
+      this.fx.add(s, 0.45, k => { s.position.copy(p).addScaledVector(d, Ease.out(k)); s.scale.setScalar(1 + k * 1.6); s.material.opacity = 1 - k; });
+    }
+  },
+  // くっくっと笑う：肩をゆらす（dur 秒）
+  chuckle(e, dur) {
+    const m = e.model, y0 = m.group.position.y;
+    return GFX.tween(dur, k => { m.group.position.y = y0 + Math.abs(Math.sin(k * Math.PI * 5)) * 0.05 * (1 - k * 0.5); }).then(() => { m.group.position.y = y0; });
+  },
+  // マオウの目の位置（s：-1 と 1）と、赤い目のぎらり
+  maouEye(e, s) { e.model.group.updateMatrixWorld(true); return e.model.headPivot.localToWorld(V3(s * 0.12, 0.3, 0.3)); },
+  eyeGlint(e, col = '#ff3a5a') {
+    for (const s of [-1, 1]) { const p = this.maouEye(e, s); this.fx.sprite(p, col, 0.4, 0.5, { k: 4, grow: 0.6 }); this.fx.slash(p, col, { cam: this.camera, size: 0.8, angle: 0, sym: true, life: 0.45 }); }
+  },
+  // 巨大なマオウの影（いあつ）：角・耳・王冠の黒い影に、つりあがった赤い目
+  maouShadowTex() {
+    if (TexCache.maouShadow) return TexCache.maouShadow;
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g = c.getContext('2d');
+    g.shadowColor = 'rgba(160,123,255,0.9)'; g.shadowBlur = 16; g.fillStyle = '#140a1e';
+    g.beginPath(); g.moveTo(34, 256); g.quadraticCurveTo(46, 182, 128, 176); g.quadraticCurveTo(210, 182, 222, 256); g.closePath(); g.fill();
+    for (const s of [-1, 1]) {
+      g.beginPath(); g.moveTo(128 + s * 44, 86); g.quadraticCurveTo(128 + s * 96, 66, 128 + s * 84, 14); g.quadraticCurveTo(128 + s * 74, 56, 128 + s * 30, 72); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(128 + s * 26, 80); g.lineTo(128 + s * 70, 44); g.lineTo(128 + s * 72, 108); g.closePath(); g.fill();
+    }
+    g.beginPath(); g.ellipse(128, 130, 74, 62, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.moveTo(102, 80); g.lineTo(96, 46); g.lineTo(113, 60); g.lineTo(128, 38); g.lineTo(143, 60); g.lineTo(160, 46); g.lineTo(154, 80); g.closePath(); g.fill();
+    g.shadowBlur = 0; g.strokeStyle = 'rgba(255,207,74,0.8)'; g.lineWidth = 3; g.stroke();
+    for (const s of [-1, 1]) {
+      const x = 128 + s * 30, gr = g.createRadialGradient(x, 128, 0, x, 128, 22);
+      gr.addColorStop(0, '#fff0f0'); gr.addColorStop(0.35, '#ff3a5a'); gr.addColorStop(1, 'rgba(255,58,90,0)');
+      g.fillStyle = gr; g.beginPath(); g.ellipse(x, 128, 22, 11, -s * 0.35, 0, Math.PI * 2); g.fill();
+    }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    return (TexCache.maouShadow = t);
+  },
+  // のろいの火の玉：その色に光る芯と、まわりのにじみ（size：大きさ）。尾は flameTrail で毎コマ足す
+  curseFlame(col, size = 1) {
+    const g = new THREE.Group();
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.09 * size, 14, 10), new THREE.MeshBasicMaterial({ color: hdr(col, 1.8) })); core.renderOrder = 12; g.add(core);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 2.6), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+    glow.scale.setScalar(0.42 * size); glow.renderOrder = 12; g.add(glow);
+    return g;
+  },
+  // 火の玉の尾：上へゆらめいて消える炎の粒と、ときどき白い火の粉
+  flameTrail(p, col) {
+    for (let i = 0; i < 2; i++) this.p.emit(p.clone().add(V3((Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.1)), V3((Math.random() - 0.5) * 0.4, 0.8 + Math.random() * 0.6, (Math.random() - 0.5) * 0.4), hdr(col, 2.4), { life: 0.4, size: 0.16, drag: 2 });
+    if (Math.random() < 0.3) this.p.emit(p, V3((Math.random() - 0.5) * 1.2, 0.6 + Math.random(), (Math.random() - 0.5) * 1.2), hdr('#ffffff', 2), { life: 0.3, size: 0.06, drag: 2 });
+  },
+  // のろいの紋（のろい返し）：二重の円に、ルーンと五芒星と目（白で描いて、色はマテリアルでつける）
+  curseSigilTex() {
+    if (TexCache.curseSigil) return TexCache.curseSigil;
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g = c.getContext('2d'); g.strokeStyle = '#ffffff'; g.fillStyle = '#ffffff'; g.lineCap = 'round';
+    g.lineWidth = 6; g.beginPath(); g.arc(128, 128, 120, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 3; g.beginPath(); g.arc(128, 128, 96, 0, Math.PI * 2); g.stroke();
+    for (let i = 0; i < 16; i++) {   // ルーン：短い線を組み合わせた記号
+      const a = i / 16 * Math.PI * 2, x = 128 + Math.cos(a) * 108, y = 128 + Math.sin(a) * 108;
+      g.save(); g.translate(x, y); g.rotate(a + Math.PI / 2); g.lineWidth = 2.5; g.beginPath();
+      g.moveTo(-4, -6); g.lineTo(i % 2 ? 4 : 0, 6); g.moveTo(4, -6); g.lineTo(i % 3 ? -4 : 0, 0); if (i % 4 === 0) { g.moveTo(-5, 0); g.lineTo(5, 0); }
+      g.stroke(); g.restore();
+    }
+    g.lineWidth = 3; g.beginPath();
+    for (let i = 0; i <= 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 4 / 5, x = 128 + Math.cos(a) * 92, y = 128 + Math.sin(a) * 92; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke();
+    g.lineWidth = 4; g.beginPath(); g.ellipse(128, 128, 26, 14, 0, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(128, 128, 7, 0, Math.PI * 2); g.fill();
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    return (TexCache.curseSigil = t);
+  },
+  // 暗黒ねこ波の顔：耳と小さな王冠のある、闇のねこの顔。赤い目と、牙ののぞく大きな口
+  nekoWaveTex() {
+    if (TexCache.nekoWave) return TexCache.nekoWave;
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g = c.getContext('2d');
+    g.shadowColor = 'rgba(160,123,255,1)'; g.shadowBlur = 18; g.fillStyle = '#2a1238';
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(128 + s * 30, 70); g.lineTo(128 + s * 86, 22); g.lineTo(128 + s * 92, 116); g.closePath(); g.fill(); }
+    g.beginPath(); g.ellipse(128, 140, 96, 82, 0, 0, Math.PI * 2); g.fill();
+    // 下のふちは、波しぶきのようにぎざぎざ
+    g.beginPath(); g.moveTo(40, 170);
+    for (let i = 0; i <= 12; i++) g.lineTo(40 + i * 176 / 12, 214 + (i % 2 ? 26 : 0));
+    g.lineTo(216, 170); g.closePath(); g.fill();
+    g.shadowBlur = 0;
+    g.beginPath(); g.moveTo(110, 64); g.lineTo(106, 40); g.lineTo(118, 50); g.lineTo(128, 34); g.lineTo(138, 50); g.lineTo(150, 40); g.lineTo(146, 64); g.closePath(); g.fillStyle = '#ffcf4a'; g.fill();
+    for (const s of [-1, 1]) {
+      const x = 128 + s * 40, gr = g.createRadialGradient(x, 124, 0, x, 124, 26);
+      gr.addColorStop(0, '#fff0f0'); gr.addColorStop(0.4, '#ff3a5a'); gr.addColorStop(1, 'rgba(255,58,90,0)');
+      g.fillStyle = gr; g.beginPath(); g.ellipse(x, 124, 26, 14, -s * 0.3, 0, Math.PI * 2); g.fill();
+    }
+    g.fillStyle = '#5a0a1a'; g.beginPath(); g.moveTo(82, 160); g.quadraticCurveTo(128, 236, 174, 160); g.quadraticCurveTo(128, 182, 82, 160); g.fill();
+    g.fillStyle = '#ffffff';
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(128 + s * 18, 167); g.lineTo(128 + s * 30, 166); g.lineTo(128 + s * 24, 188); g.closePath(); g.fill(); }
+    g.strokeStyle = 'rgba(200,170,255,0.7)'; g.lineWidth = 3;
+    for (const s of [-1, 1]) for (const dy of [-8, 6]) { g.beginPath(); g.moveTo(128 + s * 64, 150 + dy * 0.3); g.lineTo(128 + s * 110, 146 + dy); g.stroke(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    return (TexCache.nekoWave = t);
+  },
+  // 地面に、大きな肉球のあと（size：さしわたし）
+  pawPrint(at, size, col) {
+    if (!TexCache.paw) {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d'); g.fillStyle = '#ffffff';
+      g.beginPath(); g.ellipse(64, 84, 30, 25, 0, 0, Math.PI * 2); g.fill();
+      for (const [x, y] of [[28, 48], [50, 30], [78, 30], [100, 48]]) { g.beginPath(); g.ellipse(x, y, 12, 15, (x - 64) * 0.01, 0, Math.PI * 2); g.fill(); }
+      TexCache.paw = new THREE.CanvasTexture(c);
+    }
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: TexCache.paw, color: col, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+    m.rotation.x = -Math.PI / 2; m.position.set(at.x, 0.04, at.z); m.renderOrder = 10;
+    this.fx.add(m, 1.1, k => { m.material.opacity = (k < 0.1 ? k / 0.1 : k > 0.6 ? (1 - k) / 0.4 : 1) * 0.85; m.scale.setScalar(0.85 + Ease.back(Math.min(1, k * 6)) * 0.15); });
+  },
+  // 地面のひび（r：長さ）。根もとからのびて、しばらくして消える
+  groundCracks(at, r) {
+    for (let i = 0; i < 7; i++) {
+      const a = i / 7 * Math.PI * 2 + Math.random() * 0.5, len = r * (0.6 + Math.random() * 0.6);
+      const geo = new THREE.PlaneGeometry(1, 0.06); geo.translate(0.5, 0, 0);
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#120818', transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+      m.rotation.set(-Math.PI / 2, 0, a); m.position.set(at.x, 0.035, at.z); m.renderOrder = 10;
+      this.fx.add(m, 1.0, k => { m.scale.set(len * Ease.out(Math.min(1, k * 6)), 1 + (1 - k), 1); m.material.opacity = k > 0.6 ? (1 - k) / 0.4 : 1; });
+    }
+  },
+  // 漆黒の帳の帯：cen のまわりを渦を巻く、上が黒・下のふちが紅の帯。st（帳のみんなで共有）で動く
+  //   drop：空から降りる（0〜1）・spin：回った角度・squeeze：締めつけ（0〜1）・burst：はじけ飛ぶ（0〜1）
+  veilRibbon(cen, R, H, phase, lag, st) {
+    // 帯の幅の方向に 3 列：上のふち（黒）・すその少し上（黒）・すそ（紅）。紅はすその細いふちだけ
+    const N = 64, W = 0.3, EDGE = 0.06, L = Math.PI * 2.2, rows = [W / 2, -W / 2 + EDGE, -W / 2];
+    const cols = [new THREE.Color('#0a0610'), new THREE.Color('#1c0e26'), new THREE.Color('#c8203a')];
+    const pos = new Float32Array((N + 1) * 3 * 3), col = new Float32Array((N + 1) * 3 * 3), idx = [];
+    for (let i = 0; i <= N; i++) {
+      for (let j = 0; j < 3; j++) cols[j].toArray(col, (i * 3 + j) * 3);
+      if (i < N) for (let j = 0; j < 2; j++) { const a = i * 3 + j, b = a + 3; idx.push(a, a + 1, b, a + 1, b + 1, b); }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setIndex(idx);
+    const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, depthWrite: false });
+    const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 11; mesh.frustumCulled = false;
+    this.fx.add(mesh, 4, () => {
+      const d = Math.min(1, Math.max(0, st.drop * 1.25 - lag * 0.25)), q = st.squeeze, b = st.burst;
+      const r0 = R * (1 - 0.45 * q) * (1 + b * 1.6), yb = (1 - d) * (H + 6) + b * 2.5;
+      for (let i = 0; i <= N; i++) {
+        const u = i / N, a = phase + st.spin - u * L, r = r0 * (1 - 0.15 * u);
+        const y = yb + u * H * (1.2 + 0.3 * q) + Math.sin(u * 9 + st.spin * 2 + phase) * 0.1;
+        const x = cen.x + Math.cos(a) * r, z = cen.z + Math.sin(a) * r * 0.8;
+        for (let j = 0; j < 3; j++) { const o = (i * 3 + j) * 3; pos[o] = x; pos[o + 1] = y + rows[j]; pos[o + 2] = z; }
+      }
+      geo.attributes.position.needsUpdate = true;
+      mat.opacity = Math.min(1, d * 3) * (1 - b) * 0.95;
+      mesh.visible = d > 0 && b < 1;
+    });
+    return mesh;
   },
 });
