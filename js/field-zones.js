@@ -6452,12 +6452,12 @@ class ZoneKit {
     const y0 = flat(x, z);
     for (let i = 0; i < 14; i++) { const a = this.r() * Math.PI * 2, d = r * (1.1 + this.r() * 0.45), s = 0.12 + this.r() * 0.22, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; if (Math.abs(flat(px, pz) - y0) < 0.1) this.mesh(new THREE.DodecahedronGeometry(s, 0), 'rockDark', px, 0.1, pz); }
   }
-  // 友情の実のかけら（流れ星に見えた、樹から落ちた実の残り）
-  starRock(x, z, s = 1, col = '#fff0a8') {
-    const m = this.mesh(new THREE.OctahedronGeometry(0.6 * s, 0), new THREE.MeshStandardMaterial({ color: '#fff8e0', emissive: col, emissiveIntensity: 1.2, roughness: 0.3, flatShading: true }), x, 0.5 * s, z, { ry: 0.4 });
+  // 友情の実のかけら（流れ星に見えた、樹から落ちた実の残り）。色はにゃんだーの樹の友情の実（nyanderTree の cols）と同じ桃色。
+  // 光り方もシロの杖の先の星・樹の実と同じ glowMat で、かけらそのものが光る（暗い桃色でもにじんで見えるよう lumaBoost。強すぎると芯が白く飛ぶ）
+  starRock(x, z, s = 1, col = '#ff4f9a') {
+    const m = this.mesh(new THREE.OctahedronGeometry(0.6 * s, 0), glowMat(col, 2.3 * lumaBoost(col)), x, 0.5 * s, z, { ry: 0.4, noShadow: true });
     m.scale.y = 1.3;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 0.8), blending: THREE.AdditiveBlending, depthWrite: false })); sp.scale.setScalar(3 * s); sp.position.copy(m.position); this.scene.add(sp);
-    this.tick((dt, t) => { m.rotation.y += dt * 0.3; sp.material.opacity = 0.7 + Math.sin(t * 3) * 0.3; });
+    this.tick(dt => { m.rotation.y += dt * 0.3; });
     this.col(x, z, 0.8 * s, 1.2 * s);
     return m;
   }
