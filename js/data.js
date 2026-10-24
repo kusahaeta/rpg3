@@ -215,7 +215,7 @@ const CHARS = {
   },
 
   maou: {
-    name: 'マオウ', title: '尊大な元・魔王', rarity: 5, color: '#a07bff', path: 'nihility',
+    name: 'マオウ', title: '尊大な魔王', rarity: 5, color: '#a07bff', path: 'nihility',
     base: { hp: 3900, atk: 1600, def: 1000, spd: 108, crit: 0.2, critDmg: 0.8, ehr: 0.3 },
     energyMax: 120,
     look: { fur: '#352c44', pattern: 'solid', eye: '#ff4a5a', muzzle: '#43385a', paws: '#352c44', earIn: '#7a4a6a',
@@ -260,7 +260,7 @@ const COMBOS = [
     run: async (B, a) => { const [k, s] = a; let r = []; for (let i = 0; i < 6 && B.aliveEnemies().length; i++) r = r.concat(await B.bounce(i % 2 ? s : k, 1, 0.8, 8, 'combo', { anim: 'kokubyaku', elem: i % 2 ? 'lightning' : 'physical' })); return r; } },
   { id: 'nyanHeal', pair: ['tama', '*'], name: 'にゃんにゃんヒール', desc: 'タマとみんなで声を合わせる。味方全体のHPを最大HP40%回復し、デバフを解除、シールドを付与。', target: 'allies', anim: 'chorus',
     run: async (B, a) => { const t = a[0]; B.aliveAllies().forEach(x => { B.heal(t, x, x.maxHp * 0.4); B.cleanse(x); B.cleanse(x); B.shield(t, x, x.maxHp * 0.12, 2); }); return []; } },
-  { id: 'gorei', pair: ['maou', '*'], name: '元魔王の号令', elem: 'quantum', desc: 'マオウの号令で全員が奮い立つ。味方全体の行動順を50%早め、攻撃力+30%（2ターン）。敵全体にマオウの攻撃力120%の闇ダメージ。', target: 'aoe',
+  { id: 'gorei', pair: ['maou', '*'], name: '魔王の号令', elem: 'quantum', desc: 'マオウの号令で全員が奮い立つ。味方全体の行動順を50%早め、攻撃力+30%（2ターン）。敵全体にマオウの攻撃力120%の闇ダメージ。', target: 'aoe',
     run: async (B, a) => { const m = a[0]; const r = await B.aoe(m, 1.2, 20, 'combo', { heavy: true, anim: 'gorei' }); B.aliveAllies().forEach(x => { B.buff(x, { key: 'gorei', name: '号令', stat: 'atk', value: 0.3, turns: 2 }); B.advance(x, 0.5); }); return r; } },
 ];
 const ALLSTARS = { id: 'allstars', name: 'にゃんこオールスターズ', elem: 'imaginary', desc: '世界中の猫たちの「つながり」が力になる。敵全体に全員の攻撃力の合計300%の光ダメージ。', target: 'aoe' };
@@ -608,7 +608,7 @@ const BANTER = {
   'shiro>mike': [['「わたしの魔法の邪魔しないでよね！」', '「へへん、そっちこそ！」'], ['「ミケ、口のまわりに何かついてるわよ」', '「味見のあと！」']],
   'mike>tama': [['「タマ、起きてる？」', '「……おきてる……すぴー」'], ['「タマ、危ないから後ろにいてね」', '「うん……ミケにいちゃん……」']],
   'tama>mike': [['「ミケ……いっしょに、あそぼ……」', '「これが終わったらね！」']],
-  'mike>maou': [['「マオウ、元・魔王の本気を見せてよ！」', '「フン、言われずとも」'], ['「猫じゃらし、持ってきたよ」', '「……い、いらぬ！」']],
+  'mike>maou': [['「マオウ、魔王の本気を見せてよ！」', '「フン、言われずとも」'], ['「猫じゃらし、持ってきたよ」', '「……い、いらぬ！」']],
   'maou>mike': [['「勇者よ、余の前に立つな。……危ないから」', '「やさしいじゃん！」']],
   'kuro>shiro': [['「……魔法、落ち着いて撃て」', '「わ、わかってるわよ」'], ['「……さっきのは、よかった」', '「……え？　今ほめた？」']],
   'shiro>kuro': [['「クロ、前は任せたわよ」', '「……ああ」']],

@@ -60,7 +60,7 @@ const ULT_POSES = {
   shiro: { face: 'joy', move: 'twirl', pose: { lean: -0.1, headX: -0.15, armRx: -1.5, armRz: -0.9, elbowR: 0, armLx: 0.3, armLz: 0.6, elbowL: -1.9, legLx: -0.2, legRx: 0.25, kneeR: 0.15 } },
   // タマ：まくらを抱きしめて、にっこり（片足をうしろへ上げる）
   tama:  { face: 'joy', pose: { headX: -0.25, lean: -0.08, armLx: -0.9, armLz: 0.45, elbowL: -1.5, armRx: -0.9, armRz: -0.45, elbowR: -1.5, legLx: 0.1, legRx: -0.5, kneeR: 0.9 } },
-  // マオウ：笏を斜めに立て、片手は腰。あごを上げて見くだす（元・魔王）
+  // マオウ：笏を斜めに立て、片手は腰。あごを上げて見くだす（魔王）
   maou:  { face: 'smug', pose: { lean: -0.25, headX: -0.35, armRx: -0.3, armRz: -0.4, elbowR: -1.3, armLx: 0.2, armLz: 0.7, elbowL: -1.9, legLx: -0.3, legRx: 0.3 } },
 };
 // 動きのある決めポーズ（ULT_POSES の move）：t 秒目にポーズへ足す揺れ。w はポーズへの寄り（0→1）

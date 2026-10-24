@@ -851,7 +851,7 @@ Object.assign(SCENES, {
       ['shiro', 'ちょ、ちょっと！　急にほめないでよ！', { f: 'shy', g: 'turnAway' }],
       ['kuro', '……タマ。よく寝る。……たぶん、いちばん強い。', { f: 'smile', look: { kuro: 'tama' } }],
       ['tama', '……えへ……。', { f: 'smile' }],
-      ['kuro', '……マオウ。元魔王だ。……さみしがりで、面倒なやつだ。', { f: 'serious', look: { kuro: 'maou' } }],
+      ['kuro', '……マオウ。魔王だ。……さみしがりで、面倒なやつだ。', { f: 'serious', look: { kuro: 'maou' } }],
       ['maou', '……面倒なのは、そなたも同じであろう。', { f: 'smug', g: 'armsCrossed' }],
       ['gorou', 'がっはっは！　いい仲間じゃねえか！', { f: 'joy', g: 'laugh', r: { mike: ['joy', 'laugh'] } }],
       ['rin', '……クロ。今のあなた、とってもいい顔してる。', { f: 'gentle', g: 'handChest', cam: 'rin', close: true }],
@@ -1553,6 +1553,6 @@ const BOND_EVENTS = {
 };
 const BOND_EVENT_LV = { 4: '', 5: '_5' };
 const BOND_TAGS = {
-  'kuro|mike': 'ボケとツッコミ', 'mike|shiro': '子ども同士の口げんか', 'mike|tama': '兄弟のよう', 'maou|mike': '勇者と元魔王', 'kuro|shiro': '真面目な二匹',
+  'kuro|mike': 'ボケとツッコミ', 'mike|shiro': '子ども同士の口げんか', 'mike|tama': '兄弟のよう', 'maou|mike': '勇者と魔王', 'kuro|shiro': '真面目な二匹',
   'kuro|tama': 'クロがいちばん気にかけている', 'shiro|tama': 'シロが面倒を見る', 'kuro|maou': '無口同士で会話が短い', 'maou|shiro': 'シロの実験台', 'maou|tama': 'おひるね同盟',
 };
