@@ -1781,7 +1781,7 @@ const MOVES = {
       all.forEach((x, i) => { this.tweenPose(x.model, POSES.ready, 0.3).then(() => { x.model.group.rotation.y = Math.PI; }); if (x.model.face) GFX.delay(0.4).then(() => x.model.face.set(was[i] || 'neutral')); });
     },
   },
-  // 元魔王の号令：マオウが笏を振りあげて号令をかけ、みんなが拳をあげて奮い立つ。そして闇の波が敵へ
+  // 魔王の号令：マオウが笏を振りあげて号令をかけ、みんなが拳をあげて奮い立つ。そして闇の波が敵へ
   gorei: {
     async attack(e, ts, c) {
       const m = e.model, h = e.home, cen = this.enemyCenter();
