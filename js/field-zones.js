@@ -7126,21 +7126,33 @@ function rack(K, x, z, ry) {
 }
 // くす玉：金色の玉と房。open なら、ふたつに割れて「笑顔の塔　再開！」の垂れ幕と紙吹雪
 function kusudama(K, x, y, z, open) {
-  K.mesh(new THREE.CylinderGeometry(0.02, 0.02, 3, 4), 'white', x, y + 2.2, z, { abs: true, noShadow: true });
+  const R = 0.9, top = y + R;
+  // つり糸：天井から玉のてっぺんまで
+  K.mesh(new THREE.CylinderGeometry(0.02, 0.02, 3, 4), 'white', x, top + 1.5, z, { abs: true, noShadow: true });
   if (!open) {
-    K.mesh(new THREE.SphereGeometry(0.9, 20, 14), 'gold', x, y, z, { abs: true });
-    K.mesh(new THREE.TorusGeometry(0.9, 0.05, 6, 30), 'clothRed', x, y, z, { abs: true, ry: Math.PI / 2 });
+    K.mesh(new THREE.SphereGeometry(R, 20, 14), 'gold', x, y, z, { abs: true });
+    K.mesh(new THREE.TorusGeometry(R, 0.05, 6, 30), 'clothRed', x, y, z, { abs: true, ry: Math.PI / 2 });
     K.mesh(new THREE.CylinderGeometry(0.02, 0.02, 2.2, 4), 'clothRed', x, y - 2, z, { abs: true, noShadow: true });
     return;
   }
-  for (const s of [-1, 1]) K.mesh(new THREE.SphereGeometry(0.9, 20, 14, 0, Math.PI), 'gold', x + s * 0.5, y + 0.4, z, { abs: true, rz: s * 0.9, ry: -Math.PI / 2 });
+  // 割れた玉：てっぺんのちょうつがいから、左右の半球がハの字に開く。外は金、内側は白い紙、割れ目のふちに赤い帯
+  const inner = new THREE.MeshStandardMaterial({ color: '#fff4e0', roughness: 0.9, side: THREE.BackSide });
+  for (const s of [-1, 1]) {
+    const h = new THREE.Group(); h.position.set(x, top, z); h.rotation.z = s * 1.2;
+    const geo = new THREE.SphereGeometry(R, 20, 10, s > 0 ? Math.PI / 2 : -Math.PI / 2, Math.PI);
+    K.mesh(geo, 'gold', 0, -R, 0, { parent: h });
+    K.mesh(geo, inner, 0, -R, 0, { parent: h });
+    K.mesh(new THREE.TorusGeometry(R, 0.05, 6, 30), 'clothRed', 0, -R, 0, { parent: h, ry: Math.PI / 2 });
+    K.add(h);
+  }
+  K.mesh(new THREE.SphereGeometry(0.1, 10, 8), 'gold', x, top, z, { abs: true });
   const c = document.createElement('canvas'); c.width = 128; c.height = 512; const g = c.getContext('2d');
   g.fillStyle = '#fff8f0'; g.fillRect(0, 0, 128, 512); g.strokeStyle = '#c8304a'; g.lineWidth = 8; g.strokeRect(6, 6, 116, 500);
   g.fillStyle = '#c8304a'; g.font = '900 56px "Hiragino Mincho ProN","Hiragino Sans",serif'; g.textAlign = 'center';
   [...'笑顔の塔'].forEach((ch, i) => g.fillText(ch, 64, 70 + i * 62));
   g.fillStyle = '#ff6a8a'; [...'再開！'].forEach((ch, i) => g.fillText(ch, 64, 330 + i * 62));
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  K.mesh(new THREE.PlaneGeometry(0.9, 3.6), new THREE.MeshStandardMaterial({ map: t, roughness: 0.9, side: THREE.DoubleSide }), x, y - 1.6, z + 0.02, { abs: true, noShadow: true });
+  K.mesh(new THREE.PlaneGeometry(0.9, 3.6), new THREE.MeshStandardMaterial({ map: t, roughness: 0.9, side: THREE.DoubleSide }), x, top - 1.85, z + 0.02, { abs: true, noShadow: true });
   K.v.emitters.push(dt => { if (K.v.p && Math.random() < dt * 14) K.v.p.emit(V3(x + (Math.random() - 0.5) * 10, y + 1, z + (Math.random() - 0.5) * 8), V3(0, -1.2, 0), hdr(pick(['#ff6a8a', '#ffd27a', '#6ad8ff', '#8aff9a']), 1.4), { life: 4, size: 0.1, drag: 0.2 }); });
 }
 // 板に描いたお客さん（k = 顔の種類。happy なら、ほっぺを赤く）
@@ -8236,7 +8248,7 @@ const ZONE_BUILD = {
     K.mesh(new THREE.PlaneGeometry(52, 1.6), 'clothYellow', 0, y1 + 7.2, -37.7, { abs: true, noShadow: true });
     for (let i = 0; i < 5; i++) { const x = -16 + i * 8; K.mesh(new THREE.ConeGeometry(1.4, 6.5, 16, 1, true), new THREE.MeshBasicMaterial({ color: hdr('#fff0c8', 0.6), transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), x, y1 + 3.2, -27 + (i % 2) * 3, { abs: true, noShadow: true }); }
     // くす玉：ピエロが笑うと割れて、垂れ幕と紙吹雪
-    kusudama(K, 0, y1 + 7.8, -30, happy);
+    kusudama(K, 0, y1 + 7.4, -30, happy);
     // 奈落の注意書き
     K.board(-8, -10.5, 0, '奈落', 'ならく：落ちたら戻れません');
     // 段々の客席：ベンチと、板に描いたお客さん
