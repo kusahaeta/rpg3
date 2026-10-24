@@ -36,6 +36,8 @@ Object.assign(POSES, {
   offerL:      { armLx: -1.15, armLz: 0.15, elbowL: -0.45, lean: 0.06, headX: 0.04 },
   present:     { armLx: -0.8, armLz: 0.7, elbowL: -0.35, armRz: -0.1, elbowR: -0.3, twist: 0.15 },
   raise:       { armLx: -2.9, armLz: 0.1, elbowL: -0.25, armRz: -0.2, elbowR: -0.3, headX: -0.18 },
+  // 左手に持った物を、胸の前で見つめる。身振り gazeHand のほか、立ち方（stance）にして持ち上げたままにもできる（タマの灰色の葉）
+  gazeHand:    { armLx: -1.35, armLz: -0.2, elbowL: -0.9, headX: 0.22 },
   reach:       { armLx: -1.5, armLz: -0.05, elbowL: -0.12, lean: 0.12, headX: -0.1, legLx: -0.3, kneeL: 0.15 },
   insert:      { armLx: -1.05, armLz: -0.15, elbowL: -0.55, armRx: -0.3, elbowR: -0.5, lean: 0.28, headX: 0.25 },
   bow:         { lean: 0.55, headX: 0.25, armRx: 0.05, armRz: 0.25, elbowR: -0.5, armLx: 0.05, armLz: -0.25, elbowL: -0.5 },
@@ -60,7 +62,7 @@ const GESTURES = {
   turnAway: [[{ headY: -0.7, twist: -0.18 }, 2.2]],
   hop: [[{}, 0.4, { hop: 0.25 }]],
   pout: [['pout', 1.8]],
-  gazeHand: [[{ armLx: -1.35, armLz: -0.2, elbowL: -0.9, headX: 0.22 }, 8]],   // 左手に持った物（手紙など）を、胸の前で見つめる
+  gazeHand: [['gazeHand', 8]],   // 左手に持った物（手紙など）を、胸の前で見つめる
 };
 // キャラクターごとの普段の立ち方と表情、戦うときの構え、よく使う身振り
 const CHAR_ACT = {
@@ -248,6 +250,11 @@ class Actor {
   // 手に小物を持たせる（左手）。null で消す
   hold(item) {
     if (this.item) { this.item.removeFromParent(); this.item = null; }
+    // 片手に二つは持てない：左手にもとから持っている物（タマのまくら）は、小物を持つあいだかくす
+    if (this.m.armL) this.m.armL.grip.children.forEach(c => {
+      if (!item && c.userData.hiddenByHold) { c.visible = true; c.userData.hiddenByHold = false; }
+      else if (item && c.visible) { c.visible = false; c.userData.hiddenByHold = true; }
+    });
     if (!item || !this.m.armL) return;
     const g = new THREE.Group();
     if (item === 'fish') {   // 焼き魚
@@ -277,12 +284,16 @@ class Actor {
     } else if (item === 'ladle') {   // おたま
       const st = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.3, 6), toon('#c8c8d8')); st.position.y = 0.12; g.add(st);
       const cup = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), toon('#e8e8f0', { side: THREE.DoubleSide })); cup.position.y = 0.28; cup.rotation.x = Math.PI; g.add(cup);
+    } else if (item === 'leaf') {   // にゃんだーの樹の灰色の葉：根もとに舞い落ちている葉と同じ絵・形（leafGlow で一瞬だけ光る）
+      const lf = new THREE.Mesh(leafGeo(0.34), leafMat('#b4b4a6', '#6a6a60')); lf.position.y = 0.15; g.add(lf);
+      g.userData.leaf = lf;
     } else if (item === 'star') {   // 星のかけら
       const s2 = new THREE.Mesh(new THREE.OctahedronGeometry(0.07), glowMat('#fff0a8', 2.6)); g.add(s2);
     }
     g.position.y = -0.03;
     if (item === 'jarashiUp') { g.rotation.x = Math.PI; g.userData.swing = true; }   // 手の先（腕の向き）へのばす
     if (item === 'letter') g.rotation.x = Math.PI / 2;   // 封筒の面を、手のひらの向き（見ている人の側）へ
+    if (item === 'leaf') g.rotation.set(-1.9, 0, 0.2);   // 軸をつまんで、葉を下へ垂らす（立てると大きな頭にめりこむ）。gazeHand の手で、面が前を向く
     this.m.armL.grip.add(g); this.item = g;
   }
   showWeapon(on) { if (this.m.armR && this.m.armR.grip) this.m.armR.grip.visible = on; if (this.m.extras && this.m.extras.offhand) this.m.extras.offhand.visible = on; }   // offhand：左手の武器（双子の小太刀）
@@ -1014,6 +1025,15 @@ const STAGE_FX = {
     Sfx.laugh();
   },
   sparkle(arg) { const a = this.actors[arg]; const c = a ? a.headPos() : this.O.clone().add(V3(0, 1, 0)); this.p.burst(c, '#fff0a8', 30, { speed: 2, up: 1, life: 1.2, size: 0.08 }); this.fx.sprite(c, '#fff0a8', 1.2, 0.5); Sfx.tone(1200, 0.2, 'sine', 0.05); Sfx.tone(1600, 0.25, 'sine', 0.04, 0, 0.08); },
+  // 手に持った灰色の葉が、一瞬だけ緑に光って、また灰色にもどる（タマが樹の葉を拾う、第七章のはじめ）
+  leafGlow(arg) {
+    const a = this.actors[arg || 'tama'], lf = a && a.item && a.item.userData.leaf; if (!lf) return;
+    const c = lf.getWorldPosition(V3()), green = new THREE.Color('#6ad87a'), gray = lf.material.color.clone(), glow0 = lf.material.emissive.clone();
+    GFX.tween(2.6, k => { const s = Math.sin(k * Math.PI); lf.material.emissive.copy(glow0).lerp(green, s * 0.8); lf.material.color.copy(gray).lerp(green, s * 0.6); });
+    this.fx.sprite(c, '#9af0a0', 0.5, 1.8, { k: 1.6, grow: 1.3 });
+    this.p.burst(c, '#c8ffc0', 14, { speed: 0.5, up: 0.7, life: 1.6, size: 0.04 });
+    Sfx.tone(880, 0.5, 'sine', 0.035); Sfx.tone(1320, 0.6, 'sine', 0.025, 0, 0.15);
+  },
   // 闇がせまる・晴れる
   darkness() { const U = GFX.grade.uniforms; GFX.tween(1.2, k => { U.tint.value.setRGB(1 - 0.45 * k, 1 - 0.5 * k, 1 - 0.3 * k); U.desat.value = 0.4 * k; }, Ease.out, true); Sfx.tone(60, 1.5, 'sawtooth', 0.08, 20); },
   dawn() { const U = GFX.grade.uniforms, r = U.tint.value.r, g = U.tint.value.g, b = U.tint.value.b, d0 = U.desat.value; GFX.tween(1.6, k => { U.tint.value.setRGB(lerp(r, 1, k), lerp(g, 1, k), lerp(b, 1, k)); U.desat.value = d0 * (1 - k); }, Ease.inOut, true); GFX.flash('#fff4d8', 0.5, 1.2); },
