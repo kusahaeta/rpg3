@@ -316,7 +316,9 @@ const SHOP_NAMES = { weapon: '武器を鍛える', item: '道具屋', inn: 'ひ�
 function renderShop(o, kind, name, close, field) {
   const d = Save.data;
   let shopTab = 'forge';
-  const draw = () => {
+  const draw = (keepScroll = true) => {
+    // 鍛える・買うたびに作り直すので、一覧のスクロール位置を引きつぐ
+    const prevList = o.querySelector('.ov-box.shop .sh-list'), scroll = keepScroll && prevList ? prevList.scrollTop : 0;
     let body = '';
     if (kind === 'weapon') {
       const ks = Object.keys(d.owned).filter(k => CHARS[k]);
@@ -353,8 +355,9 @@ function renderShop(o, kind, name, close, field) {
     }
     o.innerHTML = `<div class="ov-box shop"><h2>${name}</h2>${body}<div class="sh-foot"><span class="c-item"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><button class="btn gold" data-close>閉じる</button></div></div>`;
     o.classList.remove('hidden');
+    const list = o.querySelector('.sh-list'); if (list) list.scrollTop = scroll;
     o.querySelector('[data-close]').onclick = () => { Sfx.click(); o.classList.add('hidden'); close(); };
-    o.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { shopTab = b.dataset.tab; Sfx.select(); draw(); });
+    o.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { shopTab = b.dataset.tab; Sfx.select(); draw(false); });
     o.querySelectorAll('[data-forge]').forEach(b => b.onclick = () => {
       const id = b.dataset.forge, k = WEAPONS[id].owner;
       d.niboshi -= weaponCost(id); d.weapons[id] = weaponPlus(id) + 1; Save.save(); Sfx.brk(); Sfx.meow(k);
@@ -380,5 +383,5 @@ function renderShop(o, kind, name, close, field) {
       Save.save(); Sfx.select(); draw();
     });
   };
-  draw();
+  draw(false);
 }
