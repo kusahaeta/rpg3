@@ -39,25 +39,59 @@ function charChip(key, extra = '') {
 // ------------------------------------------------------------
 //  タイトル
 // ------------------------------------------------------------
+// ロゴ（SVG）：一文字ずつ、外がわのクリーム色のふち・こげ茶のふち・つやのある二色の塗りを重ねる。
+//   下に、副題のリボン。画面の上のまん中、にゃんだーの樹の幹の前に置く
+function titleLogo() {
+  const W = 720, fs = 104, adv = 0.95 * fs;
+  let n = 0;
+  const line = (str, y) => [...str].map((ch, k) => {
+    const x = W / 2 + (k - (str.length - 1) / 2) * adv, i = n++, fill = i % 3 === 2 ? 'tl-gp' : 'tl-gc';
+    const t = cls => `<text x="${x}" y="${y}" class="${cls}">${ch}</text>`;
+    return `<g class="tl-ch" style="--i:${i}"><g class="tl-in">${t('tl-out')}${t('tl-mid')}<text x="${x}" y="${y}" fill="url(#${fill})">${ch}</text>${t('tl-shine')}</g></g>`;
+  }).join('');
+  return `<svg class="t-logo" viewBox="0 0 ${W} 330" aria-label="にゃんこファンタジー">
+    <defs>
+      <linearGradient id="tl-gc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf4"/><stop offset=".5" stop-color="#fff0c4"/><stop offset=".53" stop-color="#ffd27a"/><stop offset="1" stop-color="#ff9450"/></linearGradient>
+      <linearGradient id="tl-gp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffafc"/><stop offset=".5" stop-color="#ffe2ec"/><stop offset=".53" stop-color="#ffb0c8"/><stop offset="1" stop-color="#ff7096"/></linearGradient>
+      <linearGradient id="tl-sh" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="150" y2="60" gradientTransform="translate(-500 0)">
+        <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+        <animateTransform attributeName="gradientTransform" type="translate" values="-500 0; 1000 0; 1000 0" keyTimes="0; .22; 1" dur="6s" begin="2.2s" repeatCount="indefinite"/>
+      </linearGradient>
+      <linearGradient id="tl-rb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2774a"/><stop offset="1" stop-color="#b44a2c"/></linearGradient>
+      <path id="tl-rbm" d="M150 299 Q360 287 570 299"/>
+    </defs>
+    <text class="tl-en" x="${W / 2}" y="30">NYANKO FANTASY</text>
+    ${line('にゃんこ', 142)}${line('ファンタジー', 246)}
+    <g class="tl-ribbon">
+      <path class="tl-rb-tail" d="M156 282 L108 284 L124 303 L108 324 L156 320 Z"/><path class="tl-rb-tail" d="M564 282 L612 284 L596 303 L612 324 L564 320 Z"/>
+      <path class="tl-rb-band" d="M150 278 Q360 266 570 278 L570 320 Q360 308 150 320 Z"/>
+      <path class="tl-rb-stitch" d="M156 284 Q360 272 564 284 M156 314 Q360 302 564 314"/>
+      <text class="tl-sub"><textPath href="#tl-rbm" startOffset="50%">流れ星のおちた丘から</textPath></text>
+    </g>
+  </svg>`;
+}
+
 function TitleScreen() {
   GFX.show('title', () => new TitleView());
   const s = h(`<div class="screen title">
-    <div class="t-logo">
-      <div class="t-en">NYANKO FANTASY</div>
-      <h1><span>に</span><span>ゃ</span><span>ん</span><span>こ</span><br><span>フ</span><span>ァ</span><span>ン</span><span>タ</span><span>ジ</span><span>ー</span></h1>
-      <div class="t-name">〜 流れ星のおちた丘から 〜</div>
-    </div>
-    <div class="t-start">— <span class="pc-only">クリック</span><span class="touch-only">タップ</span>して はじめる —</div>
+    ${titleLogo()}
+    <div class="t-start"><i></i><span class="pc-only">クリック</span><span class="touch-only">タップ</span>して はじめる<i></i></div>
+    <div class="t-flash"></div>
   </div>`);
   // タイトルの曲。ブラウザでは最初のタップまで音が止められているので、そのときの最初のタップは曲を鳴らすだけにする
   Sfx.init(); Music.play('title');
   //   （音が出ないままでも、二度目のタップからははじまる）
-  let wake = false, woke = false;
+  let wake = false, woke = false, going = false;
   s.addEventListener('pointerdown', () => { wake = !woke && !!Sfx.ctx && Sfx.ctx.state === 'suspended' && Music.on; });
   s.onclick = () => {
     Sfx.init();
     if (wake) { wake = false; woke = true; return; }
-    Sfx.meow('mike'); Music.play('village'); Story.resume();
+    if (going) return;
+    // はじめる：文字がはねて、白い光につつまれてから、続きへ
+    going = true; s.classList.add('leaving');
+    Sfx.meow('mike'); Music.play('village');
+    if (GFX.ok) GFX.flash('#fff6e4', 0.5, 0.7);
+    setTimeout(() => Story.resume(), 650);
   };
   return s;
 }

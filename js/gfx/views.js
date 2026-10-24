@@ -99,11 +99,17 @@ class ShowcaseView extends BaseView {
   }
 }
 
-// タイトル：草原の丘から、遠くのにゃんだーの樹を見上げる5匹
+// タイトル：夕暮れの丘から、遠くのにゃんだーの樹を見上げる5匹。樹冠は画面の上に広がり、ロゴのうしろに幹が立つ。
+//   夕日は右手の地平線に沈みかけ、空の上のほうから星が出はじめる。はじめは樹を見上げ、ゆっくり5匹の後ろの高さへ下りてくる
 class TitleView extends BaseView {
   constructor() {
-    super('meadow', 42, { skyTree: false });
-    this.bloomStrength = 0.3;
+    super('dusk', 42, { skyTree: false });
+    this.bloomStrength = 0.42; this.exposure = 1.1;
+    // 夕日（右手の奥）から照らす。5匹は逆光になり、影が手前へのびる。手前からは、空の色の青むらさきの光で、黒い子の背中も見えるように
+    const E = this.env, key = E.key, lights = E.root.children.filter(o => o.isDirectionalLight && o !== key), hemi = E.root.children.find(o => o.isHemisphereLight);
+    key.position.set(9, 6.5, -14); key.color.set('#ffb478'); key.intensity = 2.3;
+    if (lights[1]) { lights[1].color.set('#b8b8ff'); lights[1].intensity = 1.2; }
+    if (hemi) { hemi.color.set('#d0c0f0'); hemi.groundColor.set('#7a5a40'); hemi.intensity = 1.25; }
     // 感情の実は、第八章で樹がよみがえってから（ほかの場所の樹と同じ。それまで実は実らない）
     const { g, fruits } = worldTree(0.95, 1.4, treeHealth() >= 1 ? 0.6 : 0); g.position.set(8, -8, -150); this.scene.add(g); this.fruits = fruits;
     // タイトルのカメラに映るのは樹冠の下のふちだけなので、実は、外のふちの輪（worldTree の clumps：中心から 27、高さ 46／48、半径 11／10）の
@@ -114,20 +120,77 @@ class TitleView extends BaseView {
       f.position.set(Math.cos(a) * 27 + Math.cos(a + d) * rad * out, y - rad * 0.75 * down, Math.sin(a) * 27 + Math.sin(a + d) * rad * out);
     });
     this.cats = ['mike', 'kuro', 'shiro', 'tama', 'maou'].map((k, i) => {
-      const m = buildCharacter(k); m.group.position.set((i - 2) * 0.95, 0, 2.5 + Math.abs(i - 2) * 0.35); m.group.rotation.y = Math.PI + (i - 2) * 0.08; m.setPose(POSES.idle); this.scene.add(m.group); return m;
+      const m = buildCharacter(k); m.group.position.set((i - 2) * 0.95, 0, 2.5 + Math.abs(i - 2) * 0.35); m.group.rotation.y = Math.PI + (i - 2) * 0.08; m.setPose(POSES.idle); this.scene.add(m.group);
+      m.look = { t: 2 + i * 1.7, y: 0, tw: 0 };   // ときどき、となりの子や樹のてっぺんのほうへ顔を向ける
+      return m;
     });
-    this.setCam(V3(-1.6, 1.3, 7.2), V3(0.6, 3.5, -40), { snap: true, speed: 0.4 });
+    titleMeadow(this.scene, this.cats.map(m => m.group.position));
+    this.setCam(V3(0.2, 0.5, 9.4), V3(0.6, 13, -40), { snap: true, speed: 0.5 });
   }
   update(dt, t, rdt) {
-    this.camPos.set(-1.6 + Math.sin(t * 0.07) * 0.8, 1.3 + Math.sin(t * 0.1) * 0.15, 7.2);
+    this.camPos.set(Math.sin(t * 0.07) * 0.3, 1.3 + Math.sin(t * 0.1) * 0.1, 8.1);
+    this.camLook.set(0.6, 3.5, -40);
     super.update(rdt, t);
     this.cats.forEach((m, i) => {
       m.update(rdt, t + i);
-      const wave = Math.sin(t * 0.5 + i * 1.3) > 0.93;
-      m.pose.armRx += ((wave ? -2.5 : -0.1) - m.pose.armRx) * (1 - Math.exp(-4 * rdt));
+      const wave = Math.sin(t * 0.5 + i * 1.3) > 0.93, k = 1 - Math.exp(-4 * rdt), L = m.look;
+      m.pose.armRx += ((wave ? -2.5 : -0.1) - m.pose.armRx) * k;
+      // 顔の向き：いつもは樹のほう。ときどき、となりの子のほうや空を見上げる。ミケは、ときどきふり返ってこちらを見る
+      if ((L.t -= rdt) <= 0) {
+        const back = i === 0 && Math.random() < 0.45;
+        L.y = back ? 1.0 : Math.random() < 0.4 ? 0 : (Math.random() - 0.5) * 1.0; L.tw = back ? 0.35 : 0; L.up = !back && Math.random() < 0.3 ? -0.25 : 0;
+        L.t = back ? 2.4 : 3 + Math.random() * 4;
+        if (back) m.face.set('joy'); else if (m.face.expr === 'joy') m.face.set('smile');
+      }
+      const k2 = 1 - Math.exp(-2.5 * rdt);
+      m.pose.headY += (L.y - m.pose.headY) * k2; m.pose.twist += (L.tw - m.pose.twist) * k2; m.pose.headX += ((L.up || 0) - m.pose.headX) * k2;
     });
     this.fruits.forEach((f, i) => f.scale.setScalar(1 + Math.sin(t * 2 + i) * 0.2));
   }
+}
+// タイトルの丘の草花：5匹のまわりに、風にゆれる草（三角の葉を一つの InstancedMesh で）と小さな花。
+//   足もとの草は少なめに（体に刺さらないよう）、手前のカメラの近くと、遠くのふちは、だんだんまばらに
+function titleMeadow(scene, feet) {
+  const N = GFX.low ? 2200 : 5200, rnd = Math.random;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute([-0.5, 0, 0, 0.5, 0, 0, 0.08, 1, 0], 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0.3, 0, 1, 0.3, 0, 1, 0.3], 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute([0.32, 0.5, 0.22, 0.32, 0.5, 0.22, 1.0, 0.92, 0.55], 3));
+  const time = { value: 0 }, mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, emissive: '#3a2a12' });
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uTime = time;
+    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      vec2 ip = vec2(instanceMatrix[3][0], instanceMatrix[3][2]);
+      float ph = dot(ip, vec2(0.9, 0.6)), k = transformed.y * transformed.y;
+      transformed.x += (sin(uTime * 1.7 + ph) * 0.18 + sin(uTime * 3.1 + ph * 1.9) * 0.05) * k;
+      transformed.z += sin(uTime * 1.2 + ph * 1.3) * 0.08 * k;`);
+  };
+  mat.customProgramCacheKey = () => 'titleGrass';
+  const pts = [];
+  for (let tries = 0; pts.length < N && tries < N * 4; tries++) {
+    const x = (rnd() - 0.5) * 20, z = -7 + rnd() * 13;
+    // ふち（左右・奥）と、カメラのすぐ前はまばらに
+    const edge = Math.min(1, (10 - Math.abs(x)) / 3) * Math.min(1, (z + 7) / 4) * Math.min(1, (6 - z) / 1.2);
+    if (rnd() > edge) continue;
+    if (feet.some(f => Math.hypot(x - f.x, z - f.z) < 0.3)) continue;
+    pts.push([x, z]);
+  }
+  const im = new THREE.InstancedMesh(geo, mat, pts.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), c = new THREE.Color();
+  pts.forEach(([x, z], i) => {
+    const h = 0.12 + rnd() * 0.22, w = 0.035 + rnd() * 0.025;
+    m4.compose(V3(x, 0, z), q.setFromEuler(new THREE.Euler((rnd() - 0.5) * 0.5, rnd() * Math.PI * 2, (rnd() - 0.5) * 0.5)), V3(w, h, w));
+    im.setMatrixAt(i, m4); im.setColorAt(i, c.setHSL(0.22 + rnd() * 0.08, 0.45 + rnd() * 0.2, 0.6 + rnd() * 0.16));
+  });
+  im.receiveShadow = true; im.frustumCulled = false; scene.add(im);
+  // 小さな花（白・黄・桃・うす紫）
+  const NF = GFX.low ? 120 : 260, fm = new THREE.MeshLambertMaterial({ emissive: '#ffffff', emissiveIntensity: 0.12 });
+  const fl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.032, 0), fm, NF), cols = ['#ffffff', '#ffe27a', '#ffb0cc', '#d8c0ff'];
+  for (let i = 0; i < NF; i++) {
+    let x, z; do { x = (rnd() - 0.5) * 18; z = -6 + rnd() * 11.5; } while (feet.some(f => Math.hypot(x - f.x, z - f.z) < 0.35));
+    m4.compose(V3(x, 0.1 + rnd() * 0.16, z), q.identity(), V3(1, 0.7, 1).multiplyScalar(0.8 + rnd() * 0.6)); fl.setMatrixAt(i, m4); fl.setColorAt(i, c.set(cols[i % 4]));
+  }
+  scene.add(fl);
+  im.onBeforeRender = () => { time.value = GFX.time; };
 }
 
 // ============================================================

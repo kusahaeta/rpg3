@@ -43,6 +43,12 @@ const THEMES = {
   // 世界の果て：孤独が満ちる夜明け前
   end: { top: '#08061a', horizon: '#3a2a6a', bottom: '#0a0818', nebA: '#8a5aff', nebB: '#ff8ab8', fog: '#1a1438', fogD: 0.012, clouds: 0.4, sun: '#b8a8ff', stars: 1.2,
     floor: '#2a2438', floor2: '#241e30', line: '#b8a8ff', key: '#d8d0ff', sky: '#8a7ab8', ground: '#141024', rim: '#b8a8ff', metal: 0.05, pattern: 'dirt', floorGlow: 0.1, rough: 0.9, light: 0.95 },
+  // タイトルの丘：日がしずむころ。地平線は夕焼け、空の上のほうから星が出はじめる
+  //   sunDir：太陽の向き（右手の地平線のすぐ上）。starLo：星が見えはじめる高さ（地平線の近くの明るい空には出さない）。cloudDim：雲を夕方の色に沈める。
+  //   hzW：地平線の色から空の上の色へ変わる高さ（せまくして、夕焼けを地平線の近くの帯に）
+  dusk: { top: '#1e2660', horizon: '#ffa070', bottom: '#5a4a48', nebA: '#ff9aa8', nebB: '#a890ff', fog: '#e8a890', fogD: 0.0055, clouds: 0.6, sun: '#ffc890', stars: 0.8,
+    sunDir: [0.55, 0.07, -0.83], starLo: 0.14, cloudDim: 0.62, hzW: 0.34,
+    floor: '#7aa458', floor2: '#6a944a', line: '#ffe08a', key: '#ffbc80', sky: '#a8a8e0', ground: '#5a4a3a', rim: '#ffb070', metal: 0, pattern: 'grass', floorGlow: 0, rough: 0.95, light: 1.0 },
   // ねこ神の夢：パステルのへんてこな夢
   dream: { top: '#ffb8e0', horizon: '#fff0d8', bottom: '#b8d8ff', nebA: '#ffffff', nebB: '#b8f0ff', fog: '#ffe0f0', fogD: 0.006, clouds: 1, sun: '#fffff0', stars: 0.3,
     floor: '#ffd8e8', floor2: '#ffe8f0', line: '#ff9ad8', key: '#fff8f0', sky: '#ffe8f8', ground: '#d8b8e8', rim: '#b8e8ff', metal: 0, pattern: 'checker', floorGlow: 0.1, rough: 0.7, light: 1.1 },
@@ -51,7 +57,7 @@ const THEMES = {
 const SkyShader = {
   vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); vec4 p = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position = p.xyww; }`,
   fragmentShader: `
-    uniform vec3 top, horizon, bottom, nebA, nebB, sun; uniform float time, stars, clouds;
+    uniform vec3 top, horizon, bottom, nebA, nebB, sun, sunDir; uniform float time, stars, clouds, starLo, cloudDim, hzW;
     varying vec3 vDir;
     float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
     float noise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f*f*(3.0-2.0*f);
@@ -60,10 +66,10 @@ const SkyShader = {
     float fbm(vec3 p){ float v = 0.0, a = 0.5; for (int i = 0; i < OCT; i++){ v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
     void main(){
       vec3 d = normalize(vDir); float h = d.y;
-      vec3 col = mix(horizon, top, smoothstep(0.0, 0.6, h));
+      vec3 col = mix(horizon, top, smoothstep(0.0, hzW, h));
       col = mix(col, bottom, smoothstep(0.0, -0.3, h));
       // 太陽のにじみ
-      vec3 sd = normalize(vec3(0.45, 0.35, -0.8));
+      vec3 sd = normalize(sunDir);
       float s = max(dot(d, sd), 0.0);
       col += sun * (pow(s, 64.0) * 1.4 + pow(s, 6.0) * 0.25);
       // もこもこの雲（地平線近くに多い）
@@ -71,7 +77,7 @@ const SkyShader = {
         vec2 uv = d.xz / max(0.08, h + 0.12);
         float c = fbm(vec3(uv * 0.55 + vec2(time * 0.006, 0.0), 1.3));
         c = smoothstep(0.52, 0.78, c) * smoothstep(-0.02, 0.12, h) * smoothstep(0.95, 0.25, h);
-        vec3 cc = mix(vec3(1.0), nebA, 0.35) + sun * pow(s, 4.0) * 0.4;
+        vec3 cc = mix(vec3(1.0), nebA, 0.35) * cloudDim + sun * pow(s, 4.0) * 0.4;
         col = mix(col, cc * (0.85 + 0.25 * fbm(vec3(uv * 1.7, 4.0))), c * clouds);
       }
       // 星（夜や洞窟）
@@ -80,7 +86,7 @@ const SkyShader = {
         col += nebB * pow(n, 4.0) * 1.6 * stars * smoothstep(0.0, 0.5, h);
         vec3 p = d * 220.0; float r = hash(floor(p));
         float st = step(1.0 - 0.01 * stars, r) * smoothstep(0.35, 0.0, length(fract(p) - 0.5)) * (0.6 + 0.4 * sin(time * 2.0 + r * 80.0));
-        col += vec3(1.0, 0.97, 0.9) * st * smoothstep(-0.05, 0.1, h) * 2.0;
+        col += vec3(1.0, 0.97, 0.9) * st * smoothstep(starLo, starLo + 0.15, h) * 2.0;
       }
       gl_FragColor = vec4(col, 1.0);
     }`,
@@ -88,7 +94,8 @@ const SkyShader = {
 
 function skyOctaves() { return GFX.low ? 3 : 5; }
 function makeSky(th) {
-  const u = { time: { value: 0 }, stars: { value: th.stars || 0 }, clouds: { value: th.clouds || 0 } };
+  const u = { time: { value: 0 }, stars: { value: th.stars || 0 }, clouds: { value: th.clouds || 0 }, starLo: { value: th.starLo ?? -0.05 }, cloudDim: { value: th.cloudDim ?? 1 }, hzW: { value: th.hzW ?? 0.6 },
+    sunDir: { value: new THREE.Vector3(...(th.sunDir || [0.45, 0.35, -0.8])) } };
   for (const k of ['top', 'horizon', 'bottom', 'nebA', 'nebB', 'sun']) u[k] = { value: new THREE.Color(th[k] || '#ffffff') };
   // OCT：雲・星のもようの細かさ（重ねる回数）。軽量の画質では減らす（空は画面の半分ほどをしめ、1 画素ごとの計算が重い）
   const m = new THREE.Mesh(new THREE.SphereGeometry(400, 48, 32), new THREE.ShaderMaterial({ uniforms: u, ...SkyShader, defines: { OCT: skyOctaves() }, side: THREE.BackSide, depthWrite: false }));
@@ -285,7 +292,7 @@ function treeSize(Z) {
   return s0 * 230 / d0 * Math.min(1.3, Math.max(0.3, (md(P.map2d) / md(M)) ** 0.7));
 }
 function farTree(T) {
-  // treeLook：[距離, 大きさ, 高さ]。ぽかぽか村は、タイトル画面と同じ見え方に。ほかの区画は、樹から遠いほど小さく（treeSize）
+  // treeLook：[距離, 大きさ, 高さ]。ぽかぽか村の見え方が基準。ほかの区画は、樹から遠いほど小さく（treeSize）
   const h = treeHealth(), zt = T.zone && T.zone.treeAt, [dist, sc, y] = (T.zone && T.zone.treeLook) || [230, treeSize(T.zone), -6];
   // 感情の実は、第八章で樹がよみがえってから（それまで実は実らない。根もとの樹と同じ）。遠景では光がにじんで大きく見えるので、タイトル画面より小さく
   const { g, fruits, halo, leaf } = worldTree(h, sc, h >= 1 ? 0.55 : 0);
@@ -369,6 +376,11 @@ const ENV_PROPS = {
     motes(T, '#ffb8d8', 12, { fall: true, drift: 1.2, size: 0.07, life: 7 });   // 紙ふぶき・花びら
     const cols = ['#e87aa8', '#5a8ad8', '#ffd27a'], wm = new THREE.MeshStandardMaterial({ color: '#f4ece0', roughness: 1 });
     for (let i = 0; i < 7; i++) { const x = -60 + i * 20, h = 20 + (i % 3) * 12; const tw = new THREE.Mesh(new THREE.CylinderGeometry(4, 4.5, h, 10), wm); tw.position.set(x, h / 2 - 4, -150); T.root.add(tw); const rf = new THREE.Mesh(new THREE.ConeGeometry(5.5, 9, 10), new THREE.MeshStandardMaterial({ color: cols[i % 3], roughness: 0.8 })); rf.position.set(x, h - 4 + 4.5, -150); T.root.add(rf); }
+  },
+  // 夕暮れの丘（タイトル）：遠くの丘と木は夕もやに沈み、夕日の色の雲。金色の光の粒が、草のあいだから立ちのぼる
+  dusk(T) {
+    hills(T, '#6a7a5a', 140, 16, 18); farTrees(T, '#4e7a48', 18, 115, 150);   // 遠くの木は小さく（にゃんだーの樹より大きく見えないように）
+    motes(T, '#ffd890', 16, { size: 0.055, life: 6, k: 2.4, drift: 0.5 });
   },
   tower(T) { motes(T, '#ffd27a', 14, { size: 0.06, life: 4, k: 2 }); T.noTree = true; },
   valley(T) {
