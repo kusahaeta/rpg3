@@ -12,16 +12,37 @@ def copyWeb = tasks.register('copyWeb', Sync) {
 }
 preBuild.dependsOn copyWeb
 
+// リリースの署名鍵（アップロード鍵）は android/keystore.properties に書く。リポジトリには入れない
+def keyProps = new Properties()
+def keyFile = rootProject.file('keystore.properties')
+if (keyFile.exists()) keyFile.withInputStream { keyProps.load(it) }
+
+// versionCode は main のコミット数（iOS のビルド番号と同じ数え方）。Play には同じ番号を 2 度は送れない
+def commitCount = providers.exec {
+    commandLine 'git', 'rev-list', '--count', 'HEAD'
+}.standardOutput.asText.get().trim().toInteger()
+
 android {
     namespace 'com.kusahaeta.nyanko'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId 'com.kusahaeta.nyanko'
         minSdk 24
-        targetSdk 34
-        versionCode 1
+        targetSdk 36
+        versionCode commitCount
         versionName '1.0'
+    }
+
+    signingConfigs {
+        if (keyFile.exists()) {
+            release {
+                storeFile rootProject.file(keyProps['storeFile'])
+                storePassword keyProps['storePassword']
+                keyAlias keyProps['keyAlias']
+                keyPassword keyProps['keyPassword']
+            }
+        }
     }
 
     sourceSets {
@@ -31,6 +52,7 @@ android {
     buildTypes {
         release {
             minifyEnabled false
+            if (keyFile.exists()) signingConfig signingConfigs.release
         }
     }
 
