@@ -354,6 +354,7 @@ class FieldView extends BaseView {
     }
     // 敵グループ（区画に対応するステージの敵）
     const pool = stagePools(Z.pool || Z.stage), dead = this.s.set(this.s.defeated, this.zoneId);
+    this.lv = pool.lv;   // 区画の強さ（宝箱のにぼしの量にも使う）
     // foes・eliteFoes：区画ならではの敵（強さはステージのまま）
     if (Z.foes) pool.normals = Z.foes;
     if (Z.eliteFoes) pool.elites = Z.eliteFoes;
@@ -1250,8 +1251,9 @@ class FieldView extends BaseView {
       (all[this.zoneId] = all[this.zoneId] || []).push(c.id);
       const wid = (CHEST_WEAPONS[this.zoneId] || {})[c.id], gotW = wid && !hasWeapon(wid);
       // 武器のない宝箱は、半分くらいがどうぐ（宝箱ごとに決まっている。chestItem）。持ちきれないどうぐは、にぼしに替えてもらう
+      // にぼしの量は区画の強さで増える（Lv1 で 44〜104、Lv40 で 200〜260、Lv80 で 360〜420）
       const iid = gotW ? null : chestItem(this.zoneId, c.id), gi = iid && ITEMS[iid], full = gi && itemCount(iid) >= ITEM_MAX;
-      const nib = gotW || (gi && !full) ? 0 : full ? gi.worth || gi.price : 40 + Math.floor(Math.random() * 7) * 10;
+      const nib = gotW || (gi && !full) ? 0 : full ? gi.worth || gi.price : 40 + this.lv * 4 + Math.floor(Math.random() * 7) * 10;
       if (gotW) gainWeapon(wid);
       if (gi && !full) { const items = Save.data.items || (Save.data.items = {}); items[iid] = itemCount(iid) + 1; }
       Save.data.niboshi += nib; Save.save();
