@@ -500,7 +500,9 @@ function buildCat(key, opt = {}) {
     style: G.style || 'melee', charCol, idleAmp: 1, flashAmt: 0, flashCol: new THREE.Color(1, 1, 1), extras, face, cat: true, tail, ears,
     setPose(p) { POSE_KEYS.forEach(k => pose[k] = p[k] || 0); },
     update(dt, t) {
-      face.update(dt);
+      // still：凍結中。まばたきもしない（目を閉じたまま止まると眠って見えるので、開けておく）
+      if (!this.still) face.update(dt);
+      else if (face.closed && !face.shut) { face.closed = false; face.apply(); }
       const br = Math.sin(t * 2.2) * this.idleAmp;
       hips.position.y = CAT.HIP + pose.hipsY * CAT.HIPK + br * 0.004;
       hips.rotation.x = pose.lean; hips.rotation.y = pose.twist;
@@ -528,7 +530,7 @@ function buildCat(key, opt = {}) {
         if (out) { g.rotation.x = lerp(g.rotation.x, i ? 0.04 : -1.5 - pose.lean, out); g.rotation.z *= 1 - out; }
       });
       // 耳：ときどきぴくっと動く。しょんぼりすると伏せる
-      if ((earT -= dt) <= 0) { earT = 2 + Math.random() * 5; earFlick = 1; }
+      if (!this.still && (earT -= dt) <= 0) { earT = 2 + Math.random() * 5; earFlick = 1; }
       earFlick = Math.max(0, earFlick - dt * 6);
       ears.forEach((e, i) => { const s = i ? 1 : -1, b = e.userData.base; e.rotation.set(b.x - (mood < 0 ? -mood * 0.5 : 0), b.y, b.z - s * (mood < 0 ? -mood * 0.45 : 0) + (i ? earFlick * 0.25 : 0)); });
       for (const f of upd) f(dt, t, pose);

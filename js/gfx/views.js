@@ -567,7 +567,7 @@ class BattleView extends BaseView {
     if (!this.lastAttack || this.lastAttack.src !== t) {
       GFX.tween(0.22, k => { g.position.z = home.z + dir * Math.sin(k * Math.PI) * (big ? 0.35 : 0.18); });
     }
-    if (e.ally) { const m = e.model; this.tweenPose(m, POSES.hurt, 0.08).then(() => GFX.delay(0.15)).then(() => t.alive && this.tweenPose(m, POSES.ready, 0.3)); }
+    if (e.ally && !t.frozen) { const m = e.model; this.tweenPose(m, POSES.hurt, 0.08).then(() => GFX.delay(0.15)).then(() => t.alive && this.tweenPose(m, POSES.ready, 0.3)); }
     GFX.shake(big ? 0.12 : 0.05);
   }
   breakFx(t, elem) {
@@ -1126,7 +1126,10 @@ class BattleView extends BaseView {
     for (const e of this.ents.values()) {
       const u = e.u, m = e.model;
       if (e.ultSway) this.ultSwayStep(e, dt);
-      m.update(dt, t);
+      // 凍結中は、そのキャラの時計を止める（息づかい・しっぽ・耳・ゆらゆらが止まって、氷づけに見える）
+      m.still = !!(u.frozen && u.alive);
+      if (m.still) e.tStop = (e.tStop || 0) + dt;
+      m.update(dt, t - (e.tStop || 0));
       if (!e.ally && P2_STYLES[u.key] && u.phase >= 1 && !(e.p2 && e.p2.dead)) this.updatePhase2(e, dt, t);
       // 状態の可視化
       if (!e.ally) {
