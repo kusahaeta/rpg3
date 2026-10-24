@@ -919,14 +919,15 @@ const STAGE_ITEMS = {
 
 // ---------- 物語の出来事の演出（台本の fx: '名前:引数' で呼ぶ。this は StageView） ----------
 const STAGE_FX = {
-  // 流れ星が落ちる（夜の丘）
+  // 流れ星が落ちる（夜の丘）。正体はにゃんだーの樹の友情の実なので、色は樹の実・丘のかけら（starRock）と同じ桃色
   meteor(arg) {
     // 一行の後ろから見て、左上の空の奥から飛んでくる（look: のカメラの画に、はじめから入るように）
     const to = this.point(arg || 'crater') || this.W(0, 10), from = to.clone().addScaledVector(this.R, -32).addScaledVector(this.F, 15).add(V3(0, 26, 0));
-    const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#fff0c8', 5), blending: THREE.AdditiveBlending, depthWrite: false }));
+    const col = '#ff4f9a', light = '#ffb8d8';
+    const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 5), blending: THREE.AdditiveBlending, depthWrite: false }));
     m.scale.setScalar(2.4);
-    this.fx.add(m, 2.2, (k, o) => { const e = Ease.in(k); o.position.lerpVectors(from, to, e); for (let i = 0; i < 6; i++) this.p.emit(o.position, V3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)), hdr(Math.random() < 0.5 ? '#fff0c8' : '#8ad8ff', 3), { life: 1.2, size: 0.5 }); });
-    GFX.delay(2.2).then(() => { GFX.flash('#ffffff', 0.9, 1.0); GFX.shake(0.5); Sfx.slam(); this.fx.ring(to, '#fff0c8', { r: 14, life: 1.2, width: 0.5 }); this.p.burst(to, '#fff0c8', 200, { speed: 12, up: 1, life: 1.6, size: 0.2 }); this.fx.pillar(to, '#fff0c8', { h: 30, r: 1.6, life: 1.4, k: 3 }); });
+    this.fx.add(m, 2.2, (k, o) => { const e = Ease.in(k); o.position.lerpVectors(from, to, e); for (let i = 0; i < 6; i++) this.p.emit(o.position, V3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)), hdr(Math.random() < 0.5 ? col : light, 3), { life: 1.2, size: 0.5 }); });
+    GFX.delay(2.2).then(() => { GFX.flash('#ffe0ee', 0.9, 1.0); GFX.shake(0.5); Sfx.slam(); this.fx.ring(to, col, { r: 14, life: 1.2, width: 0.5 }); this.p.burst(to, light, 200, { speed: 12, up: 1, life: 1.6, size: 0.2 }); this.fx.pillar(to, col, { h: 30, r: 1.6, life: 1.4, k: 3 }); });
   },
   // 空から魚が降ってくる（シロの魔法の失敗）
   fishRain(arg) {
