@@ -419,10 +419,13 @@ class StageView extends BaseView {
     // 区画の外や遠く（遠景の城・樹・空）を見るときは、一行のいる所からカメラへ向かって調べる
     // （見る点の側から調べると、区画の外はすべて壁あつかいなので、カメラが見る点のそばまで飛んでしまう）
     const from = this.T.at(look.x, look.z) < 0 || look.distanceTo(pos) > 40 ? V3(this.O.x, pos.y, this.O.z) : look;
-    const n = 24; let last = from.clone();
+    // 見る点が地面などに埋まっているとき（足もとの足あとを見るなど）は、埋まっている所を出てから調べる
+    // （出る前の当たりで止めると、カメラが見る点のそばの地面まで寄ってしまう）
+    const n = 24; let last = from.clone(), out = !this.T.blocksView(from.x, from.y, from.z), i0 = 0;
     for (let i = 1; i <= n; i++) {
       const p = V3().lerpVectors(from, pos, i / n);
-      if (this.T.blocksView(p.x, p.y, p.z)) return i > 3 ? last : V3().lerpVectors(from, pos, 0.15);
+      if (this.T.blocksView(p.x, p.y, p.z)) { if (!out) continue; return i - i0 > 3 ? last : V3().lerpVectors(from, pos, (i0 + n * 0.15) / n); }
+      if (!out) { out = true; i0 = i; }
       last = p;
     }
     return pos;

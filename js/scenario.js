@@ -326,8 +326,8 @@ const SCENES = {
     stage: { zone: 'woods_valley', at: [9, 13], face: 0, host: 'tama',
       cast: { tama: { at: [0, 4], y: 1.15, stance: 'sleep', f: 'sleepy', face: [0, 0] } },
       points: { flower: [0, 1.4, 4], trail: [-2.5, 0, 9], north: [-9, 2, 30] },
-      // 花のベッドをのぞきこむ
-      shots: { bed: { pos: [3.2, 3.6, -1], look: [0, 1.2, 4] } } },
+      // 花のベッドをのぞきこむ／trail：花の奥へ続く、ねぼけ歩きの足あと（fx: 'trail' で見える）を高いところから
+      shots: { bed: { pos: [3.2, 3.6, -1], look: [0, 1.2, 4] }, trail: { pos: [-0.3, 4.2, 2.4], look: [-2, 0, 10.5] } } },
     lines: [
       ['n', '谷の花畑。人の背たけほどもある大きな花のまん中で、あの子猫が、すやすやと眠っていた。', { cam: 'bed', dur: 7, look: { all: 'tama' } }],
       ['mike', 'いたーっ！　……お花のベッドで寝てる！', { f: 'joy', g: 'point', move: { mike: [0, 1.8] }, speed: 1.8 }],
@@ -343,11 +343,11 @@ const SCENES = {
       ['mike', '……むにゃ……さかな……もう、たべられない……。', { f: 'sleepy', fx: 'zzz:mike' }],
       ['shiro', '……むにゃ……わたしは……天才……ぜったい……しっぱい……しない……。', { f: 'sleepy', fx: 'zzz:shiro' }],
       ['kuro', '……………………すぅ。', { f: 'sleepy', fx: 'zzz:kuro' }],
-      ['n', '……しばらくして。', { fx: 'dawn', exit: 'tama', cam: 'wide', dur: 4 }],
+      ['n', '……しばらくして。', { fx: ['dawn', 'trail'], exit: 'tama', cam: 'wide', dur: 4 }],
       ['kuro', '……っ！', { f: 'surprise', stance: { kuro: 'armsCrossed' }, cam: 'kuro', close: true }],
       ['mike', 'ふあ〜、よく寝た……って、あれ！？　あの子がいない！', { f: 'surprise', stance: { mike: 'idle', shiro: 'hipHand' }, g: 'recoil', look: { all: 'flower' } }],
       ['shiro', 'ええっ！？　さっきまで、ここで寝てたのに！', { f: 'surprise', g: 'surprise' }],
-      ['n', '花の中には、綿毛がひとつ、引っかかっているだけだった。……その先に、小さな足あとが、ふらふらと続いている。', { cam: 'look:trail', dur: 6, look: { all: 'trail' } }],
+      ['n', '花の中には、綿毛がひとつ、引っかかっているだけだった。……その先に、小さな足あとが、ふらふらと続いている。', { cam: 'trail', dur: 6, look: { all: 'trail' } }],
       ['kuro', '……足あとが、右へ左へよろけている。……寝たまま、歩いているな。', { f: 'serious', g: 'point' }],
       ['mike', '寝ながら歩けるの！？　すごい！', { f: 'joy', g: 'hop' }],
       ['shiro', '感心してる場合じゃないでしょ！　ねぼけて谷に落ちたらどうするのよ！', { f: 'angry', g: 'point', to: 'mike' }],
