@@ -299,7 +299,7 @@ const WEAPONS = {
         });
         return r;
       } },
-    ult: { name: '漆黒の帳', elem: 'quantum', target: 'aoe', anim: 'curtain', desc: '敵全体に攻撃力260%の闇ダメージ。味方全体の与ダメージ+30%（2ターン）。',
+    ult: { name: '滅びの黒月', elem: 'quantum', target: 'aoe', anim: 'blackMoon', desc: '敵全体に攻撃力260%の闇ダメージ。味方全体の与ダメージ+30%（2ターン）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 2.6, 25, 'ult', { heavy: true });
         B.aliveAllies().forEach(a => B.buff(a, { key: 'maou_u', name: '余に続け', stat: 'dmg', value: 0.3, turns: 2 }));
