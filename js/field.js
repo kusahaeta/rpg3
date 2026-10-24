@@ -1862,11 +1862,13 @@ class FieldView extends BaseView {
   //   （知らせも、いちばん先に灯した水晶のぶんだけ出す）
   updateSealTimers(d) {
     const flags = Save.data.flags;
+    let show = null;
     for (const o of this.sealObjs || []) {
       const S = o.S; if (!S.hold || o.open) continue;
       const lit = o.lamps.filter(L => L.lit && L.left > 0); if (!lit.length) continue;
       lit.forEach(L => { L.left -= d; flags[S.id + '_t' + L.i] = Math.max(0, L.left); });
       const first = lit.reduce((a, b) => (b.left < a.left ? b : a));
+      if (first.left > 0 && (!show || first.left < show.left)) show = { left: first.left, n: o.lamps.filter(L => L.lit).length, of: o.lamps.length };
       // 30・20・10・5 秒をこえるたびに知らせる（戦闘から戻ったときも、残りの秒をそのまま出す）
       const mark = [30, 20, 10, 5].filter(v => first.left <= v).pop();
       if (mark && mark !== o.warned) { o.warned = mark; this.toast(`光の水晶の光が消えるまで、あと ${Math.ceil(first.left)} びょう！`); Sfx.tone(660, 0.08, 'square', 0.03); }
@@ -1875,6 +1877,18 @@ class FieldView extends BaseView {
       o.warned = 0; Save.save();
       Sfx.tone(300, 0.6, 'sine', 0.06, -200); this.toast(S.fadeToast || '……光の水晶の光が、影に食べられて消えてしまった。はじめから灯しなおそう');
     }
+    this.showSealTimer(show);
+  }
+  // 灯りの残り時間を、画面の上にずっと出しておく（灯した数と、残りの秒。10 秒を切ると赤くちらつく）
+  showSealTimer(s) {
+    const el = this.root && this.root.querySelector('.fd-timer'); if (!el) return;
+    const sec = s ? Math.ceil(s.left) : 0, key = s ? `${sec}/${s.n}/${s.of}` : '';
+    if (key === this.sealTimerKey) return;
+    this.sealTimerKey = key;
+    el.classList.toggle('hidden', !s);
+    if (!s) return;
+    el.classList.toggle('low', sec <= 10);
+    el.innerHTML = `<small>光の水晶 ${s.n}/${s.of}</small>あと <b>${sec}</b> びょう`;
   }
   // わざの仕掛け：S.who の子が先頭でなければ、先頭の子のひとことと手がかり（1〜4で交代）
   featReady(S) {
@@ -2568,6 +2582,7 @@ class FieldView extends BaseView {
       <div class="fd-wipe"></div>
       <div class="fd-flash"></div>
       <div class="fd-nap hidden"></div>
+      <div class="fd-timer hidden"></div>
       <div class="fd-help">WASD 移動 ／ ドラッグ 視点 ／ ホイール ズーム ／ F 調べる・話す ／ 1〜4 先頭の子を交代</div>
       <div class="overlay hidden"></div>`;
     this.root = r;

@@ -516,6 +516,15 @@ kbd { display: inline-block; font-family: inherit; font-size: 11px; background: 
 .fd-nap.watch { background: rgba(150, 24, 70, .62); }
 .fd-nap b { color: #ff7aa8; }
 .fd-nap em { font-style: normal; font-size: 24px; letter-spacing: .05em; color: #ffd27a; }
+/* 黒影洞窟・地底湖：光の水晶が消えるまでの残り時間（灯しているあいだ、ずっと出す） */
+.fd-timer { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 3; pointer-events: none; padding: 4px 22px 5px; border-radius: 999px; white-space: nowrap;
+  background: rgba(16, 20, 50, .66); border: 1px solid rgba(160, 220, 255, .55); box-shadow: 0 0 14px rgba(120, 200, 255, .35); color: #e6f6ff; font-size: 16px; text-shadow: 0 2px 4px #000; transition: opacity .3s; }
+.fd-timer small { margin-right: 12px; font-size: 12px; letter-spacing: .08em; color: #9adcff; }
+.fd-timer b { display: inline-block; min-width: 1.4em; text-align: center; font-size: 24px; color: #cfefff; font-variant-numeric: tabular-nums; }
+.fd-timer.hidden { opacity: 0; }
+.fd-timer.low { border-color: #ff6a7a; box-shadow: 0 0 16px rgba(255, 70, 90, .55); animation: fdTimerLow .5s ease-in-out infinite alternate; }
+.fd-timer.low b { color: #ff9aa6; }
+@keyframes fdTimerLow { to { background: rgba(80, 14, 30, .72); } }
 @keyframes wipe { 0% { opacity: 0; } 40% { opacity: .2; } 100% { opacity: 1; background: #05060f; } }
 .fd-help { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); font-size: 11px; color: rgba(255, 255, 255, .45); white-space: nowrap; }
 .field-select { background: rgba(6, 8, 20, .5); padding: 70px 60px 0; }
