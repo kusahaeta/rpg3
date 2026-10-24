@@ -2,6 +2,9 @@
 // ============================================================
 //  3Dビュー：ショーケース（キャラ）／ワープ／バトル
 // ============================================================
+// 深度を書かない半透明（シールド・足もとの印など）の描く順。戦闘の背景は区画の地形なので、
+// 土の道や水たまりの塗り（renderOrder 1〜2）、滝の幕（〜5）より後に描かないと塗りで上書きされる
+const OVER_PAINT = 6;
 class BaseView {
   constructor(theme, fov = 38, envOpts = {}) {
     this.scene = new THREE.Scene();
@@ -190,7 +193,7 @@ class BattleView extends BaseView {
   }
   makeMark() {
     const mat = new THREE.MeshBasicMaterial({ color: hdr('#e8c77a', 3), transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
-    const m = new THREE.Mesh(this.markGeo, mat); m.rotation.x = -Math.PI / 2; m.position.y = 0.03; this.scene.add(m);
+    const m = new THREE.Mesh(this.markGeo, mat); m.rotation.x = -Math.PI / 2; m.position.y = 0.03; m.renderOrder = OVER_PAINT; this.scene.add(m);
     return m;
   }
   layoutEnemies(list) {
@@ -688,7 +691,7 @@ class BattleView extends BaseView {
     if (!e.p2 && !e.p2go) return;   // 形態変化の演出で「解放」されてから
     if (!e.p2) {
       const root = new THREE.Group(); this.scene.add(root);
-      const g = new THREE.Group(); g.position.set(e.home.x, 0, e.home.z); root.add(g);
+      const g = new THREE.Group(); g.position.set(e.home.x, 0, e.home.z); g.renderOrder = OVER_PAINT; root.add(g);
       const addMat = (c, k, o) => new THREE.MeshBasicMaterial({ color: hdr(c, k), map: runeTex(), transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
       const big = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), addMat(col, 1.6, 0.85)); big.rotation.x = -Math.PI / 2; big.position.y = 0.05; g.add(big);
       const small = new THREE.Mesh(new THREE.PlaneGeometry(6.5, 6.5), addMat(S.sub, 1.4, 0.7)); small.rotation.x = -Math.PI / 2; small.position.y = 0.07; g.add(small);
@@ -978,7 +981,7 @@ class BattleView extends BaseView {
   }
   zSprite() {
     if (!TexCache.zzz) { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.font = '800 48px sans-serif'; g.fillStyle = '#ffffff'; g.strokeStyle = '#6a8aff'; g.lineWidth = 6; g.textAlign = 'center'; g.textBaseline = 'middle'; g.strokeText('Z', 32, 34); g.fillText('Z', 32, 34); TexCache.zzz = new THREE.CanvasTexture(c); }
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TexCache.zzz, transparent: true, depthWrite: false })); sp.scale.setScalar(0.3); return sp;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TexCache.zzz, transparent: true, depthWrite: false })); sp.scale.setScalar(0.3); sp.renderOrder = OVER_PAINT; return sp;
   }
   // コンボ：ふたり（みんな）が並んで光る
   async comboIntro(mem, c) {
@@ -1140,7 +1143,7 @@ class BattleView extends BaseView {
       // 凍結
       if (u.frozen && u.alive && !e.ice) {
         e.ice = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ color: '#bfefff', emissive: '#4ab8ff', emissiveIntensity: 0.6, transparent: true, opacity: 0.45, roughness: 0.05, metalness: 0.2, flatShading: true, depthWrite: false }));
-        e.ice.scale.set(m.radius * 1.2, m.height * 0.6, m.radius * 1.0); this.scene.add(e.ice);
+        e.ice.scale.set(m.radius * 1.2, m.height * 0.6, m.radius * 1.0); e.ice.renderOrder = OVER_PAINT; this.scene.add(e.ice);
         this.fx.shards(this.hitPoint(u), '#9fe6ff', 10, 3);
       }
       if (e.ice) {
@@ -1167,7 +1170,7 @@ class BattleView extends BaseView {
             fragmentShader: 'uniform vec3 c; uniform float time; varying vec3 vN; varying vec3 vV; varying vec3 vP; void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 2.5); float hex = step(0.92, fract(vP.y * 10.0 + time * 0.5)) * 0.3; gl_FragColor = vec4(c * (f + hex * f), 1.0); }',
             blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
           }));
-          e.bubble.scale.set(0.62, 0.72, 0.62); this.scene.add(e.bubble);
+          e.bubble.scale.set(0.62, 0.72, 0.62); e.bubble.renderOrder = OVER_PAINT; this.scene.add(e.bubble);
         }
         if (e.bubble) {
           e.bubble.position.set(m.group.position.x, 0.6, m.group.position.z);
