@@ -1188,7 +1188,7 @@ const MOVES = {
       await GFX.delay(0.55);
     },
   },
-  // 三つののろい：横から。笏の先から、顔のある三つの人魂（炎・雷・裂）が一つずつ出て、マオウのまわりを回り、
+  // 三つののろい：マオウの肩ごしに。笏の先から、三つののろいの火の玉（炎・雷・裂）が一つずつ出て、マオウのまわりを回り、
   //   順に敵へ飛びこんで、それぞれのしるしをつける
   curse3: {
     async attack(e, ts, c) {
@@ -1202,7 +1202,7 @@ const MOVES = {
       Sfx.tone(700, 0.08, 'square', 0.03, 200); Sfx.tone(760, 0.08, 'square', 0.03, 200, 0.12); Sfx.tone(820, 0.08, 'square', 0.03, 200, 0.24);
       const kinds = [['#ff6a3c'], ['#ffd23c'], ['#e83a5a']], to = this.hitPoint(t.u), head = this.headPos(e).add(V3(0, 0.45, 0));
       const tip = m.tipPos(), APPEAR = 0.12, ORBIT = 0.8, GAP = 0.14, FLY = 0.32, D = ORBIT + GAP * 2 + FLY + 0.05;
-      const wisps = kinds.map(([col]) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.curseWispTex(col), transparent: true, depthWrite: false })); s.renderOrder = 13; s.scale.set(0.01, 0.01, 1); return s; });
+      const wisps = kinds.map(([col]) => { const f = this.curseFlame(col); f.scale.setScalar(0.01); return f; });
       const done = kinds.map(() => false), g = new THREE.Group(); wisps.forEach(s => g.add(s));
       this.fx.add(g, D + 0.1, null);
       const P = V3();
@@ -1230,9 +1230,8 @@ const MOVES = {
           }
           if (!done[i]) {
             w.position.copy(P);
-            const fl = 1 + Math.sin(s * 30 + i) * 0.08;
-            w.scale.set(0.42, 0.62 * fl, 1).multiplyScalar(Math.min(1, (s - t0) / 0.12));
-            if (Math.random() < 0.6) this.p.emit(P, V3(0, 0.4, 0), hdr(kinds[i][0], 2), { life: 0.35, size: 0.1 });
+            w.scale.setScalar(Math.max(0.01, Math.min(1, (s - t0) / 0.12)) * (1 + Math.sin(s * 30 + i) * 0.1));
+            this.flameTrail(P, kinds[i][0]);
           }
         });
       }, Ease.linear);
@@ -1240,7 +1239,7 @@ const MOVES = {
       if (m.face) GFX.delay(0.4).then(() => { if (m.face.expr === 'smug') m.face.set(was || 'neutral'); });
     },
   },
-  // のろい返し：「ククク…」と笑って笏をかかげると、敵の上にのろいの紋。三つの人魂が敵のまわりをめぐって飛びこみ、
+  // のろい返し：肩をゆらして笑い、笏をかかげると、敵の上にのろいの紋。三つの火の玉が敵のまわりをめぐって飛びこみ、
   //   紋から緑の稲妻が落ちる（このあと、持続ダメージがその場でもう一度はじける）
   curseBack: {
     async attack(e, ts, c) {
@@ -1262,16 +1261,17 @@ const MOVES = {
       this.fx.add(sig, 1.9, (k, o, dt) => { sig.rotation.z += dt * 1.5; sig.scale.setScalar(R * Ease.back(Math.min(1, k * 4))); sig.material.opacity = k > 0.8 ? (1 - k) / 0.2 : 1; });
       Sfx.tone(110, 1.0, 'sawtooth', 0.05, 40);
       await GFX.delay(0.3);
-      // 三つの人魂が、敵のまわりをめぐって飛びこむ
+      // 三つの火の玉が、敵のまわりをめぐって飛びこむ
       const kinds = ['#ff6a3c', '#ffd23c', '#e83a5a'];
       for (const t of ts) {
         const hp = this.hitPoint(t.u), r0 = t.model.radius + 0.6;
         kinds.forEach((col, i) => {
-          const w = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.curseWispTex(col), transparent: true, depthWrite: false })); w.renderOrder = 13;
+          const w = this.curseFlame(col, 1.5);
           this.fx.add(w, 0.7, k => {
             const a = k * 9 + i * 2.1, r = r0 * (1 - Ease.in(k));
             w.position.set(hp.x + Math.cos(a) * r, hp.y + 0.3 * (1 - k), hp.z + Math.sin(a) * r * 0.6);
-            w.scale.set(0.4, 0.58, 1); w.visible = k < 0.97;
+            w.visible = k < 0.97;
+            if (w.visible) this.flameTrail(w.position, col);
           });
         });
       }
@@ -2386,20 +2386,18 @@ Object.assign(BattleView.prototype, {
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     return (TexCache.maouShadow = t);
   },
-  // のろいの人魂：しずくの形の火に、黒い目と口
-  curseWispTex(col) {
-    const key = 'curseWisp' + col;
-    if (TexCache[key]) return TexCache[key];
-    const c = document.createElement('canvas'); c.width = 64; c.height = 96;
-    const g = c.getContext('2d');
-    const gr = g.createRadialGradient(32, 64, 4, 32, 58, 36); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.45, col); gr.addColorStop(1, col);
-    g.fillStyle = gr; g.beginPath(); g.moveTo(32, 4); g.bezierCurveTo(40, 28, 58, 40, 58, 64); g.arc(32, 64, 26, 0, Math.PI); g.bezierCurveTo(6, 44, 22, 32, 32, 4); g.closePath(); g.fill();
-    g.lineWidth = 3; g.strokeStyle = 'rgba(30,10,30,0.55)'; g.stroke();
-    g.fillStyle = '#1a0f24';
-    for (const x of [23, 41]) { g.beginPath(); g.ellipse(x, 64, 4, 6, 0, 0, Math.PI * 2); g.fill(); }
-    g.beginPath(); g.arc(32, 75, 5, 0, Math.PI); g.fill();
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-    return (TexCache[key] = t);
+  // のろいの火の玉：その色に光る芯と、まわりのにじみ（size：大きさ）。尾は flameTrail で毎コマ足す
+  curseFlame(col, size = 1) {
+    const g = new THREE.Group();
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.09 * size, 14, 10), new THREE.MeshBasicMaterial({ color: hdr(col, 1.8) })); core.renderOrder = 12; g.add(core);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 2.6), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+    glow.scale.setScalar(0.42 * size); glow.renderOrder = 12; g.add(glow);
+    return g;
+  },
+  // 火の玉の尾：上へゆらめいて消える炎の粒と、ときどき白い火の粉
+  flameTrail(p, col) {
+    for (let i = 0; i < 2; i++) this.p.emit(p.clone().add(V3((Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.1)), V3((Math.random() - 0.5) * 0.4, 0.8 + Math.random() * 0.6, (Math.random() - 0.5) * 0.4), hdr(col, 2.4), { life: 0.4, size: 0.16, drag: 2 });
+    if (Math.random() < 0.3) this.p.emit(p, V3((Math.random() - 0.5) * 1.2, 0.6 + Math.random(), (Math.random() - 0.5) * 1.2), hdr('#ffffff', 2), { life: 0.3, size: 0.06, drag: 2 });
   },
   // のろいの紋（のろい返し）：二重の円に、ルーンと五芒星と目（白で描いて、色はマテリアルでつける）
   curseSigilTex() {
