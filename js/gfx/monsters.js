@@ -583,6 +583,7 @@ function enemyModel(root, inner, mats, key, d, o) {
     brokenAmt: 0, isBoss: !!d.boss, critter: o.critter || null, float: o.float || 0,   // float：ふわふわ浮く幅（体の中心は 0.1 の高さ）
     update(dt, t) {
       inner.position.y = o.float ? 0.1 + Math.sin(t * 1.8 + this.seed) * o.float : inner.position.y;
+      if (o.critter) o.critter.still = this.still;   // 猫の姿の敵：凍結中はまばたき・耳も止める
       if (o.update) o.update(dt, t);
       // 撃破状態：ふらふらする
       inner.rotation.x = -this.brokenAmt * 0.25;
