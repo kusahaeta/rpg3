@@ -893,8 +893,9 @@ const SCENES = {
     // box：箱を一行のうしろから（飛び出す顔まで入るよう、引いて見上げる）。jack：わきへ跳びのいたあとの箱
     stage: { zone: 'tower_2f', at: [0, 32], face: 180, voices: { bikkuri: 'box' }, points: { box: [0, 2.6, 7], jack: [3.9, 3.0, 3.4] },
       shots: { box: { pos: [-1.5, 1.9, -3.2], look: [0, 3.0, 7] }, jack: { pos: [-1.8, 2.2, -3.8], look: [3.6, 3.4, 3.4] },
-        // props：前から一行（ふとんを持つ・敷く・かぶる）。futon：床に置いたふとん。can：アルミ缶（足もとの小物は会話ウィンドウにかくれないよう、缶にねらいを定める）
-        props: { pos: [1.2, 1.6, 4.6], look: [-0.2, 0.5, 0.9] }, futon: { pos: [0.6, 1.9, 4.6], look: [-0.6, 0.3, 2.1] }, can: { pos: [1.6, 1.9, 4.6], look: [0.4, 0.3, 2.2] } } },
+        // props：前から一行（ふとんをかつぐ・かぶる。かぶった頭のてっぺんまで入るよう、少し高く）。futon：床に置いたふとん。bed：ふとんの上で眠るタマと、横から引っぱるミケ（ミケは、ふとんをよけてまっすぐ歩ける側に立つ）。
+        //   can：アルミ缶（足もとの小物は会話ウィンドウにかくれないよう、缶にねらいを定める）
+        props: { pos: [0.9, 1.85, 4.7], look: [-0.3, 0.8, 0.9] }, futon: { pos: [0.6, 2.4, 4.7], look: [-0.6, 0.05, 2.6] }, bed: { pos: [-3.4, 1.7, 4.6], look: [-0.5, 0.25, 2.0] }, can: { pos: [1.6, 1.9, 4.6], look: [0.4, 0.3, 2.2] } } },
     lines: [
       ['n', '南の上り階段の口を、大きなびっくり箱がふさいでいた。「びっくり！」の札が、しょんぼりと傾いている。', { cam: 'box', dur: 7, look: { all: 'box' } }],
       ['mike', 'これ、びっくり箱？　開けたら、ばあって出てくるやつ？', { f: 'neutral', g: 'tilt' }],
@@ -918,8 +919,8 @@ const SCENES = {
           ['kuro', '……ふとんは、一ミリも動いていない。', { f: 'serious' }],
         ], { f: 'joy', g: 'cheer', miss: true }],
         ['タマ、そのふとんで寝てて！', [
-          ['tama', '……ねる……。', { stance: { tama: 'sleep' }, fx: ['item:futon,bed,tama', 'zzz:tama'], cam: 'props', dur: 5 }],
-          ['mike', 'よーし、ふとんよ、ふっとべー！　……あれ？　ぬけない！', { f: 'pained', g: 'reach', to: 'tama', move: { mike: [-1.5, 0.5] }, fx: 'item:futon,tug', cam: 'props', dur: 5 }],
+          ['tama', '……ねる……。', { stance: { tama: 'sleep' }, fx: ['item:futon,bed,tama', 'zzz:tama'], cam: 'bed', dur: 5 }],
+          ['mike', 'よーし、ふとんよ、ふっとべー！　……あれ？　ぬけない！', { f: 'pained', g: 'reach', to: 'tama', move: { mike: [1.0, 2.9] }, fx: 'item:futon,tug,mike', cam: 'bed', dur: 5 }],
           ['tama', '……むにゃ……あと、ごふん……。', { f: 'sleepy' }],
           ['bikkuri', '……ふとん、ふっとばないね。……ねこが、ねむっただけ。'],
           ['shiro', 'もう、タマ！　起きなさい！', { f: 'angry', g: 'point', stance: { tama: 'idle' }, move: { mike: [0, 0] }, fx: 'item:futon,back' }],

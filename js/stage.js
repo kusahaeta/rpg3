@@ -140,7 +140,7 @@ class Actor {
   }
   lookPoint() {
     const t = this.look;
-    if (!t) return null;
+    if (!t || this.faceLock != null) return null;   // 向きを決められているあいだ（ふとんで眠っている）は、話し手を見ない
     if (t instanceof THREE.Vector3) return t;
     const a = this.v.actors[t]; return a && a.visible() ? a.headPos() : null;
   }
@@ -161,7 +161,7 @@ class Actor {
     }
     // 向き：向き先へ体を回し、見ている相手へ少しだけ体をひねる
     if (!moving) {
-      let yaw = this.targetYaw(this.faceT);
+      let yaw = this.targetYaw(this.faceLock ?? this.faceT);   // faceLock：小道具が決めた向き（ふとんで眠っているあいだ）。話し相手より強く、話し手も見ない
       const lp = this.lookPoint();
       if (lp) { const dy = ((Math.atan2(lp.x - this.pos.x, lp.z - this.pos.z) - yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; yaw += clamp(dy * 0.35, -0.5, 0.5); }
       this.yaw = lerpAngle(this.yaw, yaw, 1 - Math.exp(-5 * dt));
@@ -862,41 +862,179 @@ class TrapezeRig {
 
 // ---------- 動く小道具（台本の fx 'item:名前,動き,引数…'。名前ごとに一つ。はじめて使うときに作る） ----------
 //   futon（ふとん）：show,右,前（床に置く）／lift,役（頭の上にかかげる）／throw,役（放り投げて、その役の頭にばさっとかぶさる）／
-//                    bed,役（その役の下に敷く）／tug（ゆさゆさ引っぱられる）／back（床の元の場所へ）／hide
+//                    bed,役（その役が、ふとんの上にぴょんと移って、すわって眠る）／tug,役（その役のほうへ、ゆさゆさ引っぱられる）／
+//                    back（眠っていた役は元の場所へ、かけぶとんは床へ）／hide
 //   can（アルミ缶）：show,右,前（床に立てる）／stand,役（その役が、ぴょんと缶の上にのる）／crush（べこっとつぶれる）／
 //                    slice（輪切りになって、ころころ並ぶ）／fish（魚が一ぴき、上にぽとっとのる）／reset（新しい缶。のっていた役は元の場所へ）／hide
 const STAGE_ITEMS = {
+  // 白い敷きぶとん・水色のまくら・ピンクのかけぶとん。かけぶとんは、ふっくら綿の入った一枚の布（格子の頂点）で、場面ごとに形を変える：
+  //   床（頭の側を折り返して敷く）／寝床（すわって眠る子のひざにかかる）／かかげる（頭の上で、左右にたれる）／
+  //   飛ぶ（ひろがって波打つ）／かぶさる（頭からすっぽり、顔がかくれるところまで。四すみが少し長くたれる）
   futon(v) {
-    const g = new THREE.Group(); g.visible = false; v.scene.add(g);
-    const flat = new THREE.Group(); g.add(flat);
-    const pink = toon('#ff9ab8'), white = toon('#fff4f0');
-    const q = new THREE.Mesh(new THREEX.RoundedBoxGeometry(1.3, 0.12, 0.95, 2, 0.05), pink); q.position.y = 0.06; q.castShadow = true; flat.add(q);
-    for (const x of [-0.4, 0, 0.4]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.125, 0.96), white); st.position.set(x, 0.06, 0); flat.add(st); }
-    const pil = new THREE.Mesh(new THREEX.RoundedBoxGeometry(0.42, 0.12, 0.3, 2, 0.05), white); pil.position.set(-0.42, 0.16, 0); flat.add(pil);
-    // 頭にかぶさった形：頭をすっぽりおおう、ふくらんだおわん（どの向きから見ても顔がかくれる）。すそは少し波打つ
-    const dg = new THREE.SphereGeometry(0.62, 22, 12, 0, Math.PI * 2, 0, 2.0), dp = dg.attributes.position;
-    for (let i = 0; i < dp.count; i++) { const x = dp.getX(i), z = dp.getZ(i), y = dp.getY(i); if (y < 0) dp.setY(i, y + Math.sin(Math.atan2(z, x) * 5) * 0.05); }
-    dg.computeVertexNormals();
-    const dr = new THREE.Mesh(dg, new THREE.MeshToonMaterial({ color: '#ff9ab8', side: THREE.DoubleSide })); dr.scale.set(1, 1.05, 1); dr.visible = false; dr.castShadow = true; g.add(dr);
-    for (const x of [-0.25, 0.25]) { const st = new THREE.Mesh(new THREE.TorusGeometry(Math.sqrt(0.62 * 0.62 - x * x) + 0.005, 0.022, 6, 24, Math.PI), white); st.rotation.y = Math.PI / 2; st.position.x = x; dr.add(st); }   // しま模様（おわんの面にそって）
+    const g = new THREE.Group(); g.visible = false; v.scene.add(g);   // 床に置くひとそろい（敷きぶとんの長さが x。まくらは -x の端）
+    const ML = 2.0, MW = 1.25, MH = 0.11;
+    const mat = new THREE.Mesh(new THREEX.RoundedBoxGeometry(ML, MH, MW, 3, 0.045), toon('#fffaf2')); mat.position.y = MH / 2; mat.castShadow = mat.receiveShadow = true; g.add(mat);
+    const pil = new THREE.Mesh(new THREEX.RoundedBoxGeometry(0.34, 0.15, 0.62, 3, 0.07), toon('#a8d8f0')); pil.position.set(-ML / 2 + 0.25, MH + 0.07, 0); pil.castShadow = true; g.add(pil);
+    // かけぶとん：長さ L（x）・幅 W（z）。中面 M を姿勢ごとに決め、その法線の向きに、綿の厚みの半分ずつ表と裏をふくらませる
+    const L = 1.7, W = 1.5, T = 0.13, NU = 30, NV = 26, N = (NU + 1) * (NV + 1);
+    const CX = new Float32Array(N), CZ = new Float32Array(N), TH = new Float32Array(N);
+    const near = (x, ss) => Math.min(...ss.map(s => Math.abs(x - s)));
+    for (let j = 0; j <= NV; j++) for (let i = 0; i <= NU; i++) {
+      const k = j * (NU + 1) + i, cx = (i / NU - 0.5) * L, cz = (j / NV - 0.5) * W; CX[k] = cx; CZ[k] = cz;
+      // ふちへ向かって薄く、とじ糸（縦に 3 本・横に 2 本）のところでへこむ
+      const de = Math.min(L / 2 - Math.abs(cx), W / 2 - Math.abs(cz)), st = Math.min(near(cx, [-L / 4, 0, L / 4]), near(cz, [-W / 6, W / 6]));
+      TH[k] = T * Math.sqrt(Math.min(1, de / 0.09)) * (1 - 0.45 * Math.exp(-((st / 0.035) ** 2)));
+    }
+    const geo = new THREE.BufferGeometry(), pos = new Float32Array(N * 6), uv = new Float32Array(N * 4), idx = [];
+    for (let k = 0; k < N; k++) { const u = (CX[k] / L + 0.5), w = (CZ[k] / W + 0.5); uv.set([u, w], k * 2); uv.set([u, w], (N + k) * 2); }
+    for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) { const a = j * (NU + 1) + i, b = a + 1, c = a + NU + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
+    const nTop = idx.length; for (let n = 0; n < nTop; n += 3) idx.push(N + idx[n], N + idx[n + 2], N + idx[n + 1]);
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx);
+    geo.addGroup(0, nTop, 0); geo.addGroup(nTop, nTop, 1);
+    // 表の柄：ピンクに白い小花、とじ糸の点線、白いふち
+    const tex = (() => {
+      const c = document.createElement('canvas'); c.width = 512; c.height = 452; const x = c.getContext('2d');
+      x.fillStyle = '#ff9ab8'; x.fillRect(0, 0, 512, 452);
+      let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+      for (let gy = 0; gy < 6; gy++) for (let gx = 0; gx < 7; gx++) {
+        const px = (gx + 0.5 + (gy % 2) * 0.5) * 512 / 7 + (rnd() - 0.5) * 18, py = (gy + 0.5) * 452 / 6 + (rnd() - 0.5) * 18, r = 9 + rnd() * 4, a0 = rnd() * 6;
+        x.fillStyle = '#fff6fa'; for (let p = 0; p < 5; p++) { x.beginPath(); x.arc(px + Math.cos(a0 + p * 1.2566) * r * 0.62, py + Math.sin(a0 + p * 1.2566) * r * 0.62, r * 0.5, 0, Math.PI * 2); x.fill(); }
+        x.fillStyle = '#ffd27a'; x.beginPath(); x.arc(px, py, r * 0.3, 0, Math.PI * 2); x.fill();
+      }
+      x.strokeStyle = '#e8709a'; x.lineWidth = 3; x.setLineDash([10, 8]); x.beginPath();
+      for (const u of [0.25, 0.5, 0.75]) { x.moveTo(u * 512, 0); x.lineTo(u * 512, 452); }
+      for (const w of [1 / 3, 2 / 3]) { x.moveTo(0, w * 452); x.lineTo(512, w * 452); }
+      x.stroke(); x.setLineDash([]); x.strokeStyle = '#fff4f0'; x.lineWidth = 16; x.strokeRect(0, 0, 512, 452);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+    })();
+    const qm = new THREE.Mesh(geo, [toon('#ffffff', { map: tex }), toon('#ffe4ec')]); qm.castShadow = true; qm.receiveShadow = true;
+    const q = new THREE.Group(); q.add(qm); g.add(q);
+    const M = new Float32Array(N * 3), F = new Float32Array(N * 3), G = new Float32Array(N * 3), o = V3();
+    let thk = 1;
+    const build = () => {
+      const S = NU + 1;
+      for (let j = 0; j <= NV; j++) for (let i = 0; i <= NU; i++) {
+        const k = j * S + i, a = (j * S + Math.min(NU, i + 1)) * 3, b = (j * S + Math.max(0, i - 1)) * 3, c = (Math.min(NV, j + 1) * S + i) * 3, d = (Math.max(0, j - 1) * S + i) * 3;
+        const ax = M[a] - M[b], ay = M[a + 1] - M[b + 1], az = M[a + 2] - M[b + 2], bx = M[c] - M[d], by = M[c + 1] - M[d + 1], bz = M[c + 2] - M[d + 2];
+        let nx = by * az - bz * ay, ny = bz * ax - bx * az, nz = bx * ay - by * ax; const nl = Math.hypot(nx, ny, nz) || 1, h = TH[k] * thk / 2 / nl; nx *= h; ny *= h; nz *= h;
+        pos[k * 3] = M[k * 3] + nx; pos[k * 3 + 1] = M[k * 3 + 1] + ny; pos[k * 3 + 2] = M[k * 3 + 2] + nz;
+        pos[(N + k) * 3] = M[k * 3] - nx; pos[(N + k) * 3 + 1] = M[k * 3 + 1] - ny; pos[(N + k) * 3 + 2] = M[k * 3 + 2] - nz;
+      }
+      geo.attributes.position.needsUpdate = true; geo.computeVertexNormals(); geo.computeBoundingSphere();
+    };
+    const fill = (fn, A, e) => { for (let k = 0; k < N; k++) { fn(CX[k], CZ[k], o, e); A[k * 3] = o.x; A[k * 3 + 1] = o.y; A[k * 3 + 2] = o.z; } };
+    // 形を変える：fn(cx, cz, out, e) の形へ、dur 秒で。each(e) で、置き場所も同時に動かす。あとから始めた形がえが勝つ
+    let tok = 0;
+    const shape = fn => { tok++; fill(fn, M, 1); build(); };
+    const morph = (dur, fn, ease, each) => {
+      const my = ++tok; F.set(M);
+      return GFX.tween(dur, e => { if (my !== tok) return; fill(fn, G, e); for (let n = 0; n < N * 3; n++) M[n] = F[n] + (G[n] - F[n]) * e; if (each) each(e); build(); }, ease);
+    };
+    // ふちからはみ出したぶん e が、丸くまわって下へたれ、床についたら床にそってひろがる：[外へ, 下へ]
+    const over = (e, H) => { const R = 0.05, a = R * Math.PI / 2; let out, drop; if (e <= 0) return [e, 0]; if (e < a) { out = R * Math.sin(e / R); drop = R * (1 - Math.cos(e / R)); } else { out = R; drop = R + e - a; } if (drop > H) { out += drop - H; drop = H; } return [out, drop]; };
+    const onBed = (x, z, y) => {
+      let dx = 0, dz = 0; if (x > ML / 2) { const [ou, dr] = over(x - ML / 2, MH); x = ML / 2 + ou; dx = dr; }
+      if (Math.abs(z) > MW / 2) { const [ou, dr] = over(Math.abs(z) - MW / 2, MH); z = Math.sign(z) * (MW / 2 + ou); dz = dr; }
+      return o.set(x, Math.max(0.05, y - dx - dz), z);
+    };
+    const BY = MH + 0.05, FOLD = -0.55, FR = 0.07, SX = -0.36;
+    const POSE = {
+      // 床：足の側へずらして敷き、頭の側を、くるっと折り返す
+      floor(cx, cz) {
+        let x = 0.3 + cx, y = BY;
+        if (cx < FOLD) { const s = FOLD - cx, a = Math.PI * FR, xf = 0.3 + FOLD; if (s < a) { x = xf - FR * Math.sin(s / FR); y += FR * (1 - Math.cos(s / FR)); } else { x = xf + s - a; y += 2 * FR; } }
+        return onBed(x, cz, y);
+      },
+      // 寝床：まくらの前にすわって眠る子（x = SX）の、おなかまで引き上げて、ひざの上でこんもり
+      bed(cx, cz) {
+        const x = cx + 0.45 + SX + 0.42, r2 = ((x - SX) / 0.55) ** 2 + (cz / 0.5) ** 2;
+        return onBed(x, cz, BY + (r2 < 1 ? 0.32 * (1 - r2) ** 2 : 0));
+      },
+      // かかげる：くるくる巻いて、丸太のように頭の上にかつぐ（巻きの軸は左右。柄の面が外に出る）
+      held(cx, cz) {
+        const sp = L / 2 + cx, P = T, r0 = 0.05, th = (-r0 + Math.sqrt(r0 * r0 + P * sp / Math.PI)) / (P / (2 * Math.PI)), r = r0 + P * th / (2 * Math.PI);
+        return o.set(cz * 0.95, r * Math.sin(th), r * Math.cos(th));
+      },
+      // 飛ぶ：ひろがって、ふちが風であおられる
+      fly(cx, cz, out, e) { const r2 = (cx / (L / 2)) ** 2 + (cz / (W / 2)) ** 2; return o.set(cx * 0.95, r2 * (0.22 + Math.sin(cx * 5 + e * 14) * 0.06) + Math.sin(cz * 6 - e * 10) * 0.03, cz * 0.95); },
+      // かぶさる：頭（帽子もふくめて）のまるい山にそって、肩から下は、すそが少しひろがってたれる（D は頭の大きさ。throw で測る）
+      drape(cx, cz) {
+        const d = Math.hypot(cx, cz), ang = Math.atan2(cz, cx), c = Math.abs(Math.cos(ang)), sn = Math.abs(Math.sin(ang));
+        const dE = Math.min(c > 1e-4 ? L / 2 / c : 1e9, sn > 1e-4 ? W / 2 / sn : 1e9);
+        const s = d / dE * (D.arc + D.yS - D.yH + 0.55 * (dE - W / 2));   // ふちはどこも顔の下まで、すみはもう少し長く
+        let r, y;
+        if (s < D.arc) { const p = s / D.arc * Math.PI / 2; r = D.R * Math.sin(p); y = D.yS + (D.yT - D.yS) * Math.cos(p); }
+        else { const h = s - D.arc; r = D.R + 0.06 * h + Math.sin(ang * 6) * 0.045 * Math.min(1, h * 3); y = D.yS - h; }
+        if (y < D.yF) { r += D.yF - y; y = D.yF; }
+        return o.set(Math.cos(ang) * r, y, Math.sin(ang) * r);
+      },
+    };
+    let D = null;
+    const IDQ = new THREE.Quaternion();
+    // かけぶとんを、ひとそろいの上（床の形）へもどす
+    const home = () => { g.add(q); q.position.set(0, 0, 0); q.quaternion.identity(); q.scale.set(1, 1, 1); q.visible = true; thk = 1; shape(POSE.floor); };
+    home();
     const it = { g, home: null,
-      put(p, yaw = 0) { v.scene.attach(g); g.position.copy(p); g.rotation.set(0, yaw, 0); g.scale.set(1, 1, 1); flat.visible = true; dr.visible = false; g.visible = true; },
+      put(p, yaw = 0) { v.scene.attach(g); g.position.copy(p); g.rotation.set(0, yaw, 0); g.visible = true; home(); },
       show(lx, lz) { it.home = v.W(+lx, +lz); it.put(it.home, Math.PI / 2 - v.st.face * Math.PI / 180); Sfx.fluff(); },
-      back() { if (it.home) it.put(it.home, Math.PI / 2 - v.st.face * Math.PI / 180); },
-      hide() { v.scene.attach(g); g.visible = false; },
-      lift(k) { const a = v.actors[k]; if (!a) return; g.visible = true; flat.visible = true; dr.visible = false; a.m.group.attach(g); const h = a.headH / (a.m.group.scale.y || 1); GFX.tween(0.35, e => { g.position.lerp(V3(0, h + 0.45, 0.05), e); g.rotation.set(0, 0, 0); }); },
+      // もとどおり：眠っていた子は元の場所へぴょんともどり、かけぶとんは床の形へ
+      back() {
+        const a = it.sleeper; if (a) {
+          it.sleeper = null; a.faceLock = null; const p0 = a.pos.clone(), to = it.from;
+          GFX.tween(0.45, e => { a.pos.lerpVectors(p0, to, e); a.lift = MH * (1 - e) + Math.sin(e * Math.PI) * 0.4; }).then(() => { a.lift = 0; });
+        }
+        if (q.parent !== g || !g.visible) { if (it.home) it.put(it.home, Math.PI / 2 - v.st.face * Math.PI / 180); return; }
+        const p0 = q.position.clone(); morph(0.4, POSE.floor, Ease.inOut, e => { q.position.lerpVectors(p0, V3(), e); });
+      },
+      hide() { home(); g.visible = false; },
+      // 頭の上にかかげる（床から、ふわっと持ち上がって、たれる）
+      lift(k) {
+        const a = v.actors[k]; if (!a) return; g.visible = true; q.visible = true;
+        const grp = a.m.group, sc = grp.scale.y || 1; grp.updateWorldMatrix(true, true);
+        const top = (new THREE.Box3().setFromObject(a.m.headPivot).max.y - grp.getWorldPosition(V3()).y) / sc;
+        grp.attach(q); const p0 = q.position.clone(), q0 = q.quaternion.clone(), to = V3(0, top + 0.18, 0);
+        Sfx.fluff(); morph(0.45, POSE.held, Ease.inOut, e => { q.position.lerpVectors(p0, to, e); q.position.y += Math.sin(e * Math.PI) * 0.3; q.quaternion.slerpQuaternions(q0, IDQ, e); thk = 1 - 0.1 * e; });
+      },
+      // 放り投げる：ひろがってくるくる宙を舞い、その役の頭に、ばさっとかぶさる
       throw(k) {
-        const a = v.actors[k]; if (!a) return;
-        v.scene.attach(g); const from = g.position.clone(), r0 = g.rotation.y; Sfx.swing();
-        GFX.tween(0.75, e => { const to = a.headPos(); g.position.lerpVectors(from, to, e); g.position.y += Math.sin(e * Math.PI) * 1.6; g.rotation.set(Math.sin(e * Math.PI * 2) * 0.6, r0 + e * Math.PI * 2, 0); }).then(() => {
-          a.m.group.attach(g); g.position.set(0, a.headH / (a.m.group.scale.y || 1) - 0.08, 0); g.rotation.set(0, 0, 0); flat.visible = false; dr.visible = true;
-          Sfx.fluff(); GFX.tween(0.3, e => { g.scale.set(1 + Math.sin(e * Math.PI) * 0.15, 1 - Math.sin(e * Math.PI) * 0.2, 1); });
+        const a = v.actors[k]; if (!a) return; q.visible = true;
+        const P = a.m.headPivot; P.updateWorldMatrix(true, true);
+        const pw = P.getWorldPosition(V3()), box = new THREE.Box3().setFromObject(P), sz = box.getSize(V3()), ps = P.getWorldScale(V3()).y || 1;
+        // 頭の山の大きさ（頭の付け根からの高さ。傾きは見ない）：てっぺん・肩・すそ・床
+        const yT = (box.max.y - pw.y) / ps + 0.04, R = Math.min(sz.x, sz.z) / 2 / ps + 0.07, yS = yT - 0.6 * sz.y / ps, b = yT - yS;
+        D = { yT, R, yS, yH: Math.min(yS, (box.min.y - pw.y) / ps + 0.12), yF: (0.04 - pw.y) / ps, arc: Math.PI / 4 * (3 * (R + b) - Math.sqrt((3 * R + b) * (R + 3 * b))) };
+        v.scene.attach(q); const from = q.position.clone(), q0 = q.quaternion.clone(), to = V3(pw.x, box.max.y + 0.3, pw.z), qEnd = P.getWorldQuaternion(new THREE.Quaternion());
+        const spin = new THREE.Quaternion(), tilt = new THREE.Quaternion(), Y = V3(0, 1, 0), X = V3(1, 0, 0);
+        Sfx.swing();
+        morph(0.75, POSE.fly, Ease.linear, e => {
+          q.position.lerpVectors(from, to, e); q.position.y += Math.sin(e * Math.PI) * 1.6;
+          spin.setFromAxisAngle(Y, e * Math.PI * 2); tilt.setFromAxisAngle(X, Math.sin(e * Math.PI * 2) * 0.5);
+          q.quaternion.slerpQuaternions(q0, qEnd, e).premultiply(spin).multiply(tilt);
+        }).then(() => {
+          if (q.parent !== v.scene) return;   // 飛んでいるあいだに、もどされた・しまわれた
+          P.attach(q); const p1 = q.position.clone(), q1 = q.quaternion.clone(), t0 = thk;
+          Sfx.fluff();
+          morph(0.35, POSE.drape, Ease.out, e => {
+            q.position.lerpVectors(p1, V3(), e); q.quaternion.slerpQuaternions(q1, IDQ, e); thk = t0 + (0.7 - t0) * e;
+            const w = Math.sin(e * Math.PI); q.scale.set(1 + w * 0.12, 1 - w * 0.18, 1 + w * 0.12);
+          });
         });
       },
-      bed(k) { const a = v.actors[k]; if (!a) return; it.put(a.pos.clone(), a.yaw + Math.PI / 2); a.lift = 0.1; it.sleeper = a; },
-      tug() { const p0 = g.position.clone(), d = v.R.clone(); GFX.tween(1.2, e => { g.position.copy(p0).addScaledVector(d, Math.sin(e * Math.PI * 6) * 0.08 * (1 - e)); }); },
+      // その役が、ぴょんとふとんの上（まくらの前）へ移って、足の側を向いてすわり、かけぶとんがひざにかかる
+      bed(k) {
+        const a = v.actors[k]; if (!a || !g.visible) return; if (it.sleeper) return;
+        if (q.parent !== g) home();
+        const yaw = g.rotation.y + Math.PI / 2, to = g.localToWorld(V3(SX, 0, 0)), p0 = a.pos.clone(), y0 = a.yaw;
+        it.sleeper = a; it.from = p0.clone(); a.path = null; a.faceLock = yaw; Sfx.swing();
+        GFX.tween(0.5, e => { a.pos.lerpVectors(p0, to, e); a.lift = MH * e + Math.sin(e * Math.PI) * 0.5; a.yaw = lerpAngle(y0, yaw, e); }).then(() => { if (it.sleeper !== a || q.parent !== g) return; Sfx.fluff(); morph(0.5, POSE.bed, Ease.out); });
+      },
+      // ゆさゆさ：その役のほうへ引っぱられては、もどる（その役が歩いているあいだは、着くまで待つ）
+      tug(k, n = 0) {
+        const a = v.actors[k]; if (a && a.path && n < 40) { GFX.delay(0.1).then(() => it.tug(k, n + 1)); return; }
+        const d = a ? g.worldToLocal(a.pos.clone()).setY(0).normalize() : V3(1, 0, 0), p0 = q.position.clone();
+        GFX.tween(1.2, e => { q.position.copy(p0).addScaledVector(d, Math.abs(Math.sin(e * Math.PI * 5)) * 0.1 * (1 - e * 0.6)); }).then(() => { q.position.copy(p0); });
+      },
     };
-    const back0 = it.back; it.back = () => { if (it.sleeper) { it.sleeper.lift = 0; it.sleeper = null; } back0(); };
     return it;
   },
   can(v) {
