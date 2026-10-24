@@ -703,47 +703,104 @@ const MOVES = {
       GFX.shake(0.25);
     },
   },
-  // 暗黒ねこ波：笏をかかげると足もとに闇がたまり、振りおろすと、ねこの顔をした闇の大波が、口をあけて敵へ押しよせ、
-  //   とびかかって、がぶり。あとに大きな肉球のあと
+  // 暗黒ねこ波：笏をかかげると、足もとから闇がわいて地面に広がる。笏を突きたてると、闇が敵のむこうへ流れて、
+  //   ねこの頭の形をした闇の大波が立ちあがる（とがった耳が二つ、たてに細い赤い目がぎらり）。
+  //   波はふせて身がまえ、とびかかるように敵の上へくずれおちる。最後に、マオウがくっくっと笑って、ふんと鼻を鳴らす
   nekoWave: {
     async attack(e, ts, c) {
-      const m = e.model, h = e.home, cen = this.enemyCenter(), vio = c.col, ink = '#3a1850', was = m.face && m.face.expr;
+      const m = e.model, h = e.home, cen = this.enemyCenter(), vio = c.col, red = '#ff3a5a', was = m.face && m.face.expr;
+      const xs = ts.map(t => t.home.x), wide = (Math.max(...xs) - Math.min(...xs)) / 2, tall = this.enemyTall();
+      const topH = Math.max(...ts.map(t => t.model.height)), zFront = Math.max(...ts.map(t => t.home.z + t.model.radius));
+      // ① 笏をかかげると、足もとから闇がわいて、地面に広がる
       this.focus(e); this.face(e, cen);
-      this.setCam(V3(h.x + 1.5, 1.2, h.z + 2.5), V3(cen.x, 1.6, cen.z), { snap: true });
+      this.staffCam(e);
       if (m.face) m.face.set('smug');
-      await this.tweenPose(m, POSES.raise, 0.25);
-      this.fx.sprite(m.tipPos(), vio, 1.2, 0.5, { k: 3 });
-      this.smokePuffs(h.clone().add(V3(0, 0.05, 0.2)), 0.22, 12, { up: 0.6, spread: 1.6, life: 0.5, dark: 0.85 });
-      Sfx.noise(0.9, 0.08, 300); Sfx.tone(80, 0.9, 'sawtooth', 0.05, 30);
-      await GFX.delay(0.4);
-      await this.tweenPose(m, POSES.cleave, 0.1);
-      // ねこの顔をした闇の大波が、敵へ押しよせる
-      const tall = this.enemyTall();
-      Sfx.noise(1.0, 0.12, 500);
-      const cat = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.nekoWaveTex(), transparent: true, depthWrite: false })); cat.renderOrder = 12;
-      const from = V3(h.x, 1.0, h.z - 0.8), land = V3(cen.x, 1.2 + tall * 0.5, cen.z + 0.6), S0 = 1.4, S1 = 3.6 + tall * 0.8;
-      this.fx.add(cat, 1.25, k => {
-        if (k < 0.65) { const f = k / 0.65; cat.position.copy(from).lerp(land, Ease.in(f)); cat.position.y += Math.sin(f * Math.PI * 3) * 0.15 + f * 0.6; cat.scale.setScalar(S0 + (S1 - S0) * f); }
-        else { const f = (k - 0.65) / 0.35; cat.position.copy(land); cat.position.y += 0.6 + Math.sin(Math.min(1, f * 2.2) * Math.PI) * 1.2 - f * 0.9; cat.scale.setScalar(S1 * (1 + f * 0.15)); cat.material.opacity = f > 0.55 ? 1 - (f - 0.55) / 0.45 : 1; }
-        if (Math.random() < 0.8) this.p.emit(cat.position.clone().add(V3((Math.random() - 0.5) * cat.scale.x * 0.8, -cat.scale.y * 0.35, 0)), V3(0, 1.5, 0), hdr(vio, 2), { life: 0.4, size: 0.16 });
+      await this.tweenPose(m, POSES.staffUp, 0.22);
+      this.dim(1, 0.8, [0.52, 0.44, 0.64]);
+      Sfx.noise(0.9, 0.06, 300); Sfx.tone(70, 1.0, 'sawtooth', 0.05, 25);
+      const pool = this.shadowPool(h, 0.1, 2.2);
+      await this.every(0.7, 14, i => {
+        pool.scale.setScalar(0.3 + i / 13 * 1.4);
+        const a = Math.random() * Math.PI * 2, r = 0.3 + Math.random() * 1.1, q = h.clone().add(V3(Math.cos(a) * r, 0.05, Math.sin(a) * r));
+        this.p.emit(q, m.tipPos().sub(q).multiplyScalar(1 / 0.4), hdr(i % 3 ? vio : red, 2.4), { life: 0.4, size: 0.1, drag: 0 });
+        if (i % 2 === 0) this.miasma(q, 1, { size: 0.7, up: 0.7, spread: 0.4, life: 0.7 });
       });
-      await GFX.delay(1.25 * 0.62);
-      // とびかかる：上からの引きの画で、着地と肉球のあとまで見せる（仲間は隠す）
-      const xs = ts.map(t => t.home.x), wide = (Math.max(...xs) - Math.min(...xs)) / 2;
+      this.eyeGlint(e);
+      Sfx.tone(1600, 0.15, 'triangle', 0.04, -500);
+      await GFX.delay(0.15);
+      // 笏を突きたてる：闇が、敵のほうへ流れていく
+      Sfx.swing();
+      await this.sweep(m, POSES.plant, 0.14, vio, { n: 4, size: 0.14 });
+      GFX.shake(0.12); Sfx.slam();
+      this.fx.ring(h.clone().add(V3(0, 0.05, 0)), vio, { r: 1.8, life: 0.5, width: 0.25 });
+      const p0 = pool.position.clone();
+      GFX.tween(0.45, k => { pool.position.lerpVectors(p0, V3(cen.x * 0.5, 0.03, h.z - 2.2), Ease.in(k)); pool.scale.setScalar(1.7 + k); });
+      await GFX.delay(0.3);
+      // ② 敵のうしろから、敵ごしに見上げる：ねこの頭の形の闇の大波が立ちあがる（仲間は隠す）
       this.focus(null);
-      this.setCam(V3(cen.x + 0.8, 4.2 + tall * 0.6, cen.z + 5.8 + wide * 0.6), V3(cen.x, 0.6, cen.z), { snap: true });
-      await GFX.delay(0.35 * 1.25 * 0.45 + 0.03);
+      const W = wide * 2 + 4.6, H = Math.max(3.6, topH * 1.6 + 0.8), hw = Math.min(W * 0.3, 1.4 + H * 0.3);
+      const z0 = Math.min(h.z - 1.2, zFront + H * 0.4 + 1.2), zEnd = Math.max(zFront + 0.3, cen.z + H * 0.75 - 0.3);
+      //   敵がわの右ななめ前から：波の顔と、前へかたむいてとびかかる形の両方が見える角度。
+      //   ボスは奥（カメラのそば）に立つので、もっと横へ回って、ボスの横から波を見る
+      const boss = this.b.enemies.some(x => x.def.boss), mz = (z0 + cen.z) / 2, D = 1.55 * H + wide * 0.5 + (boss ? 3.0 : 2.0), th = boss ? 1.05 : 0.7;
+      this.setCam(V3(cen.x * 0.6 + Math.sin(th) * D, 1.0 + tall * 0.4, mz - Math.cos(th) * D), V3(cen.x * 0.6 - 0.3, H * 0.52, mz + 0.4), { snap: true });
+      const wave = this.catWave(V3(cen.x * 0.6, 0, z0), W, H, hw), U = wave.userData;
+      Sfx.noise(1.2, 0.1, 400); Sfx.tone(55, 1.4, 'sawtooth', 0.07, 15);
+      await GFX.tween(0.8, k => {
+        U.rise = Ease.out(k); U.lean = 0.05 + k * 0.17; wave.position.z = z0 - k * 0.3;
+        if (Math.random() < 0.5) this.miasma(V3(wave.position.x + (Math.random() - 0.5) * W * 0.8, 0.2, wave.position.z - 0.4), 1, { size: 1.3, up: 0.6, spread: 0.6, life: 0.8 });
+      }, Ease.linear);
+      // 赤い目が、ぎらり
+      Sfx.tone(1500, 0.2, 'triangle', 0.05, -600); Sfx.tone(90, 0.6, 'sawtooth', 0.06, -20);
+      await GFX.tween(0.14, k => { U.eyes = Ease.back(k); });
+      for (const p of wave.eyePos()) { this.fx.sprite(p, red, hw * 0.6, 0.4, { k: 3, grow: 0.6 }); this.fx.slash(p, red, { cam: this.camera, size: hw * 0.7, angle: Math.PI / 2, sym: true, life: 0.4 }); }
+      // ふせて身がまえる（おしりをふるように、左右にゆれる）
+      const x0 = wave.position.x;
+      await GFX.tween(0.4, (k, p) => { U.crouch = Ease.inOut(Math.min(1, k * 2)); U.lean = 0.22 - U.crouch * 0.12; wave.position.x = x0 + Math.sin(p * 40) * 0.06 * U.crouch; }, Ease.linear);
+      wave.position.x = x0;
+      // ③ とびかかって、敵の上へくずれおちる
+      Sfx.meow('maou'); Sfx.noise(0.6, 0.12, 700);
+      const zB = wave.position.z;
+      await GFX.tween(0.6, k => {
+        U.crouch = 1 - Math.min(1, k * 3);
+        U.rise = 1 + Math.sin(Math.min(1, k * 1.8) * Math.PI) * 0.25;   // のびあがって
+        U.lean = 0.1 + Ease.in(k) * 1.3;                                  // 前へおおいかぶさり
+        U.drop = k > 0.5 ? ((k - 0.5) / 0.5) ** 1.5 * 0.75 : 0;          // くずれおちる
+        wave.position.z = lerp(zB, zEnd, Ease.inOut(k));
+      }, Ease.linear);
       // がぶり
-      GFX.flash(vio, 0.3, 0.3); GFX.shake(0.3); Sfx.slam(); Sfx.meow && Sfx.meow('maou');
-      this.pawPrint(cen, Math.max(3.6, wide * 2 + 2.6), ink);
+      GFX.flash(vio, 0.15, 0.3); GFX.shake(0.42);
+      Sfx.slam(); this.boomSfx(1.2); Sfx.tone(42, 0.9, 'sawtooth', 0.09, -10);
+      const flood = this.shadowPool(V3(cen.x, 0, cen.z), 0.1, 0.9);
+      GFX.tween(0.4, k => flood.scale.setScalar((wide + 1.6) * Ease.out(k)));
+      for (let i = 0; i < 3; i++) GFX.delay(i * 0.09).then(() => this.fx.ring(V3(cen.x, 0.07, cen.z), i === 1 ? red : vio, { r: W * 0.55 + i * 1.0, life: 0.6, width: 0.3 - i * 0.07, k: 2.4 }));
       for (const t of ts) {
         const hp = this.hitPoint(t.u);
-        this.p.burst(hp, vio, 30, { speed: 6, up: 1, life: 0.6, size: 0.14 });
-        this.smokePuffs(t.home.clone().add(V3(0, 0.2, 0)), 0.3, 4, { up: 1, spread: 1.2, life: 0.6, dark: 0.85 });
-        this.squash(t, 0.4);
+        this.squash(t, 0.45);
+        t.model.flash('#2a0a3a', 1.1);
+        this.p.burst(hp, vio, 26, { speed: 6, up: 1.5, life: 0.6, size: 0.14 });
+        this.miasma(t.home.clone().add(V3(0, 0.3, 0)), 4, { size: 1.6, up: 1.2, spread: 1.4, life: 0.9 });
+        for (let j = 0; j < 8; j++) this.p.emit(t.home.clone().add(V3((Math.random() - 0.5) * 1.4, 0.1, (Math.random() - 0.5) * 1.0)), V3((Math.random() - 0.5) * 2, 3 + Math.random() * 2.5, (Math.random() - 0.5) * 2), hdr(j % 3 ? vio : red, 2.2), { life: 0.7, size: 0.13, grav: 7 });
       }
-      await GFX.delay(0.35);
-      if (m.face) GFX.delay(0.4).then(() => { if (m.face.expr === 'smug') m.face.set(was || 'neutral'); });
+      await GFX.tween(0.45, k => { U.drop = 0.75 + k * 0.25; U.lean = 1.3 + k * 0.4; U.fade = k; U.eyes = 1 - k; });
+      wave.userData.gone = true;
+      await GFX.delay(0.3);
+      // ④ くっくっと笑って、ふんと鼻を鳴らす（うしろに仲間が見える前からの画）
+      this.unfocus();
+      this.dim(0, 0.6);
+      m.group.rotation.y = Math.PI + 0.2;   // 前（敵がわ）のカメラへ顔を向ける（笏の石が顔にかぶらない向き）
+      this.setCam(V3(h.x - 1.0, 0.75, h.z - 2.6), V3(h.x + 0.5, 0.95, h.z + 0.8), { snap: true });
+      if (m.face) m.face.set('smug');
+      await this.tweenPose(m, ULT_POSES.maou.pose, 0.2);
+      m.flash(vio, 0.4);
+      Sfx.tone(196, 0.4, 'sawtooth', 0.04, 0); Sfx.tone(247, 0.4, 'sawtooth', 0.035, 0, 0.1);
+      await this.chuckle(e, 0.55);
+      this.huff(e); Sfx.puff();
+      await GFX.delay(0.4);
+      if (m.face) GFX.delay(0.3).then(() => { if (m.face.expr === 'smug') m.face.set(was || 'neutral'); });
+      // 前からの画なので、引きの画へは切りかえて戻す（なめらかに戻すと、仲間の体を通りぬける）
+      m.group.rotation.y = Math.PI;
+      this.setCam(V3(0, boss ? 2.8 : 2.1, (boss ? 10.2 : 8.2) + tall), V3(0, boss ? 2.1 : 1.0, -2.5), { snap: true });
     },
   },
   // だしの大波：剣を立てると足もとにだしがわき、振りおろすと、削りぶしを乗せたこはく色の大波が巻きながら敵へ押しよせる
@@ -2477,45 +2534,98 @@ Object.assign(BattleView.prototype, {
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     return (TexCache.curseSigil = t);
   },
-  // 暗黒ねこ波の顔：耳と小さな王冠のある、闇のねこの顔。赤い目と、牙ののぞく大きな口
-  nekoWaveTex() {
-    if (TexCache.nekoWave) return TexCache.nekoWave;
-    const c = document.createElement('canvas'); c.width = c.height = 256;
-    const g = c.getContext('2d');
-    g.shadowColor = 'rgba(160,123,255,1)'; g.shadowBlur = 18; g.fillStyle = '#2a1238';
-    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(128 + s * 30, 70); g.lineTo(128 + s * 86, 22); g.lineTo(128 + s * 92, 116); g.closePath(); g.fill(); }
-    g.beginPath(); g.ellipse(128, 140, 96, 82, 0, 0, Math.PI * 2); g.fill();
-    // 下のふちは、波しぶきのようにぎざぎざ
-    g.beginPath(); g.moveTo(40, 170);
-    for (let i = 0; i <= 12; i++) g.lineTo(40 + i * 176 / 12, 214 + (i % 2 ? 26 : 0));
-    g.lineTo(216, 170); g.closePath(); g.fill();
-    g.shadowBlur = 0;
-    g.beginPath(); g.moveTo(110, 64); g.lineTo(106, 40); g.lineTo(118, 50); g.lineTo(128, 34); g.lineTo(138, 50); g.lineTo(150, 40); g.lineTo(146, 64); g.closePath(); g.fillStyle = '#ffcf4a'; g.fill();
-    for (const s of [-1, 1]) {
-      const x = 128 + s * 40, gr = g.createRadialGradient(x, 124, 0, x, 124, 26);
-      gr.addColorStop(0, '#fff0f0'); gr.addColorStop(0.4, '#ff3a5a'); gr.addColorStop(1, 'rgba(255,58,90,0)');
-      g.fillStyle = gr; g.beginPath(); g.ellipse(x, 124, 26, 14, -s * 0.3, 0, Math.PI * 2); g.fill();
+  // 闇のもや：やわらかい黒紫のかたまりが、ふわっとふくらんで、のぼりながら消える（光らない）
+  miasma(p, n, { size = 0.8, up = 0.8, spread = 0.6, life = 0.8 } = {}) {
+    for (let i = 0; i < n; i++) {
+      const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: '#1c0a2c', transparent: true, depthWrite: false, rotation: Math.random() * 6 })); m.renderOrder = 10;
+      const from = p.clone().add(V3((Math.random() - 0.5) * spread, 0, (Math.random() - 0.5) * spread)), v = V3((Math.random() - 0.5) * spread, up * (0.6 + Math.random() * 0.8), (Math.random() - 0.5) * spread);
+      const s1 = size * (0.7 + Math.random() * 0.6), L = life * (0.8 + Math.random() * 0.4);
+      this.fx.add(m, L, t => { m.position.copy(from).addScaledVector(v, Ease.out(t)); m.scale.setScalar(s1 * (0.4 + 0.8 * Ease.out(t))); m.material.opacity = 0.85 * Math.min(1, t * 5) * (1 - t); });
     }
-    g.fillStyle = '#5a0a1a'; g.beginPath(); g.moveTo(82, 160); g.quadraticCurveTo(128, 236, 174, 160); g.quadraticCurveTo(128, 182, 82, 160); g.fill();
-    g.fillStyle = '#ffffff';
-    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(128 + s * 18, 167); g.lineTo(128 + s * 30, 166); g.lineTo(128 + s * 24, 188); g.closePath(); g.fill(); }
-    g.strokeStyle = 'rgba(200,170,255,0.7)'; g.lineWidth = 3;
-    for (const s of [-1, 1]) for (const dy of [-8, 6]) { g.beginPath(); g.moveTo(128 + s * 64, 150 + dy * 0.3); g.lineTo(128 + s * 110, 146 + dy); g.stroke(); }
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-    return (TexCache.nekoWave = t);
   },
-  // 地面に、大きな肉球のあと（size：さしわたし）
-  pawPrint(at, size, col) {
-    if (!TexCache.paw) {
-      const c = document.createElement('canvas'); c.width = c.height = 128;
-      const g = c.getContext('2d'); g.fillStyle = '#ffffff';
-      g.beginPath(); g.ellipse(64, 84, 30, 25, 0, 0, Math.PI * 2); g.fill();
-      for (const [x, y] of [[28, 48], [50, 30], [78, 30], [100, 48]]) { g.beginPath(); g.ellipse(x, y, 12, 15, (x - 64) * 0.01, 0, Math.PI * 2); g.fill(); }
-      TexCache.paw = new THREE.CanvasTexture(c);
+  // 暗黒ねこ波の大波：幅 w・高さ H の闇の波の壁。まんなか（半幅 hw）が、ねこの頭の形にもりあがって、とがった耳が二つ立つ。
+  //   頭の下のほうに、たてに細い赤い目が光る。波は前（-z）へかたむく。ふちは紫に光る。
+  //   userData で動かす：rise（立ちあがり 0〜）・lean（前へのかたむき）・eyes（目のひらき）・crouch（ふせる）・drop（くずれる）・fade（うすれる）・gone（消す）
+  //   position.z が波の根もとの z。eyePos() で目の位置
+  catWave(at, w, H, hw) {
+    const NX = 72, NY = 16, n = (NX + 1) * (NY + 1), U = { rise: 0, lean: 0, eyes: 0, crouch: 0, drop: 0, fade: 0 };
+    const geo = new THREE.BufferGeometry(), pos = new Float32Array(n * 3), col = new Float32Array(n * 3), idx = [];
+    const deep = new THREE.Color('#140a20'), mid = new THREE.Color('#3a1a5e'), light = new THREE.Color('#8a5ad0'), cc = new THREE.Color();
+    for (let j = 0; j <= NY; j++) for (let i = 0; i <= NX; i++) {
+      const v = j / NY, a = (j * (NX + 1) + i) * 3;
+      cc.copy(deep).lerp(mid, Math.min(1, v * 1.6)); if (v > 0.6) cc.lerp(light, ((v - 0.6) / 0.4) ** 1.5);
+      cc.multiplyScalar(0.8 + 0.2 * Math.sin((i / NX) * 70 + v * 4) * Math.sin((i / NX) * 23));   // 水のすじ
+      col[a] = cc.r; col[a + 1] = cc.g; col[a + 2] = cc.b;
+      if (i < NX && j < NY) { const q = j * (NX + 1) + i; idx.push(q, q + NX + 1, q + 1, q + 1, q + NX + 1, q + NX + 2); }
     }
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: TexCache.paw, color: col, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-    m.rotation.x = -Math.PI / 2; m.position.set(at.x, 0.04, at.z); m.renderOrder = 10;
-    this.fx.add(m, 1.1, k => { m.material.opacity = (k < 0.1 ? k / 0.1 : k > 0.6 ? (1 - k) / 0.4 : 1) * 0.85; m.scale.setScalar(0.85 + Ease.back(Math.min(1, k * 6)) * 0.15); });
+    const col0 = col.slice();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setIndex(idx);
+    // 光を受ける材質で、うねりとかたむきに陰をつける（まっ黒につぶれないよう、紫で少し自ら光らせる）
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: new THREE.Color('#1a0a2a'), transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const body = new THREE.Mesh(geo, mat); body.renderOrder = 11; body.frustumCulled = false;
+    // 波がしらの光るふち（頭と耳の形をなぞる）
+    const rg = new THREE.BufferGeometry(), rpos = new Float32Array((NX + 1) * 2 * 3), ridx = [];
+    for (let i = 0; i < NX; i++) ridx.push(i, i + NX + 1, i + 1, i + 1, i + NX + 1, i + NX + 2);
+    rg.setAttribute('position', new THREE.BufferAttribute(rpos, 3)); rg.setIndex(ridx);
+    const rmat = new THREE.MeshBasicMaterial({ color: hdr('#b088ff', 2.4), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const rim = new THREE.Mesh(rg, rmat); rim.renderOrder = 12; rim.frustumCulled = false;
+    // 目：たてに細い赤い光と、まんなかの白い芯。目じりがつりあがるよう、内がわへかたむける
+    const eyes = [-1, 1].map(s => {
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ff3a5a', 3), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, rotation: s * 0.3 }));
+      const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#fff0f0', 3), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, rotation: s * 0.3 }));
+      glow.renderOrder = core.renderOrder = 13;
+      return { s, glow, core };
+    });
+    const g = new THREE.Group(); g.add(body, rim); for (const e of eyes) g.add(e.glow, e.core);
+    g.position.copy(at); g.userData = U;
+    // 頭のてっぺんの高さ（H に掛ける）。ゆるくうねる波に、頭のもりあがりと、とがった耳
+    const ex = hw * 0.6, ew = hw * 0.36;
+    const prof = (x, s) => {
+      const ax = Math.abs(x), taper = Math.max(0.04, 1 - Math.abs(2 * x / w) ** 6), earK = Math.min(1, Math.max(0, (U.rise - 0.45) / 0.45));
+      let y = 0.56 + Math.sin(x * 1.6 + s * 6) * 0.05 + Math.sin(x * 0.7 - s * 3) * 0.04;
+      if (ax < hw) y += 0.24 * Math.cos(ax / hw * Math.PI / 2) ** 0.8;
+      const d = Math.abs(ax - ex) / ew; if (d < 1) y += 0.3 * earK * (1 - d) ** 1.4;
+      return y * taper;
+    };
+    // 前後（z）：上ほど前へかたむき、頭のあたりは少し前へせりだす。ゆるく波打つ
+    const zAt = (x, v, s) => {
+      const head = Math.max(0, 1 - (Math.abs(x) / (hw * 1.3)) ** 2);
+      return -(U.lean * 0.6 + head * 0.15) * H * v * v + Math.sin(x * 1.1 + s * 5) * 0.06 * v;
+    };
+    const hgt = () => H * U.rise * (1 - U.drop * 0.92) * (1 - U.crouch * 0.12);
+    const pt = (x, v, s, out) => { out.set(x, v * prof(x, s) * hgt(), zAt(x, v, s)); return out; };
+    g.eyePos = () => (g.updateMatrixWorld(true), eyes).map(e => g.localToWorld(pt(e.s * hw * 0.34, 0.62 / prof(e.s * hw * 0.34, GFX.time), GFX.time, V3()).add(V3(0, 0, -0.12))));
+    const tmp = V3();
+    return this.fx.add(g, 12, (k, o) => {
+      if (U.gone) { o.visible = false; return; }
+      const s = GFX.time;
+      for (let j = 0; j <= NY; j++) for (let i = 0; i <= NX; i++) {
+        const a = (j * (NX + 1) + i) * 3, x = (i / NX - 0.5) * w, v = j / NY; pt(x, v, s, tmp);
+        pos[a] = tmp.x; pos[a + 1] = tmp.y; pos[a + 2] = tmp.z;
+        // 下から上へ流れる、うすい光のすじ（水が波がしらへ巻きあがる）
+        const f = 1 + 1.1 * Math.max(0, Math.sin((v * 2.2 - s * 1.3 + Math.sin(x * 0.9) * 0.12) * Math.PI * 2)) ** 8 * v;
+        col[a] = col0[a] * f; col[a + 1] = col0[a + 1] * f; col[a + 2] = col0[a + 2] * f;
+      }
+      geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true; geo.computeVertexNormals();
+      for (let r = 0; r < 2; r++) for (let i = 0; i <= NX; i++) {
+        const a = (r * (NX + 1) + i) * 3, x = (i / NX - 0.5) * w; pt(x, r ? 1 : 0.9, s, tmp);
+        rpos[a] = tmp.x; rpos[a + 1] = tmp.y; rpos[a + 2] = tmp.z - 0.02;
+      }
+      rg.attributes.position.needsUpdate = true;
+      mat.opacity = 0.95 * (1 - U.fade); rmat.opacity = Math.min(1, U.rise * 2) * (1 - U.fade);
+      for (const e of eyes) {
+        const x = e.s * hw * 0.34, v = 0.62 / prof(x, s); pt(x, v, s, tmp); tmp.z -= 0.12;
+        e.glow.position.copy(tmp); e.core.position.copy(tmp);
+        const op = Math.max(0, U.eyes);
+        e.glow.scale.set(hw * 0.26, Math.max(1e-3, hw * 0.55 * op), 1); e.core.scale.set(hw * 0.07, Math.max(1e-3, hw * 0.4 * op), 1);
+        e.glow.material.opacity = e.core.material.opacity = Math.min(1, op) * (1 - U.fade);
+      }
+      // 波がしらから、紫のしぶき
+      if (U.rise > 0.1 && U.fade < 0.6) for (let i = 0; i < 6; i++) {
+        const x = (Math.random() - 0.5) * w * 0.9; g.localToWorld(pt(x, 1, s, tmp));
+        this.p.emit(tmp.clone(), V3((Math.random() - 0.5) * 0.8, 0.8 + Math.random(), -0.6 - Math.random() * (0.6 + U.lean * 2)), hdr(Math.random() < 0.8 ? '#a07bff' : '#ff3a5a', 2.2), { life: 0.45, size: 0.13, grav: 3 });
+      }
+    });
   },
   // 地面のひび（r：長さ）。根もとからのびて、しばらくして消える
   groundCracks(at, r) {
