@@ -230,7 +230,7 @@ const CHARS = {
         B.aliveEnemies().forEach(e => B.debuff(s, e, 0.7, { key: 'maou_def', name: '威圧', stat: 'defDown', value: 0.25, turns: 2 }));
         return r;
       } },
-    ult: { name: '暗黒ねこ波', elem: 'quantum', target: 'aoe', anim: 'wave', desc: '敵全体に攻撃力200%の闇ダメージ。味方全体の与ダメージ+25%（2ターン）。',
+    ult: { name: '暗黒ねこ波', elem: 'quantum', target: 'aoe', anim: 'nekoWave', desc: '敵全体に攻撃力200%の闇ダメージ。味方全体の与ダメージ+25%（2ターン）。',
       run: async (B, s) => {
         const r = await B.aoe(s, 2.0, 20, 'ult', { heavy: true });
         B.aliveAllies().forEach(a => B.buff(a, { key: 'maou_u', name: '余に続け', stat: 'dmg', value: 0.25, turns: 2 }));
