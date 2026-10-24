@@ -570,25 +570,87 @@ const FOE_MOVES = {
     const face = t.model.face;
     GFX.delay(0.9).then(() => { if (face && face.expr === 'sad' && t.u.alive) face.set('neutral'); });
   },
-  // 疑心：みんなをつなぐ金の糸があらわれ、黒くにごって、まん中から切れる
+  // 疑心：仲間の頭の上を、ハートのついた金の糸がつないでいる。コドクのささやき（ひそひそ）が一匹ずつの耳へ飛び、
+  //   聞いた子たちはとなりを横目でうたがって、ぷいっと背を向け合う。糸は黒くにごって切れ、ハートが割れて、
+  //   こぼれた光（友情ゲージ）がコドクへ吸いこまれる
   async crack(e, ts, c) {
+    const order = [...ts].sort((a, b) => a.home.x - b.home.x), purple = '#8a5aff', core = this.hitPoint(e.u);
+    const xs = order.map(t => t.home.x), cx = (Math.min(...xs) + Math.max(...xs)) / 2, z = order[0].home.z, n = order.length;
+    const knot = t => this.headPos(t).add(V3(0, 0.8, 0));
+    const arcs = order.slice(1).map((t, i) => this.bondArc(knot(order[i]), knot(t), 0.38));
+    // ① うしろの高いところから：きずなの糸と、奥のコドク
+    this.unfocus(); this.sway = 0.1;
+    const backPos = V3(cx + 1.0, 2.5, z + 4.8), backLook = V3(cx, 2.0, (z + e.home.z) / 2);
+    this.cut(backPos, backLook, { fov: 46 });
+    this.setCam(backPos.clone().add(V3(-0.3, -0.1, -0.5)), backLook, { speed: 0.8 });
+    Sfx.tone(988, 0.3, 'sine', 0.03); Sfx.tone(1319, 0.4, 'sine', 0.025, 0, 0.06);
+    await GFX.tween(0.3, k => arcs.forEach(a => { a.st.grow = Ease.out(k); }));
+    // ② コドクのささやきが、一匹ずつの耳へ飛ぶ
     this.foeFlash(e, c.col);
-    const order = [...ts].sort((a, b) => a.home.x - b.home.x);
-    // 糸が見えるように、みんなのすぐうしろへ寄る（全体攻撃のカメラは、大きなコドクに合わせて遠い）
-    const xs = order.map(t => t.home.x), cx = (Math.min(...xs) + Math.max(...xs)) / 2, z = order[0].home.z;
-    this.setCam(V3(cx + 0.6, 1.9, z + 3.6), V3(cx, 1.0, z - 1.5), { snap: true });
-    for (const t of order) this.darkFlow(e, t, c.col, 0.35, 8);
+    Sfx.noise(0.9, 0.05, 5200); Sfx.tone(180, 0.9, 'sawtooth', 0.025, -40);
+    const from = this.foeMouth(e);
+    await Promise.all(order.map((t, i) => GFX.delay(i * 0.07).then(() => {
+      const ear = this.headPos(t).add(V3((t.home.x < cx ? -1 : 1) * 0.3, 0.35, 0)), w = this.whisper(), sw = (i % 2 ? 1 : -1) * (0.8 + Math.random() * 0.6);
+      this.fx.add(w, 0.75, k => {
+        const f = Ease.inOut(k), P = from.clone().lerp(ear, f);
+        P.x += Math.sin(f * Math.PI) * sw; P.y += Math.sin(f * Math.PI) * 0.8 + Math.sin(k * 18 + i) * 0.06;
+        w.position.copy(P); w.material.opacity = Math.min(1, k * 5) * (k > 0.85 ? (1 - k) / 0.15 : 1);
+        w.scale.set(1.1, 0.55, 1).multiplyScalar(k > 0.85 ? 1 - (k - 0.85) * 4 : 1);
+        if (Math.random() < 0.4) this.p.emit(P, V3(0, 0.2, 0), hdr(purple, 1.4), { life: 0.4, size: 0.1 });
+      });
+      return GFX.delay(0.75);
+    })));
+    // ③ 前から：ささやきを聞いて、となりを横目でうたがう。糸がにごって、ふるえる
+    this.cut(V3(cx - 0.3, 1.9, z - 4.0), V3(cx, 0.85, z), { fov: 44 });   // 少し見おろす（うしろの景色でなく、地面を背にする）
+    this.setCam(V3(cx - 0.2, 1.8, z - 3.6), V3(cx, 0.85, z), { speed: 0.6 });
+    const side = t => Math.abs(t.home.x - cx) < 0.2 ? 0 : Math.sign(cx - t.home.x);   // 1：まん中より左（x が小さい）
+    const faces = order.map(t => t.model.face && t.model.face.expr);
+    order.forEach((t, i) => {
+      const w = this.whisper(); w.position.copy(this.headPos(t).add(V3((t.home.x < cx ? -1 : 1) * 0.42, 0.5, 0)));
+      w.scale.set(0.6, 0.3, 1); this.fx.add(w, 0.7, k => { w.material.opacity = k < 0.2 ? k * 5 : 1 - (k - 0.2) / 0.8; w.position.y += 0.004; });
+      if (t.model.face) t.model.face.set('worry');
+      const sd = side(t) || (i % 2 ? 1 : -1);
+      this.tweenPose(t.model, { ...POSES.ready, headY: -sd * 0.55 }, 0.25);   // となりを横目で見る（まん中へ顔を向ける）
+    });
+    Sfx.noise(0.5, 0.04, 6000);
+    await GFX.delay(0.3);
+    for (const t of order) this.glyphPop('？', this.headPos(t).add(V3(0, 0.95, 0)), '#b8a8e8');
+    const gold = new THREE.Color(hdr('#ffd86a', 1.6)), dark = new THREE.Color('#4a2a6a');
+    Sfx.tone(300, 0.5, 'triangle', 0.03, -120);
+    await GFX.tween(0.45, k => arcs.forEach(a => { a.mat.color.lerpColors(gold, dark, k); a.heart.material.color.setRGB(1 - 0.5 * k, 1 - 0.55 * k, 1 - 0.3 * k); a.st.wob = 0.05 * k; }));
+    // ④ ぷいっ：背を向け合う。糸がまん中から切れて、ハートが割れる
+    order.forEach(t => {
+      const g = t.model.group, sd = side(t), r0 = g.rotation.y;
+      if (t.model.face) t.model.face.set('pout');
+      this.tweenPose(t.model, { ...(POSES.armsCrossed || POSES.ready), headY: sd ? sd * 0.35 : 0, headX: sd ? 0.04 : 0.3 }, 0.18);
+      GFX.tween(0.18, k => { g.rotation.y = r0 + sd * 0.7 * Ease.out(k); });
+      this.squash(t, 0.15);
+    });
+    Sfx.tone(1400, 0.08, 'square', 0.03, -900); Sfx.noise(0.12, 0.12, 4200);
+    arcs.forEach(a => a.split());
+    GFX.shake(0.08);
+    await GFX.tween(0.55, k => arcs.forEach(a => { a.st.snap = k; a.st.wob = 0.05 * (1 - k); }));
+    await GFX.delay(0.2);
+    // ⑤ うしろから：こぼれた光（友情ゲージ）が、コドクへ吸いこまれる
+    this.cut(backPos, backLook, { fov: 46 });
+    this.setCam(backPos.clone().add(V3(0, 0.2, 0.4)), backLook, { speed: 0.8 });
+    Sfx.tone(660, 0.7, 'sine', 0.03, -330);
+    for (const a of arcs) this.fx.sprite(a.top, '#ffd86a', 0.55, 0.35, { k: 2 });
+    await this.every(0.5, 45, i => {
+      const q = arcs[i % arcs.length].top.clone().add(V3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.4, 0));
+      this.p.emit(q, core.clone().sub(q).multiplyScalar(1.2).add(V3((Math.random() - 0.5) * 1.2, Math.random() * 1.2, 0)), hdr('#ffd86a', 2.4), { life: 0.85, size: 0.2, drag: 0 });
+    });
+    await GFX.delay(0.3);
+    e.model.flash(purple, 1.6); this.fx.sprite(core, '#ffd86a', 2.6, 0.4, { k: 2 }); Sfx.tone(140, 0.5, 'sawtooth', 0.04, -50);
+    await GFX.delay(0.2);
+    // 向きをもどす（顔はふくれたまま、少しあとでもどす）
+    order.forEach((t, i) => {
+      const g = t.model.group, r0 = g.rotation.y;
+      GFX.tween(0.25, k => { g.rotation.y = lerp(r0, Math.PI, k); });
+      this.tweenPose(t.model, POSES.ready, 0.25);
+      GFX.delay(0.8).then(() => { if (t.model.face && t.model.face.expr === 'pout' && t.u.alive) t.model.face.set(faces[i] || 'neutral'); });
+    });
     await GFX.delay(0.25);
-    const knot = t => this.headPos(t).add(V3(0, 0.35, 0));   // 頭の上で結ぶ（体の高さだと、うしろからは味方の陰になる）
-    const threads = order.slice(1).map((t, i) => this.bondThread(knot(order[i]), knot(t)));
-    const gold = new THREE.Color(hdr('#ffd86a', 1.6)), dark = new THREE.Color('#2a1a3a');
-    await GFX.tween(0.25, k => { threads.forEach(th => th.grow(Ease.out(k))); });
-    await GFX.tween(0.35, k => { threads.forEach(th => th.mat.color.lerpColors(gold, dark, k)); });
-    for (const t of order) this.glyphPop('？', this.headPos(t).add(V3(0, 0.75, 0)), '#8a6aff');
-    // ぷつん
-    await GFX.tween(0.3, k => { threads.forEach(th => th.snap(k)); });
-    threads.forEach(th => { this.p.burst(th.mid, '#5a3a8a', 10, { speed: 2, life: 0.5, size: 0.08 }); th.hide(); });
-    for (const t of order) this.foeKnock(t, V3(0, 0, 1), 0.15);
   },
   // からっぽの渦（虚ろ）：みんなの前に闇の渦ができ、みんなを吸い寄せてから、はじける
   async vortex(e, ts, c) {
@@ -1187,21 +1249,75 @@ Object.assign(BattleView.prototype, {
     ph.draw();
     return ph;
   },
-  // 友情の糸（疑心）：a→b の細い管。grow で両はしから伸び、snap でまん中から切れて縮む
-  bondThread(a, b) {
+  // きずなの糸（疑心）：a と b を、上へ弓なりにつなぐ金の糸。てっぺんにハート。
+  //   st.grow（0〜1）で両はしから伸び、st.wob でふるえ、split() でまん中から切れて、st.snap（0〜1）で両がわへ垂れて消える
+  bondArc(a, b, lift) {
     const mat = new THREE.MeshBasicMaterial({ color: hdr('#ffd86a', 1.6), transparent: true, depthWrite: false });
-    const mid = a.clone().lerp(b, 0.5), up = V3(0, 1, 0);
-    const half = (p, q) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 8, 1, true), mat); m.quaternion.setFromUnitVectors(up, q.clone().sub(p).normalize()); m.renderOrder = 12; this.fx.add(m, 2, null); return m; };
-    const L = half(a, mid), R = half(b, mid), len = a.distanceTo(mid);
-    // 片がわの管を、はし p から長さ l だけ、q へ向けて置く
-    const put = (m, p, q, l) => { m.position.copy(p).lerp(q, l / len / 2); m.scale.set(1, Math.max(0.001, l), 1); };
-    put(L, a, mid, 0); put(R, b, mid, 0);
-    return {
-      mat, mid,
-      grow: k => { put(L, a, mid, len * k); put(R, b, mid, len * k); },
-      snap: k => { const l = len * (1 - Ease.in(k)); put(L, a, mid, l); put(R, b, mid, l); mat.opacity = 1 - k * 0.5; },
-      hide: () => { L.visible = R.visible = false; },
+    const N = 10, up = V3(0, 1, 0), geo = new THREE.CylinderGeometry(0.028, 0.028, 1, 6, 1, true);
+    const segs = [0, 1].map(() => Array.from({ length: N }, () => { const m = new THREE.Mesh(geo, mat); m.renderOrder = 12; m.visible = false; return m; }));
+    const st = { grow: 0, wob: 0, snap: 0, cut: false }, Pt = V3(), Q = V3();
+    const at = (s, out) => out.copy(a).lerp(b, s).add(V3(0, lift * 4 * s * (1 - s), 0));
+    const top = at(0.5, V3()), dir = Pt.clone();
+    // 半分の糸の点：j はしからの割合（0〜1）、h は 0 が a がわ、1 が b がわ
+    const half = (h, j, out) => {
+      const s = h ? 1 - j * 0.5 * st.grow : j * 0.5 * st.grow;
+      at(s, out);
+      out.y += Math.sin(GFX.time * 40 + s * 20) * st.wob * Math.sin(Math.PI * s);
+      if (st.cut) { const k = st.snap, an = h ? b : a; out.lerp(an, k * 0.35 * j); out.y -= k * k * 1.4 * Math.pow(j, 1.5); }
+      return out;
     };
+    const g = new THREE.Group();
+    segs.forEach(list => list.forEach(m => g.add(m)));
+    const heart = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.heartTex(0), transparent: true, depthWrite: false })); heart.renderOrder = 13; heart.scale.setScalar(0.01); g.add(heart);
+    const halves = [1, 2].map(i => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.heartTex(i), transparent: true, depthWrite: false })); sp.renderOrder = 13; sp.visible = false; g.add(sp); return sp; });
+    this.fx.add(g, 5, (k, o, dt, cam) => {
+      for (let h = 0; h < 2; h++) for (let i = 0; i < N; i++) {
+        const m = segs[h][i]; half(h, i / N, Pt); half(h, (i + 1) / N, Q);
+        const len = Pt.distanceTo(Q); m.visible = st.grow > 0.01 && len > 1e-4;
+        if (!m.visible) continue;
+        dir.subVectors(Q, Pt).normalize(); m.quaternion.setFromUnitVectors(up, dir);
+        m.position.copy(Pt).add(Q).multiplyScalar(0.5); m.scale.set(1, len, 1);
+      }
+      if (!st.cut) { heart.position.copy(top).add(V3(0, 0.1, 0)); heart.scale.setScalar(0.34 * Math.max(0.01, Ease.back(Math.min(1, st.grow * 1.2)))); }
+      else {
+        // 割れたハートは、左右へはなれて、くるりと落ちる
+        const k = st.snap, right = V3(1, 0, 0).applyQuaternion(cam.quaternion);
+        halves.forEach((sp, i) => { const sd = i ? 1 : -1; sp.position.copy(top).add(V3(0, 0.1 + k * 0.25 - k * k * 1.2, 0)).addScaledVector(right, sd * (0.04 + k * 0.35)); sp.material.rotation = sd * -k * 1.6; sp.material.opacity = 1 - Math.max(0, (k - 0.6) / 0.4); });
+      }
+      mat.opacity = st.cut ? 1 - Math.max(0, (st.snap - 0.5) / 0.5) : 1;
+    });
+    return {
+      st, mat, heart, top,
+      split: () => { st.cut = true; heart.visible = false; halves.forEach(sp => { sp.visible = true; sp.scale.setScalar(0.34); sp.material.color.copy(heart.material.color); }); },
+    };
+  },
+  // ハートの絵（0：まるごと、1：左半分、2：右半分）。割れ目はぎざぎざ
+  heartTex(part) {
+    const key = 'bondHeart' + part;
+    if (TexCache[key]) return TexCache[key];
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const heart = () => { g.beginPath(); g.moveTo(64, 112); g.bezierCurveTo(10, 76, 8, 30, 38, 24); g.bezierCurveTo(52, 21, 62, 32, 64, 42); g.bezierCurveTo(66, 32, 76, 21, 90, 24); g.bezierCurveTo(120, 30, 118, 76, 64, 112); g.closePath(); };
+    if (part) {
+      const sd = part === 1 ? -1 : 1, zig = [[64, 36], [56, 52], [70, 66], [58, 82], [68, 96], [64, 116]];
+      g.beginPath(); g.moveTo(64, 0); zig.forEach(([x, y]) => g.lineTo(x, y)); g.lineTo(sd > 0 ? 128 : 0, 128); g.lineTo(sd > 0 ? 128 : 0, 0); g.closePath(); g.clip();
+    }
+    heart(); g.lineWidth = 10; g.strokeStyle = '#ffffff'; g.stroke(); g.fillStyle = '#ff6a9a'; g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.ellipse(42, 42, 9, 6, -0.6, 0, Math.PI * 2); g.fill();
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    return (TexCache[key] = t);
+  },
+  // コドクのささやき（疑心）：「ひそ…」の文字
+  whisper() {
+    if (!TexCache.whisper) {
+      const c = document.createElement('canvas'); c.width = 128; c.height = 64;
+      const g = c.getContext('2d'); g.font = '800 40px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 7; g.strokeStyle = '#d8c8ff'; g.strokeText('ひそ…', 64, 34); g.fillStyle = '#2a1640'; g.fillText('ひそ…', 64, 34);
+      TexCache.whisper = new THREE.CanvasTexture(c); TexCache.whisper.colorSpace = THREE.SRGBColorSpace;
+    }
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TexCache.whisper, transparent: true, depthWrite: false, opacity: 0 }));
+    sp.renderOrder = 13; sp.scale.set(0.62, 0.31, 1);
+    return sp;
   },
   // 黒い月（孤独の月蝕）：黒い球の奥に、光の冠と、ゆっくり回る光の輪
   eclipseObj(R, col, pale) {
