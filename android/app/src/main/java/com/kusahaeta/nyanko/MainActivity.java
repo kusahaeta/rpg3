@@ -17,6 +17,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.window.OnBackInvokedDispatcher;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -53,6 +54,11 @@ public class MainActivity extends Activity {
             w.getAttributes().layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         }
         createWebView();
+        // Android 13 以降は戻るの受け口を登録する（API 36 向けだと Android 16 では onBackPressed が呼ばれない）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT, () -> moveTaskToBack(true));
+        }
         if (savedInstanceState == null || web.restoreState(savedInstanceState) == null) web.loadUrl(START_URL);
     }
 
@@ -151,7 +157,7 @@ public class MainActivity extends Activity {
         web.saveState(out);
     }
 
-    // 戻るキーでゲームを終わらせない（うっかり押しても続きから遊べるよう、裏に回すだけ）
+    // 戻るキーでゲームを終わらせない（うっかり押しても続きから遊べるよう、裏に回すだけ）。Android 12 まではこちら
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
