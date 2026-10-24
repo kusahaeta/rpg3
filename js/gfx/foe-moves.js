@@ -504,27 +504,71 @@ const FOE_MOVES = {
     await GFX.tween(0.3, k => { ball.scale.setScalar(Math.max(0.01, 1 - Ease.in(k))); });
     ball.visible = false;
   },
-  // 思い出消去：ねらった子の上に、色のついた思い出があらわれる。色が抜けて、コドクのまわりの板と同じ色になり、砕けて散る
+  // 思い出消去：ねらった子の頭の上に、仲間みんなで写った写真があらわれる。闇が流れこむと、仲間が一匹ずつ写真から消えて、
+  //   ねらわれた子だけがひとり残る。写真は色を失い、コドクがわのふちから灰になって、コドクへ吸いこまれる
   async shatter(e, ts, c) {
-    const t = ts[0], above = this.headPos(t).add(V3(0, 1.1, 0));
+    const t = ts[0], h = t.home, purple = '#8a5aff';
+    const gang = [...this.ents.values()].filter(x => x.ally && x.u.alive).sort((a, b) => a.home.x - b.home.x);
+    const above = this.headPos(t).add(V3(0, 1.4, -0.6)), core = this.hitPoint(e.u);
+    // ねらわれた子のななめうしろから、写真と、奥のコドクを見上げる
+    this.unfocus(); this.sway = 0.1;
+    const look = V3(h.x - 0.1, above.y + 0.05, h.z - 1.5);
+    this.cut(V3(h.x + 0.9, above.y + 0.15, h.z + 2.5), look, { fov: 42 });
+    this.setCam(V3(h.x + 0.7, above.y + 0.1, h.z + 2.1), look, { speed: 0.8 });
+    const ph = this.memoryPhoto(gang.map(x => x.u.key), gang.indexOf(t)), mem = ph.mesh;
+    mem.position.copy(above); mem.scale.setScalar(0.01);
+    this.fx.add(mem, 3.4, () => { mem.quaternion.copy(this.camera.quaternion); mem.rotateZ(0.05); });
+    const at = (u, v) => { mem.updateMatrixWorld(true); return mem.localToWorld(ph.local(u, v)); };
+    // ① あたたかい思い出が、ふわっとあらわれる
     this.foeFlash(e, c.col);
-    const mem = this.memoryObj();
-    mem.position.copy(above); mem.quaternion.copy(this.camera.quaternion); mem.scale.setScalar(0.01);
-    this.fx.add(mem, 1.6, null);
-    this.p.burst(above, '#ffe8a8', 16, { speed: 2, life: 0.5, size: 0.08 });
-    await GFX.tween(0.25, k => { mem.scale.setScalar(1.5 * Ease.back(k)); });
-    // 闇が流れこんで、色が抜けていく
-    this.darkFlow(e, t, c.col, 0.5, 18, above);
-    const warm = new THREE.Color('#ffd88a'), cold = new THREE.Color('#8a80a8'), frame = new THREE.Color('#fff8ec'), frameCold = new THREE.Color('#5a5070');
-    await GFX.tween(0.55, k => { mem.userData.photo.color.lerpColors(warm, cold, k); mem.userData.frame.color.lerpColors(frame, frameCold, k); mem.userData.heart.material.opacity = 1 - k; mem.position.x = above.x + Math.sin(k * 40) * 0.02 * k; });
-    // ひびが入って、砕ける
-    mem.visible = false;
-    this.fx.shards(above, '#8a80a8', 18, 3);
-    this.fx.shards(above, '#5a5070', 12, 2.5);
+    this.p.burst(above, '#ffe8a8', 22, { speed: 2.2, life: 0.6, size: 0.09 });
+    Sfx.tone(784, 0.5, 'sine', 0.04); Sfx.tone(1175, 0.6, 'sine', 0.03, 0, 0.08);
+    await GFX.tween(0.3, k => { mem.scale.setScalar(Math.max(0.01, Ease.back(k))); });
+    await GFX.delay(0.3);
+    // ② 闇が流れこみ、仲間が一匹ずつ写真から消える（遠い子から）。写真の色も抜けていく
+    e.model.flash(purple, 1.4);
+    this.darkFlow(e, t, c.col, 1.1, 34, above);
+    Sfx.tone(220, 1.2, 'sawtooth', 0.035, -90); Sfx.noise(1.1, 0.05, 420);
+    const others = ph.cats.map((_, i) => i).filter(i => i !== ph.me).sort((a, b) => Math.abs(b - ph.me) - Math.abs(a - ph.me));
+    const gap = 0.2, D = 0.25 + others.length * gap + 0.4, puffed = new Set();
+    await GFX.tween(D, (_, p) => {
+      const s = p * D;
+      others.forEach((i, j) => {
+        const k = Math.min(1, Math.max(0, (s - 0.25 - j * gap) / 0.4));
+        ph.gone[i] = k;
+        if (k > 0.35 && !puffed.has(i)) {   // 消えるところから、闇のけむり
+          puffed.add(i);
+          const q = at(ph.cats[i].u, ph.cats[i].v);
+          for (let n = 0; n < 10; n++) this.p.emit(q, V3((Math.random() - 0.5) * 0.8, 0.4 + Math.random() * 0.5, (Math.random() - 0.5) * 0.3), hdr(purple, 1.6), { life: 0.6, size: 0.12, drag: 1 });
+          Sfx.tone(520 - j * 60, 0.3, 'sine', 0.03, -200);
+        }
+      });
+      ph.grey = Ease.inOut(Math.min(1, s / D));
+      ph.draw();
+    }, Ease.linear);
+    // ③ ひとりぼっちになった写真
+    ph.alone = true; ph.draw();
+    if (t.model.face) t.model.face.set('sad');
+    this.glyphPop('…', at(ph.cats[ph.me].u + 0.1, ph.cats[ph.me].v - 0.12), '#b8a8e8');
+    await GFX.delay(0.4);
+    // ④ コドクがわのふちから灰になって、コドクへ吸いこまれる。光（必殺技ゲージ）も吸いとられる
+    const side = Math.sign(core.clone().sub(above).dot(V3(1, 0, 0).applyQuaternion(this.camera.quaternion))) || 1;
+    ph.burnFrom(side);
+    Sfx.noise(0.9, 0.08, 2600); Sfx.tone(660, 0.9, 'sine', 0.03, -440);
     t.model.flash('#2a2238', 1.5);
-    // 光（必殺技ゲージ）が、コドクへ吸いとられる
-    const to = this.hitPoint(e.u), from = this.hitPoint(t.u);
-    await this.every(0.35, 14, () => this.p.emit(from.clone().add(V3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, 0)), to.clone().sub(from).multiplyScalar(1.6).add(V3((Math.random() - 0.5), Math.random(), 0)), hdr('#ffe08a', 2), { life: 0.6, size: 0.1, drag: 0 }));
+    const from = this.hitPoint(t.u);
+    this.every(0.7, 22, () => this.p.emit(from.clone().add(V3((Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5, 0)), core.clone().sub(from).multiplyScalar(1.1).add(V3((Math.random() - 0.5), Math.random(), 0)), hdr('#ffe08a', 2), { life: 0.9, size: 0.1, drag: 0 }));
+    await GFX.tween(0.75, (_, p) => {
+      ph.burn = p;
+      ph.draw((u, v, col) => {
+        const q = at(u, v);
+        this.p.emit(q, core.clone().sub(q).multiplyScalar(0.8 + Math.random() * 0.35).add(V3((Math.random() - 0.5) * 0.6, 0.3 + Math.random() * 0.6, 0)), col, { life: 1.1, size: 0.07 + Math.random() * 0.05, drag: 0 });
+      });
+    }, Ease.linear);
+    mem.visible = false;
+    e.model.flash(purple, 1.6);
+    const face = t.model.face;
+    GFX.delay(0.9).then(() => { if (face && face.expr === 'sad' && t.u.alive) face.set('neutral'); });
   },
   // 疑心：みんなをつなぐ金の糸があらわれ、黒くにごって、まん中から切れる
   async crack(e, ts, c) {
@@ -1037,16 +1081,111 @@ Object.assign(BattleView.prototype, {
     this.fx.add(g, 2, null);
     return g;
   },
-  // 思い出（思い出消去）：白いふちの写真に、あたたかい色と ♥
-  memoryObj() {
-    const g = new THREE.Group();
-    const frame = new THREE.MeshBasicMaterial({ color: '#fff8ec', side: THREE.DoubleSide }), photo = new THREE.MeshBasicMaterial({ color: '#ffd88a', side: THREE.DoubleSide });
-    g.add(new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.6), frame));
-    const in_ = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.46), photo); in_.position.z = 0.005; g.add(in_);
-    const heart = this.glyph('♥', '#ff6a8a', '#ffffff', 0.3); heart.position.z = 0.01; g.add(heart);
-    g.rotation.z = 0.1;
-    g.userData = { frame, photo, heart };
-    return g;
+  // 思い出の写真（思い出消去）：仲間みんなが夕焼けの丘にならんだ、白いふちの写真。keys は左から順の仲間、me はねらわれた子
+  //   gone[i]（0〜1）でその子が闇ににじんで消え、grey で色が抜け、alone でのこった子がしょんぼりする。
+  //   burnFrom(向き) のあと burn（0〜1）で、そのがわのふちから灰になって欠ける（draw に渡した関数に、欠けたかけらの位置と色）
+  memoryPhoto(keys, me) {
+    const W = 256, H = 300, S = GFX.eco ? 1 : 2, PW = 1.05, PH = PW * H / W;
+    const cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S;
+    const g = cv.getContext('2d');
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+    mesh.renderOrder = 12;
+    const X0 = 14, Y0 = 14, X1 = W - 14, Y1 = 228, n = keys.length, sc = n > 4 ? 0.82 : 1;
+    const cats = keys.map((key, i) => ({ key, look: (CHARS[key] && CHARS[key].look) || { fur: '#ffffff' }, x: X0 + (X1 - X0) * (i + 0.5) / n, y: Y1 - 22 }));
+    for (const ct of cats) { ct.u = ct.x / W; ct.v = (ct.y - 50 * sc) / H; }
+    const ph = { mesh, cats, me, gone: cats.map(() => 0), grey: 0, alone: false, burn: 0, cells: null };
+    ph.local = (u, v) => V3((u - 0.5) * PW, (0.5 - v) * PH, 0);
+    const ell = (x, y, rx, ry, col, rot = 0) => { g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); g.fill(); };
+    const tri = (pts, col) => { g.fillStyle = col; g.beginPath(); g.moveTo(...pts[0]); for (const q of pts.slice(1)) g.lineTo(...q); g.closePath(); g.fill(); };
+    // 2頭身のにゃんこを一匹。(x, y) は足もと
+    const cat = (ct, s, sad) => {
+      const L = ct.look, x = ct.x, y = ct.y, hy = y - 58 * s, line = 'rgba(60,40,50,0.45)';
+      if (L.cape) tri([[x - 17 * s, y - 36 * s], [x + 17 * s, y - 36 * s], [x + 24 * s, y - 2 * s], [x - 24 * s, y - 2 * s]], L.cape);
+      g.lineWidth = 2 * s; g.strokeStyle = line;
+      ell(x, y - 20 * s, 17 * s, 20 * s, L.fur); g.stroke();
+      ell(x - 8 * s, y - 2 * s, 7 * s, 4 * s, L.paws || L.fur); ell(x + 8 * s, y - 2 * s, 7 * s, 4 * s, L.paws || L.fur);
+      for (const k of [-1, 1]) { tri([[x + k * 26 * s, hy - 8 * s], [x + k * 22 * s, hy - 32 * s], [x + k * 8 * s, hy - 20 * s]], L.fur); tri([[x + k * 22 * s, hy - 11 * s], [x + k * 20 * s, hy - 25 * s], [x + k * 12 * s, hy - 18 * s]], L.earIn || '#ffc8c8'); }
+      ell(x, hy, 28 * s, 23 * s, L.fur); g.stroke();
+      if (L.pattern === 'calico' && L.patches) { ell(x - 13 * s, hy - 12 * s, 11 * s, 8 * s, L.patches[0], 0.4); ell(x + 15 * s, hy - 14 * s, 8 * s, 6 * s, L.patches[1], -0.3); }
+      if (L.pattern === 'point' && L.patches) ell(x, hy + 6 * s, 13 * s, 10 * s, L.patches[0]);
+      if (L.scarf) { g.fillStyle = L.scarf; g.fillRect(x - 15 * s, hy + 18 * s, 30 * s, 6 * s); }
+      if (L.band) { g.fillStyle = L.band; g.fillRect(x - 26 * s, hy - 13 * s, 52 * s, 5 * s); }
+      if (L.horns) for (const k of [-1, 1]) tri([[x + k * 10 * s, hy - 20 * s], [x + k * 18 * s, hy - 18 * s], [x + k * 19 * s, hy - 34 * s]], L.horns);
+      if (L.crown) tri([[x - 8 * s, hy - 21 * s], [x + 8 * s, hy - 21 * s], [x + 9 * s, hy - 31 * s], [x + 3 * s, hy - 26 * s], [x, hy - 33 * s], [x - 3 * s, hy - 26 * s], [x - 9 * s, hy - 31 * s]], L.crown);
+      if (L.hat) { tri([[x - 30 * s, hy - 14 * s], [x + 30 * s, hy - 14 * s], [x + 6 * s, hy - 54 * s]], L.hat); g.fillStyle = L.hatBand || '#ffd76a'; g.fillRect(x - 21 * s, hy - 20 * s, 42 * s, 5 * s); }
+      if (L.sprout) { g.strokeStyle = L.sprout; g.lineWidth = 2.5 * s; g.beginPath(); g.moveTo(x, hy - 22 * s); g.lineTo(x, hy - 32 * s); g.stroke(); ell(x - 6 * s, hy - 34 * s, 6 * s, 3 * s, L.sprout, 0.4); ell(x + 6 * s, hy - 34 * s, 6 * s, 3 * s, L.sprout, -0.4); }
+      // 顔：笑った目と ω。ひとり残ると、点の目と、へにゃっとした口と、なみだ
+      const dark = L.fur && parseInt(L.fur.slice(1, 3), 16) < 0x80, ink = dark ? '#f4ecd8' : '#3a2a2a';
+      g.strokeStyle = ink; g.fillStyle = ink; g.lineWidth = 2.6 * s; g.lineCap = 'round';
+      for (const k of [-1, 1]) {
+        if (sad) ell(x + k * 10 * s, hy + 2 * s, 2.6 * s, 3.4 * s, ink);
+        else { g.beginPath(); g.arc(x + k * 10 * s, hy + 4 * s, 5 * s, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); }
+      }
+      g.lineWidth = 2 * s; g.beginPath();
+      if (sad) { g.moveTo(x - 5 * s, hy + 13 * s); g.quadraticCurveTo(x, hy + 9 * s, x + 5 * s, hy + 13 * s); }
+      else { g.arc(x - 3 * s, hy + 9 * s, 3 * s, 0, Math.PI); g.arc(x + 3 * s, hy + 9 * s, 3 * s, 0, Math.PI); }
+      g.stroke();
+      if (sad) ell(x + 12 * s, hy + 11 * s, 2.2 * s, 3.4 * s, '#8ad8ff');
+      else for (const k of [-1, 1]) ell(x + k * 17 * s, hy + 9 * s, 5 * s, 3 * s, 'rgba(255,120,140,0.45)');
+    };
+    ph.draw = onAsh => {
+      g.setTransform(S, 0, 0, S, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      g.clearRect(0, 0, W, H);
+      g.fillStyle = '#fff8ec'; g.fillRect(0, 0, W, H);
+      g.save(); g.beginPath(); g.rect(X0, Y0, X1 - X0, Y1 - Y0); g.clip();
+      // 夕焼けの空と、おひさま、丘
+      const sky = g.createLinearGradient(0, Y0, 0, Y1); sky.addColorStop(0, '#ffb877'); sky.addColorStop(0.6, '#ffe2a0'); sky.addColorStop(1, '#fff2c8');
+      g.fillStyle = sky; g.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
+      ell(W * 0.72, 70, 26, 26, '#fff4c0');
+      ell(W * 0.3, Y1 + 40, 150, 70, '#9ad87a'); ell(W * 0.8, Y1 + 46, 130, 66, '#86cc6a');
+      for (const [fx, fy, fc] of [[40, 200, '#ff8ab8'], [212, 206, '#ffd23c'], [128, 214, '#ffffff'], [80, 220, '#ff8ab8']]) ell(fx, fy, 3, 3, fc);
+      // 仲間たち。消える子は、闇のしみにのまれて薄れる
+      cats.forEach((ct, i) => {
+        const k = ph.gone[i];
+        if (k < 1) { g.globalAlpha = 1 - Math.min(1, Math.max(0, (k - 0.25) / 0.55)); cat(ct, sc, ph.alone && i === me); g.globalAlpha = 1; }
+        if (k > 0 && k < 1) {
+          const r = (20 + k * 30) * sc, gr = g.createRadialGradient(ct.x, ct.y - 40 * sc, 0, ct.x, ct.y - 40 * sc, r);
+          gr.addColorStop(0, `rgba(26,14,44,${Math.sin(k * Math.PI) * 0.9})`); gr.addColorStop(1, 'rgba(26,14,44,0)');
+          g.fillStyle = gr; g.fillRect(ct.x - r, ct.y - 40 * sc - r, r * 2, r * 2);
+        }
+      });
+      g.restore();
+      // 下のふちの書きこみ
+      g.globalAlpha = 1 - ph.grey; g.fillStyle = '#c0605a'; g.font = '700 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('みんなで ♥', W / 2, 264); g.globalAlpha = 1;
+      // 色が抜けて、つめたい紫の灰色に
+      if (ph.grey > 0) {
+        g.globalCompositeOperation = 'saturation'; g.fillStyle = `rgba(128,128,128,${ph.grey})`; g.fillRect(0, 0, W, H);
+        g.globalCompositeOperation = 'multiply'; g.fillStyle = `rgba(176,166,214,${ph.grey * 0.8})`; g.fillRect(0, 0, W, H);
+        g.globalCompositeOperation = 'source-over';
+        // 闇が写真のふちからしみこむ
+        const vg = g.createRadialGradient(W / 2, (Y0 + Y1) / 2, 40, W / 2, (Y0 + Y1) / 2, 170);
+        vg.addColorStop(0, 'rgba(26,14,44,0)'); vg.addColorStop(1, `rgba(26,14,44,${0.5 * ph.grey})`);
+        g.fillStyle = vg; g.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
+      }
+      if (ph.cells) {
+        const C = ph.cells, img = onAsh && g.getImageData(0, 0, W * S, H * S).data;
+        for (const cl of C.list) {
+          if (cl.th < ph.burn) {
+            if (!cl.done && onAsh) { cl.done = true; const o = ((Math.floor((cl.y + C.s / 2) * S) * W * S) + Math.floor((cl.x + C.s / 2) * S)) * 4; onAsh((cl.x + C.s / 2) / W, (cl.y + C.s / 2) / H, new THREE.Color(img[o] / 255, img[o + 1] / 255, img[o + 2] / 255).multiplyScalar(1.6)); }
+            g.clearRect(cl.x, cl.y, C.s, C.s);
+          } else if (cl.th < ph.burn + 0.07) { g.fillStyle = 'rgba(190,150,255,0.9)'; g.fillRect(cl.x, cl.y, C.s, C.s); }   // 燃えるふち
+        }
+      }
+      tex.needsUpdate = true;
+    };
+    // side：+1 で右のふちから、-1 で左のふちから欠ける
+    ph.burnFrom = side => {
+      const s = 12, list = [];
+      for (let y = 0; y < H; y += s) for (let x = 0; x < W; x += s) {
+        const f = side > 0 ? (W - x) / W : x / W;
+        list.push({ x, y, th: f * 0.75 + Math.random() * 0.25 });
+      }
+      ph.cells = { s, list };
+    };
+    ph.draw();
+    return ph;
   },
   // 友情の糸（疑心）：a→b の細い管。grow で両はしから伸び、snap でまん中から切れて縮む
   bondThread(a, b) {
