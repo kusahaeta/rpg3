@@ -5064,8 +5064,9 @@ class ZoneKit {
     return { g, head, set };
   }
   // 足あと：点を結ぶ道すじに、右・左と小さな肉球の足あと（ほんのり光る）
-  pawPrints(pts, col = '#ffe8a0') {
-    const acc = this.batch(this.glow(col, 0.9));
+  // mat：ほかの光る物と別の材質にする（会話シーンで、あとから見せるときなど）
+  pawPrints(pts, col = '#ffe8a0', mat = null) {
+    const acc = this.batch(mat || this.glow(col, 0.9));
     for (let i = 1; i < pts.length; i++) {
       const [x0, z0] = pts[i - 1], [x1, z1] = pts[i], len = Math.hypot(x1 - x0, z1 - z0), n = Math.floor(len / 0.8);
       const fx = (x1 - x0) / len, fz = (z1 - z0) / len, nx = -fz, nz = fx;
@@ -7432,8 +7433,14 @@ const ZONE_BUILD = {
     K.flowers(0, -30, 14, 3, ['#f4bce8', '#ffffff']); K.flowers(-24, -8, 10, 1.6, ['#ffffff', '#fff8c8']); K.flowers(22, -12, 10, 1.6, ['#f4bce8', '#ffffff']);
     K.log(-6, 34, 2.2, 0.6); K.stoneLantern(-1, 29);
     // ねぼけ歩きの足あと：大きなねむり花から北の出口まで（物語でタマを追っているあいだ）
-    const now = storyStep();
-    if (now && now.scene === 'c2_03h') K.pawPrints([[8, 7], [7, 3], [7.4, 0], [4, -3], [1.5, -5], [0, -9], [-1, -13], [-3, -16], [-3, -19], [-1, -23], [0, -27], [0, -33], [0, -38]]);
+    const now = storyStep(), trail = [[8, 7], [7, 3], [7.4, 0], [4, -3], [1.5, -5], [0, -9], [-1, -13], [-3, -16], [-3, -19], [-1, -23], [0, -27], [0, -33], [0, -38]];
+    if (now && now.scene === 'c2_03h') K.pawPrints(trail);
+    // 会話シーン（c2_03g）：みんなが眠っているあいだにタマが歩いていった足あとと、花に引っかかった綿毛を、目をさましたとき（fx: 'trail'）に見せる
+    if (K.v.hooks && now && now.scene === 'c2_03g') {
+      const mat = glowMat('#ffe8a0', 0.9); mat.visible = false; K.pawPrints(trail, '#ffe8a0', mat);
+      const p = makePuff(0.7); p.position.set(10.2, K.gy(9, 9) + 1.5, 9.4); p.visible = false; K.scene.add(p);
+      K.v.hooks.trail = function () { mat.visible = true; p.visible = true; };
+    }
     // 谷にただよう、眠りの粉
     K.v.emitters.push(dt => { if (Math.random() < dt * 6) K.v.p.emit(V3((Math.random() - 0.5) * 50, 0.4 + Math.random() * 2.5, (Math.random() - 0.5) * 70), V3(0.1, 0.12, 0), hdr(pick(['#ffc8ec', '#e8b8ff', '#ffffff']), 1.3), { life: 6, size: 0.06, drag: 0 }); });
   },
