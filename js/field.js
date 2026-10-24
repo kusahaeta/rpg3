@@ -624,12 +624,18 @@ class FieldView extends BaseView {
   }
   // カメラが入れない場所か。カメラは太さ R の玉として、まわり 8 方向も調べる
   // （屋根のひさし・壁の厚み・家の角・画面の手前の面が壁を切らないように）
+  // 木立のマス（野外の #）は、地面より上ならすり抜ける（木でカメラが寄ると、森の小道で主人公のすぐ後ろまで寄って操作しにくい）
   viewBlocked(x, y, z, R = 0.45) {
     const T = this.T; if (!T) return false;
-    if (T.blocksView(x, y, z) || this.inGate(x, y, z)) return true;
+    const flora = T.outdoor === 'flora';
+    const hit = (x, y, z) => {
+      if (flora) { const i = T.at(x, z); if (i >= 0 && T.kind[i] === TK.SOLID && !T.water[i]) return y < T.cap[i] + 0.25; }
+      return T.blocksView(x, y, z);
+    };
+    if (hit(x, y, z) || this.inGate(x, y, z)) return true;
     const D = R * 0.7071;
-    return T.blocksView(x + R, y, z) || T.blocksView(x - R, y, z) || T.blocksView(x, y, z + R) || T.blocksView(x, y, z - R)
-      || T.blocksView(x + D, y, z + D) || T.blocksView(x - D, y, z + D) || T.blocksView(x + D, y, z - D) || T.blocksView(x - D, y, z - D);
+    return hit(x + R, y, z) || hit(x - R, y, z) || hit(x, y, z + R) || hit(x, y, z - R)
+      || hit(x + D, y, z + D) || hit(x - D, y, z + D) || hit(x + D, y, z - D) || hit(x - D, y, z - D);
   }
   // 頭から off の向きに、カメラをどこまで離せるか（壁・天井・障害物にぶつかる手前まで）
   viewDist(head, off, foot, ceil, py) {
@@ -638,8 +644,9 @@ class FieldView extends BaseView {
       const x = head.x + off.x * cd * f, y = Math.min(ceil, head.y + off.y * cd * f), z = head.z + off.z * cd * f;
       // 太さは頭から離れるほど大きく（頭のそばで太いと、壁ぞいを歩くだけでカメラが寄ってしまう）
       const R = Math.min(0.55, 0.15 + 0.3 * cd * f);
-      // 小物：高さの決まったもの（門の柱など）はその高さまで、決まっていないものは足もとから 4m まで
-      const prop = this.colliders.some(c => (c.box || c.r > 0.5) && (c.top == null ? y - foot < 4 : y - (c.y || 0) < c.top + 0.2) && this.hitsCol(c, x, z, 0.3, T ? py : null));
+      // 小物：壁がわりの四角いもの（扉の壁・封印の幕・瓦礫の山など）だけ。木・岩・柱などの丸い小物はすり抜ける
+      //   高さの決まったものはその高さまで、決まっていないものは足もとから 4m まで
+      const prop = this.colliders.some(c => c.box && (c.top == null ? y - foot < 4 : y - (c.y || 0) < c.top + 0.2) && this.hitsCol(c, x, z, 0.3, T ? py : null));
       return prop || this.viewBlocked(x, y, z, R);
     };
     for (let i = 1; i <= 24; i++) {
@@ -3071,29 +3078,8 @@ class FieldView extends BaseView {
     const head = V3(p.pos.x, foot + p.y + 0.8 * this.sizeK, p.pos.z);
     const offAt = pitch => V3(Math.sin(this.camYaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(this.camYaw) * Math.cos(pitch));
     const ceil = T ? T.ceilOf(T.at(p.pos.x, p.pos.z)) - 0.45 : 1e9;
-    // 頭からカメラまでの実際の距離（天井で頭打ちになる分も入れる）
-    const reach = (o, dd) => Math.hypot(Math.hypot(o.x, o.z) * dd, Math.min(o.y * dd, ceil - head.y));
-    const base = this.viewDist(head, offAt(this.camPitch), foot, ceil, p.pos.y);
-    // 細い通路などで後ろがつかえるときは、カメラを上へ持ち上げて見下ろす（寄りすぎて前が見えなくならないように）。
-    // 持ち上げる角度はなめらかに変え、広い所へ出たらゆっくり元の角度へ戻す。
-    // 遠くへ引いているときは、まず 3.4m までは寄せるだけにして、それでも足りない所でだけ持ち上げる（部屋の壁ぎわで真上から見下ろさないように）
-    let want = 0;
-    const need = Math.min(this.camDist * 0.8, 3.4) * this.camScale();
-    if (reach(offAt(this.camPitch), base) < need) {
-      let best = reach(offAt(this.camPitch), base);
-      for (let k = 1; k <= 4; k++) {
-        const pt = Math.min(1.35, this.camPitch + 0.25 * k), o = offAt(pt), r = reach(o, this.viewDist(head, o, foot, ceil, p.pos.y));
-        if (r > best + 0.3) { best = r; want = pt - this.camPitch; }
-        if (r >= need * 0.94 || pt >= 1.35) break;
-      }
-    }
-    this.camLift = lerp(this.camLift || 0, want, 1 - Math.exp(-(want > (this.camLift || 0) ? 5 : 2) * d));
-    let off = offAt(this.camPitch + this.camLift), dist = this.camLift > 0.01 ? this.viewDist(head, off, foot, ceil, p.pos.y) : base;
-    // 壁ぎわで後ろがつかえるときは、カメラを上にずらして見下ろす（主人公が画面から消えないように）
-    for (let k = 1; k <= 3 && dist < 1.2; k++) {
-      const o2 = offAt(Math.min(1.35, this.camPitch + 0.35 * k)), d2 = this.viewDist(head, o2, foot, ceil, p.pos.y);
-      if (d2 > dist) { off = o2; dist = d2; }
-    }
+    // 障害物でつかえるときは、角度はそのままで主人公のほうへ寄せるだけ（上へ持ち上げると、木の多い森ですぐ真上からになって操作しにくい）
+    const off = offAt(this.camPitch), dist = this.viewDist(head, off, foot, ceil, p.pos.y);
     this.curDist = this.curDist == null ? dist : dist < this.curDist ? dist : lerp(this.curDist, dist, 1 - Math.exp(-4 * d));
     const cp = head.clone().addScaledVector(off, this.curDist);
     cp.y = clamp(cp.y, foot + 0.3, ceil);
