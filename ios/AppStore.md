@@ -122,9 +122,19 @@ Not applicable. The app is a game and is not in a regulated industry. The charac
 iPhone 6.9 インチ（横 2868×1320）を 3〜10 枚。`ios/screenshots/` の 6 枚（タイトル・コンボ技・街道・宿場の夜の会話・戦闘・シロの登場）を使う。ネタバレをさけて第二章〜第三章の場面から選んだ。
 
 - 6.1／6.3 インチの枠は `6.3inch/`（2622×1206）、6.5 インチの枠は `6.5inch/`（2778×1284）。それぞれ 874×402・926×428 の 3 倍の画面で撮る。6.9 インチの分があれば、ほかのサイズは要らない
-- ヘッダの画像・検索結果の画像は `header.png`（5244×2950。JPEG は受け付けない）。タイトル画面を「タップして はじめる」なしで、カメラを t＝0 の位置に止めて（`GFX.view.camPos` を (-1.6, 1.3, 7.2) にして `set` を空にする）撮った。update に t＝0 を渡すと、にゃんこの手ふりまで止まってクロが手を上げたままになる。描画の細かさは `GFX.Q.prMax` を上げて 5244 幅で描く
+- ヘッダの画像・検索結果の画像は `header.png`（5244×2950。JPEG は受け付けない）。タイトル画面を「タップして はじめる」なしで撮った
 
-撮りなおすときは、Chrome を `--headless=new --remote-debugging-port` で開き、DevTools プロトコルで画面を 956×440・3 倍・タッチありにして `?debug` のゲームを開く。`Debug.jump` で場面を作り、`#diag` を隠して `GFX.watchFps = () => {}; GFX.setTier(0)` で画質を「なめらか」に固定してから `Page.captureScreenshot` で撮る（ヘッドレスはコマ数が少なく見え、そのままだと軽量の画質に落とされる）。タイトル画面はカメラがゆっくり左右に動き、開いてしばらくすると右はしにマオウが入ってくるので、ここでもカメラを t＝0 の位置に止める。
+撮りなおすときは、Chrome を `--headless=new --remote-debugging-port` で開き、DevTools プロトコルで画面を 956×440・3 倍・タッチありにして `?debug` のゲームを開く。`Debug.jump` で場面を作り、`#diag` を隠して `GFX.watchFps = () => {}; GFX.setTier(0)` で画質を「なめらか」に固定してから `Page.captureScreenshot` で撮る（ヘッドレスはコマ数が少なく見え、そのままだと軽量の画質に落とされる）。タイトル画面（`01-title.jpg` の 3 サイズと `header.png`）は `tools/shoot-title.mjs` で撮る。2026-10-25 に夕暮れの空のタイトルで撮りなおした：
+
+```
+PORT=8937 node .claude/serve.js
+node tools/shoot-title.mjs 01-title.png 3 start 956x440           # 6.9 インチ 2868×1320
+node tools/shoot-title.mjs 01-title.png 3 start 874x402           # 6.3 インチ 2622×1206
+node tools/shoot-title.mjs 01-title.png 3 start 926x428           # 6.5 インチ 2778×1284
+node tools/shoot-title.mjs header.png 4.096875 nostart 1280x720   # ヘッダ 5244×2950
+```
+
+App Store には JPEG（品質 92）にして入れる（ヘッダだけ PNG）。
 
 ## 出すまでの手順
 
