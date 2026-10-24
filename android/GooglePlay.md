@@ -49,6 +49,8 @@ node tools/shoot-title.mjs 01-title.png 1.5 start      # 1920×1080
 node tools/shoot-title.mjs title-4k.png 3 nostart      # 3840×2160（フィーチャー グラフィック用）
 ```
 
+紹介動画は `promo/google-play-1920x1080.mp4`（30 秒）。Play Console には YouTube の URL を入れるので、YouTube に上げて（公開か限定公開。広告なし）その URL を「プレビュー動画」に入れる。中身と作りなおし方は App Store のプレビューと同じ（`ios/AppStore.md` の「プレビュー動画」）で、まん中の 16:9 だけを切り出している。
+
 フィーチャー グラフィックは、3840×2160 の上下をまん中で切って 3840×1875 にし、1024×500 に縮める（樹冠が多く入るので、下に寄せるよりまん中がよい）。ほかの場面を撮りなおすときは `ios/AppStore.md` の撮り方で、画面を 16:9 にして撮る。
 
 ## アプリのコンテンツ（ポリシーの申告）

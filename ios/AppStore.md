@@ -136,6 +136,27 @@ node tools/shoot-title.mjs header.png 4.096875 nostart 1280x720   # ヘッダ 52
 
 App Store には JPEG（品質 92）にして入れる（ヘッダだけ PNG）。
 
+## プレビュー動画
+
+`promo/app-store-1920x886.mp4`（30 秒・横 1920×886・H.264 30fps・AAC 256kbps）。iPhone 6.9／6.5 インチのプレビューの決まり（15〜30 秒、30fps まで、音声トラック必須）にあわせた。6.1 インチなどは 6.9 インチの分が縮めて使われる。ポスターフレーム（既定は 5 秒）は、ロゴと 5 匹がそろったタイトル。
+
+タイトル → 風車の丘 → シロの「ファイア！」 → 綿毛 → 城下町 → 戦闘（にゃんこブレイク・必殺技 3 つ）→ 見晴らし台から見るお城。BGM はタイトルの曲の 2 小節目からで、1 小節ごとに場面を切りかえ、ちょうど 30 秒で旋律が主音にもどって終わる。効果音はゲームのもの。作りなおすときは：
+
+```
+PORT=8937 node .claude/serve.js
+for n in title hill talk fluff town battle vista; do node tools/promo/rec.mjs $n <場面のフォルダ>/$n; done
+node tools/promo/make.mjs <場面のフォルダ> <出力のフォルダ>
+```
+
+字幕入り版は `promo/app-store-1920x886-captions.mp4`（Google Play 用は `promo/google-play-1920x1080-captions.mp4`）。場面ごとに「2頭身のにゃんこと 大冒険」「にぎやかな仲間たち」などの字幕が上に出て、最後の見晴らし台にタイトルの文字が出る。字幕の文字と位置は `make.mjs` の `CAPTIONS`。探索に入ったときの地名が字幕と重なるので、探索の場面（hill・fluff・town）だけ地名を消して撮りなおし、ほかの場面はそのまま使う：
+
+```
+for n in hill fluff town; do PROMO_NOZONE=1 node tools/promo/rec.mjs $n <字幕版の場面のフォルダ>/$n; done
+node tools/promo/make.mjs <字幕版の場面のフォルダ> <出力のフォルダ> --captions
+```
+
+`rec.mjs` はヘッドレス Chrome の時計（requestAnimationFrame・タイマー・CSS アニメ・乱数）を差しかえて 1/30 秒ずつ進めて撮るので、コマ落ちしない。効果音は鳴らさずに時刻だけ記録し、`make.mjs` が BGM といっしょに OfflineAudioContext で書き出す。場面の撮り方は `tools/promo/scenes.mjs`、つなぎ方（使うコマ）は `make.mjs` の `EDIT`。
+
 ## 出すまでの手順
 
 1. [App Store Connect](https://appstoreconnect.apple.com/) → アプリ → ＋ → 新規 App。プラットフォームは iOS、名前・言語・バンドル ID（`com.kusahaeta.nyanko`）・SKU は上の表のとおり
