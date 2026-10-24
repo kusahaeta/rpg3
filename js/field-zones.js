@@ -9388,12 +9388,14 @@ const ZONE_BUILD = {
     K.mesh(new THREE.RingGeometry(5, 5.15, 64), K.glow('#ff8ab8', 2), 0, 0.05, -30, { rx: -Math.PI / 2, noShadow: true });
     for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + Math.PI / 8; if (Math.sin(a) > 0.8) continue; K.pillarBroken(Math.cos(a) * 12, -30 + Math.sin(a) * 9, 2 + K.r() * 4, false, 'darkStone'); }
     // 世界じゅうの根が伝ってくる岩盤（区画の外の奈落に浮かぶ飾り。歩けない）：根の名前ごとに [x, z, 上面の高さ, 半径]
+    // 根は闇の上からたれさがる（c8_03「見上げると、闇の上から、何本もの根がたれさがっていた」）。岩盤A（12）から北を見上げた画の空に入るよう、
+    // 上の岩盤は高く、霧にとけない近さに置く
     const ISLES = {
-      rat: [[-52, -40, 9, 5], [-33, -35, 3.5, 4]],
-      kingdom: [[-20, -82, 10, 5], [-15, -58, 4, 4.4]],
-      village: [[0, -92, 12, 5.6], [1, -66, 5, 4.6]],
-      valley: [[22, -82, 10, 5], [16, -58, 4, 4.4]],
-      castle: [[54, -46, 8.5, 5], [34, -40, 3.2, 4]],
+      rat: [[-50, -44, 30, 5], [-33, -36, 12, 4]],
+      kingdom: [[-22, -72, 34, 5], [-15, -56, 14, 4.4]],
+      village: [[0, -78, 40, 5.6], [1, -60, 16, 4.6]],
+      valley: [[24, -72, 34, 5], [16, -56, 14, 4.4]],
+      castle: [[52, -48, 28, 5], [34, -41, 11, 4]],
     };
     // 岩盤：厚い板（上は石、ふちはすこしゆがむ）と、下へとがった岩肌
     for (const [x, z, y, r] of Object.values(ISLES).flat()) {
@@ -9405,9 +9407,11 @@ const ZONE_BUILD = {
     // 奈落に浮かぶ岩：石の道や地面、岩盤に重ならない、奈落の上だけに
     const overVoid = (x, z) => [[0, 0], [2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]].every(([dx, dz]) => { const j = K.T.at(x + dx, z + dz); return j < 0 || K.T.kind[j] === TK.VOID; })
       && Object.values(ISLES).flat().every(([ix, iz, , ir]) => Math.hypot(x - ix, z - iz) > ir + 3);
+    // c8_03 で岩盤A（0, 20）から北の根を見上げる画の正面には置かない（たれさがる根をかくす）
+    const upView = (x, z, y) => Math.abs(x) < 12 && z < 14 && y > 8;
     for (let i = 0, n = 0; i < 80 && n < 18; i++) {
       const x = (K.r() - 0.5) * 70, z = (K.r() - 0.5) * 90, y = -6 + K.r() * 26, s = 0.8 + K.r() * 2;
-      if (overVoid(x, z)) { K.floatRock(x, z, y, s); n++; }
+      if (overVoid(x, z) && !upView(x, z, y)) { K.floatRock(x, z, y, s); n++; }
     }
     // 樹の根：根もとの樹から地面を這ってきて、南の土手から入口の地面（18）に出る。北のふちで地面がとぎれると、根の坂（歩ける）になって
     // 岩盤A（12）へ下り、岩盤の南のへりの外を伝って西のはしへ（へりの上は c8_03 で一行が立つので、根は床より下）。そこから根の坂で岩盤B（6）へ下り、十字の橋を東へ這って、東の小島から根の坂で
@@ -9444,12 +9448,12 @@ const ZONE_BUILD = {
       const mat = rootMat(0.1); K.scene.add(new THREE.Mesh(geo, mat));
       tips[key] = { curve, mat, end: tip, glow: 0, target: 0 };
     };
-    // 太さ：樹の根（半径1.3）と同じくらい。遠くの闇から、ゆるやかに下りてくる
-    reach('rat', V3(-76, 16, -42), V3(-18.6, -0.4, -33.5), V3(-15, -0.5, -33), 1.4);
-    reach('kingdom', V3(-28, 18, -110), V3(-8.6, -0.4, -42.6), V3(-8, -0.5, -39), 1.4);
-    reach('village', V3(2, 20, -122), V3(0.5, -0.4, -42.8), V3(0, -0.5, -41), 1.7);
-    reach('valley', V3(30, 17, -110), V3(8.6, -0.4, -42.6), V3(8, -0.5, -39), 1.4);
-    reach('castle', V3(80, 15, -50), V3(18.6, -0.4, -35), V3(15, -0.5, -32), 1.4);
+    // 太さ：樹の根（半径1.3）と同じくらい。上の闇から、たれさがってくる
+    reach('rat', V3(-58, 90, -50), V3(-18.6, -0.4, -33.5), V3(-15, -0.5, -33), 1.4);
+    reach('kingdom', V3(-26, 100, -82), V3(-8.6, -0.4, -42.6), V3(-8, -0.5, -39), 1.4);
+    reach('village', V3(2, 110, -90), V3(0.5, -0.4, -42.8), V3(0, -0.5, -41), 1.7);
+    reach('valley', V3(28, 100, -82), V3(8.6, -0.4, -42.6), V3(8, -0.5, -39), 1.4);
+    reach('castle', V3(60, 90, -54), V3(18.6, -0.4, -35), V3(15, -0.5, -32), 1.4);
     const dark = new THREE.Color('#6a4a2a'), lit = new THREE.Color('#ffe08a');
     K.tick(dt => { for (const T of Object.values(tips)) { T.glow += (T.target - T.glow) * Math.min(1, dt * 5); T.mat.emissive.copy(dark).lerp(lit, Math.min(1, T.glow)); T.mat.emissiveIntensity = 0.1 + T.glow * 2.4; } });
     // 樹がよみがえったあと（第八章の終わり）：すべての根が光る
