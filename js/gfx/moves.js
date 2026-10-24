@@ -790,54 +790,104 @@ const MOVES = {
       this.setCam(V3(0, boss ? 2.8 : 2.1, boss ? 10.2 : 8.2), V3(0, boss ? 2.1 : 1.0, -2.5), { snap: true });
     },
   },
-  // 漆黒の帳：大笏をかかげると、空が夜に沈み、笏の紅い石がかがやく。空から黒と紅の帯が渦を巻いて降り、
-  //   敵を包みこんで締めつける。すきまから紅い光がもれ、帯がはじけ飛んで、空がもどる
-  curtain: {
+  // 滅びの黒月：大笏に闇の光を吸いこむと、敵の頭上に、紅い光輪をまとった黒い月が生まれる。月はまわりの光を吸ってふくらみ、
+  //   敵を浮かせる。笏をふりおろすと月が落ちて、闇のドームがはじけ、地面がひび割れる。
+  //   最後に、紅い気をまとったマオウが、あごを上げてふんぞりかえる（余に続け）
+  blackMoon: {
     async attack(e, ts, c) {
       const m = e.model, h = e.home, cen = this.enemyCenter(), vio = c.col, red = '#ff3a5a', was = m.face && m.face.expr;
-      const xs = ts.map(t => t.home.x), wide = (Math.max(...xs) - Math.min(...xs)) / 2, tall = this.enemyTall(), zMax = Math.max(...ts.map(t => t.home.z));
-      // ① 笏をかかげると、空が夜に沈む
+      const xs = ts.map(t => t.home.x), wide = (Math.max(...xs) - Math.min(...xs)) / 2, tall = this.enemyTall();
+      // ① 笏の紅い石へ、まわりの光が吸いこまれる
       this.focus(e); this.face(e, cen);
-      this.staffCam(e);   // 横の低いところから、顔の横に立てた笏の先まで
+      this.staffCam(e);
       if (m.face) m.face.set('angry');
-      await this.tweenPose(m, POSES.staffUp, 0.25);
-      this.dim(1, 0.6, [0.3, 0.26, 0.42]);
-      Sfx.tone(60, 1.2, 'sawtooth', 0.07, 20); Sfx.noise(1.0, 0.05, 300);
+      await this.tweenPose(m, POSES.staffUp, 0.22);
+      this.dim(1, 0.8, [0.42, 0.34, 0.5]);
+      Sfx.tone(65, 1.1, 'sawtooth', 0.06, 30); Sfx.noise(0.9, 0.05, 300);
       const tip = m.tipPos();
-      this.fx.sprite(tip, red, 0.7, 0.7, { k: 3, grow: 2 });
-      for (let i = 0; i < 18; i++) GFX.delay(i * 0.03).then(() => { const a = Math.random() * Math.PI * 2, q = tip.clone().add(V3(Math.cos(a) * 1.2, Math.sin(a) * 1.2, 0)); this.p.emit(q, tip.clone().sub(q).multiplyScalar(3), hdr(i % 3 ? vio : red, 2.5), { life: 0.33, size: 0.1, drag: 0 }); });
-      await GFX.delay(0.45);
+      this.fx.sprite(tip, red, 0.3, 0.9, { k: 3, grow: 3 });
+      await this.every(0.6, 20, i => {
+        const d = V3(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize(), q = tip.clone().addScaledVector(d, 1.3);
+        this.p.emit(q, d.multiplyScalar(-1.3 / 0.32), hdr(i % 3 ? vio : red, 2.6), { life: 0.32, size: 0.1, drag: 0 });
+      });
       this.eyeGlint(e);
+      Sfx.tone(1600, 0.15, 'triangle', 0.04, -500);
       await GFX.delay(0.3);
-      // ② 空から、黒と紅の帯が渦を巻いて降りてくる
+      // ② 敵の頭上に、黒い月が生まれ、光を吸ってふくらむ。敵は浮きあがってふるえる
       this.focus(null);
-      this.setCam(V3(cen.x + 1.0, 2.4 + tall * 0.4, zMax + 7.0 + wide * 0.6), V3(cen.x, 1.3 + tall * 0.3, cen.z), { snap: true });
-      const R = wide + 1.7, H = Math.max(2.6, tall + 1.4), st = { drop: 0, spin: 0, squeeze: 0, burst: 0 };
-      const ribbons = Array.from({ length: 6 }, (_, i) => this.veilRibbon(cen, R, H, i / 6 * Math.PI * 2, (i % 2) * 0.5, st));
-      Sfx.noise(0.8, 0.08, 700);
-      let last = GFX.time;
-      const spinFx = () => { const dt = Math.min(0.05, GFX.time - last); last = GFX.time; st.spin += dt * (2.2 + st.squeeze * 7); };
-      await GFX.tween(0.65, k => { st.drop = k; spinFx(); }, Ease.out);
-      // ③ 締めつける。すきまから紅い光がもれる
-      Sfx.noise(0.9, 0.1, 400); Sfx.tone(90, 0.9, 'sawtooth', 0.06, 40);
-      let flick = 0;
-      await GFX.tween(0.85, (k, p) => {
-        st.squeeze = k; spinFx();
-        if (p > flick) { flick += 0.18; for (const t of ts) this.fx.sprite(this.hitPoint(t.u), red, 1.0 + p * 1.2, 0.2, { k: 2.5 }); }
-        if (Math.random() < 0.7) { const a = Math.random() * Math.PI * 2, r = R * (1 - 0.45 * k); this.p.emit(V3(cen.x + Math.cos(a) * r, Math.random() * H, cen.z + Math.sin(a) * r * 0.8), V3(-Math.sin(a) * 3, 0.5, Math.cos(a) * 3), hdr(Math.random() < 0.5 ? red : vio, 2.2), { life: 0.4, size: 0.12 }); }
-      }, Ease.in);
-      for (const t of ts) t.model.flash('#2a0a14', 1.4);
-      await GFX.delay(0.1);
-      // ④ 帯がはじけ飛ぶ
-      GFX.flash(red, 0.16, 0.3); GFX.shake(0.35); Sfx.slam(); Sfx.brk();
-      for (let i = 0; i < 3; i++) GFX.delay(i * 0.08).then(() => this.fx.ring(cen.clone().add(V3(0, 0.06, 0)), i === 1 ? red : vio, { r: R * 2 + i * 1.5, life: 0.7, width: 0.35 - i * 0.08, k: 2.5 }));
-      this.p.burst(V3(cen.x, H * 0.45, cen.z), red, 50, { speed: 9, life: 0.7, size: 0.14 });
-      this.p.burst(V3(cen.x, H * 0.45, cen.z), vio, 50, { speed: 7, life: 0.8, size: 0.14 });
-      for (const t of ts) { this.fx.sprite(this.hitPoint(t.u), red, 1.4, 0.35, { k: 2 }); this.squash(t, 0.35); }
-      await GFX.tween(0.5, k => { st.burst = k; spinFx(); }, Ease.out);
-      this.dim(0, 0.5);
-      await GFX.delay(0.2);
-      if (m.face) GFX.delay(0.3).then(() => { if (m.face.expr === 'angry') m.face.set(was || 'neutral'); });
+      //   月は一番背の高い敵の頭より上に。地面から月の光輪までが画面に収まる距離から映す（縦の画角 38°）
+      const topH = Math.max(...ts.map(t => t.model.height)), R = 0.75 + wide * 0.18 + tall * 0.15, Y = Math.max(3.0, topH + 1.0) + R, M = V3(cen.x, Y, cen.z - 0.4);
+      const span = Y + R * 1.6, far = span / 2 / Math.tan(19 * Math.PI / 180) + wide * 0.5;
+      const moonCam = (dx, k = 1) => this.setCam(V3(cen.x + dx, span * 0.25, cen.z + far * k), V3(cen.x, span * 0.5, cen.z), { snap: true });
+      moonCam(1.0);
+      const moon = this.blackMoonBody(M, R);
+      Sfx.tone(48, 1.6, 'sawtooth', 0.08, 12); Sfx.noise(1.4, 0.06, 500);
+      const lifts = ts.map(t => ({ t, g: t.model.group, y0: t.model.group.position.y }));
+      await GFX.tween(1.0, (k, p) => {
+        moon.userData.size = Ease.out(Math.min(1, k * 1.6)) * (0.8 + 0.2 * k);
+        // 地面とまわりから、光が月へ吸いこまれる
+        for (let i = 0; i < 2; i++) {
+          const a = Math.random() * Math.PI * 2, r = 2.5 + Math.random() * 2.5, q = V3(cen.x + Math.cos(a) * r, 0.2 + Math.random() * (Y - 0.5), cen.z + Math.sin(a) * r * 0.6);
+          this.p.emit(q, M.clone().sub(q).multiplyScalar(1 / 0.45), hdr(Math.random() < 0.4 ? red : vio, 2.2), { life: 0.45, size: 0.11, drag: 0 });
+        }
+        for (const l of lifts) { l.g.position.y = l.y0 + Ease.inOut(k) * 0.5; l.g.position.x = l.t.home.x + Math.sin(p * 90 + l.t.home.x) * 0.03 * k; }
+      }, Ease.linear);
+      // ③ マオウが笏をふりおろす
+      this.focus(e);
+      this.setCam(V3(h.x + 1.9, 0.75, h.z - 1.6), V3(h.x - 0.1, 0.9, h.z - 0.4), { snap: true });
+      this.eyeGlint(e);
+      Sfx.swing();
+      await this.sweep(m, POSES.plant, 0.14, red, { n: 4, size: 0.14 });
+      this.fx.sprite(m.tipPos(), red, 1.2, 0.3, { k: 3 });
+      await GFX.delay(0.3);
+      // ④ 月が落ちる
+      this.focus(null);
+      moonCam(1.5, 1.08);
+      const hitY = Math.max(R, topH * 0.45);
+      Sfx.noise(0.45, 0.1, 900);
+      await GFX.tween(0.32, k => {
+        moon.position.y = Y + (hitY - Y) * k * k;
+        moon.userData.size = 1 + k * 0.15;
+        this.p.emit(moon.position.clone().add(V3((Math.random() - 0.5) * R * 2, R * 0.6, (Math.random() - 0.5) * R)), V3(0, 3, 0), hdr(red, 2.4), { life: 0.3, size: 0.12 });
+      });
+      for (const l of lifts) { l.g.position.y = l.y0; l.g.position.x = l.t.home.x; }
+      // ⑤ 闇のドームがはじける
+      moon.userData.gone = true;
+      const W = Math.max(wide + 2.4, (topH + 0.6) / 0.8);   // ドーム（高さは半径の 0.8）が一番背の高い敵ものみこむ
+      this.darkDome(V3(cen.x, 0, cen.z), R, W, 0.75);
+      GFX.flash(red, 0.12, 0.3); GFX.shake(0.4);
+      Sfx.slam(); this.boomSfx(1.4); Sfx.tone(40, 0.9, 'sawtooth', 0.09, -10);
+      for (let i = 0; i < 3; i++) GFX.delay(i * 0.09).then(() => this.fx.ring(V3(cen.x, 0.07, cen.z), i === 1 ? vio : red, { r: W * 1.3 + i * 1.2, life: 0.65, width: 0.35 - i * 0.08, k: 2.5 }));
+      for (const t of ts) {
+        this.squash(t, 0.5);
+        t.model.flash('#2a0a14', 1.2);
+        this.groundCracks(t.home.clone().add(V3(0, 0.03, 0)), t.model.radius + 1.0);
+        this.dustFx(t.home, 12);
+        for (let j = 0; j < 6; j++) this.p.emit(t.home.clone().add(V3((Math.random() - 0.5) * 1.2, 0.1, (Math.random() - 0.5) * 1.0)), V3(0, 2.5 + Math.random() * 2, 0), hdr(j % 2 ? red : vio, 2.2), { life: 0.6, size: 0.14, grav: 5 });
+      }
+      this.fx.shards(V3(cen.x, hitY, cen.z), '#1a0f24', 16, 6);
+      this.p.burst(V3(cen.x, hitY, cen.z), red, 40, { speed: 8, life: 0.6, size: 0.13 });
+      await GFX.delay(0.75);
+      // ⑥ 紅い気をまとって、あごを上げてふんぞりかえる（うしろに仲間が見える前からの画）
+      this.unfocus();
+      this.dim(0, 0.6);
+      m.group.rotation.y = Math.PI + 0.2;   // 前（敵がわ）のカメラへ顔を向ける（笏の石が顔にかぶらない向き）
+      this.setCam(V3(h.x - 1.0, 0.75, h.z - 2.6), V3(h.x + 0.5, 0.95, h.z + 0.8), { snap: true });
+      if (m.face) m.face.set('smug');
+      this.tweenPose(m, ULT_POSES.maou.pose, 0.22);
+      m.flash(red, 0.5);
+      this.fx.ring(h.clone().add(V3(0, 0.06, 0)), red, { r: 1.6, life: 0.6, width: 0.2 });
+      Sfx.tone(196, 0.5, 'sawtooth', 0.05, 0); Sfx.tone(294, 0.5, 'sawtooth', 0.04, 0, 0.08);
+      await this.every(0.6, 18, i => {
+        const a = Math.random() * Math.PI * 2, r = 0.35 + Math.random() * 0.25;
+        this.p.emit(h.clone().add(V3(Math.cos(a) * r, 0.1, Math.sin(a) * r)), V3(0, 1.6 + Math.random(), 0), hdr(i % 3 ? red : '#ffcf4a', 2.4), { life: 0.6, size: 0.1, drag: 1 });
+      });
+      await GFX.delay(0.15);
+      if (m.face) GFX.delay(0.3).then(() => { if (m.face.expr === 'smug') m.face.set(was || 'neutral'); });
+      // 前からの画なので、引きの画へは切りかえて戻す（なめらかに戻すと、仲間の体を通りぬける）
+      m.group.rotation.y = Math.PI;
+      const boss = this.b.enemies.some(x => x.def.boss);
+      this.setCam(V3(0, boss ? 2.8 : 2.1, (boss ? 10.2 : 8.2) + tall), V3(0, boss ? 2.1 : 1.0, -2.5), { snap: true });
     },
   },
   // 魔王のいあつ：笏を立てて、黒い気をまとい、赤い目がぎらり。敵の向こうに巨大なマオウの影がそびえ、
@@ -2477,35 +2527,34 @@ Object.assign(BattleView.prototype, {
       this.fx.add(m, 1.0, k => { m.scale.set(len * Ease.out(Math.min(1, k * 6)), 1 + (1 - k), 1); m.material.opacity = k > 0.6 ? (1 - k) / 0.4 : 1; });
     }
   },
-  // 漆黒の帳の帯：cen のまわりを渦を巻く、上が黒・下のふちが紅の帯。st（帳のみんなで共有）で動く
-  //   drop：空から降りる（0〜1）・spin：回った角度・squeeze：締めつけ（0〜1）・burst：はじけ飛ぶ（0〜1）
-  veilRibbon(cen, R, H, phase, lag, st) {
-    // 帯の幅の方向に 3 列：上のふち（黒）・すその少し上（黒）・すそ（紅）。紅はすその細いふちだけ
-    const N = 64, W = 0.3, EDGE = 0.06, L = Math.PI * 2.2, rows = [W / 2, -W / 2 + EDGE, -W / 2];
-    const cols = [new THREE.Color('#0a0610'), new THREE.Color('#1c0e26'), new THREE.Color('#c8203a')];
-    const pos = new Float32Array((N + 1) * 3 * 3), col = new Float32Array((N + 1) * 3 * 3), idx = [];
-    for (let i = 0; i <= N; i++) {
-      for (let j = 0; j < 3; j++) cols[j].toArray(col, (i * 3 + j) * 3);
-      if (i < N) for (let j = 0; j < 2; j++) { const a = i * 3 + j, b = a + 3; idx.push(a, a + 1, b, a + 1, b + 1, b); }
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.setIndex(idx);
-    const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, depthWrite: false });
-    const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 11; mesh.frustumCulled = false;
-    this.fx.add(mesh, 4, () => {
-      const d = Math.min(1, Math.max(0, st.drop * 1.25 - lag * 0.25)), q = st.squeeze, b = st.burst;
-      const r0 = R * (1 - 0.45 * q) * (1 + b * 1.6), yb = (1 - d) * (H + 6) + b * 2.5;
-      for (let i = 0; i <= N; i++) {
-        const u = i / N, a = phase + st.spin - u * L, r = r0 * (1 - 0.15 * u);
-        const y = yb + u * H * (1.2 + 0.3 * q) + Math.sin(u * 9 + st.spin * 2 + phase) * 0.1;
-        const x = cen.x + Math.cos(a) * r, z = cen.z + Math.sin(a) * r * 0.8;
-        for (let j = 0; j < 3; j++) { const o = (i * 3 + j) * 3; pos[o] = x; pos[o + 1] = y + rows[j]; pos[o + 2] = z; }
-      }
-      geo.attributes.position.needsUpdate = true;
-      mat.opacity = Math.min(1, d * 3) * (1 - b) * 0.95;
-      mesh.visible = d > 0 && b < 1;
+  // 黒い月（滅びの黒月）：まっ黒な玉に、ふちの細い光の輪と、うしろの紅いにじみ（日食の月）。
+  //   userData.size で大きさ（R に掛ける）を、userData.gone で消す。position を動かすと、輪とにじみもついてくる
+  blackMoonBody(at, R) {
+    const g = new THREE.Group(); g.position.copy(at); g.userData.size = 0;
+    const core = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 24), new THREE.MeshBasicMaterial({ color: '#05030a', fog: false })); core.renderOrder = 12;
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ff3a5a', 2.2), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false })); halo.renderOrder = 11;
+    const rim = new THREE.Mesh(new THREE.RingGeometry(0.97, 1.07, 64), new THREE.MeshBasicMaterial({ color: hdr('#ffd0d8', 2.6), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false })); rim.renderOrder = 13;
+    g.add(core, halo, rim);
+    return this.fx.add(g, 6, (k, o, dt) => {
+      const s = Math.max(1e-3, g.userData.size * R), t = GFX.time;
+      if (g.userData.gone) { o.visible = false; return; }
+      core.scale.setScalar(s);
+      halo.scale.setScalar(s * (3.2 + Math.sin(t * 9) * 0.15)); halo.material.opacity = Math.min(1, g.userData.size * 1.5);
+      rim.scale.setScalar(s); rim.quaternion.copy(this.camera.quaternion);
     });
-    return mesh;
+  },
+  // 闇のドーム：at の地面から、半径 r0 → r1 へ一気にふくらむ黒い半球。すそに紅い光の輪がついて、うすれて消える
+  darkDome(at, r0, r1, life) {
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#0c0614', transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+    dome.position.copy(at); dome.renderOrder = 11;
+    const hem = new THREE.Mesh(new THREE.TorusGeometry(1, 0.025, 8, 64), new THREE.MeshBasicMaterial({ color: hdr('#ff3a5a', 3), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
+    hem.rotation.x = Math.PI / 2; hem.position.set(at.x, at.y + 0.08, at.z); hem.renderOrder = 12;
+    const size = k => lerp(r0, r1, Ease.out(Math.min(1, k * 2.2)));
+    this.fx.add(hem, life, k => { hem.scale.setScalar(size(k)); hem.material.opacity = 1 - k; });
+    return this.fx.add(dome, life, k => {
+      const s = size(k);
+      dome.scale.set(s, s * 0.8, s);
+      dome.material.opacity = 0.9 * (k < 0.35 ? 1 : 1 - (k - 0.35) / 0.65);
+    });
   },
 });
