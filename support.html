@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-title-ja="サポート｜にゃんこファンタジー" data-title-en="Support | Nyanko Fantasy">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,10 +15,26 @@
     dt { font-weight: bold; margin-top: 1em; }
     dd { margin: 0; }
     a { color: inherit; }
+    .lang { float: right; font-size: .9em; margin-top: .3em; }
+    /* 日本語と英語の両方を書いておき、言語の合わないほうを隠す（JavaScript が動かないときは両方出る） */
+    html[data-lang=ja] .only-en, html[data-lang=en] .only-ja { display: none; }
   </style>
+  <script>
+    // 言語：?lang=ja / ?lang=en があればそれ、なければブラウザの言語（日本語以外は英語）
+    (function () {
+      var q = (location.search.match(/[?&]lang=(ja|en)/) || [])[1];
+      var nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'ja';
+      var lang = q || (/^ja/i.test(nav) ? 'ja' : 'en');
+      document.documentElement.lang = lang;
+      document.documentElement.setAttribute('data-lang', lang);
+      document.addEventListener('DOMContentLoaded', function () { document.title = document.documentElement.getAttribute('data-title-' + lang); });
+    })();
+  </script>
 </head>
 <body>
 <main>
+  <p class="lang"><a class="only-ja" href="support.html?lang=en" lang="en">English</a><a class="only-en" href="support.html?lang=ja" lang="ja">日本語</a></p>
+  <div class="only-ja" lang="ja">
   <h1>にゃんこファンタジー　サポート</h1>
 
   <h2>お問い合わせ</h2>
@@ -28,6 +44,8 @@
   <dl>
     <dt>セーブはどこに残りますか？</dt>
     <dd>端末の中に自動で残ります。アプリを削除すると消えます。</dd>
+    <dt>英語で遊べますか？</dt>
+    <dd>タイトル画面の右上か、メニューの「オプション」で、日本語と英語を切りかえられます。はじめは端末の言語にあわせて選ばれます。</dd>
     <dt>音が出ません</dt>
     <dd>本体の消音スイッチ（着信／サイレント）に従います。サイレントを切って、音量を上げてください。</dd>
     <dt>縦画面で遊べますか？</dt>
@@ -37,8 +55,32 @@
   </dl>
 
   <h2>プライバシー</h2>
-  <p>本アプリは個人情報を集めません。くわしくは<a href="privacy.html">プライバシーポリシー</a>をご覧ください。</p>
+  <p>本アプリは個人情報を集めません。くわしくは<a href="privacy.html?lang=ja">プライバシーポリシー</a>をご覧ください。</p>
 
+  </div>
+  <div class="only-en" lang="en">
+  <h1>Nyanko Fantasy Support</h1>
+
+  <h2>Contact</h2>
+  <p>To report a problem or send feedback, please use the <a href="https://docs.google.com/forms/d/e/1FAIpQLSeYLTOc9VE4JJbzA2dVWAYEYCVrlzm1p5cn1U8KDmjzHs4fWg/viewform">contact form</a>. It helps if you include your device model, your OS version (iOS or Android), and where in the game the problem happened.</p>
+
+  <h2>FAQ</h2>
+  <dl>
+    <dt>Where is my progress saved?</dt>
+    <dd>It is saved automatically on your device. Deleting the App also deletes it.</dd>
+    <dt>How do I switch between English and Japanese?</dt>
+    <dd>Use the language buttons in the top right of the title screen, or open the menu and choose "Options." The game starts in English unless your device is set to Japanese.</dd>
+    <dt>There's no sound</dt>
+    <dd>The App follows your device's Ring/Silent switch. Turn off Silent mode and turn up the volume.</dd>
+    <dt>Can I play in portrait mode?</dt>
+    <dd>The game can only be played in landscape.</dd>
+    <dt>The game went back to the title screen while I was playing</dt>
+    <dd>This can happen when your device runs low on memory. Try closing other apps. You can continue from where your game was last saved.</dd>
+  </dl>
+
+  <h2>Privacy</h2>
+  <p>The App does not collect any personal information. For details, see the <a href="privacy.html?lang=en">Privacy Policy</a>.</p>
+  </div>
 </main>
 </body>
 </html>
