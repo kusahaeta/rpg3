@@ -3238,6 +3238,8 @@ function worldMapHTML(here) {
   const real = here;
   if (here && FIELD_ZONES[here] && FIELD_ZONES[here].parent) here = FIELD_ZONES[here].parent;
   if (qz && FIELD_ZONES[qz].parent) qz = FIELD_ZONES[qz].parent;
+  // 地図に描く位置。map2d は空の樹の向きにも使うので変えずに、横だけ 1.25 倍に広げて中央に置く（英語の長い名前でも重ならないように）
+  const P = m => [Math.round(500 + (m[0] - 620) * 1.25), m[1]];
   const lines = [];
   // 上の階・奥の区画（parent）の出入口も、入口の区画どうしの線にまとめる
   const top = k => FIELD_ZONES[k].parent || k, drawn = new Set();
@@ -3245,16 +3247,17 @@ function worldMapHTML(here) {
     const a0 = top(id), b0 = top(e.to), key = [a0, b0].sort().join('|');
     if (a0 === b0 || !ids.includes(a0) || !ids.includes(b0) || drawn.has(key)) return;
     drawn.add(key);
-    const a = FIELD_ZONES[a0].map2d, b = FIELD_ZONES[b0].map2d;
+    const a = P(FIELD_ZONES[a0].map2d), b = P(FIELD_ZONES[b0].map2d);
     lines.push(`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="${zoneOpen(e.to) && zoneOpen(id) ? '' : 'locked'}"/>`);
   }));
   const floorsOf = id => Object.keys(FIELD_ZONES).filter(k => k === id || FIELD_ZONES[k].parent === id);
   const chestsLeft = id => floorsOf(id).reduce((n, k) => n + FIELD_ZONES[k].chests - ((Save.data.fieldChests || {})[k] || []).length, 0);
   return `<div class="ov-box wm-box"><h2>${Tx('ミャオニアの地図')}</h2>
     <div class="wm-graph"><svg width="1000" height="580" viewBox="0 0 1000 580"><defs><radialGradient id="wmtree"><stop offset="0" stop-color="#8ad86a"/><stop offset="1" stop-color="#8ad86a" stop-opacity="0"/></radialGradient></defs>
-      <circle cx="470" cy="522" r="70" fill="url(#wmtree)" opacity=".35"/>${lines.join('')}</svg>
+      <circle cx="${P(FIELD_ZONES.tree_root.map2d)[0]}" cy="${FIELD_ZONES.tree_root.map2d[1]}" r="70" fill="url(#wmtree)" opacity=".35"/>${lines.join('')}</svg>
     ${ids.map(id => { const Z = FIELD_ZONES[id], open = zoneOpen(id), vis = floorsOf(id).some(k => visited[k]), h = id === here;
-      return `<button class="wm-node ${h ? 'here' : ''} ${open ? '' : 'locked'} ${vis ? 'vis' : ''} ${Z.town ? 'town' : ''}" data-z="${id}" style="left:${Z.map2d[0]}px;top:${Z.map2d[1]}px" ${open && vis && id !== real && !Z.noAnchor ? '' : 'disabled'}>
+      const [x, y] = P(Z.map2d);
+      return `<button class="wm-node ${h ? 'here' : ''} ${open ? '' : 'locked'} ${vis ? 'vis' : ''} ${Z.town ? 'town' : ''}" data-z="${id}" style="left:${x}px;top:${y}px" ${open && vis && id !== real && !Z.noAnchor ? '' : 'disabled'}>
         ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${open ? Z.mapName || Z.name : Tx('？？？')}</b><small>${Tx(id === real ? '現在地' : !open ? 'まだ行けない' : !vis ? 'まだ行ってない' : Z.noAnchor ? 'ひとっとびできない' : h ? '現在地・ひとっとび' : 'ひとっとび')}${open ? Tx('　宝箱 {0}', chestsLeft(id)) : ''}</small></button>`; }).join('')}
     </div>`;
 }
