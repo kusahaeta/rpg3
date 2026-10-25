@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Motion sheet</title>
+<!--
+  技の動きのコマ送りの一覧（1920×1080）。速くて 1 枚の画面ではわからない動きを、細かい間隔のコマに分けて格子にならべる
+  （AI が技を確かめるときにしていた見方）。tools/promo/page-rec.mjs が setClip(データ, 名前) で場面を選び、render(秒) で撮る。
+  データ：{ dur, title, sub, cols, start, every, frames: [{ src: 'file:///…jpg', t: 0.1 }] }
+-->
+<style>
+  :root { --bg: #f4f1ea; --ink: #26231f; --sub: #6f6a62; --line: #e2ddd3; --accent: #2a78d6; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--ink);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif; -webkit-font-smoothing: antialiased; }
+  h1 { position: absolute; left: 120px; top: 64px; font-size: 46px; }
+  p.sub { position: absolute; left: 120px; top: 132px; font-size: 28px; color: var(--sub); }
+  #grid { position: absolute; left: 120px; right: 120px; top: 200px; bottom: 50px; display: grid; gap: 18px; align-content: start; }
+  .cell { position: relative; border-radius: 12px; overflow: hidden; background: #ddd6c9; aspect-ratio: 16 / 9; }
+  .cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cell span { position: absolute; left: 10px; top: 8px; font-size: 22px; font-weight: 700; color: #fff; background: rgba(38,35,31,.72);
+    border-radius: 8px; padding: 2px 10px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<p class="sub" id="sub"></p>
+<div id="grid"></div>
+<script>
+let cells = [], total = 0, start = 0.6, every = 0.22;
+window.setClip = data => {
+  document.getElementById('title').textContent = data.title;
+  document.getElementById('sub').textContent = data.sub;
+  const g = document.getElementById('grid'); g.innerHTML = '';
+  g.style.gridTemplateColumns = `repeat(${data.cols}, 1fr)`;
+  start = data.start ?? start; every = data.every ?? every;
+  cells = data.frames.map(f => {
+    const c = document.createElement('div'); c.className = 'cell';
+    c.innerHTML = `<img src="${f.src}"><span>${f.t.toFixed(2)} 秒</span>`;
+    g.appendChild(c); return c;
+  });
+  total = data.dur;
+  // 画像が読みこまれてから撮りはじめる
+  return Promise.all([...g.querySelectorAll('img')].map(i => i.decode().catch(() => {}))).then(() => total);
+};
+window.render = t => {
+  cells.forEach((c, i) => { const k = Math.max(0, Math.min(1, (t - start - i * every) / 0.25));
+    c.style.opacity = k; c.style.transform = `scale(${0.94 + 0.06 * k})`; });
+  return total;
+};
+</script>
+</body>
+</html>

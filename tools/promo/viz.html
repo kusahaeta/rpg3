@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Making-of charts</title>
+<!--
+  メイキング動画のグラフと数字のカード（1920×1080）。tools/promo/page-rec.mjs が setClip(データ, 名前) で場面を選び、
+  render(秒) を 1/30 秒ずつ呼んでコマを撮る。データと、声に合わせて動かす時刻（cues）は promo/making-of/viz.json。
+  色は青（作った・直した後）とオレンジ（直した・直す前）の 2 色だけ。オレンジは背景との差が小さいので、棒にはかならず数字を添える。
+-->
+<style>
+  :root {
+    --bg: #f4f1ea; --ink: #26231f; --sub: #6f6a62; --muted: #9a948a; --grid: #e2ddd3; --dim: #d6cfc2;
+    --s1: #2a78d6; --s2: #eb6834; --s2-tint: #fbe3d8;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--ink);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif; -webkit-font-smoothing: antialiased; }
+  svg { position: absolute; inset: 0; }
+  text { font-family: inherit; fill: var(--ink); }
+  .title { font-size: 46px; font-weight: 700; }
+  .subt { font-size: 28px; fill: var(--sub); }
+  .axis { font-size: 26px; fill: var(--sub); }
+  .val { font-size: 28px; font-weight: 600; }
+  .big { font-size: 64px; font-weight: 700; }
+  .grid { stroke: var(--grid); stroke-width: 2; }
+  .base { stroke: var(--muted); stroke-width: 2; }
+  .tile { position: absolute; top: 96px; width: 390px; height: 210px; border-radius: 20px; background: #fbfaf7;
+    border: 2px solid var(--grid); padding: 30px 34px; }
+  .tile .k { font-size: 28px; color: var(--sub); }
+  .tile .v { font-size: 80px; font-weight: 700; line-height: 1.2; margin-top: 8px; letter-spacing: .01em; }
+  .tile .v small { font-size: 36px; font-weight: 600; margin-left: 6px; }
+  .tile .v small.pre { margin: 0 6px 0 0; }
+  #list { position: absolute; left: 260px; width: 1400px; top: 0; }
+  .row { height: 84px; margin-bottom: 14px; border-radius: 16px; background: #fbfaf7; border: 2px solid var(--grid);
+    display: flex; align-items: center; padding: 0 30px 0 38px; font-size: 34px; position: relative; overflow: hidden; white-space: nowrap; }
+  .row .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background: var(--s2); }
+  .row mark { background: none; font-weight: 700; padding: 0 2px; box-shadow: inset 0 -14px 0 var(--s2-tint); color: var(--ink); }
+  .head { position: absolute; left: 0; right: 0; top: 0; height: 190px; background: linear-gradient(var(--bg) 75%, rgba(244,241,234,0)); z-index: 2; }
+  .foot { position: absolute; left: 0; right: 0; bottom: 0; height: 140px; background: linear-gradient(rgba(244,241,234,0), var(--bg) 70%); z-index: 2; }
+  .badge { position: absolute; right: 120px; top: 70px; z-index: 3; background: #fbfaf7; border: 3px solid var(--s2); border-radius: 18px;
+    padding: 18px 30px; font-size: 34px; font-weight: 700; }
+  .badge b { font-size: 60px; margin: 0 6px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const W = 1920, H = 1080, NS = 'http://www.w3.org/2000/svg';
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = x => 1 - Math.pow(1 - clamp(x), 3);
+const fade = (t, at, d = 0.4) => ease((t - at) / d);
+const svgEl = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent?.appendChild(e); return e; };
+const txt = (parent, x, y, s, cls, anchor = 'start') => { const e = svgEl('text', { x, y, class: cls, 'text-anchor': anchor }, parent); e.textContent = s; return e; };
+// 上の角だけ丸い棒（下は基線にそろえる）
+const barPath = (x, y, w, h, r = 4) => { if (h <= 0) return ''; r = Math.min(r, h, w / 2);
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`; };
+
+// 縦棒のグラフの骨組み：目もりと基線
+function frame(svg, { x0, x1, y0, y1, max, step, unit = '' }) {
+  const sy = v => y1 - (v / max) * (y1 - y0);
+  for (let v = step; v <= max; v += step) { svgEl('line', { x1: x0, x2: x1, y1: sy(v), y2: sy(v), class: 'grid' }, svg); txt(svg, x0 - 18, sy(v) + 9, v + unit, 'axis', 'end'); }
+  svgEl('line', { x1: x0, x2: x1, y1, y2: y1, class: 'base' }, svg);
+  return sy;
+}
+
+const CLIPS = {
+  // 日ごとのコミット数と、4 つの数字
+  daily(root, d) {
+    const tiles = [['作った期間', '28', '日'], ['変更の記録（コミット）', '670', '回'], ['プログラム', '<small class="pre">約</small>3.3万', '行'], ['AIとの会話', '180', '回']]
+      .map(([k, v, u], i) => { const e = document.createElement('div'); e.className = 'tile'; e.style.left = `${120 + i * 430}px`;
+        e.innerHTML = `<div class="k">${k}</div><div class="v">${v}<small>${u}</small></div>`; root.appendChild(e); return e; });
+    const svg = svgEl('svg', { width: W, height: H }, root);
+    txt(svg, 160, 400, '日ごとのコミット数', 'subt');
+    const x0 = 200, x1 = 1780, y0 = 440, y1 = 950, max = 80;
+    const sy = frame(svg, { x0, x1, y0, y1, max, step: 20 });
+    const n = d.days.length, slot = (x1 - x0) / n, bw = slot - 10;
+    const bars = d.days.map(([day, v], i) => {
+      const x = x0 + i * slot + 5;
+      if ([0, 7, 14, 21, 27].includes(i)) txt(svg, x + bw / 2, y1 + 40, day, 'axis', 'middle');
+      const p = svgEl('path', { fill: 'var(--s1)' }, svg);
+      const lab = v === 72 ? txt(svg, x + bw / 2, 0, String(v), 'val', 'middle') : null;
+      return { p, x, v, lab };
+    });
+    return t => {
+      tiles.forEach((e, i) => { const k = fade(t, d.cues['t' + (i + 1)]); e.style.opacity = k; e.style.transform = `translateY(${(1 - k) * 24}px)`; });
+      bars.forEach((b, i) => { const h = (y1 - sy(b.v)) * ease((t - d.cues.chart - i * 0.035) / 0.6);
+        b.p.setAttribute('d', barPath(b.x, y1 - h, bw, h));
+        if (b.lab) { b.lab.setAttribute('y', y1 - h - 14); b.lab.style.opacity = fade(t, d.cues.chart + 1.6); } });
+    };
+  },
+
+  // 週ごとの「作った（feat）」「直した（fix）」
+  weekly(root, d) {
+    const svg = svgEl('svg', { width: W, height: H }, root);
+    txt(svg, 160, 130, '週ごとの変更の数', 'title');
+    // 凡例（2 系列なので必ず出す）
+    [['作った（feat）', 'var(--s1)'], ['直した（fix）', 'var(--s2)']].forEach(([s, c], i) => {
+      svgEl('rect', { x: 160 + i * 330, y: 172, width: 28, height: 28, rx: 4, fill: c }, svg); txt(svg, 200 + i * 330, 196, s, 'subt'); });
+    const totals = [txt(svg, 1760, 120, '', 'big', 'end'), txt(svg, 1760, 200, '', 'big', 'end')];
+    totals[0].innerHTML = '<tspan class="subt" dx="0">作った </tspan>157<tspan class="subt"> 回</tspan>';
+    totals[1].innerHTML = '<tspan class="subt">直した </tspan>189<tspan class="subt"> 回</tspan>';
+    const x0 = 220, x1 = 1760, y0 = 300, y1 = 920, max = 70;
+    const sy = frame(svg, { x0, x1, y0, y1, max, step: 10 });
+    const slot = (x1 - x0) / 4, bw = 150;
+    const bars = [];
+    d.weeks.forEach(([feat, fix], w) => {
+      const cx = x0 + slot * w + slot / 2;
+      txt(svg, cx, y1 + 44, d.labels[w], 'axis', 'middle');
+      [[feat, 'var(--s1)', cx - bw - 1, 'feat'], [fix, 'var(--s2)', cx + 1, 'fix']].forEach(([v, c, x, k]) => {
+        bars.push({ p: svgEl('path', { fill: c }, svg), lab: txt(svg, x + bw / 2, 0, String(v), 'val', 'middle'), x, v, k, w });
+      });
+    });
+    return t => {
+      totals[0].style.opacity = fade(t, d.cues.feat); totals[1].style.opacity = fade(t, d.cues.fix);
+      bars.forEach(b => { const h = (y1 - sy(b.v)) * ease((t - d.cues.chart - b.w * 0.15) / 0.8);
+        b.p.setAttribute('d', barPath(b.x, y1 - h, bw, h)); b.lab.setAttribute('y', y1 - h - 14);
+        b.lab.style.opacity = fade(t, d.cues.chart + 0.8 + b.w * 0.15); });
+    };
+  },
+
+  // 頼みごとの一覧が流れ、「不要」「要らない」の行が光る
+  fuyou(root, d) {
+    root.insertAdjacentHTML('beforeend', '<div class="head"></div><div class="foot"></div>');
+    const svg = svgEl('svg', { width: W, height: 190 }, root); svg.style.zIndex = 3;
+    txt(svg, 160, 120, 'わたしの頼みごと（一部）', 'title');
+    const badge = document.createElement('div'); badge.className = 'badge';
+    badge.innerHTML = '「不要」「要らない」<b>28</b>回'; root.appendChild(badge);
+    const list = document.createElement('div'); list.id = 'list'; root.appendChild(list);
+    const rows = d.rows.map(s => {
+      const e = document.createElement('div'); e.className = 'row';
+      const hit = /不要|要らない/.test(s);
+      e.innerHTML = (hit ? '<span class="bar"></span>' : '') + s.replace(/不要|要らない/g, m => `<mark>${m}</mark>`);
+      list.appendChild(e); return { e, hit };
+    });
+    const rowH = 98, top0 = 210, travel = rows.length * rowH - (H - top0) + 160;
+    return t => {
+      const k = clamp(t / (d.dur - 1.5));
+      list.style.top = `${top0 - travel * k}px`;
+      const on = fade(t, d.cues.hl, 0.5);
+      rows.forEach(r => {
+        if (r.hit) { r.e.querySelector('.bar').style.opacity = on; r.e.querySelector('mark').style.boxShadow = `inset 0 -14px 0 rgba(235,104,52,${0.22 * on})`;
+          r.e.style.borderColor = on > 0.5 ? 'var(--s2)' : 'var(--grid)'; }
+        else r.e.style.opacity = 1 - 0.45 * on;
+      });
+      badge.style.opacity = fade(t, d.cues.count); badge.style.transform = `scale(${0.9 + 0.1 * fade(t, d.cues.count)})`;
+    };
+  },
+
+  // 頼みごとの長さ（10 文字ごと）
+  length(root, d) {
+    const svg = svgEl('svg', { width: W, height: H }, root);
+    txt(svg, 160, 130, '頼みごとの長さ', 'title'); txt(svg, 160, 180, `${d.n} 件（「PR を作って」などの手続きをのぞく）`, 'subt');
+    const x0 = 220, x1 = 1760, y0 = 300, y1 = 900, max = 250;
+    const sy = frame(svg, { x0, x1, y0, y1, max, step: 50 });
+    const n = d.bins.length, slot = (x1 - x0) / n, bw = slot - 14;
+    const names = d.bins.map((_, i) => i === n - 1 ? '101〜' : `〜${(i + 1) * 10}`);
+    const bars = d.bins.map((v, i) => { const x = x0 + i * slot + 7;
+      txt(svg, x + bw / 2, y1 + 42, names[i], 'axis', 'middle');
+      return { p: svgEl('path', {}, svg), lab: txt(svg, x + bw / 2, 0, String(v), 'val', 'middle'), x, v, i }; });
+    txt(svg, x1, y1 + 90, '文字数', 'axis', 'end');
+    // まん中（27 文字）の線：21〜30 文字の棒の中で、27 の位置
+    const mx = x0 + slot * (2 + 0.7);
+    // 線は、棒の数字（21〜30 文字の棒）のところだけ切る
+    const mline = svgEl('g', { stroke: 'var(--ink)', 'stroke-width': 3, 'stroke-dasharray': '10 8' }, svg), top3 = sy(d.bins[2]);
+    svgEl('line', { x1: mx, x2: mx, y1: top3 - 50, y2: sy(230) }, mline); svgEl('line', { x1: mx, x2: mx, y1: top3, y2: y1 }, mline);
+    const mlab = txt(svg, mx + 16, sy(222), `まん中 ${d.median} 文字`, 'val');
+    // 40 文字以下（最初の 4 本）をくくる
+    const share = Math.round(d.bins.slice(0, 4).reduce((a, b) => a + b, 0) / d.n * 100);
+    const g = svgEl('g', {}, svg);
+    const bx0 = x0 + 4, bx1 = x0 + slot * 4 - 4, by = sy(244);
+    svgEl('path', { d: `M${bx0},${by + 18}V${by}H${bx1}V${by + 18}`, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 3 }, g);
+    txt(g, (bx0 + bx1) / 2, by - 16, `40 文字以下　${share}%`, 'val', 'middle');
+    return t => {
+      const s = fade(t, d.cues.share, 0.5);
+      bars.forEach(b => { const h = (y1 - sy(b.v)) * ease((t - d.cues.chart - b.i * 0.04) / 0.6);
+        b.p.setAttribute('d', barPath(b.x, y1 - h, bw, h)); b.lab.setAttribute('y', y1 - h - 12);
+        b.p.setAttribute('fill', b.i < 4 || s < 0.5 ? 'var(--s1)' : 'var(--dim)');
+        b.lab.style.opacity = fade(t, d.cues.chart + 0.9); });
+      mline.style.opacity = mlab.style.opacity = fade(t, d.cues.median);
+      g.style.opacity = s;
+    };
+  },
+
+  // 1 回の会話での頼みごとの数
+  sessions(root, d) {
+    const svg = svgEl('svg', { width: W, height: H }, root);
+    txt(svg, 160, 130, '1 回の会話で頼んだ数', 'title'); txt(svg, 160, 180, `会話 ${d.n} 回`, 'subt');
+    const x0 = 220, x1 = 1760, y0 = 300, y1 = 900, max = 80;
+    const sy = frame(svg, { x0, x1, y0, y1, max, step: 20 });
+    const n = d.bins.length, slot = (x1 - x0) / n, bw = slot - 40;
+    const bars = d.bins.map(([k, v], i) => { const x = x0 + i * slot + 20;
+      txt(svg, x + bw / 2, y1 + 42, k === '10以上' ? '10 以上' : `${k} つ`, 'axis', 'middle');
+      return { p: svgEl('path', {}, svg), lab: txt(svg, x + bw / 2, 0, String(v), 'val', 'middle'), x, v, i }; });
+    const upto3 = d.bins.slice(0, 3).reduce((a, [, v]) => a + v, 0);
+    const g = svgEl('g', {}, svg);
+    const bx0 = x0 + 20, bx1 = x0 + slot * 3 - 20, by = sy(84);
+    svgEl('path', { d: `M${bx0},${by + 18}V${by}H${bx1}V${by + 18}`, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 3 }, g);
+    txt(g, (bx0 + bx1) / 2, by - 16, `3 つまで　${upto3} 回（${Math.round(upto3 / d.n * 100)}%）`, 'val', 'middle');
+    return t => {
+      const s = fade(t, d.cues.share, 0.5);
+      bars.forEach(b => { const h = (y1 - sy(b.v)) * ease((t - d.cues.chart - b.i * 0.06) / 0.6);
+        b.p.setAttribute('d', barPath(b.x, y1 - h, bw, h)); b.lab.setAttribute('y', y1 - h - 12);
+        b.p.setAttribute('fill', b.i < 3 || s < 0.5 ? 'var(--s1)' : 'var(--dim)');
+        b.lab.style.opacity = fade(t, d.cues.chart + 0.9); });
+      g.style.opacity = s;
+    };
+  },
+
+  // iPhone：たまっていた顔の画像（直す前と後）
+  memory(root, d) {
+    const svg = svgEl('svg', { width: W, height: H }, root);
+    txt(svg, 160, 130, 'たまっていた顔の画像（枚）', 'title');
+    [['直す前', 'var(--s2)'], ['直した後', 'var(--s1)']].forEach(([s, c], i) => {
+      svgEl('rect', { x: 160 + i * 230, y: 172, width: 28, height: 28, rx: 4, fill: c }, svg); txt(svg, 200 + i * 230, 196, s, 'subt'); });
+    const x0 = 240, x1 = 1760, y0 = 300, y1 = 900, max = 1000;
+    const sy = frame(svg, { x0, x1, y0, y1, max, step: 250 });
+    txt(svg, x1, 1010, '1 枚 1.6MB。「物語ぜんぶ」は見積もり、直した後の 64 は、とっておく数の上限', 'axis', 'end');
+    const slot = (x1 - x0) / 3, bw = 190, bars = [];
+    d.groups.forEach(([name, before, after], gi) => {
+      const cx = x0 + slot * gi + slot / 2;
+      txt(svg, cx, y1 + 44, name, 'axis', 'middle');
+      bars.push({ p: svgEl('path', { fill: 'var(--s2)' }, svg), x: cx - bw - 1, v: before, at: gi < 2 ? d.cues.before + 0.3 + gi * 0.4 : d.cues.all,
+        lab: txt(svg, cx - bw / 2 - 1, 0, gi === 2 ? '約 900（1GB 超）' : String(before), 'val', 'middle') });
+      bars.push({ p: svgEl('path', { fill: 'var(--s1)' }, svg), x: cx + 1, v: after, at: d.cues.after + gi * 0.3,
+        lab: txt(svg, cx + bw / 2 + 1, 0, gi === 2 ? '最大 64' : String(after), 'val', 'middle') });
+    });
+    return t => bars.forEach(b => { const h = (y1 - sy(b.v)) * ease((t - b.at) / 0.9);
+      b.p.setAttribute('d', barPath(b.x, y1 - h, bw, h)); b.lab.setAttribute('y', y1 - h - 14); b.lab.style.opacity = fade(t, b.at + 0.7); });
+  },
+};
+
+let draw = () => {}, total = 0;
+window.setClip = (data, name) => {
+  const root = document.getElementById('root'); root.innerHTML = '';
+  draw = CLIPS[name](root, data); total = data.dur;
+  return total;
+};
+window.render = t => { draw(t); return total; };
+</script>
+</body>
+</html>

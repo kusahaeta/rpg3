@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Chat replay</title>
+<!--
+  Claude Code とのやりとりを再現して見せる画面（1920×1080）。tools/promo/page-rec.mjs が
+  setClip(場面) で中身を入れ、render(秒) を 1/30 秒ずつ呼んでコマを撮る。時間で決まるので、何度撮っても同じ絵になる。
+-->
+<style>
+  :root {
+    --bg: #f4f1ea; --panel: #fbfaf7; --ink: #26231f; --sub: #77716a; --line: #e2ddd3;
+    --user: #e7e0d2; --accent: #c96442; --ok: #4f8a5b;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--ink);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif; -webkit-font-smoothing: antialiased; }
+  header { position: absolute; inset: 0 0 auto 0; height: 104px; display: flex; align-items: center; gap: 22px;
+    padding: 0 64px; border-bottom: 2px solid var(--line); background: var(--panel); z-index: 2; }
+  header .app { font-size: 34px; font-weight: 700; letter-spacing: .02em; }
+  header .tag { font-size: 22px; color: var(--sub); border: 2px solid var(--line); border-radius: 999px; padding: 6px 18px; }
+  header .when { margin-left: auto; font-size: 30px; color: var(--sub); font-variant-numeric: tabular-nums; }
+  header .when b { color: var(--ink); font-weight: 600; margin-left: 14px; }
+  #view { position: absolute; top: 104px; bottom: 0; left: 0; right: 0; overflow: hidden; }
+  #log { position: absolute; left: 50%; width: 1320px; margin-left: -660px; top: 0; padding: 56px 0 120px; will-change: transform; }
+  .item:not(.on) { display: none !important; }
+  .u { display: flex; justify-content: flex-end; margin: 34px 0 30px; }
+  .u .bubble { max-width: 1040px; background: var(--user); border-radius: 26px; padding: 24px 34px; font-size: 38px; line-height: 1.55; white-space: pre-wrap; }
+  .a { position: relative; padding-left: 44px; margin: 22px 0; font-size: 35px; line-height: 1.65; white-space: pre-wrap; }
+  .a::before { content: ""; position: absolute; left: 6px; top: 22px; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); }
+  .t { display: flex; align-items: center; gap: 16px; padding-left: 44px; margin: 10px 0; font-size: 28px; color: var(--sub); }
+  .t .ic { width: 30px; text-align: center; font-weight: 700; }
+  .t.done .ic { color: var(--ok); }
+  .s { text-align: center; color: var(--sub); font-size: 28px; margin: 34px 0; letter-spacing: .1em; }
+  .s span { background: var(--bg); padding: 0 24px; position: relative; }
+  .s::before { content: ""; display: block; height: 2px; background: var(--line); position: relative; top: 22px; }
+  .caret { display: inline-block; width: 3px; height: 1.1em; background: var(--ink); vertical-align: -0.15em; margin-left: 2px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="app">Claude Code</div>
+  <div class="tag">実際のやりとりを再現（一部省略）</div>
+  <div class="when"><span id="date"></span><b id="clock"></b></div>
+</header>
+<div id="view"><div id="log"></div></div>
+<script>
+// 速さ（1 秒あたりの文字数）と間（秒）
+const TYPE = 13, STREAM = 40, AFTER_U = 0.8, AFTER_A = 0.7, TOOL = 0.7, AFTER_T = 0.25, SKIP = 1.4, HEAD = 0.6, TAIL = 2.5;
+let items = [], total = 0, scroll = 0, lastT = -1;
+const chars = s => Array.from(s);
+
+window.setClip = clip => {
+  const log = document.getElementById('log');
+  log.innerHTML = ''; items = []; scroll = 0; lastT = -1;
+  document.getElementById('date').textContent = clip.date;
+  let t = HEAD, clock = clip.events.find(e => e.at)?.at || '';
+  for (const e of clip.events) {
+    const el = document.createElement('div');
+    let it;
+    if (e.u != null) {
+      el.className = 'item u'; el.innerHTML = '<div class="bubble"></div>';
+      const c = chars(e.u), d = c.length / TYPE;
+      it = { kind: 'u', el, c, t0: t, t1: t + d }; t += d + AFTER_U;
+    } else if (e.a != null) {
+      el.className = 'item a';
+      const c = chars(e.a), d = c.length / STREAM;
+      it = { kind: 'a', el, c, t0: t, t1: t + d }; t += d + AFTER_A;
+    } else if (e.tool != null) {
+      el.className = 'item t'; el.innerHTML = '<span class="ic"></span><span class="tx"></span>';
+      el.querySelector('.tx').textContent = e.tool;
+      it = { kind: 't', el, t0: t, t1: t + TOOL }; t += TOOL + AFTER_T;
+    } else if (e.skip != null) {
+      el.className = 'item s'; el.innerHTML = '<span></span>';
+      el.querySelector('span').textContent = `⋯　${e.skip}　⋯`;
+      it = { kind: 's', el, t0: t, t1: t + SKIP }; t += SKIP;
+    }
+    it.at = e.at || null;
+    log.appendChild(el); items.push(it);
+  }
+  total = t + TAIL;
+  document.getElementById('clock').textContent = clock;
+  return total;
+};
+
+window.render = t => {
+  let clock = null;
+  for (const it of items) {
+    const on = t >= it.t0;
+    it.el.classList.toggle('on', on);
+    if (!on) continue;
+    if (it.at) clock = it.at;
+    const p = Math.min(1, (t - it.t0) / (it.t1 - it.t0));
+    if (it.kind === 'u') {
+      const n = Math.round(p * it.c.length), typing = p < 1;
+      it.el.firstChild.innerHTML = '';
+      it.el.firstChild.textContent = it.c.slice(0, n).join('');
+      if (typing || (t - it.t1) < 0.4) { const k = document.createElement('span'); k.className = 'caret'; k.style.opacity = Math.floor(t * 2.2) % 2 && !typing ? 0 : 1; it.el.firstChild.appendChild(k); }
+    } else if (it.kind === 'a') {
+      it.el.textContent = it.c.slice(0, Math.round(p * it.c.length)).join('');
+    } else if (it.kind === 't') {
+      const ic = it.el.querySelector('.ic');
+      it.el.classList.toggle('done', p >= 1);
+      ic.textContent = p >= 1 ? '✓' : '◐◓◑◒'[Math.floor(t * 8) % 4];
+    }
+  }
+  if (clock) document.getElementById('clock').textContent = clock;
+  // いちばん下が見えるように、なめらかにスクロールする（コマは順に撮るので、前のコマからの続きで動かす）
+  const log = document.getElementById('log'), viewH = document.getElementById('view').clientHeight;
+  const target = Math.max(0, log.offsetHeight - viewH);
+  const dt = lastT < 0 ? 1 : Math.max(0, t - lastT); lastT = t;
+  scroll += (target - scroll) * (1 - Math.pow(0.002, dt));
+  log.style.transform = `translateY(${-scroll}px)`;
+  return total;
+};
+</script>
+</body>
+</html>
