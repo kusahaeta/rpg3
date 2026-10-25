@@ -347,9 +347,9 @@ Object.assign(EN, {
   'ミャオニアの地図': 'Map of Meownia',
   '？？？': '???',
   'まだ行けない': 'Can\'t go yet',
-  'まだ行ってない': 'Not visited yet',
+  'まだ行ってない': 'Not visited',
   'ひとっとびできない': 'No warping',
-  '現在地・ひとっとび': 'You are here · Warp',
+  '現在地・ひとっとび': 'Here · Warp',
   'ひとっとび': 'Warp',
   '　宝箱 {0}': '　Chests: {0}',
   // ── main.js floaties
