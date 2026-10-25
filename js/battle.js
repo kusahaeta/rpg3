@@ -622,7 +622,7 @@ class Battle {
     const list = this.combos(); if (!list.length) return;
     const menu = this.$('.combo-menu');
     if (!id && list.length > 1) {
-      menu.innerHTML = list.map(c => `<button data-cid="${c.id}"><b>${c.name}</b><small>${c.desc}</small></button>`).join('') + `<button class="x" data-cid="">${Tx('やめる')}</button>`;
+      menu.innerHTML = list.map(c => `<button data-cid="${c.id}"><span class="cm-h">${abElems(c).map(el => elemIcon(el)).join('')}<b>${c.name}</b></span><small>${c.desc}</small></button>`).join('') + `<button class="x" data-cid="">${Tx('やめる')}</button>`;
       menu.classList.remove('hidden'); this.$('.bond').classList.add('spend');
       menu.querySelectorAll('[data-cid]').forEach(b => b.onclick = e => { e.stopPropagation(); menu.classList.add('hidden'); this.$('.bond').classList.remove('spend'); if (b.dataset.cid) this.requestCombo(b.dataset.cid); });
       Sfx.click(); return;
