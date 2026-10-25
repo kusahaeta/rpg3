@@ -39,7 +39,7 @@ Play Console の「メインのストア掲載情報」→「翻訳を管理」�
 | 項目 | 内容 |
 | --- | --- |
 | アプリ名（30字まで） | Nyanko Fantasy |
-| 簡単な説明（80字まで） | A 3D turn-based RPG where cute cats journey to the end of the world. Bonds unlock combos! |
+| 簡単な説明（80字まで） | A 3D turn-based RPG: cute cats journey to the end of the world, growing bonds. |
 | 詳しい説明（4000字まで） | `ios/AppStore.md` の「英語の文面」の説明をそのまま使う |
 
 画像は日本語の画面のもの。英語の翻訳に画像を入れなければ、デフォルトの言語の画像が出る。
