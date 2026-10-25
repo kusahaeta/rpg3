@@ -10,15 +10,15 @@ App Store Connect に入れる文面と、答える項目の案。審査に出�
 | サブタイトル（30字まで） | 流れ星のおちた丘から |
 | バンドル ID | com.kusahaeta.nyanko |
 | SKU | nyanko-fantasy |
-| 主な言語 | 日本語 |
+| 主な言語 | 日本語（英語のローカリゼーションも足す。下の「英語の文面」） |
 | カテゴリ | ゲーム › ロールプレイング（2つ目：ゲーム › アドベンチャー） |
 | 価格 | 無料（App 内課金なし） |
 | 対応機種 | iPhone だけ（iPad では iPhone 用の画面で動く） |
-| プライバシーポリシーの URL | https://kusahaeta.github.io/rpg3/privacy.html |
-| サポートの URL | https://kusahaeta.github.io/rpg3/support.html（問い合わせは Google フォーム：https://docs.google.com/forms/d/e/1FAIpQLSc08dt3hJR7oivL-jWh4hT5vhKLhDDexTu3wUKwtm-2VaoFsg/viewform） |
+| プライバシーポリシーの URL | https://kusahaeta.github.io/rpg3/privacy.html（日本語と英語。ブラウザの言語で切りかわる） |
+| サポートの URL | https://kusahaeta.github.io/rpg3/support.html（日本語と英語。問い合わせは Google フォーム：https://docs.google.com/forms/d/e/1FAIpQLSc08dt3hJR7oivL-jWh4hT5vhKLhDDexTu3wUKwtm-2VaoFsg/viewform） |
 | 著作権 | 2026 kusahaeta |
 
-ホーム画面に出る名前は「にゃんこ」（`Info.plist` の `CFBundleDisplayName`）。
+ホーム画面に出る名前は、日本語の端末で「にゃんこ」、英語の端末で「Nyanko」（`ja.lproj`・`en.lproj` の `InfoPlist.strings`）。ゲームの言語も端末の言語で決まり、タイトル画面とオプションで切りかえられる。
 
 ## プロモーション用テキスト（170字まで・審査なしでいつでも変えられる）
 
@@ -64,6 +64,68 @@ App Store Connect に入れる文面と、答える項目の案。審査に出�
 RPG,ねこ,猫,にゃんこ,コマンドバトル,ターン制,3D,冒険,ファンタジー,友情,かわいい,オフライン,ロールプレイング
 ```
 
+## 英語の文面（English (U.S.) のローカリゼーション）
+
+App Store Connect で「English (U.S.)」のローカリゼーションを足して入れる。日本以外でも配信するときは「価格および配信状況」で国を選ぶ（英語の文面を入れるだけなら、配信する国は変わらない）。
+
+| 項目 | 内容 |
+| --- | --- |
+| 名前（30字まで） | Nyanko Fantasy |
+| サブタイトル（30字まで） | A Cozy 3D Cat RPG Adventure |
+| プライバシーポリシーの URL | https://kusahaeta.github.io/rpg3/privacy.html?lang=en |
+| サポートの URL | https://kusahaeta.github.io/rpg3/support.html?lang=en |
+
+プライバシーポリシーとサポートのページは、1 つのページに日本語と英語の両方が書いてあり、ブラウザの言語で切りかわる（日本語以外は英語）。`?lang=en`／`?lang=ja` を付けると、その言語で開く。
+
+プロモーション用テキスト（170字まで）：
+
+```
+Cute two-head-tall cats journey from a cozy village to the end of the world in this 3D turn-based RPG. The closer your party grows, the more combo moves you unlock.
+```
+
+説明：
+
+```
+Mike is a food-loving calico cat from the village of Cozyville.
+On the hill where a shooting star fell, he meets a black cat who tumbled down from the sky.
+The great Nyander Tree is weakening, and strange things are starting to happen all over the world.
+Alone we may be weak, but together we can change the world—.
+
+A 3D turn-based RPG starring adorable two-head-tall cats.
+
+■ A Cat-Sized Adventure
+Mike, Kuro, Shiro, Tama, and... someone else.
+Travel with a quirky crew through villages, forests, kingdoms, caves, ancient ruins, and the Demon King's castle.
+Laugh, clash, and help each other out. The farther you travel, the deeper their bonds become.
+
+■ Turn-Based Battles
+Turn order decided by speed, skill points shared by the whole party, and Ultimates you charge up and unleash.
+Strike enemy weaknesses to land a "Weakness Break."
+Your sleepy friend might doze off mid-battle, and the self-proclaimed genius mage's spells sometimes make fish rain from the sky...?!
+
+■ Bonds and Combo Moves
+Fight and talk together, and the bonds between your party members grow.
+Deeper bonds unlock banter in battle, combo moves for two, and special events.
+
+■ Explore the Field
+Treasure chests, shops, scratching posts, and chats with the locals.
+Open the way with comedy routines on stage, and solve puzzles of light and shadow.
+
+・Play in English or Japanese (switch anytime from the title screen or Options)
+・Played in landscape
+・Play offline, no internet needed
+・Saves automatically
+・No ads, no in-app purchases
+```
+
+キーワード（100字まで）：
+
+```
+rpg,cat,cats,kitten,turn-based,3d,adventure,offline,cute,story,party,jrpg,friendship,meow,quest
+```
+
+スクリーンショットとプレビュー動画は、今は日本語の画面のもの。英語のローカリゼーションにも同じものが使われる（入れなければ主な言語の分が出る）。英語の画面で撮りなおすときは、撮る前に `localStorage.setItem('nyanko_lang', 'en')` にしてから下の手順で撮る。
+
 ## 年齢レーティングの答え
 
 - アニメまたはファンタジーの暴力：まれ／軽度（ねこやモンスターの戦い。血は出ない）
@@ -83,7 +145,7 @@ RPG,ねこ,猫,にゃんこ,コマンドバトル,ターン制,3D,冒険,ファ�
 
 ## 審査へのメモ（App Review Information の Notes）
 
-はじめての提出では「審査の記録が少ないアカウントなので、くわしく教えて」と、iPhone 実機での画面収録と 5 つの問いへの答えを求められた（2026-10）。下の英文を App Store Connect の返信と Notes の両方に入れ、画面収録を返信に添える。次の提出からも Notes に残しておく。
+はじめての提出では「審査の記録が少ないアカウントなので、くわしく教えて」と、iPhone 実機での画面収録と 5 つの問いへの答えを求められた（2026-10）。下の英文を App Store Connect の返信と Notes の両方に入れ、画面収録を返信に添える。次の提出からも Notes に残しておく。日本以外でも配信するときは、5 の 1 文目を「The app is distributed on the App Store in Japan and other regions.」に変える。
 
 ```
 Thank you for reviewing our app. Below is the information you requested. A screen recording captured on a physical iPhone running the latest iOS is attached to this reply.
@@ -97,8 +159,8 @@ Nyanko Fantasy is an offline, single-player 3D turn-based RPG in which a party o
 
 3. Setup and how to access the main features
 No login, account or sample files are needed. Launch the app and tap the title screen to start a new game; progress is saved automatically on the device.
-The game is played in landscape. Field: drag on the left half of the screen to move, drag on the right half to rotate the camera, tap "攻撃" (Attack) to strike enemies, and tap "調べる" (Examine) to talk to characters and open chests. Running into an enemy starts a battle (hitting it with "攻撃" first gives a first strike); in battle, tap the skill buttons to act.
-The game text is in Japanese only.
+The game is played in landscape. Field: drag on the left half of the screen to move, drag on the right half to rotate the camera, tap "Attack" (攻撃) to strike enemies, and tap "Check" (調べる) to talk to characters and open chests. Running into an enemy starts a battle (hitting it with "Attack" first gives a first strike); in battle, tap the skill buttons to act.
+The game text is available in English and Japanese. The language follows the device language and can be switched from the language buttons on the title screen or from Options in the menu.
 
 4. External services
 None. All game content is bundled in the app. The app does not connect to the internet and uses no third-party services such as analytics, advertising, authentication, payment or AI services. It uses the open-source three.js library (MIT License) inside the app for 3D rendering.

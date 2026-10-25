@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-title-ja="プライバシーポリシー｜にゃんこファンタジー" data-title-en="Privacy Policy | Nyanko Fantasy">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,10 +14,26 @@
     h2 { font-size: 1.1em; margin: 2em 0 .4em; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
     .date { color: var(--sub); font-size: .9em; }
     a { color: inherit; }
+    .lang { float: right; font-size: .9em; margin-top: .3em; }
+    /* 日本語と英語の両方を書いておき、言語の合わないほうを隠す（JavaScript が動かないときは両方出る） */
+    html[data-lang=ja] .only-en, html[data-lang=en] .only-ja { display: none; }
   </style>
+  <script>
+    // 言語：?lang=ja / ?lang=en があればそれ、なければブラウザの言語（日本語以外は英語）
+    (function () {
+      var q = (location.search.match(/[?&]lang=(ja|en)/) || [])[1];
+      var nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'ja';
+      var lang = q || (/^ja/i.test(nav) ? 'ja' : 'en');
+      document.documentElement.lang = lang;
+      document.documentElement.setAttribute('data-lang', lang);
+      document.addEventListener('DOMContentLoaded', function () { document.title = document.documentElement.getAttribute('data-title-' + lang); });
+    })();
+  </script>
 </head>
 <body>
 <main>
+  <p class="lang"><a class="only-ja" href="privacy.html?lang=en" lang="en">English</a><a class="only-en" href="privacy.html?lang=ja" lang="ja">日本語</a></p>
+  <div class="only-ja" lang="ja">
   <h1>にゃんこファンタジー　プライバシーポリシー</h1>
   <p class="date">2026年10月20日</p>
 
@@ -42,8 +58,36 @@
   <p>お問い合わせフォーム（Google フォーム）からお送りいただいた内容は、お返事と不具合の調査のためだけに使い、ほかの目的には使いません。</p>
 
   <h2>お問い合わせ</h2>
-  <p><a href="support.html">サポートのページ</a>をご覧ください。</p>
+  <p><a href="support.html?lang=ja">サポートのページ</a>をご覧ください。</p>
 
+  </div>
+  <div class="only-en" lang="en">
+  <h1>Nyanko Fantasy Privacy Policy</h1>
+  <p class="date">October 20, 2026</p>
+
+  <p>"Nyanko Fantasy ~ From the Hill Where the Star Fell ~" (the "App") does not collect any personal information from its players.</p>
+
+  <h2>Information We Collect</h2>
+  <p>The App does not send your name, email address, location, device identifiers, play history, or any other information to the developer or to any third party. The App does not connect to the internet, and there is no account registration.</p>
+
+  <h2>Data Stored on Your Device</h2>
+  <p>Your game progress (save data) and settings are stored only on your device. They are never sent off the device. Deleting the App also deletes your save data.</p>
+
+  <h2>Ads, Analytics, and Tracking</h2>
+  <p>The App contains no external services such as advertising, analytics, or crash reporting. It does not track you across other apps or websites.</p>
+
+  <h2>Children's Privacy</h2>
+  <p>Because the App does not collect any information, it does not collect any information from children.</p>
+
+  <h2>Changes to This Policy</h2>
+  <p>If we change this policy, we will update this page to let you know.</p>
+
+  <h2>Information You Send Us</h2>
+  <p>Anything you send us through the contact form (Google Forms) is used only to reply to you and to investigate problems, and for no other purpose.</p>
+
+  <h2>Contact</h2>
+  <p>Please see the <a href="support.html?lang=en">support page</a>.</p>
+  </div>
 </main>
 </body>
 </html>

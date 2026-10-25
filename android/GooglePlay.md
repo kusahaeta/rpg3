@@ -18,7 +18,9 @@ Play Console に入れる文面と、答える項目の案。出すまでの手�
 | プライバシーポリシーの URL | https://kusahaeta.github.io/rpg3/privacy.html |
 | 配信する国 | 日本だけ（iOS とそろえる） |
 
-ホーム画面の名前は「にゃんこファンタジー」（`app/src/main/res/values/strings.xml`）。
+どちらのページも日本語と英語の両方が書いてあり、ブラウザの言語で切りかわる（日本語以外は英語。`?lang=en` で英語に固定）。Play Console の URL は 1 つだけなので、このまま両方の言語に使える。
+
+ホーム画面の名前は、日本語の端末で「にゃんこファンタジー」（`app/src/main/res/values-ja/strings.xml`）、ほかの言語の端末で「Nyanko Fantasy」（`values/strings.xml`）。ゲームの言語も端末の言語で決まり、タイトル画面とオプションで切りかえられる。
 
 ## 簡単な説明（80字まで）
 
@@ -29,6 +31,18 @@ Play Console に入れる文面と、答える項目の案。出すまでの手�
 ## 詳しい説明（4000字まで）
 
 `ios/AppStore.md` の「説明」をそのまま使う。
+
+## 英語の文面（English (United States) – en-US の翻訳）
+
+Play Console の「メインのストア掲載情報」→「翻訳を管理」で英語（en-US）を足して、自分の訳を入れる。
+
+| 項目 | 内容 |
+| --- | --- |
+| アプリ名（30字まで） | Nyanko Fantasy |
+| 簡単な説明（80字まで） | A 3D turn-based RPG where cute cats journey to the end of the world. Bonds unlock combos! |
+| 詳しい説明（4000字まで） | `ios/AppStore.md` の「英語の文面」の説明をそのまま使う |
+
+画像は日本語の画面のもの。英語の翻訳に画像を入れなければ、デフォルトの言語の画像が出る。
 
 ## 画像（`android/store/`）
 
