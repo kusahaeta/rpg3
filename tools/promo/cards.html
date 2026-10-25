@@ -8,7 +8,7 @@
   データは promo/making-of/cards.json。場面の種類はデータの kind：
     title（黒い画面に題名）・quote（注文の文）・doc（企画書をスクロール）・theme（テーマの文と 3 つの言葉）
     list（コミットの一覧が流れる）・prs（プルリクエストの一覧が流れて数が上がる）・term（コマンドの出力が流れる）
-    tips（6 つのコツが順に出る）・devices（ブラウザ・iPhone・Android で動く画面）
+    tips（6 つの作業が順に出る）・devices（ブラウザ・iPhone・Android で動く画面）
   時刻 cues は、ナレーションでその言葉を読むあたりの秒。
 -->
 <style>
@@ -66,9 +66,10 @@
   .term pre { font-family: "SF Mono", Menlo, monospace; font-size: 23px; line-height: 1.42; color: #e9e3d8; white-space: pre; }
   .term .cmd { color: #8fd08f; } .term .ok { color: #7ee07e; font-weight: 700; } .term .em { color: #f0c674; }
   /* tips */
-  .tips { position: absolute; left: 240px; right: 240px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
-  .tips h2 { font-size: 44px; margin-bottom: 18px; }
-  .tip { display: flex; align-items: center; gap: 30px; height: 104px; padding: 0 40px; border-radius: 20px; background: var(--panel); border: 2px solid var(--line); font-size: 44px; font-weight: 700; }
+  /* 動画では下に字幕の帯（y 約 870 から）、右下に立ち絵（x 約 1550 から）が重なるので、その上と左に収める */
+  .tips { position: absolute; left: 240px; right: 380px; top: 60px; bottom: 210px; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+  .tips h2 { font-size: 42px; margin-bottom: 14px; }
+  .tip { display: flex; align-items: center; gap: 28px; height: 94px; padding: 0 36px; border-radius: 20px; background: var(--panel); border: 2px solid var(--line); font-size: 40px; font-weight: 700; }
   .tip b { flex: none; width: 70px; height: 70px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 36px; }
   /* devices */
   .dev { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 22px; }
