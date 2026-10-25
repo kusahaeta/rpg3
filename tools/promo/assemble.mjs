@@ -1,13 +1,13 @@
 // メイキング動画を 1 本につなぐ：台本（Markdown の表）の映像・テロップと、ナレーション（voice.mjs）、ゲームの BGM。
 //   node tools/promo/assemble.mjs <台本.md> <出力のフォルダ> [--plan]
-// 先に `PORT=8937 node .claude/serve.js` を動かしておく（BGM をゲームの音の仕組みで書き出すため）。--plan は編集表を出すだけ。
+// 先に `PORT=8937 node .claude/serve.js` を動かしておく（BGM をゲームの音の仕組みで書き出すため。別のポートなら PROMO_URL で指す）。--plan は編集表を出すだけ。
 // 台本のとなりに voice/（lines.tsv・narration.wav）と、映像（chat/ viz/ game/ cards/ … の mp4）があること。
 //
 // つなぎ方：
 //   - 行の映像は、ナレーションのその行の頭から次の行の頭まで。場面の最初の行は場面の頭から。映像の欄が空か「のつづき」の行は前の映像をのばす
 //   - 映像が長ければ頭から切る（何本かならぶときは長さの比で分ける）。短ければ、歩く場面や戦闘はくり返し、ほかは最後のコマで止める
 //   - 「早回し」と書いた行は 2 倍速。「の一部」と書いた戦闘は OFFSET の秒から
-//   - 画面の割りふり（FRAME）：映像は横いっぱい（左右に少し余白）。上の帯に場面の見出し（コツ1 など）、下の帯に字幕（ナレーションの文言をすべて）を半透明で重ね、
+//   - 画面の割りふり（FRAME）：映像は横いっぱい（左右に少し余白）。上の帯に場面の見出し（作業1 など）、下の帯に字幕（ナレーションの文言をすべて）を半透明で重ね、
 //     右下に立ち絵（台本のとなりの chara/ に closed.png・open.png・blink.png があれば。足は画面の下で切る。口はナレーションの声の大きさで開け閉め、ときどきまばたき）
 //   - 映像の中のテロップは出さない（クレジットは動画の説明欄に書く。CREDIT で出せる）
 //   - BGM は場面ごとに TRACK_OF の曲。ナレーションの間は小さくする（サイドチェーン）。最後に -14 LUFS にそろえる
@@ -86,7 +86,7 @@ const tels = [];
 for (const b of blocks) for (const r of b.rows) {
   const t = r.tel.replace(/（[^）]*）/g, '').trim();
   if (!t) continue;
-  const kotsu = /^コツ\d/.test(t), credit = r.scene.no === scenes.at(-1).no, top = b.clips.includes('game/talk.mp4');
+  const sagyo = /^作業\d/.test(t), credit = r.scene.no === scenes.at(-1).no, top = b.clips.includes('game/talk.mp4');
   // クレジットは動画の説明欄に書くので、映像には出さない（CREDIT を true にすると、エンディングの左上に出す）
   if (credit && CREDIT) tels.push({ text: t, a: r.start + 0.25, b: r.end - 0.15, block: b, top: true });
 }
@@ -130,7 +130,7 @@ await chrome(async ({ send, ev }) => {
     .chip { font-size: 34px; font-weight: 800; background: #c96442; border-radius: 12px; padding: 6px 18px; }`)} + '</style>'; true`);
   await ev('document.fonts.ready.then(() => true)');
   for (const [i, t] of tels.entries()) {
-    const m = t.text.match(/^(コツ\d)\s*(.*)$/);
+    const m = t.text.match(/^(作業\d)\s*(.*)$/);
     const chip = m ? `<span class="chip">${m[1]}</span>` : '';
     const body = (m ? m[2] : t.text).split(' ／ ').map(esc).join('<br>');
     await ev(`document.body.innerHTML = ${JSON.stringify(`<div class="band${t.top ? ' top' : ''}">${chip}<div class="t">${body}</div></div>`)}; true`);
@@ -193,7 +193,7 @@ await chrome(async ({ ev }) => {
     })()`);
     writeFileSync(join(WORK, `bgm-${name}.wav`), Buffer.from(b64, 'base64'));
   }
-}, 'http://127.0.0.1:8937/index.html');
+}, process.env.PROMO_URL || 'http://127.0.0.1:8937/index.html');
 console.log('BGM:', Object.keys(need).join(' '));
 
 // ---- 音：BGM を場面ごとにならべ（つなぎ目は 1.5 秒で入れかえ）、ナレーションの間は下げて、ナレーションと混ぜる
@@ -241,7 +241,7 @@ const breakSub = s => {
     if ('。、！？'.includes(ch) && L <= LINE_MAX + 1 && R <= LINE_MAX && R > 0 && (best < 0 || Math.abs(L - c.length / 2) < Math.abs(best + 1 - c.length / 2))) best = i; });
   return best < 0 ? s : c.slice(0, best + 1).join('') + '\n' + c.slice(best + 1).join('');
 };
-// 見出し：場面の題（「コツ1：まず企画書を書かせる」は、コツ1 の札と題）
+// 見出し：場面の題（「作業1：まず企画書を書かせる」は、作業1 の札と題）
 const heads = scenes.map(s => ({ a: s.start, b: s.end, text: s.title }));
 
 // 字幕・見出しの画像（透明の PNG）
@@ -262,7 +262,7 @@ await chrome(async ({ send, ev }) => {
   await shot('<div class="sub"></div>', FRAME.subW, FRAME.subH, join(subDir, 'sub-blank.png'));
   for (const [i, s] of subs.entries()) await shot(`<div class="sub"><div>${esc(breakSub(s.text))}</div></div>`, FRAME.subW, FRAME.subH, s.png = join(subDir, `sub-${String(i).padStart(3, '0')}.png`));
   for (const [i, h] of heads.entries()) {
-    const m = h.text.match(/^(コツ\d)：(.*)$/);
+    const m = h.text.match(/^(作業\d)：(.*)$/);
     await shot(`<div class="head">${m ? `<span class="chip">${m[1]}</span><span class="t">${esc(m[2])}</span>` : `<span class="t">${esc(h.text)}</span>`}<span class="r">AIでRPGを作ってみた</span></div>`, W, FRAME.top, h.png = join(subDir, `head-${String(i).padStart(2, '0')}.png`));
   }
 });

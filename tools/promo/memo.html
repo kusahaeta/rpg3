@@ -6,7 +6,8 @@
 <!--
   Claude Code が自分で残した記憶のメモ（~/.claude/projects/…/memory/）を見せる画面（1920×1080）。
   tools/promo/page-rec.mjs が setClip(データ, 名前) で場面を選び、render(秒) で撮る。データは promo/making-of/memo.json。
-    list：目次（MEMORY.md）の行が順に出て、最後に mark の行が光る
+    list：目次（MEMORY.md）の行が順に出て、最後に mark の行が光る（mark が配列なら、markEvery 秒ずつずらして光る）
+    場面の名前とちがう種類を使うときは kind に書く（例：steps は kind: "list"）
     file：メモ 1 つの中身。mark の文に蛍光ペンを引く
     count：メモのファイル名が格子にならび、数が 20 まで上がる
 -->
@@ -50,9 +51,10 @@ const CLIPS = {
     const rows = d.entries.map((e, i) => { const r = document.createElement('div'); r.className = 'row';
       r.innerHTML = `<span class="n">${i + 1}</span><b></b><em></em>`; r.children[1].textContent = e.title; r.children[2].textContent = e.hook;
       body.appendChild(r); return r; });
-    const mi = d.entries.findIndex(e => e.title === d.mark);
+    // mark は光らせるメモの題（いくつかなら配列。markEvery 秒ずつずらして光る）
+    const marks = [d.mark].flat().map(m => d.entries.findIndex(e => e.title === m));
     return t => { rows.forEach((r, i) => { const k = ease((t - d.start - i * d.every) / 0.3); r.style.opacity = k; r.style.transform = `translateX(${(1 - k) * 20}px)`; });
-      rows[mi].classList.toggle('mark', t >= d.markAt); };
+      marks.forEach((mi, j) => rows[mi].classList.toggle('mark', t >= d.markAt + j * (d.markEvery ?? 0))); };
   },
   file(root, d) {
     root.innerHTML = `<div class="win"><div class="bar"><b>memory/${d.file}</b><span>${d.title}</span><span class="tag">AI が自分で書いた</span></div><div class="body"><div class="text"></div></div></div>`;
@@ -73,7 +75,7 @@ const CLIPS = {
   },
 };
 let draw = () => {}, total = 0;
-window.setClip = (data, name) => { const root = document.getElementById('root'); root.innerHTML = ''; draw = CLIPS[name](root, data); total = data.dur; return total; };
+window.setClip = (data, name) => { const root = document.getElementById('root'); root.innerHTML = ''; draw = CLIPS[data.kind ?? name](root, data); total = data.dur; return total; };
 window.render = t => { draw(t); return total; };
 </script>
 </body>

@@ -7,6 +7,7 @@
   メイキング動画のグラフと数字のカード（1920×1080）。tools/promo/page-rec.mjs が setClip(データ, 名前) で場面を選び、
   render(秒) を 1/30 秒ずつ呼んでコマを撮る。データと、声に合わせて動かす時刻（cues）は promo/making-of/viz.json。
   色は青（作った・直した後）とオレンジ（直した・直す前）の 2 色だけ。オレンジは背景との差が小さいので、棒にはかならず数字を添える。
+  動画では下に字幕の帯、右下に立ち絵が重なる。グラフは y が SAFE_Y（約 870）より上、右下（y 580 より下）は x が SAFE_X（約 1540）より左に収める。
 -->
 <style>
   :root {
@@ -31,13 +32,13 @@
   .tile .v { font-size: 80px; font-weight: 700; line-height: 1.2; margin-top: 8px; letter-spacing: .01em; }
   .tile .v small { font-size: 36px; font-weight: 600; margin-left: 6px; }
   .tile .v small.pre { margin: 0 6px 0 0; }
-  #list { position: absolute; left: 260px; width: 1400px; top: 0; }
+  #list { position: absolute; left: 260px; width: 1280px; top: 0; }
   .row { height: 84px; margin-bottom: 14px; border-radius: 16px; background: #fbfaf7; border: 2px solid var(--grid);
     display: flex; align-items: center; padding: 0 30px 0 38px; font-size: 34px; position: relative; overflow: hidden; white-space: nowrap; }
   .row .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background: var(--s2); }
   .row mark { background: none; font-weight: 700; padding: 0 2px; box-shadow: inset 0 -14px 0 var(--s2-tint); color: var(--ink); }
   .head { position: absolute; left: 0; right: 0; top: 0; height: 190px; background: linear-gradient(var(--bg) 75%, rgba(244,241,234,0)); z-index: 2; }
-  .foot { position: absolute; left: 0; right: 0; bottom: 0; height: 140px; background: linear-gradient(rgba(244,241,234,0), var(--bg) 70%); z-index: 2; }
+  .foot { position: absolute; left: 0; right: 0; bottom: 0; height: 225px; background: linear-gradient(rgba(244,241,234,0), var(--bg) 40%); z-index: 2; }
   .badge { position: absolute; right: 120px; top: 70px; z-index: 3; background: #fbfaf7; border: 3px solid var(--s2); border-radius: 18px;
     padding: 18px 30px; font-size: 34px; font-weight: 700; }
   .badge b { font-size: 60px; margin: 0 6px; }
@@ -47,6 +48,8 @@
 <div id="root"></div>
 <script>
 const W = 1920, H = 1080, NS = 'http://www.w3.org/2000/svg';
+// 字幕の帯と立ち絵にかからない範囲（assemble.mjs の FRAME：映像は 0.975 倍で (24, 72) から、字幕は 936 から、立ち絵は x 1560・y 640 から）
+const SAFE_Y = 870, SAFE_X = 1540, Y1 = 790;   // Y1：棒の基線（下に目もりの文字が 40px ほど入る）
 const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 const ease = x => 1 - Math.pow(1 - clamp(x), 3);
 const fade = (t, at, d = 0.4) => ease((t - at) / d);
@@ -71,8 +74,8 @@ const CLIPS = {
       .map(([k, v, u], i) => { const e = document.createElement('div'); e.className = 'tile'; e.style.left = `${120 + i * 430}px`;
         e.innerHTML = `<div class="k">${k}</div><div class="v">${v}<small>${u}</small></div>`; root.appendChild(e); return e; });
     const svg = svgEl('svg', { width: W, height: H }, root);
-    txt(svg, 160, 400, '日ごとのコミット数', 'subt');
-    const x0 = 200, x1 = 1780, y0 = 440, y1 = 950, max = 80;
+    txt(svg, 160, 385, '日ごとのコミット数', 'subt');
+    const x0 = 200, x1 = SAFE_X, y0 = 420, y1 = Y1, max = 80;
     const sy = frame(svg, { x0, x1, y0, y1, max, step: 20 });
     const n = d.days.length, slot = (x1 - x0) / n, bw = slot - 10;
     const bars = d.days.map(([day, v], i) => {
@@ -100,7 +103,7 @@ const CLIPS = {
     const totals = [txt(svg, 1760, 120, '', 'big', 'end'), txt(svg, 1760, 200, '', 'big', 'end')];
     totals[0].innerHTML = '<tspan class="subt" dx="0">作った </tspan>157<tspan class="subt"> 回</tspan>';
     totals[1].innerHTML = '<tspan class="subt">直した </tspan>189<tspan class="subt"> 回</tspan>';
-    const x0 = 220, x1 = 1760, y0 = 300, y1 = 920, max = 70;
+    const x0 = 220, x1 = SAFE_X, y0 = 300, y1 = Y1, max = 70;
     const sy = frame(svg, { x0, x1, y0, y1, max, step: 10 });
     const slot = (x1 - x0) / 4, bw = 150;
     const bars = [];
@@ -133,7 +136,8 @@ const CLIPS = {
       e.innerHTML = (hit ? '<span class="bar"></span>' : '') + s.replace(/不要|要らない/g, m => `<mark>${m}</mark>`);
       list.appendChild(e); return { e, hit };
     });
-    const rowH = 98, top0 = 210, travel = rows.length * rowH - (H - top0) + 160;
+    // 最後の行が字幕の帯の上（SAFE_Y）で止まるように流す
+    const rowH = 98, top0 = 210, travel = rows.length * rowH - (SAFE_Y - 40 - top0);
     return t => {
       const k = clamp(t / (d.dur - 1.5));
       list.style.top = `${top0 - travel * k}px`;
@@ -150,15 +154,14 @@ const CLIPS = {
   // 頼みごとの長さ（10 文字ごと）
   length(root, d) {
     const svg = svgEl('svg', { width: W, height: H }, root);
-    txt(svg, 160, 130, '頼みごとの長さ', 'title'); txt(svg, 160, 180, `${d.n} 件（「PR を作って」などの手続きをのぞく）`, 'subt');
-    const x0 = 220, x1 = 1760, y0 = 300, y1 = 900, max = 250;
+    txt(svg, 160, 130, '頼みごとの長さ（文字数）', 'title'); txt(svg, 160, 180, `${d.n} 件（「PR を作って」などの手続きをのぞく）`, 'subt');
+    const x0 = 220, x1 = SAFE_X, y0 = 290, y1 = Y1, max = 250;
     const sy = frame(svg, { x0, x1, y0, y1, max, step: 50 });
     const n = d.bins.length, slot = (x1 - x0) / n, bw = slot - 14;
     const names = d.bins.map((_, i) => i === n - 1 ? '101〜' : `〜${(i + 1) * 10}`);
     const bars = d.bins.map((v, i) => { const x = x0 + i * slot + 7;
       txt(svg, x + bw / 2, y1 + 42, names[i], 'axis', 'middle');
       return { p: svgEl('path', {}, svg), lab: txt(svg, x + bw / 2, 0, String(v), 'val', 'middle'), x, v, i }; });
-    txt(svg, x1, y1 + 90, '文字数', 'axis', 'end');
     // まん中（27 文字）の線：21〜30 文字の棒の中で、27 の位置
     const mx = x0 + slot * (2 + 0.7);
     // 線は、棒の数字（21〜30 文字の棒）のところだけ切る
@@ -186,7 +189,7 @@ const CLIPS = {
   sessions(root, d) {
     const svg = svgEl('svg', { width: W, height: H }, root);
     txt(svg, 160, 130, '1 回の会話で頼んだ数', 'title'); txt(svg, 160, 180, `会話 ${d.n} 回`, 'subt');
-    const x0 = 220, x1 = 1760, y0 = 300, y1 = 900, max = 80;
+    const x0 = 220, x1 = SAFE_X, y0 = 300, y1 = Y1, max = 80;
     const sy = frame(svg, { x0, x1, y0, y1, max, step: 20 });
     const n = d.bins.length, slot = (x1 - x0) / n, bw = slot - 40;
     const bars = d.bins.map(([k, v], i) => { const x = x0 + i * slot + 20;
@@ -213,9 +216,9 @@ const CLIPS = {
     txt(svg, 160, 130, 'たまっていた顔の画像（枚）', 'title');
     [['直す前', 'var(--s2)'], ['直した後', 'var(--s1)']].forEach(([s, c], i) => {
       svgEl('rect', { x: 160 + i * 230, y: 172, width: 28, height: 28, rx: 4, fill: c }, svg); txt(svg, 200 + i * 230, 196, s, 'subt'); });
-    const x0 = 240, x1 = 1760, y0 = 300, y1 = 900, max = 1000;
+    const x0 = 240, x1 = SAFE_X, y0 = 320, y1 = Y1, max = 1000;
     const sy = frame(svg, { x0, x1, y0, y1, max, step: 250 });
-    txt(svg, x1, 1010, '1 枚 1.6MB。「物語ぜんぶ」は見積もり、直した後の 64 は、とっておく数の上限', 'axis', 'end');
+    txt(svg, 160, 255, '1 枚 1.6MB。「物語ぜんぶ」は見積もり、直した後の 64 は、とっておく数の上限', 'axis');
     const slot = (x1 - x0) / 3, bw = 190, bars = [];
     d.groups.forEach(([name, before, after], gi) => {
       const cx = x0 + slot * gi + slot / 2;
