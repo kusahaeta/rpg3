@@ -84,7 +84,7 @@ const CHAR_ACT = {
 };
 // 台詞から表情と身振りを推し量る（台本に書かれていないとき）
 function inferAct(key, text) {
-  const C = CHAR_ACT[key] || {}, t = String(text).replace('（通信）', '').trim();
+  const C = CHAR_ACT[key] || {}, t = String(text).replace('（通信）', '').trim();   // lang:keep（台本の印）
   const pick = C.talk || ['talk', 'explain'];
   let f = C.face || 'neutral', g = pick[Math.floor(Math.random() * pick.length)];
   if (/！？|！\?|^(えっ|わっ|なっ|ええっ|うそ|にゃっ)/.test(t)) { f = 'surprise'; g = 'surprise'; }
@@ -353,7 +353,7 @@ class StageView extends BaseView {
     const walk = ls => ls.forEach(l => { if (Array.isArray(l)) lines.push(l); else if (l.c) l.c.forEach(([t, rs]) => { lines.push([HERO, t]); walk(rs); }); });
     walk(this.lines);
     const speakers = [...new Set(lines.map(l => l[0]).filter(k => k !== 'n'))];
-    const comm = k => lines.filter(l => l[0] === k).every(l => String(l[1]).includes('（遠くから）') || String(l[1]).includes('（声）'));
+    const comm = k => lines.filter(l => l[0] === k).every(l => String(l[1]).includes('（遠くから）') || String(l[1]).includes('（声）'));   // lang:keep（台本の印）
     const party = st.party || partyAt(this.id);
     const cast = {};
     const slots = [[0, 0], [-1.15, 0.3], [1.15, 0.35], [-2.2, -0.35], [2.3, -0.4]];
@@ -373,7 +373,7 @@ class StageView extends BaseView {
     const walk = ls => ls.forEach(l => { if (Array.isArray(l)) lines.push(l); else if (l.c) l.c.forEach(([t, rs]) => { lines.push([HERO, t]); walk(rs); }); });
     walk(this.lines);
     const speakers = new Set(lines.map(l => l[0]).filter(k => k !== 'n'));
-    const comm = k => lines.filter(l => l[0] === k).every(l => String(l[1]).includes('（遠くから）') || String(l[1]).includes('（声）'));
+    const comm = k => lines.filter(l => l[0] === k).every(l => String(l[1]).includes('（遠くから）') || String(l[1]).includes('（声）'));   // lang:keep（台本の印）
     const face = f => f == null ? null : typeof f === 'number' ? f : Array.isArray(f) ? this.W(f[0], f[1]) : f;
     for (const [key, spec] of Object.entries(this.autoCast())) {
       const list = Array.isArray(spec) ? spec : [spec];

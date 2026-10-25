@@ -5,6 +5,8 @@
 //  台本・人物・舞台は js/npcs.js と js/scenario*.js
 // ============================================================
 
+// 会話の文字を出す速さ（英語は文字が多いので、一度に2文字ずつ）
+const TYPE_STEP = LANG === 'ja' ? 1 : 2;
 function speakerName(key) {
   if (key === 'n') return '';
   if (key.startsWith('e:')) return ENEMIES[key.slice(2).split('#')[0]].name;   // e:iwa#1 ＝ 同じ敵の二匹め
@@ -118,24 +120,24 @@ function recapEntries() {
     if (ci > st.ch) return null;
     const scenes = ch.steps.flatMap((step, i) => [step.id, step.scene, step.after].filter(Boolean).map(id => ({ id, i })))
       .filter(x => SCENES[x.id] && RECAP.scenes[x.id] && (ci < st.ch || x.i < st.step))
-      .map(x => ({ id: x.id, title: SCENES[x.id].title, text: RECAP.scenes[x.id] }));
+      .map(x => ({ id: x.id, title: Tx(SCENES[x.id].title), text: RECAP.scenes[x.id] }));
     return { ci, title: ch.title, intro: RECAP.chapters[ci] || '', scenes, done: ci < st.ch };
   }).filter(Boolean);
 }
 function renderRecap(o, onClose, onReplay) {
   const list = recapEntries(), cur = Story.current();
   const body = list.map(c => `<section class="rc-ch">
-      <h3>${c.title}${c.done ? '<small>完</small>' : ''}</h3>
+      <h3>${c.title}${c.done ? `<small>${Tx('完')}</small>` : ''}</h3>
       <p class="rc-intro">${c.intro}</p>
       ${c.scenes.length ? c.scenes.map(sc => `<div class="rc-scene">
-        <div class="rc-head"><b>${sc.title}</b>${onReplay ? `<button class="btn small" data-replay="${sc.id}">もう一度見る</button>` : ''}</div>
-        <p>${sc.text}</p></div>`).join('') : '<p class="rc-none">まだ物語は始まっていない。</p>'}
+        <div class="rc-head"><b>${sc.title}</b>${onReplay ? `<button class="btn small" data-replay="${sc.id}">${Tx('もう一度見る')}</button>` : ''}</div>
+        <p>${sc.text}</p></div>`).join('') : `<p class="rc-none">${Tx('まだ物語は始まっていない。')}</p>`}
     </section>`).join('');
-  o.innerHTML = `<div class="ov-box recap"><h2>これまでのあらすじ</h2>
+  o.innerHTML = `<div class="ov-box recap"><h2>${Tx('これまでのあらすじ')}</h2>
     <div class="rc-list">${body}
-      ${cur ? `<div class="rc-now"><small>いまの目的</small>◆ ${cur.step.g}</div>` : '<div class="rc-now"><small>ぼうけん</small>すべてのお話を見終えた</div>'}
+      ${cur ? `<div class="rc-now"><small>${Tx('いまの目的')}</small>◆ ${cur.step.g}</div>` : `<div class="rc-now"><small>${Tx('ぼうけん')}</small>${Tx('すべてのお話を見終えた')}</div>`}
     </div>
-    <div class="rc-foot"><button class="btn gold" data-close>閉じる</button></div></div>`;
+    <div class="rc-foot"><button class="btn gold" data-close>${Tx('閉じる')}</button></div></div>`;
   o.classList.remove('hidden');
   const listEl = o.querySelector('.rc-list');
   listEl.scrollTop = listEl.scrollHeight;
@@ -192,7 +194,7 @@ class DialogueView extends BaseView {
 // 第六章の魔王城の面会許可証：ハンコの欄 [欄の名前, ハンコの字, 押し方]
 const PASS_STAMPS = [['健康診断', '異常なし'], ['グツグツ', '通って<br>よし'], ['ネムネム', '通って<br>よし', 'tilt'], ['チョキチョキ', '通って<br>よし'], ['ドドン', '通って<br>よし', 'big']];
 function passCardHTML(n, fresh) {
-  return `<b>魔王さま 面会許可証</b><div class="dc-slots">${PASS_STAMPS.map(([lab, st, cls], i) =>
+  return `<b>${Tx('魔王さま 面会許可証')}</b><div class="dc-slots">${PASS_STAMPS.map(([lab, st, cls], i) =>
     `<div class="dc-slot"><small>${lab}</small>${i < n ? `<i class="${cls || ''} ${fresh && i === n - 1 ? 'new' : ''}">${st}</i>` : ''}</div>`).join('')}</div>`;
 }
 // replay：あらすじから見直すとき。スキップはこのときだけ出す
@@ -204,15 +206,15 @@ function DialogueScreen(id, done, replay) {
   Music.play(scene.bgm === 'zone' ? (SCENE_STAGES[id] ? zoneBgm(FIELD_ZONES[SCENE_STAGES[id].zone]) : 'field') : scene.bgm || 'village');
   const s = h(`<div class="screen dialog ${v ? '' : 'flat'}">
     <div class="dl-fade"></div>
-    <div class="dl-title"><small>${scene.chapter || 'ぼうけん'}</small><b>${scene.title}</b></div>
-    <div class="dl-ctrl">${Debug.on ? '<button class="ctl" data-auto>AUTO</button>' : ''}${replay ? '<button class="ctl" data-skip>スキップ</button>' : ''}</div>
+    <div class="dl-title"><small>${Tx(scene.chapter) || Tx('ぼうけん')}</small><b>${Tx(scene.title)}</b></div>
+    <div class="dl-ctrl">${Debug.on ? '<button class="ctl" data-auto>AUTO</button>' : ''}${replay ? `<button class="ctl" data-skip>${Tx('スキップ')}</button>` : ''}</div>
     <div class="dl-portrait"></div>
     <div class="dl-choices"></div>
     <div class="dl-card"></div>
     <div class="dl-meter"></div>
     <div class="dl-box"><div class="dl-name"></div><div class="dl-text"></div><div class="dl-next">▼</div></div>
-    <div class="overlay dl-skipask hidden"><div class="ov-box"><h2>スキップ</h2><div class="dim">このシーンをスキップしますか？</div>
-      <div class="dl-skipbtns"><button class="btn gold" data-skip-yes>スキップする</button><button class="btn" data-skip-no>つづきを見る</button></div></div></div>
+    <div class="overlay dl-skipask hidden"><div class="ov-box"><h2>${Tx('スキップ')}</h2><div class="dim">${Tx('このシーンをスキップしますか？')}</div>
+      <div class="dl-skipbtns"><button class="btn gold" data-skip-yes>${Tx('スキップする')}</button><button class="btn" data-skip-no>${Tx('つづきを見る')}</button></div></div></div>
   </div>`);
   const queue = scene.lines.slice();
   let typing = null, full = '', auto = false, autoTimer = null, waitingChoice = false, finished = false, currentChoice = null, holding = false, asking = false, locked = false, lockTimer = null;
@@ -231,9 +233,9 @@ function DialogueScreen(id, done, replay) {
   let meterN = null;
   const setMeter = n => {
     const M = scene.meter; if (!M) return;
-    const up = meterN != null && n > meterN, moods = M.moods || ['むすっ……', 'にやり', 'くすくす', '大わらい！'];
+    const up = meterN != null && n > meterN, moods = M.moods || [Tx('むすっ……'), Tx('にやり'), Tx('くすくす'), Tx('大わらい！')];
     meterN = n;
-    meterEl.innerHTML = `<small>${M.name}のごきげん</small><b class="${up ? 'up' : ''}">${moods[Math.min(n, moods.length - 1)]}</b>
+    meterEl.innerHTML = `<small>${Tx('{0}のごきげん', Tx(M.name))}</small><b class="${up ? 'up' : ''}">${Tx(moods[Math.min(n, moods.length - 1)])}</b>
       <div class="dm-bar">${Array.from({ length: M.max }, (_, i) => `<i class="${i < n ? 'on' : ''} ${up && i === n - 1 ? 'new' : ''}"></i>`).join('')}</div>`;
     meterEl.classList.add('show'); meterEl.classList.toggle('full', n >= M.max);
     if (up) Sfx.laugh();
@@ -256,10 +258,11 @@ function DialogueScreen(id, done, replay) {
     Game.activeDialog = null;
     done();
   };
-  const scheduleAuto = () => { clearTimeout(autoTimer); if (auto && !waitingChoice) autoTimer = setTimeout(advance, 1200 + full.length * 45); };
+  const scheduleAuto = () => { clearTimeout(autoTimer); if (auto && !waitingChoice) autoTimer = setTimeout(advance, 1200 + full.length * 45 / TYPE_STEP); };
   const show = (speaker, text, nameOverride, dir) => {
-    full = text = forInput(text);
-    const nm = nameOverride || speakerName(speaker);
+    // 舞台（v.line）には台本の日本語のまま渡す（表情・身振りを、日本語の文から決めている）。画面に出すのは、いまの言語の文
+    full = forInput(Tx(text)); text = forInput(text);
+    const nm = Tx(nameOverride) || speakerName(speaker);
     nameEl.textContent = nm; nameEl.style.display = nm ? '' : 'none';
     box.classList.toggle('narr', speaker === 'n');
     box.style.setProperty('--c', speakerColor(speaker));
@@ -273,7 +276,7 @@ function DialogueScreen(id, done, replay) {
     let i = 0; textEl.textContent = '';
     clearInterval(typing);
     typing = setInterval(() => {
-      i += 1; textEl.textContent = full.slice(0, i);
+      i += TYPE_STEP; textEl.textContent = full.slice(0, i);
       if (i >= full.length) { clearInterval(typing); typing = null; if (v && v.lineDone) v.lineDone(); scheduleAuto(); }
     }, 30);
     if (speaker !== 'n' && !speaker.startsWith('e:') && Math.random() < 0.25) Sfx.meow(speaker); else Sfx.tone(700 + Math.random() * 200, 0.03, 'sine', 0.02);
@@ -297,7 +300,7 @@ function DialogueScreen(id, done, replay) {
     if (l.give) {
       const k = l.give, isNew = !Save.data.owned[k];
       applyMeta(l);
-      show('n', isNew ? `${CHARS[k].name}が仲間になった！` : `${CHARS[k].name}がいっしょに旅をすることになった。`);
+      show('n', isNew ? Tx('{0}が仲間になった！', CHARS[k].name) : Tx('{0}がいっしょに旅をすることになった。', CHARS[k].name));
       if (v && v.give) v.give(k);
       Sfx.win(); Sfx.meow(k);
       return;
@@ -310,7 +313,7 @@ function DialogueScreen(id, done, replay) {
     if (l.c) {
       currentChoice = l; waitingChoice = true;
       textEl.textContent = ''; nameEl.style.display = 'none';
-      choicesEl.innerHTML = l.c.map(([t], i) => `<button class="dl-choice" data-i="${i}"><kbd>${i + 1}</kbd>${t}</button>`).join('');
+      choicesEl.innerHTML = l.c.map(([t], i) => `<button class="dl-choice" data-i="${i}"><kbd>${i + 1}</kbd>${forInput(Tx(t))}</button>`).join('');
       choicesEl.querySelectorAll('.dl-choice').forEach(b => b.onclick = e => { e.stopPropagation(); choose(+b.dataset.i); });
       if (v) v.choice ? v.choice() : v.focus(HERO);
       return;
@@ -466,11 +469,11 @@ function ChapterClearScreen(ci, niboshi) {
   const v3 = GFX.show('scene:clear:' + ci, () => new SceneryView(bg, loc ? { loc, radius: loc.radius || 13, height: loc.height || 3.2, lookY: loc.lookY, cam: loc.cam } : {}));
   if (v3) v3.setEnemies([]);
   const s = h(`<div class="screen chclear-scr"><div class="ov-box result win chclear">
-    <div class="res-title">${a}　おしまい</div>
+    <div class="res-title">${Tx('{0}　おしまい', a)}</div>
     <div class="res-sub">${b || ''}</div>
-    <div class="res-info">${niboshi ? `<div class="rw"><i class="ic-jade"></i>章のごほうび　にぼし +${niboshi}</div>` : ''}
-    ${nx && !nx.hidden ? `<div class="dim">次のお話「${nx.title}」</div>` : ''}</div>
-    <button class="btn gold" data-ok>${nx && !nx.hidden ? '次のお話へ' : '冒険にもどる'}</button></div></div>`);
+    <div class="res-info">${niboshi ? `<div class="rw"><i class="ic-jade"></i>${Tx('章のごほうび　にぼし +{0}', niboshi)}</div>` : ''}
+    ${nx && !nx.hidden ? `<div class="dim">${Tx('次のお話「{0}」', nx.title)}</div>` : ''}</div>
+    <button class="btn gold" data-ok>${nx && !nx.hidden ? Tx('次のお話へ') : Tx('冒険にもどる')}</button></div></div>`);
   Save.save(); Sfx.win(); Music.play(ch.clearBgm || 'hope');
   s.querySelector('[data-ok]').onclick = () => { Sfx.click(); nx && !nx.hidden ? Story.run() : App.go(FieldScreen); };
   return s;
@@ -484,9 +487,9 @@ function EndingScreen() {
   const s = h(`<div class="screen ending">
     <div class="en-roll">
       <h1>Fin</h1>
-      <p class="dim">クリアおめでとう！${zoneOpen('dream') ? '　村の猫神社の奥で、ふしぎな夢の世界への道が開いたらしい……' : ''}</p>
+      <p class="dim">${Tx('クリアおめでとう！')}${zoneOpen('dream') ? Tx('　村の猫神社の奥で、ふしぎな夢の世界への道が開いたらしい……') : ''}</p>
     </div>
-    <button class="btn gold" data-ok>冒険にもどる</button></div>`);
+    <button class="btn gold" data-ok>${Tx('冒険にもどる')}</button></div>`);
   s.querySelector('[data-ok]').onclick = () => { Sfx.click(); App.go(FieldScreen); };
   return s;
 }

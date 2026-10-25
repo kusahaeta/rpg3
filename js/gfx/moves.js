@@ -2251,7 +2251,7 @@ Object.assign(BattleView.prototype, {
     if (!TexCache[key]) {
       const c = document.createElement('canvas'); c.width = c.height = 64;
       const g = c.getContext('2d'); g.font = '800 50px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.lineWidth = 6; g.strokeStyle = stroke; g.strokeText(ch, 32, 35); g.fillStyle = fill; g.fillText(ch, 32, 35);
+      g.lineWidth = 6; g.strokeStyle = stroke; g.strokeText(ch, 32, 35, 58); g.fillStyle = fill; g.fillText(ch, 32, 35, 58);
       TexCache[key] = new THREE.CanvasTexture(c);
     }
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TexCache[key], transparent: true, depthWrite: false }));

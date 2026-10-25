@@ -715,6 +715,7 @@ function bulkheadTex() {
 //   TexCache にはためない（文字は区画ごとにちがい、1 枚 0.3MB の canvas が回った区画の数だけたまる）。区画を作るときに描くだけで、
 //   出るときに disposeTree で手放す
 function signTex(text, sub, color = '#ffd27a') {
+  text = Tx(text); sub = Tx(sub);
   const c = document.createElement('canvas'); c.width = 512; c.height = 128;
   const g = c.getContext('2d');
   // 木の看板

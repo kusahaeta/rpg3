@@ -183,9 +183,11 @@ function ultIcon(key) {
   return `<svg class="ult-icon" viewBox="0 0 48 48" style="color:${col}" aria-label="${ult.name}">${body}</svg>`;
 }
 
+// 英語では、アイコンの一文字のかわりに絵文字（glyph は名前と同じ字なので、辞書では分けられない）
+const ELEM_GLYPH_EN = { physical: '🐾', fire: '🔥', ice: '❄️', lightning: '⚡', quantum: '🌙', imaginary: '✨' };
 function elemIcon(el, extra = '') {
   const e = ELEMENTS[el];
-  return `<span class="el-icon ${extra}" style="--c:${e.color}" title="${e.name}">${e.glyph}</span>`;
+  return `<span class="el-icon ${extra}" style="--c:${e.color}" title="${e.name}">${LANG === 'ja' ? e.glyph : ELEM_GLYPH_EN[el]}</span>`;
 }
 
 function stars(n) { return '<span class="stars r' + n + '">' + '★'.repeat(n) + '</span>'; }

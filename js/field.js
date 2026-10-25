@@ -12,6 +12,8 @@ function seeded(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+// ねこ神のねごとの音のつなぎ（英語は Kit-ty-cat… とつなぐ）
+const NAP_SEP = LANG === 'ja' ? ' ' : '-';
 const hashStr = s => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7);
 // 敵・住人は昇降機・扉・出入口を通らない（部屋の中を歩き回る）
 const NPC_PASS = { noLift: true, noDoor: true, noExit: true };
@@ -419,7 +421,7 @@ class FieldView extends BaseView {
     if (this.busy || !this.quest || this.quest.gate) return;
     this.busy = true; this.keys.clear();
     const banner = this.root.querySelector('.fd-banner');
-    banner.className = 'fd-banner show good'; banner.textContent = '目的地に到着';
+    banner.className = 'fd-banner show good'; banner.textContent = Tx('目的地に到着');
     this.fx.pillar(this.quest.pos, '#ffd66b', { h: 8, r: 1.2, life: 0.8 });
     Sfx.win();
     this.root.querySelector('.fd-wipe').classList.add('on');
@@ -878,10 +880,10 @@ class FieldView extends BaseView {
     const o = this.root.querySelector('.overlay');
     if (this.overlayOpen || this.busy) return;
     this.busy = true; this.overlayOpen = true; this.keys.clear();
-    o.innerHTML = `<div class="ov-box fd-liftbox"><h2>${ph.name || 'ステーション・エレベーター'}</h2><div class="dim">行き先の区画を選んでください</div>
-      <div class="fd-floors"><div class="fd-floor here"><b>${this.zone.name}</b><small>現在地</small></div>
-      ${ph.dests.map(d => `<button class="fd-floor" data-to="${d.to}" ${d.locked ? 'disabled' : ''}><b>${FIELD_ZONES[d.to].name}</b><small>${d.locked ? '封鎖中（任務を進めると開放）' : '▶ 移動する'}</small></button>`).join('')}</div>
-      <button class="btn" data-close>閉じる</button></div>`;
+    o.innerHTML = `<div class="ov-box fd-liftbox"><h2>${ph.name || Tx('ステーション・エレベーター')}</h2><div class="dim">${Tx('行き先の区画を選んでください')}</div>
+      <div class="fd-floors"><div class="fd-floor here"><b>${this.zone.name}</b><small>${Tx('現在地')}</small></div>
+      ${ph.dests.map(d => `<button class="fd-floor" data-to="${d.to}" ${d.locked ? 'disabled' : ''}><b>${FIELD_ZONES[d.to].name}</b><small>${d.locked ? Tx('封鎖中（任務を進めると開放）') : Tx('▶ 移動する')}</small></button>`).join('')}</div>
+      <button class="btn" data-close>${Tx('閉じる')}</button></div>`;
     o.classList.remove('hidden');
     Sfx.select();
     o.querySelector('[data-close]').onclick = () => this.closeOverlay();
@@ -950,7 +952,7 @@ class FieldView extends BaseView {
   }
   switchLeader(i) {
     if (this.busy || !this.team[i] || i === this.leader) return;
-    if (this.team[i].hpRatio <= 0) { this.toast(`${CHARS[this.team[i].key].name}は戦闘不能です`); return; }
+    if (this.team[i].hpRatio <= 0) { this.toast(Tx('{0}は戦闘不能です', CHARS[this.team[i].key].name)); return; }
     this.leader = i;
     this.spawnPlayer(this.player.pos, this.player.yaw);
     const col = CHARS[this.team[i].key].color;
@@ -992,7 +994,7 @@ class FieldView extends BaseView {
         const dx = p.pos.x - ph.x, dz = p.pos.z - ph.z, along = dx * ph.nx + dz * ph.nz, lat = Math.abs(dx * ph.nz - dz * ph.nx);
         const near = along < 3.2 && lat < ph.width / 2 + 1 && Math.abs(p.pos.y - ph.h) < 2;
         if (ph.locked) {
-          if (near && !ph.warned) { ph.warned = true; this.toast(`${FIELD_ZONES[ph.dests[0].to].name}：まだ先へは進めない（物語を進めると通れる）`); Sfx.enemy(); }
+          if (near && !ph.warned) { ph.warned = true; this.toast(Tx('{0}：まだ先へは進めない（物語を進めると通れる）', FIELD_ZONES[ph.dests[0].to].name)); Sfx.enemy(); }
           else if (!near && along > 6) ph.warned = false;
         } else if (along < 0.75 && lat < ph.width / 2) { this.gotoZone(ph.dests[0].to, { from: this.zoneId }); return; }
       }
@@ -1003,7 +1005,7 @@ class FieldView extends BaseView {
       const dist = Math.hypot(p.pos.x - g.x, p.pos.z - g.z);
       if (dist < 1.4) {
         if (g.locked) {
-          if (!g.warned) { g.warned = true; this.toast(`${FIELD_ZONES[g.exit.to].name}：封鎖中（任務を進めると通れる）`); Sfx.enemy(); }
+          if (!g.warned) { g.warned = true; this.toast(Tx('{0}：封鎖中（任務を進めると通れる）', FIELD_ZONES[g.exit.to].name)); Sfx.enemy(); }
           p.pos.x += g.nx * 1.2; p.pos.z += g.nz * 1.2;
         } else { this.gotoZone(g.exit.to, { from: this.zoneId }); return; }
       } else if (dist > 4) g.warned = false;
@@ -1092,7 +1094,7 @@ class FieldView extends BaseView {
   scratch(c) {
     if (this.busy) return;
     const key = this.team[this.leader].key, ch = CHARS[key];
-    if (this.techs.has(key)) { this.toast(`${ch.name}の初手技はもう準備できている（ほかの子に替えると研げる）`); return; }
+    if (this.techs.has(key)) { this.toast(Tx('{0}の初手技はもう準備できている（ほかの子に替えると研げる）', ch.name)); return; }
     const p = this.player, grip = p.m.armR && p.m.armR.grip, off = p.m.extras && p.m.extras.offhand;   // off：左手の武器（双子の小太刀）
     // 丸太のすぐ前へ寄り、持ち物はしまう
     const away = V3(p.pos.x - c.pos.x, 0, p.pos.z - c.pos.z); if (away.lengthSq() < 1e-4) away.set(0, 0, 1);
@@ -1115,7 +1117,7 @@ class FieldView extends BaseView {
       this.p.burst(pos.clone().add(V3(0, 0.6, 0)), col, 50, { speed: 4, life: 0.8, up: 0.8 });
       p.m.flash(col, 0.8);
       Sfx.ult();
-      this.toast(`バリバリッ！　初手技「${ch.technique.name}」：次の戦闘開始時に発動`);
+      this.toast(Tx('バリバリッ！　初手技「{0}」：次の戦闘開始時に発動', ch.technique.name));
       this.renderTeam(); this.busy = false;
     }, 900);
   }
@@ -1125,78 +1127,78 @@ class FieldView extends BaseView {
   // ============================================================
   nearestInteract() {
     const p = this.player.pos, Z = this.zone;
-    for (const n of this.npcs) if (n.pos.distanceTo(p) < 2.2) return { type: 'npc', n, text: `${speakerName(n.key)}と話す${n.shop ? '（' + SHOP_NAMES[n.shop] + '）' : ''}` };
+    for (const n of this.npcs) if (n.pos.distanceTo(p) < 2.2) return { type: 'npc', n, text: n.shop ? Tx('{0}と話す（{1}）', speakerName(n.key), SHOP_NAMES[n.shop]) : Tx('{0}と話す', speakerName(n.key)) };
     for (const n of this.notes) {
       const m = n.markAt, nearMark = m && Math.hypot(m.x - p.x, m.z - p.z) < (n.reach || 2.0) + 0.4 && Math.abs(m.y - p.y) < 1.6;
-      if (n.pos.distanceTo(p) < (n.reach || 2.0) || nearMark) return { type: 'note', n, text: `調べる：${n.title}` };
+      if (n.pos.distanceTo(p) < (n.reach || 2.0) || nearMark) return { type: 'note', n, text: Tx('調べる：{0}', Tx(n.title)) };
     }
     // へんてこ回廊のきまりの看板
     const lo = this.loopObj;
-    if (lo && Math.hypot(lo.L.board[0] * lo.hall.scale.x - p.x, lo.L.board[1] - p.z) < 2.4) return { type: 'loopRules', text: '調べる：へんてこ回廊のきまり' };
+    if (lo && Math.hypot(lo.L.board[0] * lo.hall.scale.x - p.x, lo.L.board[1] - p.z) < 2.4) return { type: 'loopRules', text: Tx('調べる：へんてこ回廊のきまり') };
     const la = lo && lo.anomaly && LOOP_TALK[lo.anomaly.k], lm = la && lo.models[lo.anomaly.k];
-    if (la && la.again && lm && lm.group.visible && Math.hypot(lo.L[la.at][0] - p.x, lo.L[la.at][1] - p.z) < 2.4) return { type: 'loopTalk', k: lo.anomaly.k, text: `${speakerName(la.again[0][0])}と話す` };
+    if (la && la.again && lm && lm.group.visible && Math.hypot(lo.L[la.at][0] - p.x, lo.L[la.at][1] - p.z) < 2.4) return { type: 'loopTalk', k: lo.anomaly.k, text: Tx('{0}と話す', speakerName(la.again[0][0])) };
     // 樹の地下：根のゆりかごの実を持ち上げる・置く。根の扉を調べる
     const ro = this.rootObj;
     if (ro) {
       for (const c of ro.cradles) {
         if (Math.hypot(c.pos.x - p.x, c.pos.z - p.z) > 1.9 || Math.abs(c.pos.y - p.y) > 1.2) continue;
         const f = ro.fruits.find(q => q.at === c.i && q.i !== ro.carry);
-        if (ro.carry < 0 && f) return { type: 'fruitTake', f, text: `${f.lit ? f.K.name : '灰色の実'}を持ち上げる` };
-        if (ro.carry >= 0 && !f) return { type: 'fruitPut', c, text: `${ro.fruits[ro.carry].K.name}を、根のゆりかごに置く` };
+        if (ro.carry < 0 && f) return { type: 'fruitTake', f, text: Tx('{0}を持ち上げる', f.lit ? f.K.name : Tx('灰色の実')) };
+        if (ro.carry >= 0 && !f) return { type: 'fruitPut', c, text: Tx('{0}を、根のゆりかごに置く', ro.fruits[ro.carry].K.name) };
       }
-      for (const kn of ro.knots) if (!kn.open && Math.hypot(kn.col.x - p.x, kn.col.z - p.z) < 2.4) return { type: 'knot', kn, text: '調べる：根の扉' };
+      for (const kn of ro.knots) if (!kn.open && Math.hypot(kn.col.x - p.x, kn.col.z - p.z) < 2.4) return { type: 'knot', kn, text: Tx('調べる：根の扉') };
     }
     // 時の水晶
     const to = this.timeObj;
     if (to) for (const q of to.crystals) if (Math.hypot(q.pos.x - p.x, q.pos.z - p.z) < 2.0 && Math.abs(q.pos.y - p.y) < 1.5) {
       const name = TIME_CRYS[q.k];
-      return { type: 'time', o: to, q, text: !to.ready() || !to.can(q) ? `調べる：${name}` : to.past ? `${name}にふれる（今にもどす）` : `${name}にふれる（昔の姿を見る）` };
+      return { type: 'time', o: to, q, text: !to.ready() || !to.can(q) ? Tx('調べる：{0}', name) : to.past ? Tx('{0}にふれる（今にもどす）', name) : Tx('{0}にふれる（昔の姿を見る）', name) };
     }
     // 昔の猫たち（昔のあいだだけ見える）
-    if (to && to.past) for (const g of to.talkers || []) if (Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 1.9 && Math.abs(g.pos.y - p.y) < 1.5) return { type: 'ghost', g, text: '昔の猫と話す' };
-    for (const o of this.sealObjs || []) if (o.beam && !o.open) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) return { type: 'mirror', o, m, text: `${MIRROR_COLS[m.g][0]}の光の鏡の向きを変える（${MIRROR_COLS[m.g][0]}の鏡はみんな回る）` };
-    for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || '光の水晶'; for (const L of o.lamps) if (!L.lit && L.pos.distanceTo(p) < (o.S.reach || 2.0)) return { type: 'lamp', o, L, text: !o.ready() ? `調べる：${name}` : o.S.verb ? `${o.S.verb}（${speakerName(o.S.who)}）` : o.S.look === 'laugh' ? `${name}を押す` : o.S.labels ? `${name}（${o.S.labels[L.i]}）にふれる` : `${name}に触れる` }; }
+    if (to && to.past) for (const g of to.talkers || []) if (Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 1.9 && Math.abs(g.pos.y - p.y) < 1.5) return { type: 'ghost', g, text: Tx('昔の猫と話す') };
+    for (const o of this.sealObjs || []) if (o.beam && !o.open) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) return { type: 'mirror', o, m, text: Tx('{0}の光の鏡の向きを変える（{0}の鏡はみんな回る）', MIRROR_COLS[m.g][0]) };
+    for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || Tx('光の水晶'); for (const lp of o.lamps) if (!lp.lit && lp.pos.distanceTo(p) < (o.S.reach || 2.0)) return { type: 'lamp', o, L: lp, text: !o.ready() ? Tx('調べる：{0}', name) : o.S.verb ? Tx('{0}（{1}）', o.S.verb, speakerName(o.S.who)) : o.S.look === 'laugh' ? Tx('{0}を押す', name) : o.S.labels ? Tx('{0}（{1}）にふれる', name, o.S.labels[lp.i]) : Tx('{0}に触れる', name) }; }
     // 内門の踏み板：乗っていれば「ここで待ってて」、仲間が待っていれば「よびもどす」
     for (const o of this.plateObjs || []) {
       if (o.open) continue;
       for (const pad of o.pads) {
         const h = this.holds.find(x => x.pad === pad), f = h && this.followers.find(x => x.mem.key === h.key);
-        if (f && f.pos.distanceTo(p) < 1.8) return { type: 'unhold', o, pad, text: `${CHARS[h.key].name}をよびもどす` };
-        if (!h && Math.hypot(pad.pos.x - p.x, pad.pos.z - p.z) < 1.0) { const free = this.followers.find(x => !x.hold); return { type: 'hold', o, pad, f: free, text: free ? `${CHARS[free.mem.key].name}に、ここで待っていてもらう` : `調べる：${o.P.name || '踏み板'}` }; }
+        if (f && f.pos.distanceTo(p) < 1.8) return { type: 'unhold', o, pad, text: Tx('{0}をよびもどす', CHARS[h.key].name) };
+        if (!h && Math.hypot(pad.pos.x - p.x, pad.pos.z - p.z) < 1.0) { const free = this.followers.find(x => !x.hold); return { type: 'hold', o, pad, f: free, text: free ? Tx('{0}に、ここで待っていてもらう', CHARS[free.mem.key].name) : Tx('調べる：{0}', o.P.name || Tx('踏み板')) }; }
       }
     }
     // 見張りの番犬：タマが先頭なら、こもりうたで眠らせられる
-    for (const g of this.guards || []) if (!g.asleep && g.pos.distanceTo(p) < 2.6) return { type: 'guard', g, text: this.team[this.leader].key === 'tama' ? 'こもりうたを歌う（タマ）' : '調べる：見張りの番犬' };
-    for (const o of this.rubbleObjs || []) if (!o.broken && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < (o.R.r || 1.6) + 1.2) return { type: 'rubble', o, text: `調べる：${o.R.name || '落石の岩山'}` };
-    if (this.sleeper && this.sleeper.pos.distanceTo(p) < 2.0) return { type: 'sleeper', text: `${this.sleeper.SW.name || speakerName(this.sleeper.SW.key)}に話しかける` };
-    for (const n of this.naps) if (Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 2.4) return { type: 'nap', n, text: `${n.name || speakerName(n.key)}に話しかける` };
-    for (const o of this.fluffObjs || []) if (o.ready && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < 1.8 && Math.abs(o.pos.y - p.y) < 1) return { type: 'fluff', o, text: '綿毛につかまる' };
+    for (const g of this.guards || []) if (!g.asleep && g.pos.distanceTo(p) < 2.6) return { type: 'guard', g, text: this.team[this.leader].key === 'tama' ? Tx('こもりうたを歌う（タマ）') : Tx('調べる：見張りの番犬') };
+    for (const o of this.rubbleObjs || []) if (!o.broken && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < (o.R.r || 1.6) + 1.2) return { type: 'rubble', o, text: Tx('調べる：{0}', o.R.name || Tx('落石の岩山')) };
+    if (this.sleeper && this.sleeper.pos.distanceTo(p) < 2.0) return { type: 'sleeper', text: Tx('{0}に話しかける', this.sleeper.SW.name || speakerName(this.sleeper.SW.key)) };
+    for (const n of this.naps) if (Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < 2.4) return { type: 'nap', n, text: Tx('{0}に話しかける', n.name || speakerName(n.key)) };
+    for (const o of this.fluffObjs || []) if (o.ready && Math.hypot(o.pos.x - p.x, o.pos.z - p.z) < 1.8 && Math.abs(o.pos.y - p.y) < 1) return { type: 'fluff', o, text: Tx('綿毛につかまる') };
     // ねこ神の夢：夢のできごと（部屋で待っている猫たちに話しかける）
-    for (const e of this.dreams || []) if (e.ms.some(q => Math.hypot(q.pos.x - p.x, q.pos.z - p.z) < 2.4 && Math.abs(q.pos.y - p.y) < 1.5)) return { type: 'dream', e, text: `話しかける：${e.D.name}（${e.D.tag || '夢のできごと'}）` };
+    for (const e of this.dreams || []) if (e.ms.some(q => Math.hypot(q.pos.x - p.x, q.pos.z - p.z) < 2.4 && Math.abs(q.pos.y - p.y) < 1.5)) return { type: 'dream', e, text: Tx('話しかける：{0}（{1}）', e.D.name, e.D.tag || Tx('夢のできごと')) };
     // ねこ神の夢：ちびクッキー・でかミルクの台
     for (const st of this.sizeStands || []) if (Math.hypot(st.pos.x - p.x, st.pos.z - p.z) < SIZE_REACH && Math.abs(st.pos.y - p.y) < 1.2) {
       const can = st.kind === 'cookie' ? this.size > 0 : this.size < 2;
-      return { type: 'size', st, text: !can ? `調べる：${st.name}` : st.kind === 'cookie' ? 'ちびクッキーを食べる（ひとまわり小さくなる）' : 'でかミルクを飲む（ひとまわり大きくなる）' };
+      return { type: 'size', st, text: !can ? Tx('調べる：{0}', st.name) : st.kind === 'cookie' ? Tx('ちびクッキーを食べる（ひとまわり小さくなる）') : Tx('でかミルクを飲む（ひとまわり大きくなる）') };
     }
-    for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: '宝箱を開ける' };
-    for (const c of this.crystals) if (c.pos.distanceTo(p) < 1.8) return { type: 'post', c, text: c.broken ? '調べる：爪とぎの丸太' : '爪を研ぐ：爪とぎの丸太' };
+    for (const c of this.chests) if (!c.opened && c.pos.distanceTo(p) < 2.0) return { type: 'chest', c, text: Tx('宝箱を開ける') };
+    for (const c of this.crystals) if (c.pos.distanceTo(p) < 1.8) return { type: 'post', c, text: c.broken ? Tx('調べる：爪とぎの丸太') : Tx('爪を研ぐ：爪とぎの丸太') };
     if (this.T) {
       const i = this.T.at(p.x, p.z);
       // 区画間エレベーターの籠の中
       const cab = this.exitsPhys.find(g => g.cabin && g.cells.includes(i));
-      if (cab) return { type: 'cabin', g: cab, text: 'エレベーター：行き先を選ぶ' };
+      if (cab) return { type: 'cabin', g: cab, text: Tx('エレベーター：行き先を選ぶ') };
       // 昇降機に乗っている
       const li = i >= 0 ? this.T.liftOf[i] : -1;
       if (li >= 0) {
         const L = this.T.lifts[li];
-        if (!L.moving && L.levels.length > 1) return { type: 'lift', L, text: L.y < L.levels[L.levels.length - 1] - 0.05 ? 'エレベーター：上の階へ' : 'エレベーター：下の階へ' };
+        if (!L.moving && L.levels.length > 1) return { type: 'lift', L, text: L.y < L.levels[L.levels.length - 1] - 0.05 ? Tx('エレベーター：上の階へ') : Tx('エレベーター：下の階へ') };
       }
       // 乗り場（昇降機が別の階にいる）
       for (const L of this.T.lifts) {
         if (L.moving || L.levels.length < 2) continue;
         const dx = Math.max(Math.abs(p.x - L.x) - L.w / 2, 0), dz = Math.max(Math.abs(p.z - L.z) - L.d / 2, 0);
         const lv = L.levels.find(v => Math.abs(v - p.y) < 0.3);
-        if (Math.hypot(dx, dz) < 1.3 && lv != null && Math.abs(L.y - lv) > 0.05) return { type: 'call', L, lv, text: 'エレベーターを呼ぶ' };
+        if (Math.hypot(dx, dz) < 1.3 && lv != null && Math.abs(L.y - lv) > 0.05) return { type: 'call', L, lv, text: Tx('エレベーターを呼ぶ') };
       }
     }
     return null;
@@ -1221,7 +1223,7 @@ class FieldView extends BaseView {
       this.putFruit(it.c);
     } else if (it.type === 'knot') {
       const n = it.kn.K.cradles.length, done = it.kn.K.cradles.filter(c => this.rootObj.fruits.some(f => f.lit && f.at === c && f.i !== this.rootObj.carry)).length;
-      this.startTalk('根の扉', [`かたくからまった根が、道をふさいでいる。……そばの根のゆりかご${n > 1 ? `（${n}つ）` : ''}に光る実をそなえれば、ほどけそうだ。${n > 1 ? `（いま ${done}/${n}）` : ''}`], null, true);
+      this.startTalk('根の扉', [n > 1 ? Tx('かたくからまった根が、道をふさいでいる。……そばの根のゆりかご（{0}つ）に光る実をそなえれば、ほどけそうだ。（いま {1}/{0}）', n, done) : Tx('かたくからまった根が、道をふさいでいる。……そばの根のゆりかごに光る実をそなえれば、ほどけそうだ。')], null, true);
     } else if (it.type === 'ghost') {
       this.talkGhost(it.g);
     } else if (it.type === 'time') {
@@ -1244,7 +1246,7 @@ class FieldView extends BaseView {
     } else if (it.type === 'loopTalk') {
       this.loopTalk(this.loopObj, it.k, true);
     } else if (it.type === 'loopRules') {
-      this.startTalk('へんてこ回廊のきまり', [...this.loopObj.rules.map(l => l.replace(/^・/, '')), '——ねこ神'], null, true);
+      this.startTalk('へんてこ回廊のきまり', [...this.loopObj.rules.map(l => l.replace(/^・/, '')), Tx('——ねこ神')], null, true);
     } else if (it.type === 'sleeper') {
       this.startTalk(this.sleeper.SW.name || speakerName(this.sleeper.SW.key), this.sleeper.SW.talk || ['……すぴー……']);
     } else if (it.type === 'nap') {
@@ -1271,12 +1273,12 @@ class FieldView extends BaseView {
       Sfx.win();
       if (gotW) {
         const w = WEAPONS[wid], own = Save.data.owned[w.owner];
-        this.startTalk('宝箱', [`「${w.name}」を手に入れた！`, w.desc, own ? `${CHARS[w.owner].name}の${WEAPON_KIND[CHARS[w.owner].gear.weapon]}だ。メニューの「なかま」で装備すると、技がまるごと変わる。` : 'いまの仲間には、使えそうな子がいない……。いつか、使える子に出会えるかもしれない。'], null, true);
+        this.startTalk('宝箱', [Tx('「{0}」を手に入れた！', w.name), w.desc, own ? Tx('{0}の{1}だ。メニューの「なかま」で装備すると、技がまるごと変わる。', CHARS[w.owner].name, WEAPON_KIND[CHARS[w.owner].gear.weapon]) : Tx('いまの仲間には、使えそうな子がいない……。いつか、使える子に出会えるかもしれない。')], null, true);
       } else if (gi && gi.rare && !full) {
-        this.startTalk('宝箱', [`めずらしいどうぐ「${gi.icon} ${gi.name}」を手に入れた！（持っている数 ${itemCount(iid)}）`, gi.desc, '戦闘中に「どうぐ」で使える。'], null, true);
-      } else if (gi && !full) this.toast(`宝箱：${gi.icon} ${gi.name}を手に入れた！（持っている数 ${itemCount(iid)}）`);
-      else if (gi) this.toast(`宝箱：${gi.icon} ${gi.name}……もう持てないので、にぼし +${nib}`);
-      else this.toast(`宝箱：にぼし +${nib}`);
+        this.startTalk('宝箱', [Tx('めずらしいどうぐ「{0} {1}」を手に入れた！（持っている数 {2}）', gi.icon, gi.name, itemCount(iid)), gi.desc, Tx('戦闘中に「どうぐ」で使える。')], null, true);
+      } else if (gi && !full) this.toast(Tx('宝箱：{0} {1}を手に入れた！（持っている数 {2}）', gi.icon, gi.name, itemCount(iid)));
+      else if (gi) this.toast(Tx('宝箱：{0} {1}……もう持てないので、にぼし +{2}', gi.icon, gi.name, nib));
+      else this.toast(Tx('宝箱：にぼし +{0}', nib));
       this.renderHud();
     } else if (it.type === 'lift') this.rideLift(it.L);
     else if (it.type === 'call') { this.moveLift(it.L, it.lv); this.toast('エレベーターを呼んだ'); }
@@ -1399,8 +1401,8 @@ class FieldView extends BaseView {
     const had = o.anomaly, ok = !!had === back;
     o.count = ok ? o.count + 1 : 0;
     const exit = o.count >= o.L.goal, next = exit || o.count === 0 ? null : Math.random() < 0.5 ? null : o.pick();
-    const msg = !ok ? `……あれ？　さかなが 0 ひきにもどった（${had ? 'さっきの回廊は、' + had.desc : 'さっきの回廊に、へんなところはなかった'}）`
-      : exit ? `さかなが ${o.count} ひき！　……回廊の先に、出口があらわれた！` : `${back ? '引き返した。……' : ''}さかなが ${o.count} ひき`;
+    const msg = !ok ? (had ? Tx('……あれ？　さかなが 0 ひきにもどった（さっきの回廊は、{0}）', had.desc) : Tx('……あれ？　さかなが 0 ひきにもどった（さっきの回廊に、へんなところはなかった）'))
+      : exit ? Tx('さかなが {0} ひき！　……回廊の先に、出口があらわれた！', o.count) : (back ? Tx('引き返した。……') : '') + Tx('さかなが {0} ひき', o.count);
     const T = had && LOOP_TALK[had.k], voice = T && (ok ? T.foiled : T.fooled);
     this.loopWarp(o, next, exit, msg, ok, voice);
   }
@@ -1453,17 +1455,17 @@ class FieldView extends BaseView {
     if (o.state === 'chant') {
       if (o.t > 0) return;
       const sy = o.seq[o.i++];
-      if (sy === 'zzz') { o.text = o.said.join(' ') + ' <em>……むにゃむにゃ</em>'; this.napText(o); Sfx.snore(); o.state = 'back'; o.t = 1.4; return; }
+      if (sy === 'zzz') { o.text = o.said.join(NAP_SEP) + ` <em>${Tx('……むにゃむにゃ')}</em>`; this.napText(o); Sfx.snore(); o.state = 'back'; o.t = 1.4; return; }
       o.said.push(sy);
-      if (sy === 'だ') {
+      if (sy === o.last) {
         // ふりむく
-        o.text = o.said.slice(0, -1).join(' ') + ' <b>だ！</b>'; this.napText(o, true);
+        o.text = o.said.slice(0, -1).join(NAP_SEP) + ` <b>${Tx('{0}！', sy)}</b>`; this.napText(o, true);
         o.state = 'watch'; o.want = 0; o.t = 1.5 + Math.random() * 1.2; o.grace = 0.35;
         Sfx.tone(260, 0.3, 'square', 0.05, 120); Sfx.tone(520, 0.25, 'triangle', 0.04, 0, 0.05);
         if (o.god && o.god.critter) { o.god.critter.setPose(POSES.idle); o.god.critter.face.set('surprise'); }
         return;
       }
-      o.text = o.said.join(' '); this.napText(o);
+      o.text = o.said.join(NAP_SEP); this.napText(o);
       Sfx.tone(520 + o.i * 30, 0.16, 'sine', 0.035, -40);
       o.t = o.gaps[o.i - 1];
       return;
@@ -1498,10 +1500,11 @@ class FieldView extends BaseView {
   }
   // 新しいねごと：一音ずつの間（ゆっくり・はやい・「だ」の前に、ためる）。ときどき、とちゅうで寝なおす
   napChant(o) {
-    const S = ['ね', 'こ', 'が', 'こ', 'ろ', 'ん', 'だ'], tempo = 0.18 + Math.random() * 0.32, rush = Math.random() < 0.25;
+    // 英語は Red Light, Green Light に見立てる（最後の一音で、ふりむく）
+    const S = Tx('ね|こ|が|こ|ろ|ん|だ').split('|'), tempo = 0.18 + Math.random() * 0.32, rush = Math.random() < 0.25;
     o.seq = Math.random() < 0.18 ? [...S.slice(0, 3 + Math.floor(Math.random() * 3)), 'zzz'] : S;
-    o.gaps = o.seq.map((s, i) => Math.max(0.1, (rush && i > 2 ? tempo * 0.45 : tempo) * (0.8 + Math.random() * 0.4) + (o.seq[i + 1] === 'だ' && Math.random() < 0.4 ? 0.5 + Math.random() * 0.8 : 0)));
-    o.i = 0; o.said = []; o.state = 'chant'; o.t = 0.2;
+    o.gaps = o.seq.map((s, i) => Math.max(0.1, (rush && i > 2 ? tempo * 0.45 : tempo) * (0.8 + Math.random() * 0.4) + (o.seq[i + 1] === S[S.length - 1] && Math.random() < 0.4 ? 0.5 + Math.random() * 0.8 : 0)));
+    o.i = 0; o.said = []; o.state = 'chant'; o.t = 0.2; o.last = S[S.length - 1];
   }
   napText(o, watch) {
     const el = this.root.querySelector('.fd-nap');
@@ -1510,7 +1513,7 @@ class FieldView extends BaseView {
   // 見つかった：「……ん？」→ 夢がゆらいで、ふとんの線（なければ入口）へ
   napCaught(o) {
     this.busy = true; this.keys.clear(); o.state = 'caught';
-    o.text = '<b>……ん？</b>　だれか、いるのか……？'; this.napText(o, true);
+    o.text = Tx('<b>……ん？</b>　だれか、いるのか……？'); this.napText(o, true);
     Sfx.tone(180, 0.5, 'sawtooth', 0.05, 120); GFX.shake(0.2);
     if (o.god && o.god.critter) o.god.critter.flash('#ffe08a', 1.2);
     const fl = this.root.querySelector('.fd-flash');
@@ -1655,9 +1658,9 @@ class FieldView extends BaseView {
     const o = this.root.querySelector('.overlay');
     if (this.overlayOpen || this.busy) return;
     this.busy = true; this.overlayOpen = true; this.keys.clear();
-    o.innerHTML = `<div class="ov-box fd-liftbox"><h2>${title}</h2><div class="dim">石碑にふれると、実を、はじめのゆりかごへもどせるようだ。<br>（光った実と、ほどけた根の扉は、そのまま）</div>
-      <div class="fd-floors"><button class="fd-floor" data-reset><b>実を、はじめのゆりかごへもどす</b><small>▶ もどす</small></button></div>
-      <button class="btn" data-close>やめる</button></div>`;
+    o.innerHTML = `<div class="ov-box fd-liftbox"><h2>${Tx(title)}</h2><div class="dim">${Tx('石碑にふれると、実を、はじめのゆりかごへもどせるようだ。<br>（光った実と、ほどけた根の扉は、そのまま）')}</div>
+      <div class="fd-floors"><button class="fd-floor" data-reset><b>${Tx('実を、はじめのゆりかごへもどす')}</b><small>${Tx('▶ もどす')}</small></button></div>
+      <button class="btn" data-close>${Tx('やめる')}</button></div>`;
     o.classList.remove('hidden');
     Sfx.select();
     o.querySelector('[data-close]').onclick = () => this.closeOverlay();
@@ -1724,9 +1727,9 @@ class FieldView extends BaseView {
           Sfx.tone(196, 0.8, 'sine', 0.05, -40);
           const name = CHARS[key].name, tips = this.shTips || (this.shTips = {});
           const look = () => { const vx = o.sh.pos.x - p.x, vz = o.sh.pos.z - p.z; this.camYaw = Math.atan2(-vx, -vz); };
-          if (o.idx === 0 && !tips.first && !Save.data.flags[S.id]) { tips.first = true; this.startTalk('', [['n', `……ひとりで、いいよ。（どこからか、ささやき声がする）`], ['n', `${name}の影が、足もとからはなれた！　${name}が動くと、影は、鏡にうつしたように左右が逆さまに動く（壁や柱にぶつかると止まる）。`], ['n', '自分は金色の輪へ、影は紫の輪へ。影は光がきらいで、ひだまりに入ると消えて、鏡の位置にあらわれなおす。部屋を出ると、影は足もとにもどる。']]); }
-          else if (S.mirror === 'xz' && !tips.xz) { tips.xz = true; look(); this.startTalk('', [['n', `${name}の影が、部屋の向こうがわにあらわれた。……この部屋の影は、左右だけでなく、前とうしろも逆さまに動く！`]]); }
-          else this.toast(`……ひとりで、いいよ。（${name}の影が、足もとからはなれた）`);
+          if (o.idx === 0 && !tips.first && !Save.data.flags[S.id]) { tips.first = true; this.startTalk('', [['n', '……ひとりで、いいよ。（どこからか、ささやき声がする）'], ['n', Tx('{0}の影が、足もとからはなれた！　{0}が動くと、影は、鏡にうつしたように左右が逆さまに動く（壁や柱にぶつかると止まる）。', name)], ['n', '自分は金色の輪へ、影は紫の輪へ。影は光がきらいで、ひだまりに入ると消えて、鏡の位置にあらわれなおす。部屋を出ると、影は足もとにもどる。']]); }
+          else if (S.mirror === 'xz' && !tips.xz) { tips.xz = true; look(); this.startTalk('', [['n', Tx('{0}の影が、部屋の向こうがわにあらわれた。……この部屋の影は、左右だけでなく、前とうしろも逆さまに動く！', name)]]); }
+          else this.toast(Tx('……ひとりで、いいよ。（{0}の影が、足もとからはなれた）', name));
         }
       } else if (!this.busy && (dx || dz)) {
         if (jump) { const [mx, mz] = mirror(p.x, p.z); if (this.T.fitsCircle(mx, mz, 0.4)) o.sh.pos.set(mx, 0, mz); }
@@ -1786,7 +1789,7 @@ class FieldView extends BaseView {
     const vx = o.sh.pos.x - this.player.pos.x, vz = o.sh.pos.z - this.player.pos.z;
     this.camYaw = Math.atan2(-vx, -vz); this.player.yaw = Math.atan2(vx, vz); this.placePlayer(0);
     Sfx.tone(392, 0.6, 'sine', 0.05); Sfx.tone(523, 0.7, 'sine', 0.04, 0, 0.12);
-    this.startTalk('', [[key, L[0], `${name}の影`], [key, L[1]]]);
+    this.startTalk('', [[key, L[0], Tx('{0}の影', name)], [key, L[1]]]);
     this.talk.after = () => {
       o.merging = true; this.busy = true;
       const from = o.sh.pos.clone(), to = this.player.pos.clone();
@@ -1800,14 +1803,14 @@ class FieldView extends BaseView {
         this.fx.pillar(this.player.pos, '#ffe8a8', { h: 4, r: 0.6, life: 0.9 }); Sfx.heal();
         if (o.sh) { this.scene.remove(o.sh.m.group); disposeTree(o.sh.m.group); o.sh = null; }
         o.merging = false; o.active = false; this.busy = false;
-        this.startTalk('', [['n', `影は、すうっと${name}のそばへただよって、足もとに、とけるようにもどった。`]]);
+        this.startTalk('', [['n', Tx('影は、すうっと{0}のそばへただよって、足もとに、とけるようにもどった。', name)]]);
         this.talk.after = () => { Sfx.win(); this.toast('出口をふさいでいた影のいばらが、ほどけて消えた！'); };
       });
     };
   }
   // 光の水晶を灯す。影の壁の水晶をすべて灯すと、壁が消える
   lightLamp(o, L) {
-    const S = o.S, name = S.name || '光の水晶';
+    const S = o.S, name = S.name || Tx('光の水晶');
     if (!o.ready()) { this.startTalk(name, [S.idle || 'かすかに光る水晶。……今は、ふれても何も起きない。'], null, true); return; }
     const flags = Save.data.flags || (Save.data.flags = {});
     if (S.who && !this.featReady(S)) return;
@@ -1837,11 +1840,11 @@ class FieldView extends BaseView {
     } else if (all) {
       o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
       this.openSeal(o);
-    } else this.toast(S.hold && n === 1 ? `光の水晶が灯った（1/${o.lamps.length}）　……この光は、${S.hold}びょうで消えてしまう！` : S.look === 'memory' || laugh ? `${name}（${n}/${o.lamps.length}）` : `光の水晶が灯った（${n}/${o.lamps.length}）`);
+    } else this.toast(S.hold && n === 1 ? Tx('光の水晶が灯った（1/{0}）　……この光は、{1}びょうで消えてしまう！', o.lamps.length, S.hold) : S.look === 'memory' || laugh ? Tx('{0}（{1}/{2}）', name, n, o.lamps.length) : Tx('光の水晶が灯った（{0}/{1}）', n, o.lamps.length));
     Save.save();
     // 記憶のかけら：その仲間の思い出を、クロが語る。笑い袋：袋が笑い出して、みんなの掛け合い
     if (S.memories && S.memories[L.i]) this.startTalk(speakerName('kuro'), S.memories[L.i]);
-    if (laugh) this.startTalk('', [['n', `笑い袋が「${(S.laughs || [])[L.i] || 'ワッハッハ！'}」と笑い出した！`], ...((S.gags || [])[L.i] || []).filter(([k]) => k === 'n' || this.team.some(m => m.key === k))]);
+    if (laugh) this.startTalk('', [['n', Tx('笑い袋が「{0}」と笑い出した！', Tx((S.laughs || [])[L.i] || 'ワッハッハ！'))], ...((S.gags || [])[L.i] || []).filter(([k]) => k === 'n' || this.team.some(m => m.key === k))]);
   }
   openSeal(o) {
     Save.data.flags[o.S.id] = true; o.dissolve(); Save.save();
@@ -1880,7 +1883,7 @@ class FieldView extends BaseView {
       if (first.left > 0 && (!show || first.left < show.left)) show = { left: first.left, n: o.lamps.filter(L => L.lit).length, of: o.lamps.length };
       // 30・20・10・5 秒をこえるたびに知らせる（戦闘から戻ったときも、残りの秒をそのまま出す）
       const mark = [30, 20, 10, 5].filter(v => first.left <= v).pop();
-      if (mark && mark !== o.warned) { o.warned = mark; this.toast(`光の水晶の光が消えるまで、あと ${Math.ceil(first.left)} びょう！`); Sfx.tone(660, 0.08, 'square', 0.03); }
+      if (mark && mark !== o.warned) { o.warned = mark; this.toast(Tx('光の水晶の光が消えるまで、あと {0} びょう！', Math.ceil(first.left))); Sfx.tone(660, 0.08, 'square', 0.03); }
       if (first.left > 0) continue;
       o.lamps.forEach(L => { if (L.lit) { L.setUnlit(); delete flags[S.id + '_' + L.i]; delete flags[S.id + '_t' + L.i]; } });
       o.warned = 0; Save.save();
@@ -1897,14 +1900,14 @@ class FieldView extends BaseView {
     el.classList.toggle('hidden', !s);
     if (!s) return;
     el.classList.toggle('low', sec <= 10);
-    el.innerHTML = `<small>光の水晶 ${s.n}/${s.of}</small>あと <b>${sec}</b> びょう`;
+    el.innerHTML = Tx('<small>光の水晶 {0}/{1}</small>あと <b>{2}</b> びょう', s.n, s.of, sec);
   }
   // わざの仕掛け：S.who の子が先頭でなければ、先頭の子のひとことと手がかり（1〜4で交代）
   featReady(S) {
     const lead = this.team[this.leader].key, name = speakerName(S.who);
     if (lead === S.who) return true;
     const say = (S.tries || {})[lead], inTeam = this.team.some(m => m.key === S.who);
-    this.startTalk('', [...(say ? [[lead, say]] : []), ['n', (S.hint || `${name}なら、なんとかできそうだ。`) + (inTeam ? '（{1〜4で|下の顔をタップして}先頭の子を交代）' : `（${name}は、いま一行にいない。編成に入れよう）`)]]);
+    this.startTalk('', [...(say ? [[lead, say]] : []), ['n', Tx(S.hint || Tx('{0}なら、なんとかできそうだ。', name)) + (inTeam ? Tx('（{1〜4で|下の顔をタップして}先頭の子を交代）') : Tx('（{0}は、いま一行にいない。編成に入れよう）', name))]]);
     return false;
   }
   // のろし台に火をつける／かんぬきを外す
@@ -1915,7 +1918,7 @@ class FieldView extends BaseView {
     if (beacon) { this.fx.pillar(L.pos, '#ff9a3a', { h: 6, r: 0.7, life: 0.9 }); this.p.burst(L.pos.clone().add(V3(0, 1.4, 0)), '#ffb04a', 60, { speed: 4, up: 2, life: 1 }); Sfx.fire(); }
     else { Sfx.slam(); GFX.shake(0.25); this.p.burst(L.pos.clone().add(V3(0, 1.4, 0)), '#c8a070', 40, { speed: 3, up: 1, life: 0.8, size: 0.12 }); }
     if (all) { flags[S.id] = true; o.dissolve(); setTimeout(() => { Sfx.door(); Sfx.win(); GFX.shake(0.2); this.toast(S.openToast || '門が開いた！'); }, beacon ? 700 : 500); }
-    else this.toast(`${S.name}（${n}/${o.lamps.length}）`);
+    else this.toast(Tx('{0}（{1}/{2}）', Tx(S.name), n, o.lamps.length));
     Save.save();
     const say = (all && S.done) || S.lit;
     if (say) this.startTalk('', say.filter(([k]) => k === 'n' || this.team.some(m => m.key === k)));
@@ -1936,7 +1939,7 @@ class FieldView extends BaseView {
     if (!f) { this.startTalk(o.P.name || '踏み板', ['踏み板は、ふたつそろって踏まないと動かないようだ。……いっしょに踏んでくれる仲間がいない。'], null, true); return; }
     const key = f.mem.key;
     this.holds.push({ pad, key }); f.hold = pad;
-    Sfx.meow(key); this.toast(`${CHARS[key].name}「${pick(HOLD_LINES[key] || ['ここで待ってる！'])}」`);
+    Sfx.meow(key); this.toast(Tx('{0}「{1}」', CHARS[key].name, Tx(pick(HOLD_LINES[key] || ['ここで待ってる！']))));
   }
   // 踏み板をすべて踏んでいれば、門が開く（待っていた仲間は、またついてくる）
   updatePlates() {
@@ -2013,7 +2016,7 @@ class FieldView extends BaseView {
     if (lead !== 'tama') {
       const say = { mike: 'そーっと……そーっと……。……これ以上近づいたら、ほえられちゃう！', kuro: '……眠らせるか、見つからずに抜けるか、だな。', shiro: 'しーっ……。こういうときは、魔法より、子守歌よね。', maou: '……犬は苦手だ。' }[lead];
       const inTeam = this.team.some(m => m.key === 'tama');
-      this.startTalk('', [...(say ? [[lead, say]] : []), ['n', '見張りの番犬は、まだこちらに気づいていない。……タマのこもりうたなら、眠らせられるかもしれない。' + (inTeam ? '（{1〜4で|下の顔をタップして}先頭の子を交代）' : '（タマを編成に入れよう）')]]);
+      this.startTalk('', [...(say ? [[lead, say]] : []), ['n', Tx('見張りの番犬は、まだこちらに気づいていない。……タマのこもりうたなら、眠らせられるかもしれない。') + Tx(inTeam ? '（{1〜4で|下の顔をタップして}先頭の子を交代）' : '（タマを編成に入れよう）')]]);
       return;
     }
     g.asleep = true; (Save.data.flags || (Save.data.flags = {}))[g.G.id] = true; Save.save();
@@ -2135,7 +2138,7 @@ class FieldView extends BaseView {
       if (GFX.view !== this) return;
       this.busy = true; this.keys.clear();
       const banner = this.root.querySelector('.fd-banner');
-      banner.className = 'fd-banner'; void banner.offsetWidth; banner.className = 'fd-banner show trap'; banner.textContent = '閉じこめられた！';
+      banner.className = 'fd-banner'; void banner.offsetWidth; banner.className = 'fd-banner show trap'; banner.textContent = Tx('閉じこめられた！');
       later(1800, () => { banner.className = 'fd-banner'; });
       GFX.shake(0.3); Sfx.tone(220, 0.5, 'sawtooth', 0.05, -80); Sfx.tone(165, 0.7, 'sine', 0.06, -60, 0.15);
       later(1600, rewind);
@@ -2162,7 +2165,7 @@ class FieldView extends BaseView {
           this.p.burst(q.clone().add(V3(0, 1, 0)), '#ffffff', 40, { speed: 3, up: 1, life: 0.9, size: 0.1 });
           Sfx.tone(660, 0.6, 'sine', 0.05, 330); Sfx.tone(990, 0.5, 'triangle', 0.03, 0, 0.12);
           const bn = this.root.querySelector('.fd-banner');
-          bn.className = 'fd-banner'; void bn.offsetWidth; bn.className = 'fd-banner show good'; bn.textContent = '入口の間にもどった';
+          bn.className = 'fd-banner'; void bn.offsetWidth; bn.className = 'fd-banner show good'; bn.textContent = Tx('入口の間にもどった');
           later(1800, () => { bn.className = 'fd-banner'; });
           this.toast('遺跡は、今の姿にもどっている。……ちがう水晶の順番を、ためしてみよう');
         });
@@ -2215,7 +2218,7 @@ class FieldView extends BaseView {
         c.armed = false; c.squish = 1; Sfx.boo();
         this.p.burst(c.pos.clone().add(V3(0, 0.3, 0)), '#f4e8f0', 20, { speed: 1.5, up: 0.6, life: 0.8, size: 0.14 });
         const who = this.team.map(m => m.key).filter(k => CUSHION_LINES[k]), k = pick(who.length ? who : ['mike']);
-        this.toast(`ぶぅ〜〜っ！　……${speakerName(k)}「${pick(CUSHION_LINES[k])}」`);
+        this.toast(Tx('ぶぅ〜〜っ！　……{0}「{1}」', speakerName(k), pick(CUSHION_LINES[k])));
       } else if (!c.armed && dist > 2) c.armed = true;
       c.squish = Math.max(0, c.squish - d * 2.5);
       c.pad.scale.set(1 + c.squish * 0.3, 0.22 * (1 - c.squish * 0.6), 1 + c.squish * 0.3);
@@ -2306,7 +2309,7 @@ class FieldView extends BaseView {
     // 近づくと、むにゃむにゃ言いながら次の場所へ歩いていく（最後の場所に着くと、丸くなって寝る）
     if (!s.target && s.i < end && s.pos.distanceTo(pp) < (s.SW.near || 6)) {
       s.target = V3(R[s.i + 1][0], 0, R[s.i + 1][1]);
-      const line = (s.SW.lines || [])[s.i]; if (line) this.toast(`${s.SW.name || speakerName(s.SW.key)}「${line}」`);
+      const line = (s.SW.lines || [])[s.i]; if (line) this.toast(Tx('{0}「{1}」', Tx(s.SW.name) || speakerName(s.SW.key), Tx(line)));
     }
     if (s.target) {
       const dx = s.target.x - s.pos.x, dz = s.target.z - s.pos.z, l = Math.hypot(dx, dz);
@@ -2329,15 +2332,15 @@ class FieldView extends BaseView {
     this.talk = { lines, i: 0, npc };
     const el = this.root.querySelector('.fd-talk');
     el.classList.remove('hidden'); el.classList.toggle('note', !!isNote);
-    el.querySelector('.fd-talk-name').textContent = name;
+    el.querySelector('.fd-talk-name').textContent = Tx(name);
     if (npc) { npc.m.setPose(POSES.talk || POSES.idle); if (npc.m.face) { npc.m.face.set(npc.face2 || (defaultFace(npc.key) === 'neutral' ? 'smile' : defaultFace(npc.key))); npc.m.face.talking = true; setTimeout(() => { if (npc.m.face) npc.m.face.talking = false; }, 900); } }
     this.showTalkLine();
     Sfx.select();
   }
   // 台詞は文字列か、[話し手, 台詞]（掛け合い。話し手ごとに名前を出す）。[話し手, 台詞, 名前] なら、その名前を出す（影など）
   showTalkLine() {
-    const el = this.root.querySelector('.fd-talk'), t = this.talk, L = t.lines[t.i], text = forInput(Array.isArray(L) ? L[1] : L);
-    if (Array.isArray(L)) { el.querySelector('.fd-talk-name').textContent = L[2] || speakerName(L[0]); el.classList.toggle('note', L[0] === 'n'); if (L[0] !== 'n') Sfx.meow(L[0]); }
+    const el = this.root.querySelector('.fd-talk'), t = this.talk, L = t.lines[t.i], text = forInput(Tx(Array.isArray(L) ? L[1] : L));
+    if (Array.isArray(L)) { el.querySelector('.fd-talk-name').textContent = Tx(L[2]) || speakerName(L[0]); el.classList.toggle('note', L[0] === 'n'); if (L[0] !== 'n') Sfx.meow(L[0]); }
     el.querySelector('.fd-talk-text').textContent = text;
     if (t.npc && t.npc.m.face) { t.npc.m.face.talking = true; clearTimeout(this.talkT); this.talkT = setTimeout(() => { if (t.npc.m.face) t.npc.m.face.talking = false; }, 300 + text.length * 45); }
     el.querySelector('.fd-talk-next').textContent = forInput(t.i < t.lines.length - 1 ? '▼{ F|}' : '×{ F|}');
@@ -2475,7 +2478,7 @@ class FieldView extends BaseView {
     g.state = 'idle';
     const banner = this.root.querySelector('.fd-banner');
     banner.className = 'fd-banner show ' + (ambush === 'player' ? 'good' : 'bad');
-    banner.textContent = ambush === 'player' ? '先制攻撃！' : '奇襲された！';
+    banner.textContent = Tx(ambush === 'player' ? '先制攻撃！' : '奇襲された！');
     GFX.flash(ambush === 'player' ? '#ffffff' : '#ff3040', 0.55, 0.5);
     this.root.querySelector('.fd-wipe').classList.add('on');
     ambush === 'player' ? Sfx.crit() : Sfx.enemy();
@@ -2500,7 +2503,7 @@ class FieldView extends BaseView {
     const d = Save.data, exp = Math.round((60 + g.lv * 28) * g.waves.length);
     let html = '';
     const nib = 10 + g.lv * 2 + (g.elite ? 40 : 0); d.niboshi += nib;
-    html += `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}${g.elite ? '（つよい敵）' : ''}</div>`;
+    html += `<div class="rw"><i class="ic-jade"></i>${Tx('にぼし +{0}', nib)}${g.elite ? Tx('（つよい敵）') : ''}</div>`;
     html += '<div class="rw-team">' + this.team.map(m => {
       const up = grantExp(m.key, exp, g.lv);
       m.lv = d.owned[m.key].lv;
@@ -2544,7 +2547,7 @@ class FieldView extends BaseView {
     if (this.timeObj) this.checkTimeTrap(this.timeObj);
     this.playBgm();
     this.renderHud(); this.renderTeam();
-    if (res.win && this.groups.every(x => !x.alive)) setTimeout(() => this.toast(`${this.zone.name}の敵をすべて倒した！`), 600);
+    if (res.win && this.groups.every(x => !x.alive)) setTimeout(() => this.toast(Tx('{0}の敵をすべて倒した！', this.zone.name)), 600);
   }
 
   leave(then) {
@@ -2564,25 +2567,25 @@ class FieldView extends BaseView {
     const q = this.quest;
     r.innerHTML = `
       <div class="fd-world"></div>
-      <div class="fd-zone"><small>${this.ch.name}</small><b>${this.zone.name}</b><em class="fd-safe hidden">安全なところ　敵は出ない</em></div>
-      ${q ? `<div class="fd-quest"><small>ぼうけんの目的</small><div>◆ ${q.step.g}<b class="fd-qd"></b></div>${q.via ? `<em>→ ${q.via}へ進む${q.far ? `（目的地：${q.far}）` : ''}</em>` : ''}</div>` : ''}
+      <div class="fd-zone"><small>${this.ch.name}</small><b>${this.zone.name}</b><em class="fd-safe hidden">${Tx('安全なところ　敵は出ない')}</em></div>
+      ${q ? `<div class="fd-quest"><small>${Tx('ぼうけんの目的')}</small><div>◆ ${q.step.g}<b class="fd-qd"></b></div>${q.via ? `<em>→ ${Tx('{0}へ進む', q.via)}${q.far ? Tx('（目的地：{0}）', q.far) : ''}</em>` : ''}</div>` : ''}
       <div class="fd-tr">
         <div class="currency"></div>
-        <button class="ctl" data-map title="ワールドマップ (M)">MAP</button>
-        <button class="ctl" data-menu title="メニュー (Esc)">≡</button>
+        <button class="ctl" data-map title="${Tx('ワールドマップ (M)')}">MAP</button>
+        <button class="ctl" data-menu title="${Tx('メニュー (Esc)')}">≡</button>
       </div>
       <canvas class="fd-map" width="200" height="200"></canvas>
       <div class="fd-team"></div>
       <div class="fd-actions">
-        <div class="fd-act"><kbd>クリック / J</kbd>攻撃・先制</div>
-        <div class="fd-act"><kbd>Shift</kbd>ダッシュ</div>
-        <div class="fd-act"><kbd>M</kbd>ワールドマップ</div>
+        <div class="fd-act"><kbd>${Tx('クリック / J')}</kbd>${Tx('攻撃・先制')}</div>
+        <div class="fd-act"><kbd>Shift</kbd>${Tx('ダッシュ')}</div>
+        <div class="fd-act"><kbd>M</kbd>${Tx('ワールドマップ')}</div>
       </div>
       <div class="fd-prompt hidden"><kbd>F</kbd><span></span></div>
       <div class="fd-stick hidden"><i></i></div>
       <div class="fd-pad">
-        <button class="pad-btn talk" data-pad="talk">調べる</button>
-        <button class="pad-btn atk" data-pad="atk">攻撃</button>
+        <button class="pad-btn talk" data-pad="talk">${Tx('調べる')}</button>
+        <button class="pad-btn atk" data-pad="atk">${Tx('攻撃')}</button>
       </div>
       <div class="fd-talk hidden"><div class="fd-talk-name"></div><div class="fd-talk-text"></div><div class="fd-talk-next"></div></div>
       <div class="fd-toasts"></div>
@@ -2592,7 +2595,7 @@ class FieldView extends BaseView {
       <div class="fd-flash"></div>
       <div class="fd-nap hidden"></div>
       <div class="fd-timer hidden"></div>
-      <div class="fd-help">WASD 移動 ／ ドラッグ 視点 ／ ホイール ズーム ／ F 調べる・話す ／ 1〜4 先頭の子を交代</div>
+      <div class="fd-help">${Tx('WASD 移動 ／ ドラッグ 視点 ／ ホイール ズーム ／ F 調べる・話す ／ 1〜4 先頭の子を交代')}</div>
       <div class="overlay hidden"></div>`;
     this.root = r;
     this.map = r.querySelector('.fd-map').getContext('2d');
@@ -2601,12 +2604,12 @@ class FieldView extends BaseView {
     if (this.T) this.exitsPhys.forEach(g => {
       g.label = document.createElement('div'); g.label.className = 'fd-gate' + (g.locked ? ' locked' : '');
       const to = FIELD_ZONES[g.dests[0].to].name;
-      g.label.innerHTML = g.cabin ? '<b>▲▼</b>エレベーター' : g.locked ? `<b>封鎖中</b>${to}` : `<b>→</b>${to}`;
+      g.label.innerHTML = g.cabin ? `<b>▲▼</b>${Tx('エレベーター')}` : g.locked ? `<b>${Tx('封鎖中')}</b>${to}` : `<b>→</b>${to}`;
       world.appendChild(g.label);
     });
     else this.gates.forEach(g => {
       g.label = document.createElement('div'); g.label.className = 'fd-gate' + (g.locked ? ' locked' : '');
-      g.label.innerHTML = g.locked ? `<b>封鎖中</b>${FIELD_ZONES[g.exit.to].name}` : `<b>→</b>${FIELD_ZONES[g.exit.to].name}`;
+      g.label.innerHTML = g.locked ? `<b>${Tx('封鎖中')}</b>${FIELD_ZONES[g.exit.to].name}` : `<b>→</b>${FIELD_ZONES[g.exit.to].name}`;
       world.appendChild(g.label);
     });
     this.npcs.forEach(n => { n.label = document.createElement('div'); n.label.className = 'fd-npc'; n.label.textContent = speakerName(n.key); world.appendChild(n.label); });
@@ -2677,7 +2680,7 @@ class FieldView extends BaseView {
   renderHud() {
     const d = Save.data;
     this.root.querySelector('.currency').innerHTML =
-      `<span class="c-item" title="にぼし"><i class="ic-jade"></i>${fmt(d.niboshi)}</span>`;
+      `<span class="c-item" title="${Tx('にぼし')}"><i class="ic-jade"></i>${fmt(d.niboshi)}</span>`;
   }
   renderTeam() {
     const el = this.root.querySelector('.fd-team');
@@ -2685,14 +2688,14 @@ class FieldView extends BaseView {
       <div class="fd-mem ${i === this.leader ? 'on' : ''} ${m.hpRatio <= 0 ? 'dead' : ''}" data-i="${i}" style="--c:${CHARS[m.key].color}">
         <div class="fd-face">${avatarSVG(m.key)}</div>
         <span class="fd-key">${i + 1}</span>
-        ${this.techs.has(m.key) ? '<span class="fd-tech">初手技</span>' : ''}
+        ${this.techs.has(m.key) ? `<span class="fd-tech">${Tx('初手技')}</span>` : ''}
         <div class="bar hp"><i style="width:${m.hpRatio * 100}%"></i></div>
       </div>`).join('');
     el.querySelectorAll('.fd-mem').forEach(x => x.onclick = () => this.switchLeader(+x.dataset.i));
   }
   toast(text) {
     const box = this.root.querySelector('.fd-toasts');
-    const t = document.createElement('div'); t.className = 'fd-toast'; t.textContent = forInput(text);
+    const t = document.createElement('div'); t.className = 'fd-toast'; t.textContent = forInput(Tx(text));
     box.appendChild(t);
     setTimeout(() => t.remove(), 3200);
   }
@@ -2704,11 +2707,11 @@ class FieldView extends BaseView {
     this.busy = true; this.overlayOpen = true; this.keys.clear();
     const left = this.groups.filter(g => g.alive).length, chests = this.chests.filter(c => !c.opened).length;
     const pout = sulkyCat();
-    const item = (m, name, desc) => `<button class="fm" data-m="${m}"><b>${name}</b><em>${desc}</em></button>`;
-    o.innerHTML = `<div class="ov-box fm-box"><h2>メニュー</h2>
-      <div class="dim">${this.zone.name}：${this.siege ? '影の獣に囲まれている' : this.town ? '安全なところ' : `残りの敵 ${left}`} ／ まだ開けていない宝箱 ${chests}</div>
+    const item = (m, name, desc) => `<button class="fm" data-m="${m}"><b>${Tx(name)}</b><em>${Tx(desc)}</em></button>`;
+    o.innerHTML = `<div class="ov-box fm-box"><h2>${Tx('メニュー')}</h2>
+      <div class="dim">${Tx('{0}：{1} ／ まだ開けていない宝箱 {2}', this.zone.name, this.siege ? Tx('影の獣に囲まれている') : this.town ? Tx('安全なところ') : Tx('残りの敵 {0}', left), chests)}</div>
       ${pout ? `<div class="fm-pout" style="--c:${CHARS[pout.k].color}"><div class="hp-face">${avatarSVG(pout.k)}</div><div class="hp-say"><b>${CHARS[pout.k].name}</b>${pout.line}</div></div>` : ''}
-      <button class="btn gold" data-m="resume">冒険を続ける</button>
+      <button class="btn gold" data-m="resume">${Tx('冒険を続ける')}</button>
       <div class="fm-grid">
         ${item('map', 'ワールドマップ', '行ったことのある場所へひとっとび')}
         ${item('chars', 'なかま', 'ステータス・わざの確認')}
@@ -2719,7 +2722,7 @@ class FieldView extends BaseView {
         ${Debug.on ? item('debug', 'デバッグ', '章へジャンプ・全ての武器を入手') : ''}
       </div>
       ${Debug.on ? `<div class="fm-foot">
-        <button class="link" data-reset>データを初期化</button>
+        <button class="link" data-reset>${Tx('データを初期化')}</button>
       </div>` : ''}</div>`;
     o.classList.remove('hidden');
     const go = (m, fn) => { o.querySelector(`[data-m=${m}]`).onclick = () => { Sfx.click(); fn(); }; };
@@ -2737,25 +2740,28 @@ class FieldView extends BaseView {
   // オプション：BGM の ON/OFF、BGM・効果音の音量、画質（メニューの中から開き、閉じると冒険へ）
   optionsMenu() {
     const o = this.root.querySelector('.overlay'), d = Save.data;
-    const vol = (k, label) => `<div class="op-row"><b>${label}</b>
+    const vol = (k, label) => `<div class="op-row"><b>${Tx(label)}</b>
       <input type="range" min="0" max="10" step="1" value="${Math.round(d[k] * 10)}" data-vol="${k}"><span class="op-num">${Math.round(d[k] * 10)}</span></div>`;
     // 画質の選び方：おまかせ（Save.data.eco が null）か、GFX_TIERS のどれか
-    const ecoOf = [false, true, 'low'], shortName = q => q.name.replace(/（.*/, '');
-    o.innerHTML = `<div class="ov-box fm-box op-box"><h2>オプション</h2>
+    const ecoOf = [false, true, 'low'], shortName = q => q.name.replace(/\s*[（(].*/, '');
+    o.innerHTML = `<div class="ov-box fm-box op-box"><h2>${Tx('オプション')}</h2>
       <div class="op-list">
         <div class="op-row"><b>BGM</b><div class="op-seg" data-bgm>
           <button data-v="1">ON</button><button data-v="0">OFF</button></div></div>
         ${vol('bgmVol', 'BGM の音量')}
         ${vol('seVol', '効果音の音量')}
-        <div class="op-row"><b>画質</b><div class="op-seg" data-eco>
-          <button data-v="auto">おまかせ</button>${GFX_TIERS.map((q, i) => `<button data-v="${i}">${shortName(q)}</button>`).join('')}</div></div>
+        <div class="op-row"><b>${Tx('画質')}</b><div class="op-seg" data-eco>
+          <button data-v="auto">${Tx('おまかせ')}</button>${GFX_TIERS.map((q, i) => `<button data-v="${i}">${shortName(q)}</button>`).join('')}</div></div>
+        <div class="op-row"><b>${LANG_LABEL}</b><div class="op-seg" data-lang>
+          ${Object.entries(LANGS).map(([k, n]) => `<button data-v="${k}">${n}</button>`).join('')}</div></div>
       </div>
-      <div class="op-foot"><span class="dim op-note"></span><button class="btn gold" data-close>閉じる</button></div></div>`;
+      <div class="op-foot"><span class="dim op-note"></span><button class="btn gold" data-close>${Tx('閉じる')}</button></div></div>`;
     const seg = (sel, cur) => o.querySelectorAll(`[${sel}] button`).forEach(b => b.classList.toggle('on', b.dataset.v === cur));
     const show = () => {
       seg('data-bgm', Music.on ? '1' : '0');
       seg('data-eco', d.eco == null ? 'auto' : String(GFX.tier));
-      o.querySelector('.op-note').textContent = `画質：${GFX.Q.name}${d.eco == null ? '（おまかせ）' : ''}`;
+      seg('data-lang', LANG);
+      o.querySelector('.op-note').textContent = Tx('画質：{0}', GFX.Q.name) + (d.eco == null ? Tx('（おまかせ）') : '');
     };
     show();
     o.querySelectorAll('[data-bgm] button').forEach(b => b.onclick = () => {
@@ -2774,6 +2780,11 @@ class FieldView extends BaseView {
       d.eco = v === 'auto' ? null : ecoOf[+v]; Save.save();
       GFX.setTier(GFX.savedTier()); Sfx.click(); show();
     });
+    // 言語：いまの場所を覚えてから、読みこみなおす
+    o.querySelectorAll('[data-lang] button').forEach(b => b.onclick = () => {
+      if (b.dataset.v === LANG) return;
+      Sfx.click(); this.leave(() => { Save.save(); Lang.set(b.dataset.v); });
+    });
     o.querySelector('[data-close]').onclick = () => { Sfx.click(); this.closeOverlay(); };
   }
   // ワールドマップ：訪れた場所へひとっとび
@@ -2782,7 +2793,7 @@ class FieldView extends BaseView {
     if (this.overlayOpen) { this.closeOverlay(); return; }
     if (this.busy) return;
     this.busy = true; this.overlayOpen = true; this.keys.clear();
-    o.innerHTML = worldMapHTML(this.zoneId) + '<div class="wm-foot"><span class="dim">行ったことのある場所へ、ひとっとびできる</span><button class="btn gold" data-close>閉じる</button></div></div>';
+    o.innerHTML = worldMapHTML(this.zoneId) + `<div class="wm-foot"><span class="dim">${Tx('行ったことのある場所へ、ひとっとびできる')}</span><button class="btn gold" data-close>${Tx('閉じる')}</button></div></div>`;
     o.classList.remove('hidden');
     o.querySelector('[data-close]').onclick = () => this.closeOverlay();
     o.querySelectorAll('[data-z]').forEach(b => b.onclick = () => { this.closeOverlay(); this.gotoZone(b.dataset.z, { anchor: true }); });
@@ -2794,7 +2805,7 @@ class FieldView extends BaseView {
     if (this.busy) return;
     this.busy = true; this.overlayOpen = true; this.keys.clear();
     o.innerHTML = `<div class="ov-box zm-box"><h2>${this.zone.name}</h2><canvas class="zm-map" width="1000" height="520"></canvas>
-      <div class="wm-foot"><span class="dim">地図を<span class="pc-only">クリック</span><span class="touch-only">タップ</span>しても閉じられる</span><button class="btn gold" data-close>閉じる</button></div></div>`;
+      <div class="wm-foot"><span class="dim">${Tx('地図を<span class="pc-only">クリック</span><span class="touch-only">タップ</span>しても閉じられる')}</span><button class="btn gold" data-close>${Tx('閉じる')}</button></div></div>`;
     o.classList.remove('hidden');
     this.zoneMap = o.querySelector('.zm-map').getContext('2d');
     this.drawZoneMap();
@@ -3134,7 +3145,7 @@ class FieldView extends BaseView {
       }
       q.label.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
       q.label.classList.toggle('edge', !onScreen);
-      q.label.textContent = onScreen ? (q.gate ? `◆ ${q.via}へ ${Math.round(dist)}m` : `◆ ${Math.round(dist)}m`) : '◆';
+      q.label.textContent = onScreen ? (q.gate ? Tx('◆ {0}へ {1}m', q.via, Math.round(dist)) : `◆ ${Math.round(dist)}m`) : '◆';
       if (dist >= 2.4) this.questHold = false;
       else if (!q.gate && !this.questHold && !this.busy) this.questArrive();
     }
@@ -3156,8 +3167,8 @@ class FieldView extends BaseView {
     const el = this.root.querySelector('.fd-safe');
     el.classList.toggle('hidden', !name || this.town);
     if (first) return;
-    if (name) this.toast(this.town ? `${name}：にゃんこたちが暮らす、安全なところ` : `安全なところ：${name}`);
-    else if (!this.town) this.toast('安全なところを離れた');
+    if (name) this.toast(this.town ? Tx('{0}：にゃんこたちが暮らす、安全なところ', name) : Tx('安全なところ：{0}', name));
+    else if (!this.town) this.toast(Tx('安全なところを離れた'));
   }
 
   dispose() {
@@ -3212,7 +3223,7 @@ function FieldScreen(zoneId) {
   if (v.timeObj) v.checkTimeTrap(v.timeObj);
   // 戦闘の外で深まった友情（会話・宿・物語）の知らせ。戦闘で深まったぶんは、戦闘の結果に出る
   const news = (Save.data.bondNews || []).splice(0); if (news.length) Save.save();
-  news.forEach((n, i) => setTimeout(() => { const [a, b] = n.k.split('|'); v.toast(`♥ ${CHARS[a].name}と${CHARS[b].name}の友情が Lv.${n.lv} に！ ${BOND_INFO[n.lv - 1]}`); }, 1600 + i * 900));
+  news.forEach((n, i) => setTimeout(() => { const [a, b] = n.k.split('|'); v.toast(Tx('♥ {0}と{1}の友情が Lv.{2} に！ {3}', CHARS[a].name, CHARS[b].name, n.lv, BOND_INFO[n.lv - 1])); }, 1600 + i * 900));
   setTimeout(() => { v.showZoneTitle(); if (!Save.data.fieldTips) { Save.data.fieldTips = true; Save.save(); v.toast(document.body.classList.contains('touch') ? '左側をなぞって移動。敵に先に「攻撃」を当てると「先制攻撃」！ 「調べる」で話す・調べる' : 'WASDで移動。敵に先にクリックで攻撃すると「先制攻撃」！ Fで話す・調べる'); } }, 300);
   return v.root;
 }
@@ -3239,12 +3250,12 @@ function worldMapHTML(here) {
   }));
   const floorsOf = id => Object.keys(FIELD_ZONES).filter(k => k === id || FIELD_ZONES[k].parent === id);
   const chestsLeft = id => floorsOf(id).reduce((n, k) => n + FIELD_ZONES[k].chests - ((Save.data.fieldChests || {})[k] || []).length, 0);
-  return `<div class="ov-box wm-box"><h2>ミャオニアの地図</h2>
+  return `<div class="ov-box wm-box"><h2>${Tx('ミャオニアの地図')}</h2>
     <div class="wm-graph"><svg width="1000" height="580" viewBox="0 0 1000 580"><defs><radialGradient id="wmtree"><stop offset="0" stop-color="#8ad86a"/><stop offset="1" stop-color="#8ad86a" stop-opacity="0"/></radialGradient></defs>
       <circle cx="470" cy="522" r="70" fill="url(#wmtree)" opacity=".35"/>${lines.join('')}</svg>
     ${ids.map(id => { const Z = FIELD_ZONES[id], open = zoneOpen(id), vis = floorsOf(id).some(k => visited[k]), h = id === here;
       return `<button class="wm-node ${h ? 'here' : ''} ${open ? '' : 'locked'} ${vis ? 'vis' : ''} ${Z.town ? 'town' : ''}" data-z="${id}" style="left:${Z.map2d[0]}px;top:${Z.map2d[1]}px" ${open && vis && id !== real && !Z.noAnchor ? '' : 'disabled'}>
-        ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${open ? Z.mapName || Z.name : '？？？'}</b><small>${id === real ? '現在地' : !open ? 'まだ行けない' : !vis ? 'まだ行ってない' : Z.noAnchor ? 'ひとっとびできない' : h ? '現在地・ひとっとび' : 'ひとっとび'}${open ? `　宝箱 ${chestsLeft(id)}` : ''}</small></button>`; }).join('')}
+        ${qz === id ? '<i class="qm">◆</i>' : ''}<b>${open ? Z.mapName || Z.name : Tx('？？？')}</b><small>${Tx(id === real ? '現在地' : !open ? 'まだ行けない' : !vis ? 'まだ行ってない' : Z.noAnchor ? 'ひとっとびできない' : h ? '現在地・ひとっとび' : 'ひとっとび')}${open ? Tx('　宝箱 {0}', chestsLeft(id)) : ''}</small></button>`; }).join('')}
     </div>`;
 }
 
