@@ -11,7 +11,8 @@ import { join } from 'node:path';
 
 export const FPS = 30, VW = 936, VH = 432, SCALE = 2.5;
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const URL = 'http://127.0.0.1:8937/index.html?debug';
+// PROMO_URL で別のサーバー（古い版を git worktree で出したものなど）を撮れる
+const URL = process.env.PROMO_URL || 'http://127.0.0.1:8937/index.html?debug';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ページより先に読みこむ：時計・タイマー・requestAnimationFrame・乱数を、__step で進める仮の時間にする

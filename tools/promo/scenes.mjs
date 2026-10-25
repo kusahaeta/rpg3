@@ -92,6 +92,96 @@ export const SCENES = {
     }
   },
 
+  // ぽかぽか村：ミケの家の柵の外の道を、東へ歩く（第一章のおわり。目的地の (0, 5) には近づかない）
+  async village(api, out) {
+    await api.ev(`P.prep(0, 7); P.field('pokapoka', -12, -6, -Math.PI / 2)`);
+    await api.run(1.5);
+    await api.ev(`P.noFoes(); { const v = Game.activeField; v.camPitch = 0.28; v.camDist = 6.5; } true`);
+    await api.run(0.5);
+    await api.start(out);
+    await api.rec(8, async () => { await api.ev(`P.steer(24, -6, false, 0.08)`); });
+  },
+
+  // デバッグのメニュー：探索のメニューから「デバッグ」を開き、章へジャンプの一覧を見せる
+  async debugmenu(api, out) {
+    await api.ev(`P.prep(1, 4); P.field('woods', -19, -6, 0)`);
+    await api.run(1.5);
+    await api.ev(`P.noFoes(); true`);
+    await api.run(0.5);
+    await api.start(out);
+    await api.rec(1);
+    await api.ev(`Game.activeField.menu(); true`);
+    await api.rec(1.5);
+    await api.ev(`document.querySelector('.overlay [data-m=debug]').click(); true`);
+    await api.rec(4.5);
+  },
+
+  // タイトルをそのまま見せる（作り直しの前と後をくらべる用。古い版は PROMO_URL で撮る）
+  async titlehold(api, out) {
+    await api.ev(`App.go(TitleScreen); true`);
+    await api.run(6);
+    await api.start(out);
+    await api.rec(27);   // まとめなど、長い行でも止めずに流せるように
+  },
+
+  // 古代遺跡・石畳の丘の戦い（メイキング動画の必殺技用）：奥に石の神殿が見える戦場。シロは大ばくはつの杖（必殺技「ちょう大ばくはつ」）
+  async battleHill(api, out) {
+    await api.ev(`{ P.prep(4, 0, 60); addBond('mike', 'kuro', 999); const d = Save.data; gainWeapon('shiro_boom'); d.equip.shiro = 'shiro_boom'; Save.save();
+      const st = CHAPTERS[4].stages.find(s => s.id === '5-1');
+      new Battle({ team: teamMembers().map(m => ({ ...m, hpRatio: 1, energy: null })), techs: [], bg: CHAPTERS[4].bg, canRetry: false,
+        loc: zoneArena('ruins_hill', { x: 0, z: 22 }), title: '古代遺跡・石畳の丘',
+        waves: [st.waves.at(-1).map(k => ({ key: k, lv: st.lv }))], onResult: () => '', onExit: () => {} }).start(); } true`);
+    await api.run(0.3);
+    await api.ev(`(() => {
+      const b = Game.activeBattle; window.__b = b;
+      const plan = ['basic', 'combo', 'ult:mike', 'basic', 'ult:shiro', 'basic', 'ult:kuro', 'ult:tama', 'basic', 'basic'];
+      let wait = 0;
+      setInterval(() => {
+        b.enemies.forEach(e => { if (e.hp < e.maxHp * 0.5) e.hp = e.maxHp; });
+        b.allies.forEach(u => { if (u.hp < u.maxHp * 0.5) { u.hp = u.maxHp; b.updateUnit(u); } });
+        const inp = b.input; if (!inp) { wait = 0; return; }
+        if ((wait += 1) < 4) return;
+        wait = 0;
+        if (inp.mode === 'ult') { b.confirm(); return; }
+        const a = plan.shift() || 'basic';
+        if (a === 'combo') { b.bond = 100; b.renderBond(); b.requestCombo('nyankoBreak'); }
+        else if (a.startsWith('ult:')) { const i = b.allies.findIndex(u => u.key === a.slice(4)); const u = b.allies[i]; u.energy = u.energyMax; b.updateUnit(u); b.requestUlt(i); }
+        else { b.sp = 5; b.renderSp(); if (inp.sel !== a) b.selectAbility(a); b.confirm(); }
+      }, 100);
+      return true;
+    })()`);
+    await api.start(out);
+    await api.rec(40);
+  },
+
+  // ラスボス・コドクとの戦い（世界の果て。メイキング動画用）：ボスの波だけにして、スキル → コンボ → 必殺技
+  async battleFinal(api, out) {
+    await api.ev(`{ P.prep(7, 0, 80); addBond('mike', 'kuro', 999); Save.save();
+      const st0 = CHAPTERS[7].stages.find(s => s.id === '8-3'); startStage(7, { ...st0, waves: [st0.waves.at(-1)] }, [], () => {}); } true`);
+    await api.run(0.3);
+    await api.ev(`(() => {
+      const b = Game.activeBattle; window.__b = b;
+      // スキルはシロの天才魔法が氷になるとボスが氷に包まれて見えなくなるので、ふつうの攻撃にする
+      const plan = ['basic', 'combo', 'ult:mike', 'basic', 'ult:shiro', 'basic', 'ult:kuro', 'ult:tama', 'basic', 'basic'];
+      let wait = 0;
+      setInterval(() => {
+        b.enemies.forEach(e => { if (e.hp < e.maxHp * 0.5) e.hp = e.maxHp; });
+        b.allies.forEach(u => { if (u.hp < u.maxHp * 0.5) { u.hp = u.maxHp; b.updateUnit(u); } });
+        const inp = b.input; if (!inp) { wait = 0; return; }
+        if ((wait += 1) < 4) return;
+        wait = 0;
+        if (inp.mode === 'ult') { b.confirm(); return; }
+        const a = plan.shift() || 'basic';
+        if (a === 'combo') { b.bond = 100; b.renderBond(); b.requestCombo('nyankoBreak'); }
+        else if (a.startsWith('ult:')) { const i = b.allies.findIndex(u => u.key === a.slice(4)); const u = b.allies[i]; u.energy = u.energyMax; b.updateUnit(u); b.requestUlt(i); }
+        else { b.sp = 5; b.renderSp(); if (inp.sel !== a) b.selectAbility(a); b.confirm(); }
+      }, 100);
+      return true;
+    })()`);
+    await api.start(out);
+    await api.rec(40);
+  },
+
   // 笑顔の塔の戦い：スキル → コンボ → 必殺技
   async battle(api, out) {
     await api.ev(`{ P.prep(2, 2, 22); addBond('mike', 'kuro', 999); Save.save();

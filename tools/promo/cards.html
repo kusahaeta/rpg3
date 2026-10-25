@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Making-of cards</title>
+<!--
+  メイキング動画の文字の画面（1920×1080）。tools/promo/page-rec.mjs が setClip(データ, 名前) で場面を選び、render(秒) で撮る。
+  データは promo/making-of/cards.json。場面の種類はデータの kind：
+    title（黒い画面に題名）・quote（注文の文）・doc（企画書をスクロール）・theme（テーマの文と 3 つの言葉）
+    list（コミットの一覧が流れる）・prs（プルリクエストの一覧が流れて数が上がる）・term（コマンドの出力が流れる）
+    tips（6 つのコツが順に出る）・devices（ブラウザ・iPhone・Android で動く画面）
+  時刻 cues は、ナレーションでその言葉を読むあたりの秒。
+-->
+<style>
+  :root { --bg: #f4f1ea; --panel: #fbfaf7; --ink: #26231f; --sub: #77716a; --line: #e2ddd3; --accent: #c96442; --hl: #f7d9a8; --blue: #2a78d6; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--ink);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif; -webkit-font-smoothing: antialiased; }
+  .abs { position: absolute; }
+  /* title */
+  .black { position: absolute; inset: 0; background: #141210; color: #f4efe6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 36px; }
+  .black h1 { font-size: 120px; font-weight: 800; letter-spacing: .04em; }
+  .black p { font-size: 46px; color: #cdbfa8; letter-spacing: .3em; }
+  /* quote */
+  .quote { position: absolute; left: 200px; right: 200px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 40px; }
+  .quote .lab { font-size: 36px; color: var(--sub); }
+  .quote .q { font-size: 64px; font-weight: 700; line-height: 1.55; white-space: pre-line; }
+  .caret { display: inline-block; width: 5px; height: 1em; background: var(--ink); vertical-align: -0.1em; margin-left: 4px; }
+  /* doc */
+  .doc { position: absolute; left: 260px; right: 260px; top: 70px; bottom: 0; background: #fff; border: 2px solid var(--line); border-bottom: 0;
+    border-radius: 18px 18px 0 0; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.06); }
+  .doc .bar { height: 60px; display: flex; align-items: center; padding: 0 26px; background: #efebe3; border-bottom: 2px solid var(--line);
+    font-family: "SF Mono", Menlo, monospace; font-size: 22px; color: var(--sub); }
+  .doc .bar span { margin-left: auto; font-family: "Hiragino Sans", sans-serif; font-size: 20px; }
+  .doc .page { position: absolute; top: 62px; left: 0; right: 0; padding: 40px 90px; font-size: 26px; line-height: 1.75; }
+  .page h1 { font-size: 58px; margin: 10px 0 24px; } .page h2 { font-size: 40px; margin: 34px 0 14px; } .page h3 { font-size: 32px; margin: 26px 0 10px; }
+  .page h4 { font-size: 28px; margin: 20px 0 8px; } .page p { margin: 8px 0; } .page ul { margin: 6px 0 6px 1.2em; }
+  .page blockquote { margin: 16px 0; padding: 10px 24px; border-left: 6px solid var(--accent); background: #faf6ef; font-weight: 700; }
+  .page hr { border: 0; border-top: 2px solid var(--line); margin: 24px 0; }
+  .shade { position: absolute; left: 0; right: 0; bottom: 0; height: 160px; background: linear-gradient(rgba(244,241,234,0), var(--bg)); }
+  /* theme */
+  .theme { position: absolute; left: 160px; right: 160px; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 70px; }
+  .theme .lab { font-size: 34px; color: var(--sub); }
+  .theme .q { font-size: 78px; font-weight: 800; line-height: 1.5; text-align: center; white-space: pre-line; }
+  .theme .words { display: flex; gap: 40px; }
+  .theme .w { font-size: 54px; font-weight: 700; padding: 18px 46px; border-radius: 999px; background: var(--panel); border: 3px solid var(--accent); }
+  /* list / prs */
+  .head { position: absolute; left: 160px; top: 56px; font-size: 44px; font-weight: 700; z-index: 2; }
+  .head small { display: block; font-size: 26px; color: var(--sub); font-weight: 400; margin-top: 8px; }
+  .count { position: absolute; right: 160px; top: 40px; font-size: 36px; font-weight: 700; z-index: 2; }
+  .count b { font-size: 110px; margin-right: 8px; font-variant-numeric: tabular-nums; }
+  .clip { position: absolute; left: 160px; right: 160px; top: 200px; bottom: 0; overflow: hidden; }
+  .rows { position: absolute; left: 0; right: 0; top: 0; }
+  .r { display: flex; gap: 26px; align-items: center; height: 74px; margin-bottom: 12px; padding: 0 28px; border-radius: 14px; background: var(--panel); border: 2px solid var(--line); font-size: 31px; white-space: nowrap; overflow: hidden; }
+  .r .d { font-size: 24px; color: var(--sub); font-variant-numeric: tabular-nums; flex: none; width: 74px; }
+  .r .ty { font-family: "SF Mono", Menlo, monospace; font-size: 22px; color: var(--sub); flex: none; }
+  .r mark { background: none; box-shadow: inset 0 -12px 0 var(--hl); color: inherit; font-weight: 700; }
+  .cols { position: absolute; left: 0; right: 0; top: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 22px; }
+  .pr { height: 46px; display: flex; gap: 14px; align-items: center; font-size: 21px; white-space: nowrap; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .pr b { font-variant-numeric: tabular-nums; color: var(--sub); font-weight: 600; flex: none; width: 58px; }
+  /* term */
+  .term { position: absolute; left: 160px; right: 160px; top: 90px; bottom: 90px; background: #1f1d1b; border-radius: 18px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.18); }
+  .term .tb { height: 52px; background: #2c2a27; display: flex; align-items: center; gap: 12px; padding: 0 20px; color: #9d958a; font-size: 20px; }
+  .term .tb i { width: 14px; height: 14px; border-radius: 50%; background: #5a554e; display: inline-block; }
+  .term .out { position: absolute; top: 52px; left: 0; right: 0; bottom: 0; padding: 22px 32px; overflow: hidden; }
+  .term pre { font-family: "SF Mono", Menlo, monospace; font-size: 23px; line-height: 1.42; color: #e9e3d8; white-space: pre; }
+  .term .cmd { color: #8fd08f; } .term .ok { color: #7ee07e; font-weight: 700; } .term .em { color: #f0c674; }
+  /* tips */
+  .tips { position: absolute; left: 240px; right: 240px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+  .tips h2 { font-size: 44px; margin-bottom: 18px; }
+  .tip { display: flex; align-items: center; gap: 30px; height: 104px; padding: 0 40px; border-radius: 20px; background: var(--panel); border: 2px solid var(--line); font-size: 44px; font-weight: 700; }
+  .tip b { flex: none; width: 70px; height: 70px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+  /* devices */
+  .dev { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+  .dev .frame { background: #1b1a18; padding: 14px; box-shadow: 0 14px 40px rgba(0,0,0,.18); }
+  .dev .frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .dev .name { font-size: 34px; font-weight: 700; }
+  .laptop .frame { border-radius: 16px 16px 4px 4px; }
+  .laptop .base { width: 112%; height: 22px; background: #cfc8bb; border-radius: 0 0 18px 18px; margin-top: -22px; }
+  .phone .frame { border-radius: 40px; padding: 16px 22px; }
+  .phone .frame img { border-radius: 22px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = x => 1 - Math.pow(1 - clamp(x), 3);
+const fade = (t, at, d = 0.4) => ease((t - at) / d);
+const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+const el = (root, html) => { root.insertAdjacentHTML('beforeend', html); return root.lastElementChild; };
+const show = (e, k, dy = 24) => { e.style.opacity = k; e.style.transform = `translateY(${(1 - k) * dy}px)`; };
+
+const KINDS = {
+  title(root, d) {
+    const b = el(root, `<div class="black"><h1>${esc(d.title)}</h1><p>${esc(d.sub)}</p></div>`);
+    const [h, p] = b.children;
+    return t => { show(h, fade(t, 0.4, 0.8), 30); show(p, fade(t, d.cues.sub, 0.6), 16); };
+  },
+  quote(root, d) {
+    const q = el(root, `<div class="quote"><div class="lab">${esc(d.label)}</div><div class="q"></div></div>`);
+    const lab = q.children[0], box = q.children[1], cs = Array.from(d.text);
+    return t => { show(lab, fade(t, 0.2)); const n = Math.round(clamp((t - d.cues.type) / d.typeDur) * cs.length);
+      box.textContent = cs.slice(0, n).join(''); if (n < cs.length || Math.floor(t * 2) % 2) box.insertAdjacentHTML('beforeend', '<span class="caret"></span>'); };
+  },
+  doc(root, d) {
+    const w = el(root, `<div class="doc"><div class="bar">${esc(d.file)}<span>${esc(d.note)}</span></div><div class="page">${d.html}</div></div>`);
+    el(root, '<div class="shade"></div>');
+    const page = w.querySelector('.page');
+    return t => { show(w, fade(t, 0, 0.5), 40); const k = ease(clamp((t - d.cues.scroll) / d.scrollDur) * 1.0);
+      const max = Math.max(0, page.offsetHeight - (1080 - 70 - 62) + 80); page.style.transform = `translateY(${-Math.min(max, d.scrollTo ?? max) * k}px)`; };
+  },
+  theme(root, d) {
+    const th = el(root, `<div class="theme"><div class="lab">${esc(d.label)}</div><div class="q">${esc(d.text)}</div><div class="words">${d.words.map(x => `<div class="w">${esc(x)}</div>`).join('')}</div></div>`);
+    const [lab, q, words] = th.children;
+    return t => { show(lab, fade(t, 0.2)); show(q, fade(t, 0.5, 0.8), 30);
+      [...words.children].forEach((w, i) => show(w, fade(t, d.cues.words + i * d.wordsEvery, 0.4), 20)); };
+  },
+  list(root, d) {
+    el(root, `<div class="head">${esc(d.title)}<small>${esc(d.sub)}</small></div>`);
+    const c = el(root, '<div class="clip"><div class="rows"></div></div>'), rows = c.firstChild;
+    const rx = new RegExp(d.mark || '(?!)', 'g');
+    const items = d.rows.map(([date, s]) => { const m = s.match(/^(\w+): (.*)$/), ty = m ? m[1] + ':' : '', body = m ? m[2] : s;
+      return el(rows, `<div class="r"><span class="d">${esc(date)}</span><span class="ty">${esc(ty)}</span><span>${esc(body).replace(rx, x => `<mark>${x}</mark>`)}</span></div>`); });
+    const rowH = 86, viewH = 1080 - 200, travel = Math.max(0, items.length * rowH - viewH + 60);
+    return t => { items.forEach((e, i) => show(e, fade(t, d.cues.start + i * d.every, 0.3), 14));
+      const lastIn = d.cues.start + items.length * d.every; rows.style.transform = `translateY(${-travel * ease(clamp((t - d.cues.scroll) / Math.max(0.1, lastIn - d.cues.scroll + 1)))}px)`; };
+  },
+  prs(root, d) {
+    el(root, `<div class="head">${esc(d.title)}<small>${esc(d.sub)}</small></div>`);
+    const cnt = el(root, '<div class="count"><b>0</b>件</div>').firstChild;
+    const c = el(root, '<div class="clip"><div class="cols"></div></div>'), cols = c.firstChild;
+    const per = Math.ceil(d.rows.length / 3);
+    // 縦に 1 列目・2 列目・3 列目と並べる（古い順）
+    const cells = [];
+    for (let r = 0; r < per; r++) for (let col = 0; col < 3; col++) { const i = col * per + r; const x = d.rows[i];
+      cells.push(x ? el(cols, `<div class="pr"><b>#${x[0]}</b><span>${esc(x[1])}</span></div>`) : el(cols, '<div class="pr"></div>')); }
+    const travel = per * 46 - (1080 - 200) + 40;
+    return t => { const k = clamp((t - d.cues.start) / d.scrollDur); cols.style.transform = `translateY(${-travel * k}px)`;
+      cnt.textContent = Math.round(d.rows.length * ease(clamp((t - d.cues.start) / (d.scrollDur * 0.9)))); };
+  },
+  term(root, d) {
+    const w = el(root, `<div class="term"><div class="tb"><i></i><i></i><i></i><span>${esc(d.titlebar)}</span></div><div class="out"><pre></pre></div></div>`);
+    const pre = w.querySelector('pre'), lines = d.lines;
+    return t => {
+      const typed = Array.from(d.cmd), n = Math.round(clamp((t - 0.4) / 1.2) * typed.length);
+      let html = `<span class="cmd">$ </span>${esc(typed.slice(0, n).join(''))}`;
+      const shown = Math.floor(clamp((t - d.cues.out) / d.outDur) * lines.length);
+      for (let i = 0; i < shown; i++) { const s = esc(lines[i]); html += '\n' + (/all maps ok/.test(lines[i]) ? `<span class="ok">${s}</span>` : /solved in/.test(lines[i]) ? `<span class="em">${s}</span>` : s); }
+      pre.innerHTML = html;
+      const over = Math.max(0, pre.offsetHeight - (w.querySelector('.out').clientHeight - 44)); pre.style.transform = `translateY(${-over}px)`;
+    };
+  },
+  tips(root, d) {
+    const b = el(root, `<div class="tips"><h2>${esc(d.title)}</h2>${d.tips.map((s, i) => `<div class="tip"><b>${i + 1}</b>${esc(s)}</div>`).join('')}</div>`);
+    const h = b.children[0], ts = [...b.querySelectorAll('.tip')];
+    return t => { show(h, fade(t, 0.1)); ts.forEach((e, i) => { const k = fade(t, d.cues[i], 0.45); e.style.opacity = k; e.style.transform = `translateX(${(1 - k) * -40}px)`; }); };
+  },
+  devices(root, d) {
+    const devs = d.devices.map(v => el(root, `<div class="dev ${v.kind}" style="left:${v.x}px;top:${v.y}px;width:${v.w}px">
+      <div class="frame" style="width:${v.w}px;height:${v.h}px"><img src="${v.src}"></div>${v.kind === 'laptop' ? '<div class="base"></div>' : ''}<div class="name">${esc(v.name)}</div></div>`));
+    return t => devs.forEach((e, i) => show(e, fade(t, d.cues[i], 0.5), 40));
+  },
+};
+
+let draw = () => {}, total = 0;
+window.setClip = (data, name) => {
+  const root = document.getElementById('root'); root.innerHTML = '';
+  draw = KINDS[data.kind](root, data); total = data.dur;
+  return Promise.all([...root.querySelectorAll('img')].map(i => i.decode().catch(() => {}))).then(() => total);
+};
+window.render = t => { draw(t); return total; };
+</script>
+</body>
+</html>
