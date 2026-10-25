@@ -62,7 +62,8 @@ function TitleScreen() {
     if (going) return;
     // はじめる：文字がはねて、白い光につつまれてから、続きへ
     going = true; s.classList.add('leaving');
-    Sfx.meow('mike'); Music.play('village');
+    // 曲は行き先の画面（探索・会話・戦闘）が決めるので、ここではタイトルの曲を消すだけ
+    Sfx.meow('mike'); Music.stop();
     if (GFX.ok) GFX.flash('#fff6e4', 0.5, 0.7);
     setTimeout(() => Story.resume(), 650);
   };
