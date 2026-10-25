@@ -22,7 +22,7 @@ function topBar(title, back = true) {
     ${back ? '<button class="back" data-back>‹</button>' : ''}
     <div class="tb-title">${title}</div>
     <div class="currency">
-      <span class="c-item" title="にぼし（お金）"><i class="ic-jade"></i>${fmt(d.niboshi)}</span>
+      <span class="c-item" title="${Tx('にぼし（お金）')}"><i class="ic-jade"></i>${fmt(d.niboshi)}</span>
     </div></div>`;
 }
 function wireBack(node, fn = () => App.go(FieldScreen)) { const b = node.querySelector('[data-back]'); if (b) b.onclick = () => { Sfx.click(); fn(); }; }
@@ -32,7 +32,7 @@ function charChip(key, extra = '') {
   return `<div class="chip r${c.rarity} ${extra}" data-key="${key}" style="--c:${c.color}">
     <div class="chip-face">${avatarSVG(key)}</div>
     <div class="chip-name">${c.name}</div>
-    ${o ? `<div class="chip-lv">Lv.${o.lv}</div>` : '<div class="chip-lv">？？？</div>'}
+    ${o ? `<div class="chip-lv">Lv.${o.lv}</div>` : `<div class="chip-lv">${Tx('？？？')}</div>`}
   </div>`;
 }
 
@@ -43,13 +43,14 @@ function TitleScreen() {
   GFX.show('title', () => new TitleView());
   const s = h(`<div class="screen title">
     <div class="t-logo">
-      <div class="t-en">NYANKO FANTASY</div>
-      <h1><span>に</span><span>ゃ</span><span>ん</span><span>こ</span><br><span>フ</span><span>ァ</span><span>ン</span><span>タ</span><span>ジ</span><span>ー</span></h1>
-      <div class="t-name">〜 流れ星のおちた丘から 〜</div>
+      <h1>${Tx('にゃんこ|ファンタジー').split('|').map(w => [...w].map(c => `<span>${c}</span>`).join('')).join('<br>')}</h1>
+      <div class="t-name">${Tx('〜 流れ星のおちた丘から 〜')}</div>
     </div>
-    <div class="t-start"><i></i><span class="pc-only">クリック</span><span class="touch-only">タップ</span>して はじめる<i></i></div>
+    <div class="t-start"><i></i>${Tx('<span class="pc-only">クリック</span><span class="touch-only">タップ</span>して はじめる')}<i></i></div>
     <div class="t-flash"></div>
+    <div class="t-lang">${Object.entries(LANGS).map(([k, n]) => `<button class="${k === LANG ? 'on' : ''}" data-lang="${k}">${n}</button>`).join('')}</div>
   </div>`);
+  s.querySelectorAll('[data-lang]').forEach(b => b.onclick = e => { e.stopPropagation(); if (b.dataset.lang !== LANG) { Sfx.click(); Lang.set(b.dataset.lang); } });
   // タイトルの曲。ブラウザでは最初のタップまで音が止められているので、そのときの最初のタップは曲を鳴らすだけにする
   Sfx.init(); Music.play('title');
   //   （音が出ないままでも、二度目のタップからははじまる）
@@ -113,11 +114,11 @@ function startStage(ci, st, techs, after) {
     onResult: res => {
       // 負けたら、探索でやられたときと同じく、みんな目を覚ます（やりなおしも元気な状態から）
       keepCarried(res.win ? res.team : res.team.map(t => ({ key: t.key, hpRatio: 1, energy: null }))); Save.save();
-      if (!res.win) return '<div class="dim">へんせいやレベルを見直してみよう。</div>';
+      if (!res.win) return `<div class="dim">${Tx('へんせいやレベルを見直してみよう。')}</div>`;
       const d = Save.data, exp = (80 + st.lv * 30) * st.waves.length, nib = (10 + st.lv * 3) * (first ? 3 : 1);
       d.cleared[st.id] = true;
       d.niboshi += nib;
-      let html = `<div class="rw"><i class="ic-jade"></i>にぼし +${nib}</div>`;
+      let html = `<div class="rw"><i class="ic-jade"></i>${Tx('にぼし +{0}', nib)}</div>`;
       html += '<div class="rw-team">' + d.team.map(k => { const up = grantExp(k, exp, st.lv); return `<div class="rw-mem">${avatarSVG(k)}<span>Lv.${d.owned[k].lv}${up ? `<b> ▲${up}</b>` : ''}</span></div>`; }).join('') + '</div>';
       Save.save();
       return html;
@@ -138,9 +139,9 @@ function TeamScreen() {
   let slot = 0;
   const v3 = GFX.show('scene:team', () => new SceneryView('meadow'));
   if (v3) v3.setEnemies([]);
-  const s = h(`<div class="screen team">${topBar('へんせい')}
+  const s = h(`<div class="screen team">${topBar(Tx('へんせい'))}
     <div class="tm-slots"></div>
-    <div class="tm-hint">枠を選んでから、下のにゃんこを<span class="pc-only">クリック</span><span class="touch-only">タップ</span>。先頭の子が、冒険でみんなを連れて歩きます。</div>
+    <div class="tm-hint">${Tx('枠を選んでから、下のにゃんこを<span class="pc-only">クリック</span><span class="touch-only">タップ</span>。先頭の子が、冒険でみんなを連れて歩きます。')}</div>
     <div class="tm-roster"></div></div>`);
   wireBack(s);
   // 物語の都合で一行を離れている子（awayNow）は、枠をとったまま動かせない
@@ -151,19 +152,19 @@ function TeamScreen() {
   const isDown = k => (Save.data.hp || {})[k] <= 0;
   const canForm = team => team.some(k => k && !isAway(k) && !isDown(k));
   const hint = s.querySelector('.tm-hint'), hintText = hint.innerHTML;
-  const refuse = () => { hint.textContent = 'みんな戦闘不能になってしまう。元気な子を一匹は入れておこう。'; hint.classList.add('warn'); };
+  const refuse = () => { hint.textContent = Tx('みんな戦闘不能になってしまう。元気な子を一匹は入れておこう。'); hint.classList.add('warn'); };
   const unrefuse = () => { hint.innerHTML = hintText; hint.classList.remove('warn'); };
   const render = () => {
     const t = Save.data.team, lead = t.findIndex(k => !isAway(k));
     s.querySelector('.tm-slots').innerHTML = [0, 1, 2, 3].map(i => isAway(t[i]) ? `
       <div class="tm-slot away">
         ${charChip(t[i], 'big')}
-        <div class="tm-path">いまは一行を離れている</div>
+        <div class="tm-path">${Tx('いまは一行を離れている')}</div>
       </div>` : `
       <div class="tm-slot ${i === slot ? 'on' : ''}" data-slot="${i}">
-        <div class="tm-no">${i === lead ? '先頭' : i + 1}</div>
+        <div class="tm-no">${i === lead ? Tx('先頭') : i + 1}</div>
         ${t[i] ? charChip(t[i], 'big' + (isDown(t[i]) ? ' down' : '')) + `<button class="tm-x" data-x="${i}">×</button>
-          <div class="tm-path">${PATHS[CHARS[t[i]].path].name}</div>` : '<div class="tm-empty">あき</div>'}
+          <div class="tm-path">${PATHS[CHARS[t[i]].path].name}</div>` : `<div class="tm-empty">${Tx('あき')}</div>`}
       </div>`).join('');
     s.querySelector('.tm-roster').innerHTML = Object.keys(CHARS).filter(k => Save.data.owned[k]).map(k => charChip(k, isAway(k) ? 'away' : (t.includes(k) ? 'inteam' : '') + (isDown(k) ? ' down' : ''))).join('');
     on(s, '[data-slot]', 'click', (el, e) => {
@@ -193,27 +194,28 @@ function TeamScreen() {
 // ------------------------------------------------------------
 function weaponIcon(id) {
   const w = WEAPONS[id], c = (w.look && w.look.c) || CHARS[w.owner].color, g = (w.look && w.look.g) || '#ffffff';
-  return `<span class="wp-ic" style="--wc:${c};--wg:${g}">${WEAPON_GLYPH[CHARS[w.owner].gear.weapon]}</span>`;
+  const kind = CHARS[w.owner].gear.weapon;
+  return `<span class="wp-ic" style="--wc:${c};--wg:${g}">${LANG === 'ja' ? WEAPON_GLYPH[kind] : WEAPON_KIND[kind][0]}</span>`;
 }
 const weaponTier = id => '★'.repeat(WEAPONS[id].tier + 1);
 // 宝箱の武器は、場所の名前がネタバレになるので、何章で手に入るかだけを出す（章の副題も出さない）
-const weaponHint = id => { const g = WEAPONS[id].get || {}; return g.shop ? '武器屋で売っている' : g.chest ? `${STORY[FIELD_ZONES[g.chest[0]].ci].title.split('　')[0]}の宝箱に眠っている` : ''; };
+const weaponHint = id => { const g = WEAPONS[id].get || {}; return g.shop ? Tx('武器屋で売っている') : g.chest ? Tx('{0}の宝箱に眠っている', STORY[FIELD_ZONES[g.chest[0]].ci].title.split('　')[0]) : ''; };
 // 武器の行：持っている武器には、その武器の技の名前と、持ちかえたときの HP・攻撃力・防御力の増減も出す
 function weaponList(key) {
   const eq = equippedWeapon(key), kind = WEAPON_KIND[CHARS[key].gear.weapon], o = Save.data.owned[key];
   const now = charStats(key, o.lv, o.eid);
-  const techs = id => { const w = WEAPONS[id].start ? CHARS[key] : WEAPONS[id]; return [w.basic, w.skill, w.ult].map(a => a.name).join('・'); };
+  const techs = id => { const w = WEAPONS[id].start ? CHARS[key] : WEAPONS[id]; return [w.basic, w.skill, w.ult].map(a => a.name).join(Tx('・')); };
   const diff = id => {
     const st = charStats(key, o.lv, o.eid, id);
-    return [['HP', 'maxHp'], ['攻撃力', 'atk'], ['防御力', 'def']].map(([n, k]) => [n, Math.round(st[k]) - Math.round(now[k])])
+    return [['HP', 'maxHp'], [Tx('攻撃力'), 'atk'], [Tx('防御力'), 'def']].map(([n, k]) => [n, Math.round(st[k]) - Math.round(now[k])])
       .filter(([, d]) => d).map(([n, d]) => `<span class="${d > 0 ? 'up' : 'down'}">${n} ${d > 0 ? '+' : '−'}${fmt(Math.abs(d))}</span>`).join('');
   };
-  return `<div class="ck-wps"><div class="ck-wps-h"><b>武器（${kind}）</b><small>武器を替えると、通常攻撃・戦闘スキル・必殺技が変わる</small></div>
+  return `<div class="ck-wps"><div class="ck-wps-h"><b>${Tx('武器（{0}）', kind)}</b><small>${Tx('武器を替えると、通常攻撃・戦闘スキル・必殺技が変わる')}</small></div>
     ${weaponsFor(key).map(id => hasWeapon(id)
       ? `<button class="wp-row ${id === eq ? 'on' : ''}" data-wp="${id}">${weaponIcon(id)}<span class="wp-info"><b>${weaponName(id)}</b><small>${WEAPONS[id].desc}</small>
-          <span class="wp-techs">技：${techs(id)}</span>${id === eq ? '' : `<span class="wp-diff">${diff(id) || '<span>力は変わらない</span>'}</span>`}</span>
-          <span class="wp-side"><span class="wp-tier">${weaponTier(id)}</span><span class="wp-eq">${id === eq ? '装備中' : 'そうび'}</span></span></button>`
-      : `<div class="wp-row locked"><span class="wp-ic">？</span><span class="wp-info"><b>？？？</b><small>${weaponHint(id)}</small></span><span class="wp-side"><span class="wp-tier">${weaponTier(id)}</span></span></div>`).join('')}
+          <span class="wp-techs">${Tx('技：{0}', techs(id))}</span>${id === eq ? '' : `<span class="wp-diff">${diff(id) || `<span>${Tx('力は変わらない')}</span>`}</span>`}</span>
+          <span class="wp-side"><span class="wp-tier">${weaponTier(id)}</span><span class="wp-eq">${id === eq ? Tx('装備中') : Tx('そうび')}</span></span></button>`
+      : `<div class="wp-row locked"><span class="wp-ic">${Tx('？')}</span><span class="wp-info"><b>${Tx('？？？')}</b><small>${weaponHint(id)}</small></span><span class="wp-side"><span class="wp-tier">${weaponTier(id)}</span></span></div>`).join('')}
   </div>`;
 }
 
@@ -236,28 +238,28 @@ function CharScreen(sel) {
   const learned = ([a, b]) => b === '*' ? keys.filter(k => k !== a && bondLv(a, k) >= 3).length >= 2 : bondLv(a, b) >= 3;
   const combos = COMBOS.filter(x => x.pair.includes(sel) && learned(x.pair));
   const max = o.lv >= 80;
-  const s = h(`<div class="screen chars">${topBar('なかま')}
+  const s = h(`<div class="screen chars">${topBar(Tx('なかま'))}
     <div class="ck-list">${keys.map(k => charChip(k, (k === sel ? 'on ' : '') + (Save.data.team.includes(k) ? 'inteam' : ''))).join('')}</div>
     <div class="ck-art ${GFX.ok ? 'is3d' : ''}" style="--c:${col}">${GFX.ok ? '' : avatarSVG(sel)}</div>
-    ${keys.length > 1 ? '<button class="ck-nav prev" data-nav="-1" title="前の子（←）">‹</button><button class="ck-nav next" data-nav="1" title="次の子（→）">›</button>' : ''}
+    ${keys.length > 1 ? `<button class="ck-nav prev" data-nav="-1" title="${Tx('前の子（←）')}">‹</button><button class="ck-nav next" data-nav="1" title="${Tx('次の子（→）')}">›</button>` : ''}
     <div class="ck-info" style="--c:${col}">
       <div class="ck-head"><h2>${c.name}</h2><div class="ck-title">${c.title}</div>
-        <div class="ck-tags"><span class="ck-path">役割：${PATHS[c.path].name}</span><span class="ck-eid">武器：${weaponName(wid)}</span></div></div>
-      <div class="ck-lv"><div class="ck-lv-n"><b>Lv.${o.lv}</b><span>/80</span><small>${max ? 'レベル最大' : `次のレベルまで あと ${fmt(expToNext(o.lv) - o.exp)}`}</small></div>
+        <div class="ck-tags"><span class="ck-path">${Tx('役割：{0}', PATHS[c.path].name)}</span><span class="ck-eid">${Tx('武器：{0}', weaponName(wid))}</span></div></div>
+      <div class="ck-lv"><div class="ck-lv-n"><b>Lv.${o.lv}</b><span>/80</span><small>${max ? Tx('レベル最大') : Tx('次のレベルまで あと {0}', fmt(expToNext(o.lv) - o.exp))}</small></div>
         <div class="bar exp"><i style="width:${max ? 100 : o.exp / expToNext(o.lv) * 100}%"></i></div></div>
-      <div class="ck-tabs"><button data-tab="stat">ステータス・武器</button><button data-tab="abs">わざ</button></div>
+      <div class="ck-tabs"><button data-tab="stat">${Tx('ステータス・武器')}</button><button data-tab="abs">${Tx('わざ')}</button></div>
       <div class="ck-pane" data-pane="stat">
         <div class="ck-stats">
-          <div><span>HP</span><b>${fmt(st.maxHp)}</b></div><div><span>攻撃力</span><b>${fmt(st.atk)}</b></div>
-          <div><span>防御力</span><b>${fmt(st.def)}</b></div><div><span>速度</span><b>${st.spd}</b></div>
-          <div><span>会心率</span><b>${Math.round(st.crit * 100)}%</b></div><div><span>会心ダメージ</span><b>${Math.round(st.critDmg * 100)}%</b></div>
+          <div><span>HP</span><b>${fmt(st.maxHp)}</b></div><div><span>${Tx('攻撃力')}</span><b>${fmt(st.atk)}</b></div>
+          <div><span>${Tx('防御力')}</span><b>${fmt(st.def)}</b></div><div><span>${Tx('速度')}</span><b>${st.spd}</b></div>
+          <div><span>${Tx('会心率')}</span><b>${Math.round(st.crit * 100)}%</b></div><div><span>${Tx('会心ダメージ')}</span><b>${Math.round(st.critDmg * 100)}%</b></div>
         </div>
         ${weaponList(sel)}
       </div>
       <div class="ck-pane ck-abs" data-pane="abs">
-        ${ab('通常攻撃', c.basic)}${ab('戦闘スキル', c.skill)}${ab('必殺技', c.ult)}
-        ${ab('とくせい', c.talent)}${ab('初手技', c.technique)}
-        ${combos.map(x => ab(`コンボ（${x.pair[1] === '*' ? 'みんなと' : CHARS[x.pair.find(p => p !== sel)].name + 'と'}・友情Lv3）`, x)).join('')}
+        ${ab(Tx('通常攻撃'), c.basic)}${ab(Tx('戦闘スキル'), c.skill)}${ab(Tx('必殺技'), c.ult)}
+        ${ab(Tx('とくせい'), c.talent)}${ab(Tx('初手技'), c.technique)}
+        ${combos.map(x => ab(x.pair[1] === '*' ? Tx('コンボ（みんなと・友情Lv3）') : Tx('コンボ（{0}と・友情Lv3）', CHARS[x.pair.find(p => p !== sel)].name), x)).join('')}
       </div>
     </div></div>`);
   const showTab = t => {
@@ -294,9 +296,8 @@ function BondScreen() {
   if (v3) v3.setEnemies([]);
   const ks = Object.keys(CHARS).filter(k => Save.data.owned[k]);
   const pairs = []; for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) pairs.push([ks[i], ks[j]]);
-  const s = h(`<div class="screen bondscr">${topBar('友情')}
-    <div class="bd-intro">友情は「一緒に旅をした時間」。一緒に戦ったり、話したり、物語を進めると深まります。<br>
-      Lv2：戦闘中の掛け合い　Lv3：コンボスキル　Lv4・Lv5：特別イベント</div>
+  const s = h(`<div class="screen bondscr">${topBar(Tx('友情'))}
+    <div class="bd-intro">${Tx('友情は「一緒に旅をした時間」。一緒に戦ったり、話したり、物語を進めると深まります。<br>Lv2：戦闘中の掛け合い　Lv3：コンボスキル　Lv4・Lv5：特別イベント')}</div>
     <div class="bd-list">${pairs.length ? pairs.map(([a, b]) => {
       const lv = bondLv(a, b), p = bondPts(a, b), nx = BOND_LV[lv] ?? null, pr = nx ? (p - BOND_LV[lv - 1]) / (nx - BOND_LV[lv - 1]) : 1;
       const k = bondKey(a, b), ev = BOND_EVENTS[k];
@@ -306,10 +307,10 @@ function BondScreen() {
         <div class="bd-info"><b>${CHARS[a].name} × ${CHARS[b].name}</b><small>${BOND_TAGS[bondKey(a, b)] || ''}</small>
           <div class="bd-hearts">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= lv ? 'on' : ''}">♥</i>`).join('')}<span>Lv.${lv}</span></div>
           <div class="bar bondbar"><i style="width:${pr * 100}%"></i></div>
-          <div class="bd-perks">${combo ? `<span class="${lv >= 3 ? 'on' : ''}">コンボ「${combo.name}」</span>` : ''}${ev ? Object.keys(BOND_EVENT_LV).map(n => { const seen = Save.data.bondSeen[bondSeenKey(k, n)], ok = lv >= n;
-            return `<button class="btn small ${ok ? '' : 'dis'}" data-ev="${k}" data-lv="${n}" ${ok ? '' : 'disabled'}>${seen ? `♥ もう一度見る（Lv${n}）` : ok ? `♥ 特別イベント（Lv${n}）` : `特別イベント（Lv${n}）`}</button>`; }).join('') : ''}</div>
+          <div class="bd-perks">${combo ? `<span class="${lv >= 3 ? 'on' : ''}">${Tx('コンボ「{0}」', combo.name)}</span>` : ''}${ev ? Object.keys(BOND_EVENT_LV).map(n => { const seen = Save.data.bondSeen[bondSeenKey(k, n)], ok = lv >= n;
+            return `<button class="btn small ${ok ? '' : 'dis'}" data-ev="${k}" data-lv="${n}" ${ok ? '' : 'disabled'}>${seen ? Tx('♥ もう一度見る（Lv{0}）', n) : ok ? Tx('♥ 特別イベント（Lv{0}）', n) : Tx('特別イベント（Lv{0}）', n)}</button>`; }).join('') : ''}</div>
         </div></div>`;
-    }).join('') : '<div class="dim">仲間がふえると、ここに友情が記録されます。</div>'}</div></div>`);
+    }).join('') : `<div class="dim">${Tx('仲間がふえると、ここに友情が記録されます。')}</div>`}</div></div>`);
   wireBack(s);
   on(s, '[data-ev]', 'click', el => { const k = el.dataset.ev, n = el.dataset.lv; Save.data.bondSeen[bondSeenKey(k, n)] = true; Save.save(); App.go(DialogueScreen, BOND_EVENTS[k] + BOND_EVENT_LV[n], () => App.go(BondScreen)); });
   return s;
@@ -330,36 +331,36 @@ function renderShop(o, kind, name, close, field) {
       const ks = Object.keys(d.owned).filter(k => CHARS[k]);
       const forge = ks.flatMap(k => weaponsFor(k).filter(hasWeapon)).map(id => {
         const w = WEAPONS[id], p = weaponPlus(id), max = p >= WEAPON_MAX, cost = weaponCost(id);
-        return `<div class="sh-row">${weaponIcon(id)}<div class="sh-info"><b>${weaponName(id)}${max ? '' : ` → +${p + 1}`}</b><small>${CHARS[w.owner].name}の${WEAPON_KIND[CHARS[w.owner].gear.weapon]}${equippedWeapon(w.owner) === id ? '（装備中）' : ''}</small></div>
-          <button class="btn small" data-forge="${id}" ${max || d.niboshi < cost ? 'disabled' : ''}>${max ? 'これ以上は無理' : `にぼし ${cost}`}</button></div>`;
+        return `<div class="sh-row">${weaponIcon(id)}<div class="sh-info"><b>${weaponName(id)}${max ? '' : ` → +${p + 1}`}</b><small>${Tx('{0}の{1}', CHARS[w.owner].name, WEAPON_KIND[CHARS[w.owner].gear.weapon])}${equippedWeapon(w.owner) === id ? Tx('（装備中）') : ''}</small></div>
+          <button class="btn small" data-forge="${id}" ${max || d.niboshi < cost ? 'disabled' : ''}>${max ? Tx('これ以上は無理') : Tx('にぼし {0}', cost)}</button></div>`;
       }).join('');
       const sale = ks.flatMap(k => weaponsFor(k).filter(id => !hasWeapon(id) && WEAPONS[id].get && WEAPONS[id].get.shop)).map(id => {
         const w = WEAPONS[id];
-        return `<div class="sh-row">${weaponIcon(id)}<div class="sh-info"><b>${w.name}</b><small>${CHARS[w.owner].name}の${WEAPON_KIND[CHARS[w.owner].gear.weapon]}　${w.desc}</small></div>
-          <button class="btn small" data-wbuy="${id}" ${d.niboshi < w.get.price ? 'disabled' : ''}>にぼし ${w.get.price}</button></div>`;
+        return `<div class="sh-row">${weaponIcon(id)}<div class="sh-info"><b>${w.name}</b><small>${Tx('{0}の{1}', CHARS[w.owner].name, WEAPON_KIND[CHARS[w.owner].gear.weapon])}　${w.desc}</small></div>
+          <button class="btn small" data-wbuy="${id}" ${d.niboshi < w.get.price ? 'disabled' : ''}>${Tx('にぼし {0}', w.get.price)}</button></div>`;
       }).join('');
-      body = `<div class="sh-tabs"><button class="btn small ${shopTab === 'forge' ? 'gold' : ''}" data-tab="forge">鍛える</button><button class="btn small ${shopTab === 'buy' ? 'gold' : ''}" data-tab="buy">買う</button></div>`
+      body = `<div class="sh-tabs"><button class="btn small ${shopTab === 'forge' ? 'gold' : ''}" data-tab="forge">${Tx('鍛える')}</button><button class="btn small ${shopTab === 'buy' ? 'gold' : ''}" data-tab="buy">${Tx('買う')}</button></div>`
         + (shopTab === 'forge'
-          ? `<div class="dim">にぼしで武器を鍛えると（+1〜+${WEAPON_MAX}）、その武器を持ったときのHP・攻撃力・防御力が上がる。</div><div class="sh-list">${forge}</div>`
-          : `<div class="dim">買った武器は「なかま」の画面で装備できる。武器を替えると、技がまるごと変わる。</div><div class="sh-list">${sale || '<div class="dim">いまは、売れる武器がないな。</div>'}</div>`);
+          ? `<div class="dim">${Tx('にぼしで武器を鍛えると（+1〜+{0}）、その武器を持ったときのHP・攻撃力・防御力が上がる。', WEAPON_MAX)}</div><div class="sh-list">${forge}</div>`
+          : `<div class="dim">${Tx('買った武器は「なかま」の画面で装備できる。武器を替えると、技がまるごと変わる。')}</div><div class="sh-list">${sale || `<div class="dim">${Tx('いまは、売れる武器がないな。')}</div>`}</div>`);
     } else if (kind === 'item') {
       const goods = Object.keys(ITEMS).filter(id => !ITEMS[id].key && !ITEMS[id].rare).map(id => {
         const it = ITEMS[id], n = itemCount(id), full = n >= ITEM_MAX;
-        return `<div class="sh-row"><div class="sh-icon">${it.icon}</div><div class="sh-info"><b>${it.name}<em class="sh-have">持っている数 ${n}</em></b><small>${it.desc}</small></div><button class="btn small" data-ibuy="${id}" ${full || d.niboshi < it.price ? 'disabled' : ''}>${full ? 'もう持てない' : `にぼし ${it.price}`}</button></div>`;
+        return `<div class="sh-row"><div class="sh-icon">${it.icon}</div><div class="sh-info"><b>${it.name}<em class="sh-have">${Tx('持っている数 {0}', n)}</em></b><small>${it.desc}</small></div><button class="btn small" data-ibuy="${id}" ${full || d.niboshi < it.price ? 'disabled' : ''}>${full ? Tx('もう持てない') : Tx('にぼし {0}', it.price)}</button></div>`;
       }).join('');
-      body = `<div class="dim">どうぐは、戦闘中に「どうぐ」<span class="pc-only">（Rキー）</span>で使える。ひとつにつき ${ITEM_MAX} こまで持てる。</div><div class="sh-list">
+      body = `<div class="dim">${Tx('どうぐは、戦闘中に「どうぐ」<span class="pc-only">（Rキー）</span>で使える。ひとつにつき {0} こまで持てる。', ITEM_MAX)}</div><div class="sh-list">
         ${goods}
       </div>`;
     } else if (kind === 'fish') {
       body = `<div class="sh-list">
-        <div class="sh-row"><div class="sh-icon">🐟</div><div class="sh-info"><b>焼き魚</b><small>冒険中のみんなのHPが全回復する</small></div><button class="btn small" data-item="fish" ${d.niboshi < 30 ? 'disabled' : ''}>にぼし 30</button></div>
+        <div class="sh-row"><div class="sh-icon">🐟</div><div class="sh-info"><b>${Tx('焼き魚')}</b><small>${Tx('冒険中のみんなのHPが全回復する')}</small></div><button class="btn small" data-item="fish" ${d.niboshi < 30 ? 'disabled' : ''}>${Tx('にぼし {0}', 30)}</button></div>
       </div>`;
     } else if (kind === 'inn') {
       body = `<div class="sh-list">
-        <div class="sh-row"><div class="sh-icon">🛏</div><div class="sh-info"><b>ひと晩休む</b><small>みんなのHPが全回復し、ちょっとだけ友情が深まる</small></div><button class="btn small" data-item="rest">休む（無料）</button></div>
+        <div class="sh-row"><div class="sh-icon">🛏</div><div class="sh-info"><b>${Tx('ひと晩休む')}</b><small>${Tx('みんなのHPが全回復し、ちょっとだけ友情が深まる')}</small></div><button class="btn small" data-item="rest">${Tx('休む（無料）')}</button></div>
       </div>`;
     }
-    o.innerHTML = `<div class="ov-box shop"><h2>${name}</h2>${body}<div class="sh-foot"><span class="c-item"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><button class="btn gold" data-close>閉じる</button></div></div>`;
+    o.innerHTML = `<div class="ov-box shop"><h2>${name}</h2>${body}<div class="sh-foot"><span class="c-item"><i class="ic-jade"></i>${fmt(d.niboshi)}</span><button class="btn gold" data-close>${Tx('閉じる')}</button></div></div>`;
     o.classList.remove('hidden');
     const list = o.querySelector('.sh-list'); if (list) list.scrollTop = scroll;
     o.querySelector('[data-close]').onclick = () => { Sfx.click(); o.classList.add('hidden'); close(); };
@@ -367,25 +368,25 @@ function renderShop(o, kind, name, close, field) {
     o.querySelectorAll('[data-forge]').forEach(b => b.onclick = () => {
       const id = b.dataset.forge, k = WEAPONS[id].owner;
       d.niboshi -= weaponCost(id); d.weapons[id] = weaponPlus(id) + 1; Save.save(); Sfx.brk(); Sfx.meow(k);
-      field && field.toast(`「${weaponName(id)}」になった！${weaponPlus(id) >= WEAPON_MAX ? '（武器が光りはじめた）' : ''}`);
+      field && field.toast(Tx('「{0}」になった！', weaponName(id)) + (weaponPlus(id) >= WEAPON_MAX ? Tx('（武器が光りはじめた）') : ''));
       draw();
     });
     o.querySelectorAll('[data-wbuy]').forEach(b => b.onclick = () => {
       const id = b.dataset.wbuy, w = WEAPONS[id];
       d.niboshi -= w.get.price; gainWeapon(id); Save.save(); Sfx.win(); Sfx.meow(w.owner);
-      field && field.toast(`「${w.name}」を買った！（なかまの画面で${CHARS[w.owner].name}に装備できる）`);
+      field && field.toast(Tx('「{0}」を買った！（なかまの画面で{1}に装備できる）', w.name, CHARS[w.owner].name));
       draw();
     });
     o.querySelectorAll('[data-ibuy]').forEach(b => b.onclick = () => {
       const id = b.dataset.ibuy, it = ITEMS[id];
       d.niboshi -= it.price; d.items[id] = itemCount(id) + 1; Save.save(); Sfx.select();
-      field && field.toast(`${it.icon} ${it.name}を買った！（持っている数 ${d.items[id]}）`);
+      field && field.toast(Tx('{0} {1}を買った！（持っている数 {2}）', it.icon, it.name, d.items[id]));
       draw();
     });
     o.querySelectorAll('[data-item]').forEach(b => b.onclick = () => {
       const it = b.dataset.item;
-      if (it === 'fish') { d.niboshi -= 30; if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.s.keep(); field.spawnFollowers(); field.toast('焼き魚をみんなで食べた。HPが全回復！'); } }
-      if (it === 'rest') { if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.s.keep(); field.spawnFollowers(); } const ts = d.team; for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++) addBond(ts[i], ts[j], 1); field && field.toast('ぐっすり眠った。みんなのHPが全回復！'); Sfx.heal(); }
+      if (it === 'fish') { d.niboshi -= 30; if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.s.keep(); field.spawnFollowers(); field.toast(Tx('焼き魚をみんなで食べた。HPが全回復！')); } }
+      if (it === 'rest') { if (field) { field.team.forEach(m => { m.hpRatio = 1; }); field.s.keep(); field.spawnFollowers(); } const ts = d.team; for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++) addBond(ts[i], ts[j], 1); field && field.toast(Tx('ぐっすり眠った。みんなのHPが全回復！')); Sfx.heal(); }
       Save.save(); Sfx.select(); draw();
     });
   };

@@ -86,6 +86,9 @@ function floaties() {
 
 window.addEventListener('DOMContentLoaded', () => {
   App.el = document.getElementById('app');
+  Lang.apply();
+  const rot = document.getElementById('rotate');
+  rot.querySelector('b').textContent = Tx('スマホを横にしてね'); rot.querySelector('small').textContent = Tx('このゲームは横画面で遊べます');
   Save.load();
   GFX.init(App.el);
   Touch.init();

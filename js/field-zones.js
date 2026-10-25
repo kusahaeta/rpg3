@@ -3213,6 +3213,13 @@ function leafMat(color, glow = '#5a5a50') {
 }
 
 // 墓石に彫った名前（縦書き）と、上の肉球の紋。彫りの影（暗い色）と、ふちの光（明るい色）を少しずらして重ねる
+// 縦書きの札：日本語は一字ずつ縦に、英語は単語ごとに行をかえて横に（はばに収まるよう縮める）
+//   step：日本語の一字の間。英語は行の間（h があれば、その高さに収まるよう詰める）
+function stackText(g, s, x, y, step, maxW, h) {
+  if (LANG === 'ja') { [...s].forEach((ch, i) => g.fillText(ch, x, y + (h ? step * (i + 0.5) : i * step))); return; }
+  const words = s.split(' '), st = h ? Math.min(step, h / words.length) : step;
+  words.forEach((w, i) => g.fillText(w, x, y + (h ? st * (i + 0.5) : i * st), maxW));
+}
 function graveTex(name) {
   const k = 'grave' + name; if (TexCache[k]) return TexCache[k];
   const c = document.createElement('canvas'); c.width = 256; c.height = 420;
@@ -3224,8 +3231,7 @@ function graveTex(name) {
     for (const [tx, ty] of [[-22, -14], [-8, -24], [8, -24], [22, -14]]) { g.beginPath(); g.ellipse(px + tx, py + ty, 7, 9, tx * 0.02, 0, Math.PI * 2); g.fill(); }
     // 名前（一字ずつ縦に）
     g.font = '700 74px "Hiragino Mincho ProN","Yu Mincho","Hiragino Sans",serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    const chars = [...name], step = Math.min(92, 300 / chars.length);
-    chars.forEach((ch, i) => g.fillText(ch, 128 + dx, 140 + dy + step * (i + 0.5)));
+    stackText(g, Tx(name), 128 + dx, 140 + dy, Math.min(92, 300 / [...name].length), 230, 300);
   };
   carve(2, 2, 'rgba(255,255,255,.35)'); carve(0, 0, 'rgba(58,52,74,.85)');
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
@@ -4589,7 +4595,7 @@ class ZoneKit {
       // 台の当たり（大きくなったときに押し出されるので、大きくなれるかどうかには数えない：stand）
       v.colliders.push({ x, z, r: 0.6, y, top: 1.2, stand: true });
       this.reserve(x, z, 2.2);
-      return { ...st, name: cookie ? 'ちびクッキー' : 'でかミルク', pos: V3(x, y, z), g };
+      return { ...st, name: Tx(cookie ? 'ちびクッキー' : 'でかミルク'), pos: V3(x, y, z), g };
     });
     // キャンディの柵：柵の向き（となりが壁か柵なら、東西に並ぶ）に、0.5m おきにキャンディケーン
     for (let i = 0; i < T.kind.length; i++) {
@@ -4712,10 +4718,10 @@ class ZoneKit {
     M(new THREE.PlaneGeometry(2.44, 1.75), new THREE.MeshStandardMaterial({ map: rulesT, roughness: 0.8 }), 0, 0, 0.02, board);
     const drawRules = lines => {
       const g = rulesC.getContext('2d'); g.fillStyle = '#fff4e0'; g.fillRect(0, 0, 512, 368); g.strokeStyle = '#c88ab8'; g.lineWidth = 10; g.strokeRect(8, 8, 496, 352);
-      g.fillStyle = '#7a3a6a'; g.font = '900 34px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.textAlign = 'center'; g.fillText('へんてこ回廊のきまり', 256, 60);
+      g.fillStyle = '#7a3a6a'; g.font = '900 34px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.textAlign = 'center'; g.fillText(Tx('へんてこ回廊のきまり'), 256, 60, 460);
       g.fillStyle = '#3a2a3a'; g.font = '800 23px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.textAlign = 'left';
-      lines.forEach((l, i) => g.fillText(l, 34, 112 + i * 40));
-      g.textAlign = 'right'; g.fillStyle = '#7a3a6a'; g.fillText('——ねこ神', 478, 338); rulesT.needsUpdate = true;
+      lines.forEach((l, i) => g.fillText(Tx(l), 34, 112 + i * 40, 448));
+      g.textAlign = 'right'; g.fillStyle = '#7a3a6a'; g.fillText(Tx('——ねこ神'), 478, 338); rulesT.needsUpdate = true;
     };
     // 天井を泳ぐ魚（北へ向かって泳ぎ、南のはしからまた出てくる）
     const fish = [0, 1, 2].map(k => {
@@ -4745,7 +4751,7 @@ class ZoneKit {
     const counter = n => {
       const g = cnt.getContext('2d'); g.fillStyle = '#1e2a44'; g.fillRect(0, 0, 512, 160); g.strokeStyle = '#ffd27a'; g.lineWidth = 6; g.strokeRect(6, 6, 500, 148);
       g.fillStyle = '#fff6e0'; g.font = '900 54px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(n >= L.goal ? '出口 →' : `さかなが ${n} ひき`, 256, 58);
+      g.fillText(n >= L.goal ? Tx('出口 →') : Tx('さかなが {0} ひき', n), 256, 58, 480);
       for (let k = 0; k < L.goal; k++) { const x = 256 + (k - (L.goal - 1) / 2) * 62, y = 120; g.fillStyle = k < n ? '#ffd27a' : 'rgba(255,255,255,.18)'; g.beginPath(); g.ellipse(x, y, 20, 11, 0, 0, 7); g.fill(); g.beginPath(); g.moveTo(x + 16, y); g.lineTo(x + 30, y - 10); g.lineTo(x + 30, y + 10); g.fill(); }
       cntT.needsUpdate = true;
     };
@@ -4756,11 +4762,11 @@ class ZoneKit {
     };
     const mistN = mist(0, L.north + 0.2, L.mouthN, 6.5), mistS = mist(0, L.south - 0.2, L.mouthS, 6.5);
     // 出口の札（黄色い地に「出口」。出口があらわれると光る）
-    const exitC = document.createElement('canvas'); exitC.width = 512; exitC.height = 160; { const g = exitC.getContext('2d'); g.fillStyle = '#ffd83a'; g.fillRect(0, 0, 512, 160); g.fillStyle = '#1a1a1a'; g.font = '900 92px "Hiragino Sans","Yu Gothic",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('出口', 200, 84); g.beginPath(); g.moveTo(360, 50); g.lineTo(440, 80); g.lineTo(360, 110); g.fill(); }
+    const exitC = document.createElement('canvas'); exitC.width = 512; exitC.height = 160; { const g = exitC.getContext('2d'); g.fillStyle = '#ffd83a'; g.fillRect(0, 0, 512, 160); g.fillStyle = '#1a1a1a'; g.font = '900 92px "Hiragino Sans","Yu Gothic",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(Tx('出口'), 200, 84, 300); g.beginPath(); g.moveTo(360, 50); g.lineTo(440, 80); g.lineTo(360, 110); g.fill(); }
     const exitT = new THREE.CanvasTexture(exitC); exitT.colorSpace = THREE.SRGBColorSpace;
     const exitSign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.82), new THREE.MeshBasicMaterial({ map: exitT, color: hdr('#ffffff', 0.35), toneMapped: false })); exitSign.position.set(0, y0 + 5.6, L.north + 0.4); this.scene.add(exitSign);
-    const RULES = ['・へんなところを見つけたら、すぐに引き返すこと', '・へんなところがなければ、先へ進むこと', `・さかなが ${L.goal} ひきになったら、出口`, '・まちがえたら、さかなは 0 ひきにもどる'];
-    const RULES_X = ['・へんなところがなければ、すぐに引き返すこと', '・へんなところを見つけたら、先へ進むこと', `・さかなが ${L.goal} ひきになったら、出口`, '・まちがえたら、さかなは 0 ひきにもどる'];
+    const RULES = ['・へんなところを見つけたら、すぐに引き返すこと', '・へんなところがなければ、先へ進むこと', Tx('・さかなが {0} ひきになったら、出口', L.goal), '・まちがえたら、さかなは 0 ひきにもどる'];
+    const RULES_X = ['・へんなところがなければ、すぐに引き返すこと', '・へんなところを見つけたら、先へ進むこと', Tx('・さかなが {0} ひきになったら、出口', L.goal), '・まちがえたら、さかなは 0 ひきにもどる'];
     const o = { L, hall, anomaly: null, count: 0, active: false, exitOpen: false, cleared: !!flags[L.id], rules: RULES, bag: [], last: null };
     const NAMES = { mike: 'ミケ', kuro: 'クロ', shiro: 'シロ', tama: 'タマ' };
     // 異変を一つ引く（同じ異変がつづかないよう、袋から順に。袋がからになったら、まぜなおす）
@@ -4780,8 +4786,8 @@ class ZoneKit {
       if (tama) { tama.setPose(POSES.sleep); if (tama.face) tama.face.set('sleepy'); tamaG.rotation.y = 0; }
       let rules = RULES, desc = '';
       if (a) switch (a.k) {
-        case 'portraitFlip': { const p = portraits[a.i % portraits.length]; p.pic.rotation.z = Math.PI; desc = `${NAMES[p.key]}の絵が、さかさまだった`; break; }
-        case 'portraitSwap': { const p = portraits[a.i % portraits.length], q = portraits[(a.i + 1 + a.j % 3) % portraits.length]; [p.pic.material.map, q.pic.material.map] = [q.tex, p.tex]; desc = `${NAMES[p.key]}と${NAMES[q.key]}の絵が、入れかわっていた`; break; }
+        case 'portraitFlip': { const p = portraits[a.i % portraits.length]; p.pic.rotation.z = Math.PI; desc = Tx('{0}の絵が、さかさまだった', Tx(NAMES[p.key])); break; }
+        case 'portraitSwap': { const p = portraits[a.i % portraits.length], q = portraits[(a.i + 1 + a.j % 3) % portraits.length]; [p.pic.material.map, q.pic.material.map] = [q.tex, p.tex]; desc = Tx('{0}と{1}の絵が、入れかわっていた', Tx(NAMES[p.key]), Tx(NAMES[q.key])); break; }
         case 'fishBack': o.fishBack = true; desc = '天井の魚が、うしろ向きに泳いでいた'; break;
         case 'clockBack': o.clockDir = -14; desc = '大時計の針が、逆向きにぐるぐる回っていた'; break;
         case 'tamaAwake': o.awake = true; if (tama) { tama.setPose(POSES.sit || POSES.idle); if (tama.face) tama.face.set('neutral'); } desc = '眠っていたはずのタマが、起きて、こっちを見ていた'; break;
@@ -4796,7 +4802,7 @@ class ZoneKit {
         case 'pawBack': rug.material.map.rotation = Math.PI; desc = 'じゅうたんの足あとが、南を向いていた'; break;
         case 'mirror': hall.scale.x = -1; cols.forEach(q => { q.c.x = -q.x; }); desc = '回廊が、まるごと鏡うつしになっていた'; break;
       }
-      if (a) a.desc = desc;
+      if (a) a.desc = Tx(desc);
       o.rules = rules; drawRules(rules);
     };
     // 出口があらわれた・回廊をぬけた：北のもやが晴れて、出口の札が光る
@@ -5404,7 +5410,7 @@ class ZoneKit {
     // 額の銘板
     gr = g.createLinearGradient(0, 404, 0, 430); gr.addColorStop(0, '#ffe08a'); gr.addColorStop(1, '#b8862a');
     g.fillStyle = gr; g.fillRect(cx - 62, 404, 124, 28); g.strokeStyle = '#7a5a1a'; g.lineWidth = 2; g.strokeRect(cx - 62, 404, 124, 28);
-    g.fillStyle = '#3a2410'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 17px "Hiragino Mincho ProN","Yu Mincho",serif'; g.fillText(o.title, cx, 419, 116);
+    g.fillStyle = '#3a2410'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 17px "Hiragino Mincho ProN","Yu Mincho",serif'; g.fillText(Tx(o.title), cx, 419, 116);
     // ニスの古び：ふちを暗く、全体を少し黄ばませる
     gr = g.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.72); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(10,0,10,.55)');
     g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = 'rgba(255,200,120,.06)'; g.fillRect(0, 0, W, H);
@@ -5418,11 +5424,11 @@ class ZoneKit {
     g.fillStyle = o.bg || '#f4ecd8'; g.fillRect(0, 0, 256, 340);
     g.strokeStyle = ink; g.globalAlpha = 0.5; g.lineWidth = 6; g.strokeRect(10, 10, 236, 320); g.globalAlpha = 1;
     g.fillStyle = ink; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.font = '900 34px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.fillText(title, 128, 60, 220);
+    g.font = '900 34px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.fillText(Tx(title), 128, 60, 220);
     g.font = '800 24px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif';
-    lines.forEach((l, i) => g.fillText(l, 128, 130 + i * 42, 220));
+    lines.forEach((l, i) => g.fillText(Tx(l), 128, 130 + i * 42, 220));
     if (o.memo) { g.save(); g.translate(132, 262 + (o.memo.length - 1) * 16); g.rotate(-0.08); g.fillStyle = g.strokeStyle = '#d83a3a'; g.font = '700 26px "Klee One","Hiragino Maru Gothic ProN",cursive';
-      o.memo.forEach((l, i) => g.fillText(l, 0, (i - (o.memo.length - 1) / 2) * 32, 210)); g.lineWidth = 2.5; g.beginPath(); g.moveTo(-96, o.memo.length * 18 + 4); g.lineTo(96, o.memo.length * 18); g.stroke(); g.restore(); }
+      o.memo.forEach((l, i) => g.fillText(Tx(l), 0, (i - (o.memo.length - 1) / 2) * 32, 210)); g.lineWidth = 2.5; g.beginPath(); g.moveTo(-96, o.memo.length * 18 + 4); g.lineTo(96, o.memo.length * 18); g.stroke(); g.restore(); }
     if (o.stain) for (let i = 0; i < 5; i++) { g.fillStyle = 'rgba(90,110,150,.22)'; g.beginPath(); g.ellipse(70 + i * 30, 200 + (i % 2) * 40, 10, 22, 0, 0, Math.PI * 2); g.fill(); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     const w = o.w || 1.1;
@@ -6917,7 +6923,7 @@ function jackPanelTex(kind) {
   if (kind === 'front') {
     g.fillStyle = '#fff6e8'; g.strokeStyle = '#7a4a2a'; g.lineWidth = 4;
     g.beginPath(); g.roundRect ? g.roundRect(34, 92, S - 68, 72, 18) : g.rect(34, 92, S - 68, 72); g.fill(); g.stroke();
-    g.font = '900 40px "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "Yu Gothic", sans-serif'; g.fillStyle = '#e8485e'; g.fillText('びっくり！', S / 2, S / 2 + 2);
+    g.font = '900 40px "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "Yu Gothic", sans-serif'; g.fillStyle = '#e8485e'; g.fillText(Tx('びっくり！'), S / 2, S / 2 + 2, S - 12);
     star(56, 56, 20, P[2]); star(S - 56, 56, 20, P[2]); star(56, S - 56, 20, P[2]); star(S - 56, S - 56, 20, P[2]);
   } else if (kind === 'lid' || kind === 'back') star(S / 2, S / 2, 70, P[2]);
   else {
@@ -7102,7 +7108,7 @@ function clownBoard(K, x, z, ry) {
   g.fillStyle = '#ff6a8a'; for (let i = 0; i < 6; i++) g.fillRect(i * 44, 200, 22, 184);
   g.fillStyle = '#6ad8ff'; g.beginPath(); g.moveTo(128, 10); g.lineTo(70, 100); g.lineTo(186, 100); g.fill();
   g.fillStyle = '#2a1a2a'; g.beginPath(); g.ellipse(128, 140, 46, 42, 0, 0, Math.PI * 2); g.fill();
-  g.fillStyle = '#c8304a'; g.font = '900 30px "Hiragino Maru Gothic ProN",sans-serif'; g.textAlign = 'center'; g.fillText('顔を出してね', 128, 240);
+  g.fillStyle = '#c8304a'; g.font = '900 30px "Hiragino Maru Gothic ProN",sans-serif'; g.textAlign = 'center'; g.fillText(Tx('顔を出してね'), 128, 240, 240);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   K.box(x, z, 1.6, 2.4, 0.1, new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }), { ry });
 }
@@ -7178,8 +7184,8 @@ function kusudama(K, x, y, z, open) {
   const c = document.createElement('canvas'); c.width = 128; c.height = 512; const g = c.getContext('2d');
   g.fillStyle = '#fff8f0'; g.fillRect(0, 0, 128, 512); g.strokeStyle = '#c8304a'; g.lineWidth = 8; g.strokeRect(6, 6, 116, 500);
   g.fillStyle = '#c8304a'; g.font = '900 56px "Hiragino Mincho ProN","Hiragino Sans",serif'; g.textAlign = 'center';
-  [...'笑顔の塔'].forEach((ch, i) => g.fillText(ch, 64, 70 + i * 62));
-  g.fillStyle = '#ff6a8a'; [...'再開！'].forEach((ch, i) => g.fillText(ch, 64, 330 + i * 62));
+  stackText(g, Tx('笑顔の塔'), 64, 70, 62, 112);
+  g.fillStyle = '#ff6a8a'; stackText(g, Tx('再開！'), 64, 330, 62, 112);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   K.mesh(new THREE.PlaneGeometry(0.9, 3.6), new THREE.MeshStandardMaterial({ map: t, roughness: 0.9, side: THREE.DoubleSide }), x, top - 1.85, z + 0.02, { abs: true, noShadow: true });
   K.v.emitters.push(dt => { if (K.v.p && Math.random() < dt * 14) K.v.p.emit(V3(x + (Math.random() - 0.5) * 10, y + 1, z + (Math.random() - 0.5) * 8), V3(0, -1.2, 0), hdr(pick(['#ff6a8a', '#ffd27a', '#6ad8ff', '#8aff9a']), 1.4), { life: 4, size: 0.1, drag: 0.2 }); });

@@ -40,8 +40,10 @@ function bossFlagTex(text) {
   const g = c.getContext('2d');
   g.fillStyle = '#5a2a8a'; g.fillRect(0, 0, 64, 128);
   g.strokeStyle = '#ffd27a'; g.lineWidth = 4; g.strokeRect(3, 3, 58, 122);
-  g.fillStyle = '#ffffff'; g.font = 'bold 40px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  [...text].forEach((ch, i, a) => g.fillText(ch, 32, 64 + (i - (a.length - 1) / 2) * 46));
+  // 一文字ずつ縦にならべる（英語の BOSS のように文字が多いときは、小さく詰める）
+  const chars = [...text], step = Math.min(46, 112 / chars.length);
+  g.fillStyle = '#ffffff'; g.font = `bold ${Math.round(Math.min(40, step * 0.9))}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  chars.forEach((ch, i, a) => g.fillText(ch, 32, 64 + (i - (a.length - 1) / 2) * step));
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   return (FLAG_TEX[text] = t);
 }
@@ -159,7 +161,7 @@ function buildEnemy(key) {
       // 背中ののぼり：竿と、「総長」と書いた紫の旗（なびく）
       add(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 1.6, 6), tm('#c8a060')), 0.28, 1.65, -0.7);
       const flag = new THREE.Group(); flag.position.set(0.28, 1.98, -0.7); inner.add(flag);
-      const fl = add(new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.86), new THREE.MeshStandardMaterial({ map: bossFlagTex('総長'), side: THREE.DoubleSide, roughness: 0.9 })), -0.23, 0, 0, flag);
+      const fl = add(new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.86), new THREE.MeshStandardMaterial({ map: bossFlagTex(Tx('総長')), side: THREE.DoubleSide, roughness: 0.9 })), -0.23, 0, 0, flag);
       update = (dt, t) => { head.rotation.x = Math.sin(t * 2) * 0.05; flag.rotation.y = Math.sin(t * 5) * 0.25; fl.rotation.y = Math.sin(t * 7 + 1) * 0.12; tails.forEach((tl, i) => { tl.rotation.x = Math.sin(t * 11 + i * 1.7) * 0.3 - 0.15; }); };
       height = 2.0; radius = 1.0; scale = 1.5; break;
     }

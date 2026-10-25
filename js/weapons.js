@@ -13,7 +13,7 @@ const WEAPON_MAX = 5;
 const TIER_POW = [1, 1.05, 1.1, 1.16];
 const TIER_COST = [1, 1.3, 1.6, 2];
 const WEAPON_KIND = { sword: '剣', blade: '刀', wand: '杖', pillow: 'まくら', scepter: '笏' };
-const WEAPON_GLYPH = { sword: '剣', blade: '刀', wand: '杖', pillow: '枕', scepter: '笏' };   // アイコンの一文字
+const WEAPON_GLYPH = { sword: '剣', blade: '刀', wand: '杖', pillow: '枕', scepter: '笏' };   // アイコンの一文字（英語では種類の頭文字） lang:keep
 
 // 自分にかえってくるダメージ（倒れはしない）
 function selfHurt(B, s, ratio) {

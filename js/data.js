@@ -71,7 +71,7 @@ const CHARS = {
       } },
     // 第七章で「勇者」になると、とくせいに力が加わる
     talent: { name: '食いしん坊',
-      get desc() { return '戦闘中1回、HPが40%を下回ると隠しておいた焼き魚を食べ、HPを30%回復。' + (flag('mikeHero') ? '仲間の数だけ与ダメージ+5%。' : ''); },
+      get desc() { return Tx('戦闘中1回、HPが40%を下回ると隠しておいた焼き魚を食べ、HPを30%回復。') + (flag('mikeHero') ? Tx('仲間の数だけ与ダメージ+5%。') : ''); },
       onAllyHit(B, s, a) {
         if (a !== s || !s.alive || s.flags.ate || s.hp / s.maxHp >= 0.4) return;
         s.flags.ate = true; B.float(s, 'もぐもぐ', 'info'); B.heal(s, s, s.maxHp * 0.3);
@@ -103,8 +103,8 @@ const CHARS = {
       } },
     // 第四章で「守護」を覚えると、とくせいが変わる（武器の技ではないので、どの刀を持っていても守る）
     talent: {
-      get name() { return flag('kuroGuard') ? '守護' : '……面倒だ'; },
-      get desc() { return flag('kuroGuard') ? '自身の被ダメージ-15%、味方全体の被ダメージ-8%。味方が攻撃を受けてHPが50%を下回ると、その味方に防御力60%+300のシールド（2ターン）。クロのターンごとに1回。' : '自身の被ダメージ-15%。'; },
+      get name() { return flag('kuroGuard') ? Tx('守護') : Tx('……面倒だ'); },
+      get desc() { return flag('kuroGuard') ? Tx('自身の被ダメージ-15%、味方全体の被ダメージ-8%。味方が攻撃を受けてHPが50%を下回ると、その味方に防御力60%+300のシールド（2ターン）。クロのターンごとに1回。') : Tx('自身の被ダメージ-15%。'); },
       onBattleStart(B, s) {
         s.buffs.push({ key: 'kuro_t', name: '……面倒だ', stat: 'vuln', value: -0.15, turns: Infinity, hidden: true });
         if (!flag('kuroGuard')) return;
@@ -139,7 +139,7 @@ const CHARS = {
         const name = { fire: 'ファイア', thunder: 'サンダー', blizzard: 'アイス' }[sp];
         let r = [];
         if (!fail) {
-          B.announce('天才魔法', name + '！', ELEMENTS[{ fire: 'fire', thunder: 'lightning', blizzard: 'ice' }[sp]].color);
+          B.announce('天才魔法', Tx('{0}！', Tx(name)), ELEMENTS[{ fire: 'fire', thunder: 'lightning', blizzard: 'ice' }[sp]].color);
           if (sp === 'fire') r = await B.aoe(s, 1.1, 15, 'skill', { elem: 'fire' });
           else if (sp === 'thunder') r = await B.single(s, t, 2.4, 25, 'skill', { elem: 'lightning', anim: 'bolt' });
           else { r = await B.blast(s, t, 1.4, 0.6, 20, 10, 'skill', { elem: 'ice', anim: 'ice' }); if (t.alive) B.freeze(s, t, 0.5, s.stat('atk') * 0.5); }
@@ -175,7 +175,7 @@ const CHARS = {
       } },
     // 第七章で失敗を受け入れると、とくせいに力が加わる
     talent: { name: 'プライド',
-      get desc() { return '敵を倒すと与ダメージ+10%（最大3層）。' + (flag('shiroGrow') ? '魔法の失敗が「成功のもと」になり追撃する。' : ''); },
+      get desc() { return Tx('敵を倒すと与ダメージ+10%（最大3層）。') + (flag('shiroGrow') ? Tx('魔法の失敗が「成功のもと」になり追撃する。') : ''); },
       onKill(B, s) { B.buff(s, { key: 'shiro_t', name: 'プライド', stat: 'dmg', value: 0.1, turns: Infinity, max: 3 }); } },
     technique: { name: 'ヒール', desc: '戦闘開始時、味方全体のHPを15%回復する。（シロの毛が爆発する）',
       run: (B, s) => { B.aliveAllies().forEach(a => B.heal(s, a, a.maxHp * 0.15)); B.float(s, '毛が爆発した！', 'info'); } },
@@ -563,7 +563,7 @@ const ITEMS = {
     run: (B, s, t) => {
       if (!t.def.lure || t.flags.lured) { B.float(t, 'みむきもしない', 'res'); return; }
       t.flags.lured = true; t.flags.skip = 1;
-      B.announce(`${s.name}は猫じゃらしを振った！`, `${t.name}は夢中になっている……（1ターン行動できない）`, '#ffcf4a');
+      B.announce(Tx('{0}は猫じゃらしを振った！', s.name), Tx('{0}は夢中になっている……（1ターン行動できない）', t.name), '#ffcf4a');
       B.say(t, '「……！？　こ、これは……っ」');
       if (B.v) B.v.lureFx(t);
     } },

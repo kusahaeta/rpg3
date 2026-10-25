@@ -104,9 +104,9 @@ class Battle {
       ${this.v ? '<div class="world"></div>' : `<div class="bf-bg bg-${this.opts.bg || 'station'}"><div class="bf-floor"></div></div>`}
       <div class="bf-top"><div class="bf-title">${this.opts.title || ''}</div><div class="bf-wave"></div></div>
       <div class="bf-ctrl">
-        ${Debug.on ? '<button class="ctl" data-c="auto" title="オート (V)">AUTO</button>' : ''}
-        <button class="ctl" data-c="speed" title="倍速 (F)">×1</button>
-        <button class="ctl" data-c="pause" title="メニュー (Esc)">❚❚</button>
+        ${Debug.on ? `<button class="ctl" data-c="auto" title="${Tx('オート (V)')}">AUTO</button>` : ''}
+        <button class="ctl" data-c="speed" title="${Tx('倍速 (F)')}">×1</button>
+        <button class="ctl" data-c="pause" title="${Tx('メニュー (Esc)')}">❚❚</button>
       </div>
       <div class="order"></div>
       <div class="enemy-row"></div>
@@ -116,19 +116,19 @@ class Battle {
         <div class="ab-info"><div class="ab-kind"></div><div class="ab-name"><span class="ab-el"></span><b></b></div><div class="ab-desc"></div></div>
         <div class="sp"><div class="sp-delta"></div><div class="sp-gems"></div><div class="sp-num"></div></div>
         <div class="ab-btns">
-          <button class="ab-btn" data-ab="basic"><span class="ab-ic">⚔</span><span class="ab-el"></span><span class="k">Q</span><span class="l">通常攻撃</span></button>
-          <button class="ab-btn" data-ab="skill"><span class="ab-ic">✦</span><span class="ab-el"></span><span class="k">E</span><span class="l">戦闘スキル</span></button>
-          <button class="ab-btn item" data-ab="item"><span class="ab-ic">🎒</span><span class="k">R</span><span class="l">どうぐ</span></button>
+          <button class="ab-btn" data-ab="basic"><span class="ab-ic">⚔</span><span class="ab-el"></span><span class="k">Q</span><span class="l">${Tx('通常攻撃')}</span></button>
+          <button class="ab-btn" data-ab="skill"><span class="ab-ic">✦</span><span class="ab-el"></span><span class="k">E</span><span class="l">${Tx('戦闘スキル')}</span></button>
+          <button class="ab-btn item" data-ab="item"><span class="ab-ic">🎒</span><span class="k">R</span><span class="l">${Tx('どうぐ')}</span></button>
         </div>
         <div class="ult-hint">
-          <button class="ab-btn ult-cancel"><span class="ab-ic">✕</span><span class="k wide">Esc</span><span class="l">キャンセル</span></button>
-          <button class="ab-btn ult-go"><span class="ab-ic">✸</span><span class="k wide">Space</span><span class="l">発動</span></button>
+          <button class="ab-btn ult-cancel"><span class="ab-ic">✕</span><span class="k wide">Esc</span><span class="l">${Tx('キャンセル')}</span></button>
+          <button class="ab-btn ult-go"><span class="ab-ic">✸</span><span class="k wide">Space</span><span class="l">${Tx('発動')}</span></button>
         </div>
       </div>
-      <div class="bond hidden"><div class="bond-l">友情ゲージ</div><div class="bond-bar"><i></i></div><button class="bond-btn" data-combo disabled><span class="k">C</span><b>コンボ</b></button></div>
+      <div class="bond hidden"><div class="bond-l">${Tx('友情ゲージ')}</div><div class="bond-bar"><i></i></div><button class="bond-btn" data-combo disabled><span class="k">C</span><b>${Tx('コンボ')}</b></button></div>
       <div class="combo-menu hidden"></div>
       <div class="item-menu hidden"></div>
-      <div class="help">Q 通常攻撃 ／ E スキル ／ R どうぐ ／ A・D 対象選択 ／ Space 決定 ／ 1〜4 必殺技 ／ C コンボ</div>
+      <div class="help">${Tx('Q 通常攻撃 ／ E スキル ／ R どうぐ ／ A・D 対象選択 ／ Space 決定 ／ 1〜4 必殺技 ／ C コンボ')}</div>
       <div class="ultfx"></div>
       <div class="cutin"></div>
       <div class="overlay hidden"></div>`;
@@ -206,17 +206,17 @@ class Battle {
 
   statusHTML(u) {
     const out = [];
-    if (u.shield > 0) out.push(`<span class="st sh">盾<em>${u.shieldTurns}</em></span>`);
+    if (u.shield > 0) out.push(`<span class="st sh">${Tx('盾')}<em>${u.shieldTurns}</em></span>`);
     for (const b of u.buffs) {
       if (b.hidden) continue;
       const down = b.value < 0 || DOWN_STATS.has(b.stat);
-      out.push(`<span class="st ${b.debuff ? 'de' : 'bu'}" title="${b.name}">${STAT_LABEL[b.stat] || b.name}${down ? '↓' : '↑'}${b.stacks > 1 ? '×' + b.stacks : ''}<em>${b.turns === Infinity ? '' : b.turns}</em></span>`);
+      out.push(`<span class="st ${b.debuff ? 'de' : 'bu'}" title="${Tx(b.name)}">${STAT_LABEL[b.stat] || Tx(b.name)}${down ? '↓' : '↑'}${b.stacks > 1 ? '×' + b.stacks : ''}<em>${b.turns === Infinity ? '' : b.turns}</em></span>`);
     }
     for (const d of u.dots) out.push(`<span class="st dot" style="--c:${ELEMENTS[d.elem].color}">${DOT_INFO[d.type][0]}${d.stacks > 1 ? '×' + d.stacks : ''}<em>${d.turns}</em></span>`);
-    if (u.frozen) out.push(`<span class="st dot" style="--c:${ELEMENTS.ice.color}">凍結</span>`);
-    if (u.entangle) out.push(`<span class="st dot" style="--c:${ELEMENTS.quantum.color}">くらやみ×${u.entangle.stacks}</span>`);
-    if (u.flags && u.flags.isolated) out.push(`<span class="st de">ひとりぼっち<em>${u.flags.isolated}</em></span>`);
-    if (u.flags && u.flags.skip) out.push(`<span class="st bu">夢中</span>`);
+    if (u.frozen) out.push(`<span class="st dot" style="--c:${ELEMENTS.ice.color}">${Tx('凍結')}</span>`);
+    if (u.entangle) out.push(`<span class="st dot" style="--c:${ELEMENTS.quantum.color}">${Tx('くらやみ')}×${u.entangle.stacks}</span>`);
+    if (u.flags && u.flags.isolated) out.push(`<span class="st de">${Tx('ひとりぼっち')}<em>${u.flags.isolated}</em></span>`);
+    if (u.flags && u.flags.skip) out.push(`<span class="st bu">${Tx('夢中')}</span>`);
     return out.join('');
   }
 
@@ -239,7 +239,7 @@ class Battle {
         u.weak.map(w => elemIcon(w)).join('') + u.implants.map(i => elemIcon(i.elem, 'implant')).join('');
       el.classList.toggle('broken', u.broken);
       el.classList.toggle('charging', !!u.charging);
-      el.querySelector('.e-intent').textContent = u.charging ? '⚠ 強攻撃準備中' : '';
+      el.querySelector('.e-intent').textContent = u.charging ? Tx('⚠ 強攻撃準備中') : '';
     }
   }
 
@@ -270,9 +270,9 @@ class Battle {
     const units = [...this.aliveAllies(), ...this.aliveEnemies()];
     const g = new Map(units.map(u => [u, u.gauge]));
     const list = [];
-    this.ultQueue.forEach(u => list.push({ u, label: '必殺', ult: true }));
-    if (this.current && this.current.alive) list.push({ u: this.current, label: '行動中', cur: true });
-    this.extraQueue.forEach(u => list.push({ u, label: '追加', extra: true }));
+    this.ultQueue.forEach(u => list.push({ u, label: Tx('必殺'), ult: true }));
+    if (this.current && this.current.alive) list.push({ u: this.current, label: Tx('行動中'), cur: true });
+    this.extraQueue.forEach(u => list.push({ u, label: Tx('追加'), extra: true }));
     let t = 0;
     for (let n = 0; n < 8 && units.length; n++) {
       let best = null, bt = Infinity;
@@ -298,7 +298,7 @@ class Battle {
     const f = document.createElement('div');
     u.floatN = ((u.floatN || 0) + 1) % 5;
     f.className = 'float ' + cls;
-    f.textContent = text;
+    f.textContent = Tx(text);
     f.style.left = (35 + Math.random() * 30) + '%';
     f.style.top = (u.side === 'enemy' ? 30 : 10) + u.floatN * 9 + '%';
     host.querySelector('.fx').appendChild(f);
@@ -329,7 +329,7 @@ class Battle {
   announce(kind, name, color, long) {
     const a = this.$('.announce');
     a.classList.toggle('long', !!long);
-    a.innerHTML = `<span class="an-kind">${kind}</span><span class="an-name">${name}</span>`;
+    a.innerHTML = `<span class="an-kind">${Tx(kind)}</span><span class="an-name">${Tx(name)}</span>`;
     a.style.setProperty('--c', color || '#e8c77a');
     a.classList.remove('show'); void a.offsetWidth; a.classList.add('show');
   }
@@ -384,7 +384,7 @@ class Battle {
     for (const key of this.opts.techs || []) {
       const u = this.allies.find(a => a.key === key && a.alive);
       if (!u || !this.aliveEnemies().length) continue;
-      this.announce('初手技', `${u.name}「${u.def.technique.name}」`, this.abColor(u, u.def.technique));
+      this.announce('初手技', Tx('{0}「{1}」', u.name, u.def.technique.name), this.abColor(u, u.def.technique));
       await wait(500);
       this.curAb = u.def.technique;
       await u.def.technique.run(this, u);
@@ -561,9 +561,9 @@ class Battle {
   itemReady(u, id) { const it = ITEMS[id]; return itemCount(id) > 0 && (it.target === 'allies' || this.targetList(u, it).length > 0); }
   readyItems(u) { return Object.keys(ITEMS).filter(id => this.itemReady(u, id)); }
   itemAb(id) {
-    if (!id) return { name: 'どうぐを選ぶ', desc: '使うどうぐを一覧から選ぶ。', target: 'none' };
+    if (!id) return { name: Tx('どうぐを選ぶ'), desc: Tx('使うどうぐを一覧から選ぶ。'), target: 'none' };
     const it = ITEMS[id];
-    return { ...it, name: `${it.icon} ${it.name}${it.key ? '（だいじなもの）' : `（のこり ${itemCount(id)}）`}`, desc: it.desc };
+    return { ...it, name: `${it.icon} ${it.name}${it.key ? Tx('（だいじなもの）') : Tx('（のこり {0}）', itemCount(id))}`, desc: it.desc };
   }
   async useItem(u, id, t) {
     const it = ITEMS[id];
@@ -613,7 +613,7 @@ class Battle {
     const btn = el.querySelector('[data-combo]');
     btn.disabled = !list.length || this.over;
     btn.classList.toggle('ready', !!list.length);
-    btn.querySelector('b').textContent = list.length === 1 ? list[0].name : 'コンボ';
+    btn.querySelector('b').textContent = list.length === 1 ? list[0].name : Tx('コンボ');
     el.classList.toggle('full', this.bond >= 100);
     el.classList.toggle('allstars', !!this.allstars);
   }
@@ -622,7 +622,7 @@ class Battle {
     const list = this.combos(); if (!list.length) return;
     const menu = this.$('.combo-menu');
     if (!id && list.length > 1) {
-      menu.innerHTML = list.map(c => `<button data-cid="${c.id}"><b>${c.name}</b><small>${c.desc}</small></button>`).join('') + '<button class="x" data-cid="">やめる</button>';
+      menu.innerHTML = list.map(c => `<button data-cid="${c.id}"><b>${c.name}</b><small>${c.desc}</small></button>`).join('') + `<button class="x" data-cid="">${Tx('やめる')}</button>`;
       menu.classList.remove('hidden'); this.$('.bond').classList.add('spend');
       menu.querySelectorAll('[data-cid]').forEach(b => b.onclick = e => { e.stopPropagation(); menu.classList.add('hidden'); this.$('.bond').classList.remove('spend'); if (b.dataset.cid) this.requestCombo(b.dataset.cid); });
       Sfx.click(); return;
@@ -671,7 +671,7 @@ class Battle {
   }
   // にゃんこオールスターズ：世界中の猫たちの「つながり」
   async allStars(mem) {
-    const lines = [['mike', '「ぼくたちは――」'], ['all', '「ずっと仲間だ！」']];
+    const lines = [['mike', Tx('「ぼくたちは――」')], ['all', Tx('「ずっと仲間だ！」')]];
     for (const [i, [k, line]] of lines.entries()) {
       if (this.v) this.v.allStarsLine(mem, i);
       if (k === 'all') mem.forEach(m => this.say(m, line)); else { const m = mem.find(x => x.key === k) || mem[0]; this.say(m, line); }
@@ -703,7 +703,7 @@ class Battle {
   // 吹き出し
   say(u, text) {
     const host = u.anchor || u.el; if (!host) return;
-    const b = document.createElement('div'); b.className = 'say say-' + u.side; b.textContent = text;
+    const b = document.createElement('div'); b.className = 'say say-' + u.side; b.textContent = Tx(text);
     host.querySelector('.fx').appendChild(b);
     // 画面端（左は行動順バー）からはみ出さないよう横にずらす
     const r = b.getBoundingClientRect(), box = this.root.getBoundingClientRect(), s = box.width / this.root.offsetWidth || 1;
@@ -963,13 +963,13 @@ class Battle {
     const ab = this.abilityOf(inp), u = inp.unit;
     // 色は使う .ab-info にだけ置く（パネルごと書きかえると、transition のある SP の宝石やボタンのぶん Safari がメモリを手放さない）
     this.$('.ab-info').style.setProperty('--c', u.color);
-    this.$('.ab-kind').textContent = inp.mode === 'ult' ? `${u.name}・必殺技` : `${u.name}・${inp.sel === 'basic' ? '通常攻撃' : inp.sel === 'item' ? 'どうぐ' : '戦闘スキル'}`;
+    this.$('.ab-kind').textContent = Tx('{0}・{1}', u.name, Tx(inp.mode === 'ult' ? '必殺技' : inp.sel === 'basic' ? '通常攻撃' : inp.sel === 'item' ? 'どうぐ' : '戦闘スキル'));
     this.$('.ab-name b').textContent = ab.name;
     this.$('.ab-name .ab-el').innerHTML = abElems(ab).map(el => elemIcon(el)).join('');
     this.$('.ab-desc').textContent = ab.desc;
     this.root.querySelectorAll('.ab-btns .ab-btn').forEach(b => {
       b.classList.toggle('sel', inp.mode === 'turn' && b.dataset.ab === inp.sel);
-      b.querySelector('.l').textContent = b.dataset.ab === 'item' ? 'どうぐ' : u.def[b.dataset.ab].name;
+      b.querySelector('.l').textContent = b.dataset.ab === 'item' ? Tx('どうぐ') : u.def[b.dataset.ab].name;
       const el = b.querySelector('.ab-el'); if (el) el.innerHTML = abElems(u.def[b.dataset.ab]).map(x => elemIcon(x)).join('');
     });
     this.$('[data-ab=skill]').classList.toggle('disabled', this.sp < 1);
@@ -1020,9 +1020,9 @@ class Battle {
     this.paused = !this.paused;
     const o = this.$('.overlay');
     if (this.paused) {
-      o.innerHTML = `<div class="ov-box"><h2>一時停止</h2>
-        <button class="btn gold" data-p="resume">戦闘に戻る</button>
-        <button class="btn" data-p="retreat">撤退する</button></div>`;
+      o.innerHTML = `<div class="ov-box"><h2>${Tx('一時停止')}</h2>
+        <button class="btn gold" data-p="resume">${Tx('戦闘に戻る')}</button>
+        <button class="btn" data-p="retreat">${Tx('撤退する')}</button></div>`;
       o.classList.remove('hidden');
       o.querySelector('[data-p=resume]').onclick = () => this.togglePause();
       o.querySelector('[data-p=retreat]').onclick = () => {
@@ -1201,7 +1201,7 @@ class Battle {
     Sfx.brk(); this.shake(true);
     if (this.v) this.v.breakFx(t, elem);
     const bt = document.createElement('div');
-    bt.className = 'break-text'; bt.style.setProperty('--c', col); bt.innerHTML = '<span>弱点撃破</span>';
+    bt.className = 'break-text'; bt.style.setProperty('--c', col); bt.innerHTML = `<span>${Tx('弱点撃破')}</span>`;
     t.el.querySelector('.fx').appendChild(bt); setTimeout(() => bt.remove(), 1400);
     this.impact(t, elem, true);
     const bd = BREAK_COEF[elem] * lvM * tm * be * this.defResMult(src.level, t, elem, src);
@@ -1215,7 +1215,7 @@ class Battle {
       case 'ice': t.frozen = { raw: lvM * be, srcLv: src.level }; this.float(t, '凍結', 'info'); break;
       case 'quantum': t.gauge += 2000 * be; t.entangle = { raw: 0.6 * lvM * tm * be, srcLv: src.level, stacks: 1 }; this.float(t, 'くらやみ', 'info'); break;
       case 'imaginary': t.gauge += 3000 * be;
-        t.buffs.push({ key: 'imprison', name: 'まぶしさ', stat: 'spd', value: -0.1, turns: 1, debuff: true });
+        t.buffs.push({ key: 'imprison', name: Tx('まぶしさ'), stat: 'spd', value: -0.1, turns: 1, debuff: true });
         this.float(t, 'まぶしい！', 'info'); break;
     }
     if (t.charging) { t.charging = null; this.float(t, '溜め中断！', 'info'); }
@@ -1265,7 +1265,7 @@ class Battle {
   implant(t, elem, turns) {
     const ex = t.implants.find(i => i.elem === elem);
     if (ex) ex.turns = turns; else t.implants.push({ elem, turns });
-    this.float(t, ELEMENTS[elem].name + '弱点付与', 'info'); this.updateUnit(t);
+    this.float(t, Tx('{0}弱点付与', ELEMENTS[elem].name), 'info'); this.updateUnit(t);
   }
   buff(t, b, src) {
     if (!t.alive) return;
@@ -1403,7 +1403,7 @@ class Battle {
     }
     if (T.isolate) for (const a of this.aliveAllies()) {
       a.flags.isolated = 2; this.float(a, 'ひとりぼっち', 'res');
-      this.debuff(e, a, 1, { key: 'e_iso', name: 'ひとりぼっち', stat: 'dmg', value: -0.3, turns: 2 }, true);
+      this.debuff(e, a, 1, { key: 'e_iso', name: Tx('ひとりぼっち'), stat: 'dmg', value: -0.3, turns: 2 }, true);
     }
     this.updateUnit(e);
     if (T.summon) this.summonFoes(T.summon[0], T.summon[1], e.level);
@@ -1426,7 +1426,7 @@ class Battle {
     e.maxTough += 20; e.toughness = e.maxTough; e.broken = false;
     e.dots = []; e.frozen = null; e.entangle = null; e.charging = null;
     e.buffs = e.buffs.filter(b => !b.debuff);
-    this.announce(`PHASE ${e.phase + 1}`, ph.cry || `${e.name}が力を解放した！`, '#ff4d6d', true);
+    this.announce(`PHASE ${e.phase + 1}`, ph.cry || Tx('{0}が力を解放した！', e.name), '#ff4d6d', true);
     if (this.opts.final && e.def.final && e.phase >= e.def.phases.length) setTimeout(() => this.finale(), 1600 / Game.speed);
     this.pulse(e, 'phase', 1200); this.shake(true); Sfx.brk();
     this.updateUnit(e);
@@ -1533,7 +1533,7 @@ class Battle {
         if (f.kind === 'dot') this.dot(e, t, f);
         else if (f.kind === 'freeze') this.freeze(e, t, f.chance, e.stat('atk') * 0.5);
         else if (f.kind === 'buff') this.debuff(e, t, f.chance, f.buff);
-        else if (f.kind === 'isolate') { t.flags.isolated = 2; this.float(t, 'ひとりぼっち', 'res'); this.debuff(e, t, 1, { key: 'e_iso', name: 'ひとりぼっち', stat: 'dmg', value: -0.3, turns: 2 }, true); }
+        else if (f.kind === 'isolate') { t.flags.isolated = 2; this.float(t, 'ひとりぼっち', 'res'); this.debuff(e, t, 1, { key: 'e_iso', name: Tx('ひとりぼっち'), stat: 'dmg', value: -0.3, turns: 2 }, true); }
         else if (f.kind === 'energy') { t.energy = Math.max(0, t.energy - f.value); this.float(t, f.value >= 30 ? '思い出が薄れる…' : '必殺技ゲージ減少', 'res'); }
         else if (f.kind === 'bondDrain') { if (this.bond > 0) { this.bond = Math.max(0, this.bond - f.value); this.renderBond(); this.float(t, '疑心…', 'res'); } }
       }
@@ -1566,16 +1566,16 @@ class Battle {
       const before = (Save.data.bondNews || []).length;
       afterBattleBonds(this.allies.map(a => a.key), this.opts.waves.some(w => w.some(e => ENEMIES[e.key].boss)));
       const news = (Save.data.bondNews || []).splice(before); Save.save();
-      if (news.length) info += news.map(n => { const [a, b] = n.k.split('|'); return `<div class="rw bondup">♥ ${CHARS[a].name}と${CHARS[b].name}の友情が Lv.${n.lv} になった！<small>${BOND_INFO[n.lv - 1]}</small></div>`; }).join('');
+      if (news.length) info += news.map(n => { const [a, b] = n.k.split('|'); return `<div class="rw bondup">${Tx('♥ {0}と{1}の友情が Lv.{2} になった！', CHARS[a].name, CHARS[b].name, n.lv)}<small>${BOND_INFO[n.lv - 1]}</small></div>`; }).join('');
     }
     const o = this.$('.overlay');
     o.innerHTML = `<div class="ov-box result ${win ? 'win' : 'lose'}">
-      <div class="res-title">${win ? 'しょうり！' : 'まけちゃった……'}</div>
-      <div class="res-sub">${win ? 'VICTORY' : 'DEFEAT'}</div>
+      <div class="res-title">${win ? Tx('しょうり！') : Tx('まけちゃった……')}</div>
+      ${LANG === 'ja' ? `<div class="res-sub">${win ? 'VICTORY' : 'DEFEAT'}</div>` : ''}
       <div class="res-info">${info || ''}</div>
       <div class="res-btns">
-        ${!win && this.opts.canRetry ? '<button class="btn" data-r="retry">再挑戦</button>' : ''}
-        <button class="btn gold" data-r="next">${win ? '続ける' : '戻る'}</button>
+        ${!win && this.opts.canRetry ? `<button class="btn" data-r="retry">${Tx('再挑戦')}</button>` : ''}
+        <button class="btn gold" data-r="next">${win ? Tx('続ける') : Tx('戻る')}</button>
       </div></div>`;
     o.classList.remove('hidden');
     // 再挑戦のボタンのほかは、どこをクリックしても「続ける／戻る」（出た直後の連打では閉じない）

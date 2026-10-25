@@ -347,7 +347,7 @@ const FOE_MOVES = {
     this.foeFlash(e, c.col);
     await this.foePose(e, { ...POSES.punch, headX: -0.2 }, 0.15);
     this.foeLean(e, 0.15, 0.1);
-    this.glyphFly('！', this.foeMouth(e), this.hitPoint(t.u).add(V3(0, 0.7, 0)), c.col, 0.35, 0.7);
+    this.glyphFly('！', this.foeMouth(e), this.hitPoint(t.u).add(V3(0, 0.7, 0)), c.col, 0.35, 0.7);   // lang:keep（記号の絵）
     await GFX.delay(0.35);
     this.fx.ring(t.home.clone().add(V3(0, 0.05, 0)), c.col, { r: 1.2, life: 0.4, width: 0.2 });
     t.model.flash('#ffffff', 1);
@@ -499,7 +499,7 @@ const FOE_MOVES = {
     // まわりの闇が集まって、丸くなる
     await GFX.tween(0.3, k => { ball.scale.setScalar(Math.max(0.01, Ease.back(k))); });
     t.model.flash('#2a2238', 1.5);
-    this.glyphPop('…', V3(h.x, r * 1.8 + 0.3, h.z), '#b8a8e8');
+    this.glyphPop('…', V3(h.x, r * 1.8 + 0.3, h.z), '#b8a8e8');   // lang:keep（記号の絵）
     await this.every(0.5, 10, () => { const a = Math.random() * Math.PI * 2; this.p.emit(ball.position.clone().add(V3(Math.cos(a) * r, (Math.random() - 0.5) * r, Math.sin(a) * r * 0.5)), V3(0, 0.8, 0), hdr('#8a6aff', 2), { life: 0.6, size: 0.12 }); });
     await GFX.tween(0.3, k => { ball.scale.setScalar(Math.max(0.01, 1 - Ease.in(k))); });
     ball.visible = false;
@@ -549,7 +549,7 @@ const FOE_MOVES = {
     // ③ ひとりぼっちになった写真
     ph.alone = true; ph.draw();
     if (t.model.face) t.model.face.set('sad');
-    this.glyphPop('…', at(ph.cats[ph.me].u + 0.1, ph.cats[ph.me].v - 0.12), '#b8a8e8');
+    this.glyphPop('…', at(ph.cats[ph.me].u + 0.1, ph.cats[ph.me].v - 0.12), '#b8a8e8');   // lang:keep（記号の絵）
     await GFX.delay(0.4);
     // ④ コドクがわのふちから灰になって、コドクへ吸いこまれる。光（必殺技ゲージ）も吸いとられる
     const side = Math.sign(core.clone().sub(above).dot(V3(1, 0, 0).applyQuaternion(this.camera.quaternion))) || 1;
@@ -614,7 +614,7 @@ const FOE_MOVES = {
     });
     Sfx.noise(0.5, 0.04, 6000);
     await GFX.delay(0.3);
-    for (const t of order) this.glyphPop('？', this.headPos(t).add(V3(0, 0.95, 0)), '#b8a8e8');
+    for (const t of order) this.glyphPop('？', this.headPos(t).add(V3(0, 0.95, 0)), '#b8a8e8');   // lang:keep（記号の絵）
     const gold = new THREE.Color(hdr('#ffd86a', 1.6)), dark = new THREE.Color('#4a2a6a');
     Sfx.tone(300, 0.5, 'triangle', 0.03, -120);
     await GFX.tween(0.45, k => arcs.forEach(a => { a.mat.color.lerpColors(gold, dark, k); a.heart.material.color.setRGB(1 - 0.5 * k, 1 - 0.55 * k, 1 - 0.3 * k); a.st.wob = 0.05 * k; }));
@@ -740,7 +740,7 @@ const FOE_MOVES = {
     this.foeFlash(e, c.col);
     // フォークを高くかかげて「進めー！」、それから前をさす
     await this.foePose(e, POSES.raise, 0.2);
-    this.glyphFly('！', this.foeMouth(e), this.foeMouth(e).add(V3(0.5, 1.2, 0.3)), c.col, 0.5, 0.6);
+    this.glyphFly('！', this.foeMouth(e), this.foeMouth(e).add(V3(0.5, 1.2, 0.3)), c.col, 0.5, 0.6);   // lang:keep（記号の絵）
     this.fx.ring(this.foeMouth(e), c.col, { r: 1.6, life: 0.4, face: this.camera.position, width: 0.08 });
     Sfx.horn(0.6);
     await GFX.delay(0.3);
@@ -1215,7 +1215,7 @@ Object.assign(BattleView.prototype, {
       g.restore();
       // 下のふちの書きこみ
       g.globalAlpha = 1 - ph.grey; g.fillStyle = '#c0605a'; g.font = '700 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText('みんなで ♥', W / 2, 264); g.globalAlpha = 1;
+      g.fillText(Tx('みんなで ♥'), W / 2, 264); g.globalAlpha = 1;
       // 色が抜けて、つめたい紫の灰色に
       if (ph.grey > 0) {
         g.globalCompositeOperation = 'saturation'; g.fillStyle = `rgba(128,128,128,${ph.grey})`; g.fillRect(0, 0, W, H);
@@ -1312,7 +1312,7 @@ Object.assign(BattleView.prototype, {
     if (!TexCache.whisper) {
       const c = document.createElement('canvas'); c.width = 128; c.height = 64;
       const g = c.getContext('2d'); g.font = '800 40px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.lineWidth = 7; g.strokeStyle = '#d8c8ff'; g.strokeText('ひそ…', 64, 34); g.fillStyle = '#2a1640'; g.fillText('ひそ…', 64, 34);
+      g.lineWidth = 7; g.strokeStyle = '#d8c8ff'; const w = Tx('ひそ…'); g.strokeText(w, 64, 34); g.fillStyle = '#2a1640'; g.fillText(w, 64, 34);
       TexCache.whisper = new THREE.CanvasTexture(c); TexCache.whisper.colorSpace = THREE.SRGBColorSpace;
     }
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TexCache.whisper, transparent: true, depthWrite: false, opacity: 0 }));
