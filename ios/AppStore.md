@@ -73,7 +73,7 @@ App Store Connect で「English (U.S.)」のローカリゼーションを足し
 | 名前（30字まで） | Nyanko Fantasy |
 | サブタイトル（30字まで） | A Cozy 3D Cat RPG Adventure |
 | プライバシーポリシーの URL | https://kusahaeta.github.io/rpg3/privacy.html?lang=en |
-| サポートの URL | https://kusahaeta.github.io/rpg3/support.html?lang=en |
+| サポートの URL | https://kusahaeta.github.io/rpg3/support.html?lang=en（英語の問い合わせは Google フォームの英語版：https://docs.google.com/forms/d/e/1FAIpQLSeYLTOc9VE4JJbzA2dVWAYEYCVrlzm1p5cn1U8KDmjzHs4fWg/viewform） |
 
 プライバシーポリシーとサポートのページは、1 つのページに日本語と英語の両方が書いてあり、ブラウザの言語で切りかわる（日本語以外は英語）。`?lang=en`／`?lang=ja` を付けると、その言語で開く。
 
