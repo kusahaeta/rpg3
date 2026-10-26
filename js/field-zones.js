@@ -607,6 +607,8 @@ const FIELD_ZONES = {
     notes: [{ at: [1, -13], mark: [0, 1.2, -0.6], title: 'こわれた丸木橋', text: '川にかかっていた丸木橋。……まん中で、ぽっきり折れている。むこう岸へは、渡れそうにない。' },
       { at: [-13, 19], face: 0.3, post: ['↑ たんぽぽの原', '← 街道の宿場'], title: '道しるべ', text: '「北　たんぽぽの原／西　街道の宿場」……下のほうに、小さく「ねむり川を越えるときは、綿毛で」と書き足してある。' },
       { at: [5, 3.5], when: 'scene:c2_03', mark: [0, 3.2, -2.5], title: '綿毛の抜けた大たんぽぽ', text: '見上げるほど大きなたんぽぽ。……てっぺんの綿毛は、眠る子猫ごと、川のむこうへ飛んでいってしまった。' }],
+    // ねむり川：西の綿毛の丘（高さ 2）のそばだけ水面が高くならないよう、川じゅうを低い床にそろえる
+    waterLv: [[0, 8, 29, 11, 0]],
     map2d: [610, 236] },
   woods_valley: { ci: 1, name: 'まどろみの林・ねむり花の谷', bgm: 'drowsy', floor: '谷', parent: 'woods', w: 60, d: 80, stage: '2-2', after: 'c2_03', arenas: [[0, -28, 0], [14, 16, 0]], build: 'woodsValley', bg: 'forest', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-19, 15], [-23, -11], [21, -11]], foes: ['kinoko', 'karasu', 'noraInu'],
