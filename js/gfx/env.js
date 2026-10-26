@@ -308,13 +308,15 @@ function farTree(T) {
 const envSkip = (T, x, z) => !!(T.zone && T.zone.envSkip && T.zone.envSkip(x, z));
 // とても広い区画（中心から角まで 90m をこえる）は、遠景の丘と木を、そのぶん遠くへ（区画の中にめりこまないように）
 const envPush = T => { const Z = T.zone; return Z && Z.w ? Math.max(0, Math.hypot(Z.w / 2, Z.d / 2) - 90) : 0; };
-function hills(T, col, r = 140, n = 16, hgt = 18, y0 = -4) {
-  const m = new THREE.MeshStandardMaterial({ color: col, roughness: 1 }), push = envPush(T);
+//   o.rnd：置き方の乱数（ふつうは毎回ちがう。タイトルのように、いつも同じ景色にしたいときは seeded を渡す）
+//   o.skip(x, z, rad)：この丘を置かないとき true（大きな樹にめりこむところなど。rad は丘の半径）
+function hills(T, col, r = 140, n = 16, hgt = 18, y0 = -4, o = {}) {
+  const m = new THREE.MeshStandardMaterial({ color: col, roughness: 1 }), push = envPush(T), rnd = o.rnd || Math.random;
   for (let i = 0; i < n; i++) {
-    const a = i / n * Math.PI * 2 + Math.random() * 0.2, rr = r + push + Math.random() * 40;
-    if (envSkip(T, Math.cos(a) * rr, Math.sin(a) * rr)) continue;
-    const h = new THREE.Mesh(new THREE.SphereGeometry(30 + Math.random() * 30, 16, 10), m);
-    h.position.set(Math.cos(a) * rr, y0 - 10, Math.sin(a) * rr); h.scale.y = (hgt + Math.random() * hgt) / 45; T.root.add(h);
+    const a = i / n * Math.PI * 2 + rnd() * 0.2, rr = r + push + rnd() * 40, rad = 30 + rnd() * 30, x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+    if (envSkip(T, x, z) || (o.skip && o.skip(x, z, rad))) continue;
+    const h = new THREE.Mesh(new THREE.SphereGeometry(rad, 16, 10), m);
+    h.position.set(x, y0 - 10, z); h.scale.y = (hgt + rnd() * hgt) / 45; T.root.add(h);
   }
 }
 // 遠くの木々（ぽこぽこした木）
@@ -377,9 +379,10 @@ const ENV_PROPS = {
     const cols = ['#e87aa8', '#5a8ad8', '#ffd27a'], wm = new THREE.MeshStandardMaterial({ color: '#f4ece0', roughness: 1 });
     for (let i = 0; i < 7; i++) { const x = -60 + i * 20, h = 20 + (i % 3) * 12; const tw = new THREE.Mesh(new THREE.CylinderGeometry(4, 4.5, h, 10), wm); tw.position.set(x, h / 2 - 4, -150); T.root.add(tw); const rf = new THREE.Mesh(new THREE.ConeGeometry(5.5, 9, 10), new THREE.MeshStandardMaterial({ color: cols[i % 3], roughness: 0.8 })); rf.position.set(x, h - 4 + 4.5, -150); T.root.add(rf); }
   },
-  // 夕暮れの丘（タイトル）：遠くの丘と木は夕もやに沈み、夕日の色の雲。金色の光の粒が、草のあいだから立ちのぼる
+  // 夕暮れの丘（タイトル）：遠くの丘は夕もやに沈み、夕日の色の雲。金色の光の粒が、草のあいだから立ちのぼる
   dusk(T) {
-    hills(T, '#6a7a5a', 140, 16, 18); farTrees(T, '#4e7a48', 18, 115, 150);   // 遠くの木は小さく（にゃんだーの樹より大きく見えないように）
+    // 遠くの丘は、開くたびに変わらないよう決まった乱数で置き、にゃんだーの樹（TitleView で (8, -8, -150) に置く）の根もとにかかる丘は置かない
+    hills(T, '#6a7a5a', 140, 16, 18, -4, { rnd: seeded(3), skip: (x, z, rad) => Math.hypot(x - 8, z + 150) < rad + 12 });
     motes(T, '#ffd890', 16, { size: 0.055, life: 6, k: 2.4, drift: 0.5 });
   },
   tower(T) { motes(T, '#ffd27a', 14, { size: 0.06, life: 4, k: 2 }); T.noTree = true; },
