@@ -413,15 +413,188 @@ function buildEnemy(key) {
       emitFn = (p, pos) => { if (Math.random() < 0.6) p.emit(V3(pos.x + (Math.random() - 0.5) * 1.2, pos.y + 0.3, pos.z + (Math.random() - 0.5) * 1.2), V3(0, 0.8, 0), hdr('#4a2a8a', 1.5), { life: 1.4, size: 0.3, drag: 0.4 }); };
       float = 0.15; height = 2.2; radius = 0.8; scale = 1.1; break;
     }
-    case 'shadowbeast': {   // コドクの獣：影の四つ足、光る目
-      const bm = new THREE.MeshStandardMaterial({ color: '#1a1028', emissive: new THREE.Color(col), emissiveIntensity: 0.35, roughness: 0.7 }); bm.userData.e0 = new THREE.Color(col); bm.userData.ei0 = 0.35; mats.push(bm);
-      const body = add(P(new THREE.SphereGeometry(0.45, 20, 14), bm, { oc: '#6a4aaa' }), 0, 0.75, -0.1); body.scale.set(0.9, 0.75, 1.4);
-      const head = add(P(new THREE.SphereGeometry(0.32, 18, 12), bm, { oc: '#6a4aaa' }), 0, 1.0, 0.55);
-      catEars(0.16, 1.28, 0.5, 1.1, bm);
-      for (const s of [-1, 1]) add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), glowMat('#ff6aff', 4)), s * 0.12, 1.04, 0.84).scale.set(1, 0.6, 0.5);
-      for (const [x, z] of [[-0.25, 0.35], [0.25, 0.35], [-0.25, -0.55], [0.25, -0.55]]) add(P(new THREE.CylinderGeometry(0.08, 0.06, 0.55, 8), bm, { oc: '#6a4aaa' }), x, 0.28, z);
-      emitFn = (p, pos) => { if (Math.random() < 0.6) p.emit(V3(pos.x + (Math.random() - 0.5) * 1, pos.y + Math.random() * 1.2, pos.z + (Math.random() - 0.5) * 1), V3(0, 0.6, 0), hdr('#5a3a9a', 1.4), { life: 1, size: 0.25, drag: 0.5 }); };
-      height = 1.4; radius = 0.8; scale = 1.1; break;
+    case 'shadowbeast': {   // コドクの獣：孤独から生まれた影の豹猫。低く構えた四つ足、炎のようにゆらぐ影のたてがみ、縦長の瞳の光る目と牙、ちぎれた鎖の首輪（コドクの鎖のなごり）、しなるしっぽ
+      // 体は暗い紫のトゥーン（段のある陰とふちの光で、暗い戦場でも形が読める）。たてがみは少し明るい紫
+      const OC = '#6a4aaa';
+      const bm = tm('#22152f', { emissive: new THREE.Color(col), emissiveIntensity: 0.3 });
+      const maneM = tm('#36224e', { emissive: new THREE.Color('#6a3aaa'), emissiveIntensity: 0.45 });
+      const earIn = tm('#4a2258', { emissive: new THREE.Color('#c04ad8'), emissiveIntensity: 0.45 });
+      const fangM = tm('#ece0ff', { emissive: new THREE.Color('#b89aff'), emissiveIntensity: 0.3 });
+      const clawM = glowMat('#e0c8ff', 1.3), dark = new THREE.MeshBasicMaterial({ color: '#0c0614' });
+      const metal = new THREE.MeshStandardMaterial({ color: '#3a3448', metalness: 0.8, roughness: 0.3 });
+      const B = (geo, m = bm) => P(geo, m, { oc: OC });
+      const UP = V3(0, 1, 0);
+      // 向き (x, y, z) へのばす（形の +Y をその向きに）
+      const aim = (o, x, y, z) => { o.quaternion.setFromUnitVectors(UP, V3(x, y, z).normalize()); return o; };
+      // 先の丸い、太さの変わる棒：原点（太さ r1）から下へ len（太さ r2）
+      const taper = (r1, r2, len, seg = 12) => {
+        const pts = [];
+        for (let i = 0; i <= 4; i++) { const a = Math.PI - i / 4 * Math.PI / 2; pts.push([Math.max(0.001, r2 * Math.sin(a)), -len + r2 * Math.cos(a)]); }
+        for (let i = 1; i <= 4; i++) { const a = Math.PI / 2 - i / 4 * Math.PI / 2; pts.push([Math.max(0.001, r1 * Math.sin(a)), r1 * Math.cos(a)]); }
+        return lathe(pts, seg);
+      };
+      const tuft = (r, h) => new THREE.ConeGeometry(r, h, 7).translate(0, h / 2, 0);   // 根もとが原点の毛の房
+      // 影の炎：根もとがふくらみ、先は細くとがって、うしろ（-Z）へなびく
+      const flame = (r, h, bend = 0.4) => {
+        const g = lathe([[0.001, -0.03], [r * 0.9, 0], [r * 1.05, h * 0.18], [r * 0.85, h * 0.4], [r * 0.5, h * 0.68], [r * 0.18, h * 0.9], [0.001, h]], 9), q = g.attributes.position;
+        for (let i = 0; i < q.count; i++) { const y = Math.max(0, q.getY(i)) / h; q.setZ(i, q.getZ(i) - y * y * h * bend); }
+        return g;
+      };
+      // 胴：肩が高く、腰はやや低い。胸は厚く、腹はしぼる（前後にのびる一つの回転体）。首は前へ、少し下がる
+      const body = new THREE.Group(); body.position.set(0, 0.74, -0.08); body.rotation.x = -0.08; inner.add(body);
+      add(B(lathe([[0.001, -0.8], [0.15, -0.76], [0.27, -0.66], [0.32, -0.52], [0.3, -0.34], [0.26, -0.14], [0.3, 0.06], [0.36, 0.24], [0.35, 0.4], [0.27, 0.53], [0.16, 0.6], [0.001, 0.63]], 24).rotateX(Math.PI / 2)), 0, 0, 0, body).scale.set(0.82, 0.92, 1);
+      add(B(taper(0.2, 0.17, 0.34)), 0, 0.06, 0.36, body).rotation.x = -1.3;
+      // 影のたてがみ：首・肩・背中の三つの束。炎のように、それぞれゆらぐ
+      const maneAt = (x, y, z, tufts) => {
+        const g = new THREE.Group(); g.position.set(x, y, z); inner.add(g);
+        for (const [tx, ty, tz, r, h, dx, dz] of tufts) aim(add(B(flame(r, h), maneM), tx, ty, tz, g), dx, 1, dz);
+        return g;
+      };
+      const manes = [
+        maneAt(0, 0.99, 0.44, [[0, 0, 0.06, 0.075, 0.26, 0, -0.4], [-0.075, -0.03, -0.02, 0.06, 0.21, -0.6, -0.5], [0.075, -0.03, -0.02, 0.06, 0.21, 0.6, -0.5]]),
+        maneAt(0, 1.02, 0.16, [[0, 0, 0.04, 0.1, 0.42, 0, -0.45], [-0.1, -0.03, -0.02, 0.08, 0.3, -0.65, -0.45], [0.1, -0.03, -0.02, 0.08, 0.3, 0.65, -0.45]]),
+        maneAt(0, 0.98, -0.3, [[0, 0, 0.04, 0.085, 0.28, 0, -0.55], [-0.08, -0.03, -0.06, 0.06, 0.19, -0.65, -0.6], [0.08, -0.03, -0.06, 0.06, 0.19, 0.65, -0.6], [0, -0.03, -0.24, 0.06, 0.17, 0, -0.8]]),
+      ];
+      // 首輪：コドクの鎖とおなじ鉄。ちぎれた鎖が三つ、胸の前にさがる
+      const collar = add(P(new THREE.TorusGeometry(0.2, 0.034, 8, 28), metal, { oc: '#1a1624' }), 0, 0.8, 0.46); collar.rotation.x = -0.28;
+      const chain = new THREE.Group(); chain.position.set(0, 0.61, 0.53); inner.add(chain);
+      for (let i = 0; i < 3; i++) {
+        const l = add(new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.012, 6, 12, i === 2 ? Math.PI * 1.45 : Math.PI * 2), metal), 0, -0.04 - i * 0.07, 0, chain);
+        l.rotation.set(0, i % 2 ? Math.PI / 2 : 0, Math.PI / 2 + (i === 2 ? 0.6 : 0)); l.scale.set(1.35, 1, 1);
+      }
+      // 頭：首から前へ。頭の骨・つき出た鼻づら・ほおの毛
+      const head = new THREE.Group(); head.position.set(0, 0.87, 0.6); head.scale.setScalar(1.12); inner.add(head);
+      add(B(new THREE.SphereGeometry(0.26, 22, 16)), 0, 0, 0.1, head).scale.set(1.05, 0.86, 1);
+      add(B(new THREE.SphereGeometry(0.135, 18, 12)), 0, -0.07, 0.31, head).scale.set(1.15, 0.72, 1.05);
+      for (const s of [-1, 1]) {
+        aim(add(B(tuft(0.07, 0.24)), s * 0.19, -0.05, 0.1, head), s, -0.25, -0.7);
+        aim(add(B(tuft(0.055, 0.18)), s * 0.17, -0.12, 0.08, head), s, -0.7, -0.6);
+      }
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), dark), 0, -0.035, 0.445, head).scale.set(1.3, 0.8, 0.8);
+      // 耳：片方は先がちぎれている
+      const ears = [-1, 1].map(s => {
+        const g = new THREE.Group(); g.position.set(s * 0.15, 0.17, 0.03); g.rotation.set(-0.15, 0, -s * 0.32); head.add(g);
+        const torn = s < 0;
+        const og = (torn ? new THREE.CylinderGeometry(0.028, 0.1, 0.23, 4) : new THREE.ConeGeometry(0.1, 0.31, 4)).rotateY(Math.PI / 4).translate(0, torn ? 0.115 : 0.155, 0);
+        add(B(og), 0, 0, 0, g).scale.z = 0.55;
+        const ig = (torn ? new THREE.CylinderGeometry(0.02, 0.06, 0.16, 4) : new THREE.ConeGeometry(0.06, 0.21, 4)).rotateY(Math.PI / 4).translate(0, torn ? 0.09 : 0.115, 0);
+        add(new THREE.Mesh(ig, earIn), 0, 0.005, 0.03, g).scale.z = 0.35;
+        return g;
+      });
+      // 目：コドクと同じ、瞳のない縦長の白く光るうつろな目
+      const eyeM = glowMat('#f4eeff', 2.8);
+      // 左右の目は一つの組（まばたきは組ごと縦につぶす）
+      const eyesB = new THREE.Group(); eyesB.position.set(0, 0.03, 0.315); head.add(eyesB);
+      for (const s of [-1, 1]) { const e = add(new THREE.Mesh(new THREE.SphereGeometry(0.058, 14, 10), eyeM), s * 0.105, 0, 0, eyesB); e.scale.set(0.8, 1.2, 0.35); e.rotation.z = s * 0.1; }
+      // ひげ：光る細い線（一つの形にまとめる）
+      const wh = [];
+      for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { const c = new THREE.CylinderGeometry(0.0045, 0.0025, 0.26, 4).translate(0, 0.13, 0); c.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(UP, V3(s, 0.18 - i * 0.16, 0.22).normalize())); wh.push(c.translate(s * 0.1, -0.05 - i * 0.02, 0.4)); }
+      add(new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(wh), glowMat('#c8a0ff', 1.2)), 0, 0, 0, head);
+      // 牙と顎：上の牙は鼻づらに、下顎は付け根で開く。口の中はぼんやり光る
+      for (const s of [-1, 1]) add(new THREE.Mesh(new THREE.ConeGeometry(0.017, 0.11, 8), fangM), s * 0.075, -0.16, 0.39, head).rotation.x = Math.PI;
+      const jawG = new THREE.Group(); jawG.position.set(0, -0.12, 0.16); head.add(jawG);
+      add(B(new THREE.SphereGeometry(0.11, 16, 10)), 0, -0.035, 0.14, jawG).scale.set(1.05, 0.42, 1.35);
+      add(new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 8), glowMat('#6a2a8a', 0.9)), 0, 0.012, 0.12, jawG).scale.set(1, 0.35, 1.4);
+      for (const s of [-1, 1]) add(new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.06, 8), fangM), s * 0.06, 0.0, 0.23, jawG);
+      // 足：前足は肩・ひじ、うしろ足はもも・ひざ・かかと。足先に光る爪。関節のうしろに毛の房
+      const claws = (g, y, z) => add(new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries([-1, 0, 1].map(i => { const c = new THREE.ConeGeometry(0.013, 0.065, 6).translate(0, 0.032, 0); c.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(UP, V3(i * 0.25, -0.45, 1).normalize())); return c.translate(i * 0.04, 0, 0); })), clawM), 0, y, z, g);
+      const paw = (g, y) => { add(B(new THREE.SphereGeometry(0.085, 14, 10)), 0, y, 0.04, g).scale.set(1.05, 0.55, 1.35); claws(g, y - 0.005, 0.13); };
+      const fronts = [-1, 1].map(s => {
+        const g = new THREE.Group(); g.position.set(s * 0.18, 0.74, 0.32); inner.add(g);
+        add(B(taper(0.125, 0.08, 0.3)), 0, 0, 0, g);
+        const elbow = new THREE.Group(); elbow.position.y = -0.31; g.add(elbow);
+        add(B(taper(0.075, 0.06, 0.26)), 0, 0, 0, elbow);
+        aim(add(B(tuft(0.045, 0.15)), 0, 0.01, -0.04, elbow), s * 0.2, -0.5, -1);
+        paw(elbow, -0.35);
+        return { g, elbow };
+      });
+      const hinds = [-1, 1].map(s => {
+        const g = new THREE.Group(); g.position.set(s * 0.19, 0.72, -0.55); inner.add(g);
+        add(B(taper(0.18, 0.085, 0.28)), 0, 0, 0, g);
+        const knee = new THREE.Group(); knee.position.y = -0.28; g.add(knee);
+        add(B(taper(0.085, 0.062, 0.25)), 0, 0, 0, knee);
+        const hock = new THREE.Group(); hock.position.y = -0.25; knee.add(hock);
+        add(B(taper(0.06, 0.05, 0.16)), 0, 0, 0, hock);
+        aim(add(B(tuft(0.045, 0.14)), 0, 0.0, -0.04, hock), s * 0.2, 0.2, -1);
+        paw(hock, -0.19);
+        return { g, knee, hock };
+      });
+      // しっぽ：一本の管を、毎コマ曲げなおす（節に分けると、つなぎ目に輪郭の線が出て数珠に見える）。うしろ上へのびて、先は影の炎
+      const tailG = new THREE.Group(); tailG.position.set(0, 0.8, -0.8); inner.add(tailG);
+      const TN = 14, TR = 8, TL = 0.86, tipI = (TN + 1) * TR;
+      const tpos = new Float32Array((tipI + 1) * 3), tnor = new Float32Array(tpos.length), tidx = [];
+      for (let j = 0; j < TN; j++) for (let a = 0; a < TR; a++) { const i0 = j * TR + a, i1 = j * TR + (a + 1) % TR; tidx.push(i0, i0 + TR, i1, i1, i0 + TR, i1 + TR); }
+      for (let a = 0; a < TR; a++) tidx.push(TN * TR + a, tipI, TN * TR + (a + 1) % TR);
+      const tailGeo = new THREE.BufferGeometry();
+      tailGeo.setAttribute('position', new THREE.BufferAttribute(tpos, 3).setUsage(THREE.DynamicDrawUsage));
+      tailGeo.setAttribute('normal', new THREE.BufferAttribute(tnor, 3).setUsage(THREE.DynamicDrawUsage));
+      tailGeo.setIndex(tidx); tailGeo.boundingSphere = new THREE.Sphere(V3(0, 0.4, -0.3), 1.0);
+      add(B(tailGeo), 0, 0, 0, tailG);
+      const tip = new THREE.Group(); tailG.add(tip);
+      for (const [dx, dz, h] of [[0, 0.1, 0.28], [-0.55, 0.3, 0.18], [0.55, 0.3, 0.18]]) aim(add(B(flame(0.055, h, 0.5), maneM), 0, -0.02, 0, tip), dx, 1, dz);
+      const tq = new THREE.Quaternion(), tqs = new THREE.Quaternion(), te = new THREE.Euler(), tc = V3(), tax = V3(), taz = V3(), tdir = V3(), tq0 = new THREE.Quaternion().setFromEuler(new THREE.Euler(-1.2, 0, 0));
+      // 根もとから先へ、少しずつ曲げながら輪を置く。上へ巻く強さ（kx）と左右のゆれ（kz）は、根もとから先へ波のように伝わる
+      const bendTail = (t, ph, gait) => {
+        const ds = TL / TN; tq.copy(tq0); tc.set(0, 0, 0);
+        for (let j = 0; j <= TN; j++) {
+          const sj = j / TN, r = lerp(0.078, 0.032, sj);
+          tax.set(1, 0, 0).applyQuaternion(tq); taz.set(0, 0, 1).applyQuaternion(tq);
+          for (let a = 0; a < TR; a++) {
+            const th = a / TR * Math.PI * 2, cs = Math.cos(th), sn = Math.sin(th), k = (j * TR + a) * 3;
+            const nx = tax.x * cs + taz.x * sn, ny = tax.y * cs + taz.y * sn, nz = tax.z * cs + taz.z * sn;
+            tpos[k] = tc.x + nx * r; tpos[k + 1] = tc.y + ny * r; tpos[k + 2] = tc.z + nz * r; tnor[k] = nx; tnor[k + 1] = ny; tnor[k + 2] = nz;
+          }
+          if (j === TN) break;
+          tdir.set(0, 1, 0).applyQuaternion(tq); tc.addScaledVector(tdir, ds);
+          te.set((1.2 + Math.sin(t * 1.1 + ph - sj * 2.5) * 0.5) * ds, 0, Math.sin(t * 1.6 + ph - sj * 3) * (1.1 + gait * 0.8) * ds);
+          tq.multiply(tqs.setFromEuler(te));
+        }
+        tdir.set(0, 1, 0).applyQuaternion(tq);
+        const k = tipI * 3; tpos[k] = tc.x + tdir.x * 0.035; tpos[k + 1] = tc.y + tdir.y * 0.035; tpos[k + 2] = tc.z + tdir.z * 0.035; tnor[k] = tdir.x; tnor[k + 1] = tdir.y; tnor[k + 2] = tdir.z;
+        tailGeo.attributes.position.needsUpdate = true; tailGeo.attributes.normal.needsUpdate = true;
+        tip.position.copy(tc); tip.quaternion.copy(tq);
+      };
+      bendTail(0, 0, 0);
+      // 動かさない部品をまとめて、描く回数を減らす（動きはすべて Group で付けている）
+      mergeRigid(inner);
+      // root.userData.jaw（0〜1）：顎をあける（かみつき）。swipe（0〜1）：前足をふりあげる（影の爪あと）
+      let last = null, gait = 0, gph = 0, jaw = 0, sw = 0;
+      update = (dt, t) => {
+        const ph = root.userData.ph, U = root.userData, p = root.position;
+        // 動いた速さ（探索で歩く・戦闘でとびかかる）で足を運ぶ。止まると、もとの構えにもどる
+        if (!last) last = p.clone();
+        if (dt > 0) { const v = Math.min(10, Math.hypot(p.x - last.x, p.z - last.z) / dt); gait += (Math.min(1, v / 2) - gait) * (1 - Math.exp(-8 * dt)); gph += v * dt * 2.6; }
+        last.copy(p);
+        const k = 1 - Math.exp(-22 * dt);
+        jaw += ((U.jaw || 0) - jaw) * k; sw += ((U.swipe || 0) - sw) * (1 - Math.exp(-14 * dt));
+        const br = Math.sin(t * 1.8 + ph);
+        body.scale.set(1 + br * 0.012, 1 + br * 0.02, 1); body.position.z = -0.08 + Math.sin(t * 0.9 + ph) * 0.012;
+        inner.position.y = Math.abs(Math.sin(gph)) * 0.05 * gait;
+        // 頭：低くかまえて、獲物をさがすように左右を見る
+        head.rotation.set(0.04 + Math.sin(t * 0.9 + ph) * 0.04 + sw * 0.15, Math.sin(t * 0.55 + ph) * 0.22 * (1 - sw), Math.sin(t * 0.7 + ph) * 0.05);
+        jawG.rotation.x = 0.04 + Math.max(jaw * 0.75, sw * 0.5, (Math.sin(t * 2.4 + ph) * 0.5 + 0.5) * 0.07);
+        ears.forEach((g, i) => { const tw = (t * 0.45 + ph + i * 1.7) % 6 > 5.8 ? 0.35 : 0; g.rotation.x = -0.15 - tw - jaw * 0.3; });
+        eyesB.scale.y = (t * 0.33 + ph) % 5 > 4.86 ? 0.15 : 1;
+        manes.forEach((g, i) => { g.scale.y = 1 + Math.sin(t * 7 + i * 2.1 + ph) * 0.08 + Math.sin(t * 11.3 + i) * 0.04; g.rotation.x = Math.sin(t * 3 + i * 1.3 + ph) * 0.06 - gait * 0.15; });
+        chain.rotation.set(Math.sin(t * 1.8 + ph) * 0.12 + Math.sin(gph * 2) * 0.3 * gait, 0, Math.sin(t * 1.3 + ph) * 0.1);
+        bendTail(t, ph, gait);
+        // 足：歩くときは対角の足をそろえて運ぶ
+        fronts.forEach((L, i) => {
+          const c = gph + (i ? Math.PI : 0), lift = Math.max(0, Math.cos(c)) * gait;
+          L.g.rotation.x = Math.sin(c) * 0.45 * gait; L.elbow.rotation.x = lift * 0.7;
+          if (i === 0 && sw > 0.001) { L.g.rotation.x = lerp(L.g.rotation.x, -1.15, sw); L.elbow.rotation.x = lerp(L.elbow.rotation.x, -0.85, sw); L.g.rotation.z = -0.75 * sw; } else L.g.rotation.z = 0;
+        });
+        hinds.forEach((L, i) => {
+          const c = gph + (i ? 0 : Math.PI), lift = Math.max(0, Math.cos(c)) * gait;
+          L.g.rotation.x = -0.5 + Math.sin(c) * 0.4 * gait - sw * 0.2; L.knee.rotation.x = 1.0 + lift * 0.5 + sw * 0.2; L.hock.rotation.x = -0.5 - lift * 0.3;
+        });
+      };
+      emitFn = (p, pos) => {
+        // たてがみから影が立ちのぼり、足もとに影がよどむ
+        if (Math.random() < 0.5) p.emit(V3(pos.x + (Math.random() - 0.5) * 0.6, pos.y + 1.1 + Math.random() * 0.35, pos.z + (Math.random() - 0.5) * 0.6), V3(0, 0.6, 0), hdr('#5a3a9a', 1.4), { life: 1, size: 0.22, drag: 0.5 });
+        if (Math.random() < 0.3) p.emit(V3(pos.x + (Math.random() - 0.5) * 1.1, pos.y + 0.05, pos.z + (Math.random() - 0.5) * 1.1), V3(0, 0.25, 0), hdr('#3a2470', 1.2), { life: 1.2, size: 0.3, drag: 0.8 });
+      };
+      height = 1.4; radius = 0.85; scale = 1.1; break;
     }
     case 'kodoku': {   // コドク：世界に広がった孤独の化身。巨大な影の猫、うつろな目、鎖、思い出のかけら
       const km = new THREE.MeshStandardMaterial({ color: '#07040f', emissive: new THREE.Color(col), emissiveIntensity: 0.5, roughness: 0.8 }); km.userData.e0 = new THREE.Color(col); km.userData.ei0 = 0.5; mats.push(km);

@@ -29,14 +29,17 @@ const FOE_MOVES = {
     this.clawFx(this.hitPoint(t.u), c.col, 3);
   },
   // かみつき・つっつき：とびかかって、がぶっ（つっつきは三回つつく）
+  //   顎のある敵（コドクの獣）は、とびかかりながら口をあけ（userData.jaw）、当たる瞬間にがちっと閉じる
   async bite(e, ts, c) {
-    const t = ts[0];
+    const t = ts[0], U = e.model.group.userData;
+    if (c.mv.glyph !== 'peck') U.jaw = 1;
     await this.foeLunge(e, t, { pose: POSES.ready });
     if (c.mv.glyph === 'peck') {
       for (let i = 0; i < 3; i++) { await this.foeNudge(e, t, 0.25, 0.07); this.fx.sprite(this.hitPoint(t.u).add(V3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, 0)), c.col, 0.7, 0.18, { k: 3 }); }
       return;
     }
     await this.foeNudge(e, t, 0.35, 0.08);
+    U.jaw = 0;
     this.jawFx(this.hitPoint(t.u), c.col, Math.max(1, t.model.height * 0.8));
   },
   // 大きく振りかぶって斬る（重い一撃・孤高の剣）。snip はハサミで十字に
@@ -681,6 +684,7 @@ const FOE_MOVES = {
     const order = [...ts].sort((a, b) => a.home.x - b.home.x), mid = order[Math.floor((order.length - 1) / 2)];
     await this.foeLunge(e, mid, { back: 1.3, dur: 0.3 });
     const g = e.model.group, z = mid.home.z;
+    g.userData.swipe = 1;   // コドクの獣：前足をふりあげて、牙をむく
     await GFX.tween(0.12, k => { g.rotation.x = -0.25 * k; g.position.y = k * 0.3; });
     const xs = order.map(t => t.home.x), x0 = Math.min(...xs) - 0.8, x1 = Math.max(...xs) + 0.8, w = x1 - x0;
     // 三本の大きな爪あとが、左から右へ走る（細い斬撃をつないで長くする）
@@ -690,6 +694,7 @@ const FOE_MOVES = {
     }
     Sfx.swing();
     await GFX.tween(0.15, k => { g.rotation.x = -0.25 + 0.5 * k; g.position.y = 0.3 * (1 - k); });
+    g.userData.swipe = 0;
     order.forEach((t, i) => GFX.delay(i * 0.04).then(() => { this.foeKnock(t, V3(0, 0, 1), 0.3); t.model.flash(c.col, 1); this.p.burst(this.hitPoint(t.u), c.col, 12, { speed: 3, life: 0.4, size: 0.1 }); }));
     GFX.shake(0.2);
     g.rotation.x = 0;
