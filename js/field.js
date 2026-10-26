@@ -677,22 +677,26 @@ class FieldView extends BaseView {
     return (i >= 0 && T.top[i] > ph.h ? T.top[i] : ph.h + (ARCH_STYLES[this.zone.arch].wallH || 6)) - ph.h;
   }
   // 石の門・坑道の入口（観音開きの扉、奥に通路）
+  //   笑顔の塔（扉の作りが circus）は、区画の中の扉と同じサーカス小屋の扉。電球の柱と横木、紅白の扇の前に行き先の看板
   makeGate(ph, st) {
     const g = new THREE.Group(), W = ph.width, mine = st.exit === 'tunnel', palace = (st.look || this.zone.arch) === 'palace';
+    const circus = (this.zone.door || st.door) === 'circus';
     // 門の高さ：出入口ごとの指定（exit.gateH：城の玄関など）がなければ、建物の作りで決まる
     const gh = (ph.dests.find(d => d.exit.gateH) || { exit: {} }).exit.gateH;
-    const H = gh || (mine ? 4.2 : palace ? 5.4 : 4.6), col = ph.locked ? '#ff4d6d' : st.glow || THEMES[this.ch.bg].line;
+    const H = gh || (mine ? 4.2 : circus ? 4.6 : palace ? 5.4 : 4.6), col = ph.locked ? '#ff4d6d' : st.glow || THEMES[this.ch.bg].line;
     g.position.set(ph.x, ph.h, ph.z); g.rotation.y = Math.atan2(ph.nx, ph.nz);   // ローカル +Z が区画の内側
     this.scene.add(g);
     const top = Math.max(H + 1.2, this.exitTop(ph));
     const M = this.arch.mats, frameM = mine ? M.wood : palace ? M.wall2 : M.stone;
     const above = new THREE.Mesh(new THREE.PlaneGeometry(W, top - H), M.wall); above.position.set(0, H + (top - H) / 2, 0); g.add(above);
-    for (const s of [-1, 1]) {
+    // サーカスの扉：柱の代わりに、扉の横のすき間を壁の面までうめる（飾りは壁の面に貼る）
+    if (circus) for (const s of [-1, 1]) { const j = new THREE.Mesh(new THREE.BoxGeometry(0.65, H, 0.6), frameM); j.position.set(s * (W / 2 - 0.325), H / 2, -0.3); g.add(j); }
+    else for (const s of [-1, 1]) {
       const j = new THREE.Mesh(new THREE.BoxGeometry(mine ? 0.45 : 0.7, H + 0.6, mine ? 0.45 : 0.7), frameM); j.position.set(s * (W / 2 - 0.35), (H + 0.6) / 2, 0.15); j.castShadow = true; g.add(j);
       if (palace) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, H - 0.6, 0.72), glowMat(col, 1.6)); l.position.set(s * (W / 2 - 0.35), H / 2, 0.15); g.add(l); }
     }
-    const lintel = new THREE.Mesh(new THREE.BoxGeometry(W + 0.2, mine ? 0.45 : 0.8, mine ? 0.5 : 0.8), frameM); lintel.position.set(0, H + 0.3, 0.15); lintel.castShadow = true; g.add(lintel);
-    if (!mine) { const key = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.9), frameM); key.position.set(0, H + 0.5, 0.2); g.add(key); }
+    if (!circus) { const lintel = new THREE.Mesh(new THREE.BoxGeometry(W + 0.2, mine ? 0.45 : 0.8, mine ? 0.5 : 0.8), frameM); lintel.position.set(0, H + 0.3, 0.15); lintel.castShadow = true; g.add(lintel); }
+    if (!mine && !circus) { const key = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.9), frameM); key.position.set(0, H + 0.5, 0.2); g.add(key); }
     // 観音開きの扉（奥へ開く）
     const dm = palace ? new THREE.MeshStandardMaterial({ color: '#e8eef8', map: marbleTex(), metalness: 0.2, roughness: 0.35 }) : new THREE.MeshStandardMaterial({ color: '#7a5436', map: woodTex(), roughness: 0.85, metalness: 0 });
     const band = palace ? glowMat(col, 1.2) : M.iron, dw = W / 2 - 0.6;
@@ -700,6 +704,7 @@ class FieldView extends BaseView {
     const heavy = st.heavy || (ph.dests.find(d => d.exit.heavy) || { exit: {} }).exit.heavy;
     const panels = [-1, 1].map(s => {
       const p = new THREE.Group(); p.position.set(s * (W / 2 - 0.65), 0, -0.1); g.add(p);
+      if (circus) { p.add(circusDoorLeaf(dw, H - 0.05, s)); return { p, s }; }
       if (heavy) { p.add(heavyDoorLeaf(dw, H - 0.05, s, null, heavy === true ? 'demon' : heavy)); return { p, s }; }
       const m = new THREE.Mesh(new THREE.BoxGeometry(dw, H - 0.05, 0.18), dm); m.position.set(-s * dw / 2, H / 2, 0); m.castShadow = true; p.add(m);
       for (const y of [0.2, 0.8]) { const b = new THREE.Mesh(new THREE.BoxGeometry(dw - 0.1, 0.12, 0.21), band); b.position.set(-s * dw / 2, H * y, 0); p.add(b); }
@@ -727,7 +732,14 @@ class FieldView extends BaseView {
     // 行き先の看板（木の札）と、門の灯り
     const d = ph.dests[0], sign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: signTex(FIELD_ZONES[d.to].name, ph.locked ? '封鎖中' : '▶ この先', col), transparent: true, toneMapped: false }));
     sign.position.set(0, H + 1.3, 0.62); g.add(sign);
-    const lamps = [-1, 1].map(s => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.36, 0.26), glowMat(col, 3)); m.position.set(s * (W / 2 + 0.15), H - 0.6, 0.6); g.add(m); return m; });
+    if (circus) {
+      // 電球の柱・横木・扇（扉の幅は、両側の蝶番のあいだ）。看板は扇の前に掛ける
+      const parts = {}, put = (k, geo, x, y, z) => { geo.translate(x, y, z); (parts[k] || (parts[k] = [])).push(flatGeo(geo)); };
+      const fan = circusFrameFace(put, 1, 0, W - 1.3, H, top - H, [-1, 1]);
+      placeTowerDoorFrames(parts, g);
+      sign.position.set(0, fan ? fan.cy + Math.min(0.55, fan.R - 0.4) : H + 0.9, 0.2);
+    }
+    const lamps = [-1, 1].map(s => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.36, 0.26), glowMat(col, 3)); m.position.set(s * (W / 2 + 0.15), H - 0.6, circus ? 0.15 : 0.6); g.add(m); return m; });
     return { g, panels, lamps, H, apply };
   }
   // 野外の区画の出入口：木のアーチと行き先の立て札（地図の端に立つ）
