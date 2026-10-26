@@ -8158,11 +8158,10 @@ const ZONE_BUILD = {
   // 笑顔の塔 1F：大ロビーの玉のりのリング（休演中）と太鼓、びっくり鏡の回廊、風船の間、きっぷ売り場、楽団の控え室、むすっと幕
   tower(K) {
     const happy = storyCond('scene:c3_05');
-    // 大ロビー：太鼓、ベンチ、看板（北半分は玉のりのリング）
-    for (const [x, z] of [[-8, 26], [8, 26]]) { K.cyl(x, z, 0.7, 0.9, 'clothRed', { seg: 14 }); K.mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.08, 14), 'white', x, 0.92, z); }
+    // 大ロビー：ベンチ、看板（北半分は玉のりのリング）
     for (const [x, z, ry] of [[-14, 12, Math.PI / 2], [14, 12, -Math.PI / 2], [-14, 2, Math.PI / 2], [14, 2, -Math.PI / 2]]) K.bench(x, z, ry);
     K.sign(0, -9.8, 0, '笑顔の塔', '↑ 階段の間・楽屋・大舞台', '#ffd27a', 5.6, 4.6);
-    for (const [x, z] of [[-10.5, -9.5], [10.5, -9.5], [-20, 20], [20, 20], [-20, -8], [20, -8]]) K.brazier(x, z, '#ffd27a', 1.1);
+    for (const [x, z] of [[-10.5, -9.5], [10.5, -9.5], [-20, 20], [20, 20]]) K.brazier(x, z, '#ffd27a', 1.1);
     // しぼんだ風船（塔が笑顔を取り戻すと、ふくらんで浮かぶ）。リングと戦いの場所はよける
     for (let i = 0; i < 10; i++) { const x = -18 + K.r() * 36, z = -6 + K.r() * 26; if (Math.abs(x) < 10 && z < 18) continue; balloon(K, x, z, happy ? 2.5 + K.r() * 2.5 : 0.15, happy ? 1 : 0.45); }
     // 入口の広間：色あせたポスターと、ピエロの立て看板
