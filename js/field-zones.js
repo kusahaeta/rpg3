@@ -3392,6 +3392,20 @@ const ZMAT = {
 };
 
 const INST_CELL = 32;   // 木・岩などの InstancedMesh を分ける区切りの大きさ（ZoneKit.flush）
+// 木の板の色（タル・ベンチのテクスチャ）
+const WOOD_COLS = ['#b07a4a', '#a06c40', '#bb8654', '#966238', '#a87446', '#9c6a3e'];
+// canvas の (x0, y0, w, h) に、ゆらいだ木目の線を n 本描く。vertical：縦の木目（なければ横）
+function woodGrain(g, x0, y0, w, h, n, vertical) {
+  for (let k = 0; k < n; k++) {
+    g.strokeStyle = `rgba(${Math.random() < 0.3 ? '255,220,170,.10' : '60,28,8,' + (0.1 + Math.random() * 0.18).toFixed(2)})`; g.lineWidth = 0.8 + Math.random() * 1.6; g.beginPath();
+    const p = (vertical ? x0 + Math.random() * w : y0 + Math.random() * h), f = 0.02 + Math.random() * 0.04, ph = Math.random() * 6, a = 0.6 + Math.random() * 1.6;
+    for (let s = 0; s <= 24; s++) {
+      const t = (vertical ? y0 + s / 24 * h : x0 + s / 24 * w), q = p + Math.sin(t * f + ph) * a;
+      vertical ? (s ? g.lineTo(q, t) : g.moveTo(q, t)) : (s ? g.lineTo(t, q) : g.moveTo(t, q));
+    }
+    g.stroke();
+  }
+}
 class ZoneKit {
   constructor(view) {
     this.v = view; this.zone = view.zone; this.scene = view.scene; this.r = view.rand;
@@ -3421,13 +3435,15 @@ class ZoneKit {
   box(x, z, w, h, d, mat, o = {}) {
     const geo = o.round ? new THREEX.RoundedBoxGeometry(w, h, d, 2, Math.min(w, h, d) * 0.1) : new THREE.BoxGeometry(w, h, d);
     const m = this.mesh(geo, mat, x, (o.y || 0) + h / 2, z, o);
-    if (o.col !== false && (o.y || 0) < 1.6) {
-      const ry = ((o.ry || 0) % Math.PI + Math.PI) % Math.PI, top = (o.y || 0) + h;
-      if (ry < 0.05 || ry > Math.PI - 0.05) this.colBox(x, z, w / 2, d / 2, top);
-      else if (Math.abs(ry - Math.PI / 2) < 0.05) this.colBox(x, z, d / 2, w / 2, top);
-      else this.col(x, z, Math.max(w, d) * 0.45, top);
-    }
+    if (o.col !== false && (o.y || 0) < 1.6) this.boxCol(x, z, w, d, (o.y || 0) + h, o.ry);
     return m;
+  }
+  // 幅 w・奥行き d の箱の当たり判定（ry が 90° の倍数なら箱、ほかは円）
+  boxCol(x, z, w, d, top, ry = 0) {
+    ry = (ry % Math.PI + Math.PI) % Math.PI;
+    if (ry < 0.05 || ry > Math.PI - 0.05) this.colBox(x, z, w / 2, d / 2, top);
+    else if (Math.abs(ry - Math.PI / 2) < 0.05) this.colBox(x, z, d / 2, w / 2, top);
+    else this.col(x, z, Math.max(w, d) * 0.45, top);
   }
   cyl(x, z, r, h, mat, o = {}) {
     const m = this.mesh(new THREE.CylinderGeometry(o.r2 ?? r, r, h, o.seg || 16, 1, !!o.open), mat, x, (o.y || 0) + h / 2, z, o);
@@ -5996,22 +6012,46 @@ class ZoneKit {
       for (let i = 0; i < 16 * dt; i++) { const j = jets[(Math.random() * 4) | 0]; p.emit(V3(x + j.c * land, y0 + wy + 0.05, z + j.sn * land), V3((Math.random() - 0.5) * 0.6, 0.5 + Math.random() * 0.5, (Math.random() - 0.5) * 0.6), hdr('#e8f8ff', 1.4), { life: 0.4, size: 0.05, grav: 7, drag: 0.1 }); }
     });
   }
-  bench(x, z, ry = 0) { this.box(x, z, 2, 0.12, 0.6, 'wood', { y: 0.45, ry, col: false }); this.box(x, z, 1.8, 0.45, 0.4, 'wood2', { ry }); }
+  // ベンチの材質：横に長い板の模様を 4 種類、上から段に並べたテクスチャ（横 512px＝板の長さ 2m）。seat＝座面、frame＝脚（少し暗い）
+  benchMats() {
+    if (TexCache.bench) return TexCache.bench;
+    const c = document.createElement('canvas'); c.width = 512; c.height = 256; const g = c.getContext('2d'), H = 64;
+    for (let k = 0; k < 4; k++) {
+      const y0 = k * H; g.fillStyle = WOOD_COLS[[0, 2, 4, 1][k]]; g.fillRect(0, y0, 512, H);
+      g.save(); g.beginPath(); g.rect(0, y0, 512, H); g.clip();
+      woodGrain(g, 0, y0, 512, H, 16, false);
+      for (let n = 0; n < 2; n++) if (Math.random() < 0.6) { g.fillStyle = 'rgba(70,34,12,.45)'; g.beginPath(); g.ellipse(40 + Math.random() * 432, y0 + 16 + Math.random() * 32, 7 + Math.random() * 4, 3 + Math.random() * 2, 0, 0, Math.PI * 2); g.fill(); }   // 節
+      const eg = g.createLinearGradient(0, y0, 0, y0 + H);   // 板の上のふちは明るく、下のふちは暗く（角の丸み）
+      eg.addColorStop(0, 'rgba(255,225,180,.22)'); eg.addColorStop(0.12, 'rgba(255,225,180,0)'); eg.addColorStop(0.85, 'rgba(40,20,6,0)'); eg.addColorStop(1, 'rgba(40,20,6,.4)');
+      g.fillStyle = eg; g.fillRect(0, y0, 512, H); g.restore();
+    }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.anisotropy = 4;
+    return (TexCache.bench = {
+      seat: new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0 }),
+      frame: new THREE.MeshStandardMaterial({ map: t, color: '#a08878', roughness: 0.9, metalness: 0 }),
+    });
+  }
+  // 木のベンチ：3 枚の板の座面、両はしの脚板と受け木、脚のあいだの横木。板の模様と木目の位置は場所から決める（乱数は使わない）
+  bench(x, z, ry = 0) {
+    const M = this.benchMats(), y = this.gy(x, z), rot = [0, ry, 0], hs = Math.abs(Math.floor(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453));
+    // 長さ len の板（箱の x の向きが板の長さ）。k で模様の段、木目の位置もずらす
+    const plank = (w, h, d, k, len) => {
+      const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv, off = ((hs + k * 37) % 100) / 100;
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, off + uv.getX(i) * len / 2, ((hs + k) % 4 + 0.12 + uv.getY(i) * 0.76) / 4);
+      return geo;
+    };
+    for (const i of [-1, 0, 1]) this.mg(M.seat, plank(2, 0.07, 0.18, i + 1, 2).translate(0, 0.535, i * 0.2), x, y, z, rot);
+    for (const sx of [-1, 1]) {
+      this.mg(M.frame, plank(0.44, 0.08, 0.4, sx + 4, 0.44).rotateZ(Math.PI / 2).translate(sx * 0.72, 0.22, 0), x, y, z, rot);
+      this.mg(M.frame, plank(0.6, 0.06, 0.08, sx + 6, 0.6).rotateY(Math.PI / 2).translate(sx * 0.72, 0.47, 0), x, y, z, rot);
+    }
+    this.mg(M.frame, plank(1.44, 0.06, 0.06, 9, 1.44).translate(0, 0.14, 0), x, y, z, rot);
+    this.boxCol(x, z, 1.8, 0.4, 0.45, ry);
+  }
   // タルの材質：side＝胴の板（縦に並んだ板。木目・板のすき間・両はしの汚れ）、lid＝ふた（横に並んだ板の丸）
   barrelMats() {
     if (TexCache.barrel) return TexCache.barrel;
-    const grain = (g, x0, y0, w, h, n, vertical) => {
-      for (let k = 0; k < n; k++) {
-        g.strokeStyle = `rgba(${Math.random() < 0.3 ? '255,220,170,.10' : '60,28,8,' + (0.1 + Math.random() * 0.18).toFixed(2)})`; g.lineWidth = 0.8 + Math.random() * 1.6; g.beginPath();
-        const p = (vertical ? x0 + Math.random() * w : y0 + Math.random() * h), f = 0.02 + Math.random() * 0.04, ph = Math.random() * 6, a = 0.6 + Math.random() * 1.6;
-        for (let s = 0; s <= 24; s++) {
-          const t = (vertical ? y0 + s / 24 * h : x0 + s / 24 * w), q = p + Math.sin(t * f + ph) * a;
-          vertical ? (s ? g.lineTo(q, t) : g.moveTo(q, t)) : (s ? g.lineTo(t, q) : g.moveTo(t, q));
-        }
-        g.stroke();
-      }
-    };
-    const cols = ['#b07a4a', '#a06c40', '#bb8654', '#966238', '#a87446', '#9c6a3e'];
+    const grain = woodGrain, cols = WOOD_COLS;
     // 胴：12 枚の板が横につなぎ目なく並ぶ
     const sc = document.createElement('canvas'); sc.width = 512; sc.height = 256; const sg = sc.getContext('2d'), N = 12, sw = 512 / N;
     for (let i = 0; i < N; i++) {
