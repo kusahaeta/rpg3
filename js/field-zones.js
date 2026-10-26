@@ -8173,7 +8173,7 @@ const ZONE_BUILD = {
     // 風船の間：天井いっぱいの風船と、まん中の小さな舞台
     for (let i = 0; i < 46; i++) { const x = 23 + K.r() * 16, z = -17 + K.r() * 34; balloon(K, x, z, 2.2 + K.r() * 3.6, 1); }
     K.mesh(new THREE.RingGeometry(3.2, 3.5, 40), K.glow('#ff9ad8', 1.2), 32, 0.03, -3, { rx: -Math.PI / 2, noShadow: true });
-    for (const [x, z] of [[24, -16], [38, -16], [24, 16], [38, 16]]) { K.cyl(x, z, 0.6, 0.7, 'wood', { seg: 12 }); balloonBunch(K, x, z, 0.8); }
+    for (const [x, z] of [[38, -16], [38, 16]]) { K.cyl(x, z, 0.6, 0.7, 'wood', { seg: 12 }); balloonBunch(K, x, z, 0.8); }
     // きっぷ売り場：窓口と値札、切符の束
     K.box(-21, -32.4, 4, 1.2, 1.4, 'wood', { round: true }); K.box(-21, -33.3, 4, 2.6, 0.2, 'wood2', { y: 1.2, col: false });
     K.sign(-21, -32.2, 0, 'きっぷ売り場', '入場料：笑顔ひとつ', '#ffd27a', 3.1, 2.4);
