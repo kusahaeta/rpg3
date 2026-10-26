@@ -7648,8 +7648,8 @@ const ZONE_BUILD = {
     K.box(17.2, 23.4, 0.9, 1.0, 2.2, 'bark'); K.barrel(9, 21.5); K.crate(9.6, 20.2);
     for (const x of [-23, -17.4, -11.8]) for (const z of [18, 23.6]) K.paddy(x, z, 4.6, 4.6);
     K.scarecrow(-17.4, 23.6, 0.3);
-    K.kido(0, 26.5, 0, 11, '街道の宿場', 'ようこそ');
-    for (const [x, z] of [[-7.4, 27.6], [7.4, 27.6]]) K.stoneLantern(x, z);
+    K.kido(0, 21.5, 0, 11, '街道の宿場', 'ようこそ');
+    for (const [x, z] of [[-7.4, 22.6], [7.4, 22.6]]) K.stoneLantern(x, z);
     K.flowers(-7, 17, 10, 1.4); K.flowers(26, 18.4, 8, 1.2, ['#ffe07a', '#ffffff']); K.flowers(-14, 28.4, 10, 1.6, ['#ffe07a', '#ffffff', '#ffb8d8']);
     K.light(0, 5, -5, '#fff0c8', 6, 24);
   },
