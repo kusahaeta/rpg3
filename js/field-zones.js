@@ -607,6 +607,8 @@ const FIELD_ZONES = {
     notes: [{ at: [1, -13], mark: [0, 1.2, -0.6], title: 'こわれた丸木橋', text: '川にかかっていた丸木橋。……まん中で、ぽっきり折れている。むこう岸へは、渡れそうにない。' },
       { at: [-13, 19], face: 0.3, post: ['↑ たんぽぽの原', '← 街道の宿場'], title: '道しるべ', text: '「北　たんぽぽの原／西　街道の宿場」……下のほうに、小さく「ねむり川を越えるときは、綿毛で」と書き足してある。' },
       { at: [5, 3.5], when: 'scene:c2_03', mark: [0, 3.2, -2.5], title: '綿毛の抜けた大たんぽぽ', text: '見上げるほど大きなたんぽぽ。……てっぺんの綿毛は、眠る子猫ごと、川のむこうへ飛んでいってしまった。' }],
+    // ねむり川：西の綿毛の丘（高さ 2）のそばだけ水面が高くならないよう、川じゅうを低い床にそろえる
+    waterLv: [[0, 8, 29, 11, 0]],
     map2d: [610, 236] },
   woods_valley: { ci: 1, name: 'まどろみの林・ねむり花の谷', bgm: 'drowsy', floor: '谷', parent: 'woods', w: 60, d: 80, stage: '2-2', after: 'c2_03', arenas: [[0, -28, 0], [14, 16, 0]], build: 'woodsValley', bg: 'forest', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-19, 15], [-23, -11], [21, -11]], foes: ['kinoko', 'karasu', 'noraInu'],
@@ -7714,7 +7716,13 @@ const ZONE_BUILD = {
     for (let i = 0; i < 24; i++) K.mesh(new THREE.SphereGeometry(0.12, 6, 4), pick(['#e8a040', '#d8783a', '#f0c060']), 1 + (K.r() - 0.5) * 12, 0.05, -22 + (K.r() - 0.5) * 6, { noShadow: true }).scale.y = 0.3;
     // リスの村：どんぐり型の家と、どんぐりのかご
     for (const [x, z, s] of [[-24, -15, 0.8], [-20, -17, 0.7], [-26, -9, 0.75]]) K.ratHouse(x, z, s, Math.atan2(-15 - x, -10 - z));
-    K.acorns(-17, -10, 5); K.cyl(-19, -11.5, 0.45, 0.4, 'wood2', { seg: 10, open: true });
+    // 「ふゆのたくわえ　たりない」の小さな立て札と、からっぽのどんぐりのかご（中は空で、底が見える）
+    const ry = Math.atan2(7.8, 4.3);
+    K.box(-19.8, -12.3, 0.1, 1.1, 0.1, 'wood2');
+    K.sign(-19.8 + Math.sin(ry) * 0.07, -12.3 + Math.cos(ry) * 0.07, ry, 'ふゆのたくわえ', 'たりない', '#ffd27a', 0.92, 1.2);
+    K.cyl(-19, -11.8, 0.4, 0.42, 'wood2', { seg: 12, r2: 0.5 });
+    K.mesh(new THREE.CircleGeometry(0.46, 12), '#3a2614', -19, 0.4, -11.8, { rx: -Math.PI / 2, noShadow: true });
+    K.mesh(new THREE.TorusGeometry(0.5, 0.05, 6, 16), 'bark', -19, 0.42, -11.8, { rx: Math.PI / 2 });
     // 光るきのこの輪
     for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; K.mushroom(-4 + Math.cos(a) * 3, 6 + Math.sin(a) * 2.6, 0.7, null, '#8affc8'); }
     K.v.emitters.push(dt => { if (Math.random() < dt * 6) K.v.p.emit(V3(-4 + (Math.random() - 0.5) * 5, K.gy(-4, 6) + 0.4, 6 + (Math.random() - 0.5) * 4), V3(0, 0.6, 0), hdr('#8affc8', 2), { life: 2.4, size: 0.08, drag: 0 }); });

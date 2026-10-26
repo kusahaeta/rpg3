@@ -203,6 +203,8 @@ Object.assign(EN, {
   '大樹のうろ': 'Great Tree Hollow',
   'ぽっかりと開いた、大きな木のうろ。……中には、どんぐりが山のようにつまっている。': 'A big, gaping hollow in the tree. ...Inside, it\'s packed with mountains of acorns.',
   'リスの村のどんぐり': 'Squirrel Village Acorns',
+  'ふゆのたくわえ': 'WINTER FOOD',
+  'たりない': 'NOT ENUF',
   '「ふゆのたくわえ　たりない」……小さな字の立て札と、からっぽのどんぐりのかご。': '"NOT ENUF FOOD FOR WINTER" ...A sign in tiny letters, and an empty acorn basket.',
   // ── field-zones.js FIELD_ZONES.road2
   'ごろごろ団に注意': 'Beware the Rumble Gang',
