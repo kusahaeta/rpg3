@@ -5553,12 +5553,58 @@ class ZoneKit {
     g.add(new THREE.Mesh(merge(rims), this.glow(col, 0.9)), new THREE.Mesh(merge(cuts), flat('scratchCut', '#6a5a88')), new THREE.Mesh(merge(shades), flat('scratchShade', '#1e1628')));
     this.scene.add(g);
   }
+  // 屋台の材質。board：縦に並んだ板（横 256px＝1m に 4 枚）。cloth・valance：色 col と生成りのしまの布（横 512px に 8 本）と、
+  //   ふちが波形に透ける垂れ幕
+  stallMats(col) {
+    const k = 'stall' + col;
+    if (TexCache[k]) return TexCache[k];
+    if (!TexCache.stallBoard) {
+      const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+      for (let i = 0; i < 4; i++) {
+        const x0 = i * 64; g.fillStyle = WOOD_COLS[(i * 3 + 1) % WOOD_COLS.length]; g.fillRect(x0, 0, 64, 256);
+        g.save(); g.beginPath(); g.rect(x0, 0, 64, 256); g.clip(); woodGrain(g, x0, 0, 64, 256, 8, true); g.restore();
+        g.fillStyle = 'rgba(255,225,180,.16)'; g.fillRect(x0 + 1, 0, 2, 256); g.fillStyle = 'rgba(38,18,6,.7)'; g.fillRect(x0 + 61, 0, 3, 256);
+      }
+      const vg = g.createLinearGradient(0, 0, 0, 256); vg.addColorStop(0.8, 'rgba(40,20,6,0)'); vg.addColorStop(1, 'rgba(40,20,6,.45)');   // 足もとの汚れ
+      g.fillStyle = vg; g.fillRect(0, 0, 256, 256);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.anisotropy = 4;
+      TexCache.stallBoard = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0 });
+    }
+    // しま：布の色と生成りを交互に。織り目の細い線と、しまのふちの影
+    const stripes = (g, h) => {
+      for (let i = 0; i < 8; i++) {
+        g.fillStyle = i % 2 ? '#fff4e0' : col; g.fillRect(i * 64, 0, 64, h);
+        g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(i * 64, 0, 3, h); g.fillRect(i * 64 + 61, 0, 3, h);
+      }
+      for (let y = 0; y < h; y += 3) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${(0.02 + Math.random() * 0.04).toFixed(3)})`; g.fillRect(0, y, 512, 1); }
+    };
+    const cc = document.createElement('canvas'); cc.width = 512; cc.height = 256; stripes(cc.getContext('2d'), 256);
+    // 垂れ幕：上 40px は帯、その下はしま一本ごとの半円（外は透ける）。上に縫い目の線
+    const vc = document.createElement('canvas'); vc.width = 512; vc.height = 64; const vg = vc.getContext('2d');
+    vg.beginPath(); vg.rect(0, 0, 512, 34); for (let i = 0; i < 8; i++) { vg.moveTo(i * 64 + 64, 33); vg.arc(i * 64 + 32, 33, 32, 0, Math.PI); } vg.clip();
+    stripes(vg, 64); vg.fillStyle = 'rgba(0,0,0,.18)'; vg.fillRect(0, 6, 512, 2);
+    const tex = c => { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+    const valance = new THREE.MeshStandardMaterial({ map: tex(vc), roughness: 0.9, metalness: 0, alphaTest: 0.5, side: THREE.DoubleSide });
+    valance.userData.noShadow = true;
+    return (TexCache[k] = { board: TexCache.stallBoard, cloth: new THREE.MeshStandardMaterial({ map: tex(cc), roughness: 0.9, metalness: 0 }), valance });
+  }
+  // 屋台：縦の板を張ったカウンターに板 4 枚の天板、四すみの柱、しまの布の屋根（前が低い）と前後の垂れ幕、天板に並べた品物。
+  //   cloth：屋根の布の色（ZMAT の名前か色）、goods：品物の色。前は +Z（ry で回す）
   stall(x, z, ry = 0, cloth = 'clothRed', goods = ['#ffd27a', '#ff8a5a', '#6dff9e']) {
-    this.box(x, z, 2.8, 1, 1.4, 'wood', { ry });
+    const M = this.stallMats(ZMAT[cloth] ? ZMAT[cloth][0] : cloth), F = this.benchMats(), y = this.gy(x, z), rot = [0, ry, 0], hs = posHash(x, z);
+    // カウンター：板の幅がどの面でも同じになるように、面の幅で UV をのばす
+    const body = new THREE.BoxGeometry(2.8, 1, 1.4), na = body.attributes.normal, uv = body.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * (Math.abs(na.getZ(i)) > 0.5 ? 2.8 : 1.4));
+    this.mg(M.board, body.translate(0, 0.5, 0), x, y, z, rot);
+    for (let i = 0; i < 4; i++) this.mg(F.seat, this.plankGeo(3, 0.07, 0.38, hs + i, 3).translate(0, 1.035, -0.585 + i * 0.39), x, y, z, rot);
+    for (const u of [-1.3, 1.3]) for (const v of [-0.6, 0.6]) this.mg(F.frame, this.plankGeo(2.3, 0.1, 0.1, hs + (u > 0 ? 5 : 7) + (v > 0 ? 1 : 0), 2.3).rotateZ(Math.PI / 2).translate(u, 1.15, v), x, y, z, rot);
+    // 屋根：布の板と、前後のふちから下がる垂れ幕（いっしょに前へ傾ける）
+    const tilt = g => g.rotateX(0.18).translate(0, 2.35, 0);
+    this.mg(M.cloth, tilt(new THREE.BoxGeometry(3.2, 0.06, 1.9)), x, y, z, rot);
+    for (const v of [-0.95, 0.95]) this.mg(M.valance, tilt(new THREE.PlaneGeometry(3.2, 0.32).translate(0, -0.18, v)), x, y, z, rot);
     const c = Math.cos(ry), sn = Math.sin(ry), P = (u, v) => [x + u * c + v * sn, z - u * sn + v * c];
-    for (const u of [-1.3, 1.3]) for (const v of [-0.6, 0.6]) { const [px, pz] = P(u, v); this.mesh(new THREE.BoxGeometry(0.08, 2.3, 0.08), 'wood2', px, 1.15, pz); }
-    const aw = this.mesh(new THREE.BoxGeometry(3.2, 0.1, 1.9), cloth, x, 2.35, z, { ry }); aw.rotateX(0.18);
-    for (let i = 0; i < 5; i++) { const [px, pz] = P(-1 + i * 0.5, 0); this.mesh(new THREE.SphereGeometry(0.16, 8, 6), goods[i % goods.length], px, 1.15, pz); }
+    for (let i = 0; i < 5; i++) { const [px, pz] = P(-1 + i * 0.5, 0); this.mesh(new THREE.SphereGeometry(0.16, 8, 6), goods[i % goods.length], px, 1.23, pz); }
+    this.boxCol(x, z, 2.8, 1.4, 1, ry);
   }
   // 魚を干す棚
   fishRack(x, z, ry = 0) {
