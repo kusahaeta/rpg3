@@ -5997,7 +5997,74 @@ class ZoneKit {
     });
   }
   bench(x, z, ry = 0) { this.box(x, z, 2, 0.12, 0.6, 'wood', { y: 0.45, ry, col: false }); this.box(x, z, 1.8, 0.45, 0.4, 'wood2', { ry }); }
-  barrel(x, z) { this.cyl(x, z, 0.45, 1.1, 'wood', { seg: 12 }); for (const y of [0.2, 0.9]) this.mesh(new THREE.TorusGeometry(0.46, 0.03, 4, 16), 'iron', x, y, z, { rx: Math.PI / 2 }); }
+  // タルの材質：side＝胴の板（縦に並んだ板。木目・板のすき間・両はしの汚れ）、lid＝ふた（横に並んだ板の丸）
+  barrelMats() {
+    if (TexCache.barrel) return TexCache.barrel;
+    const grain = (g, x0, y0, w, h, n, vertical) => {
+      for (let k = 0; k < n; k++) {
+        g.strokeStyle = `rgba(${Math.random() < 0.3 ? '255,220,170,.10' : '60,28,8,' + (0.1 + Math.random() * 0.18).toFixed(2)})`; g.lineWidth = 0.8 + Math.random() * 1.6; g.beginPath();
+        const p = (vertical ? x0 + Math.random() * w : y0 + Math.random() * h), f = 0.02 + Math.random() * 0.04, ph = Math.random() * 6, a = 0.6 + Math.random() * 1.6;
+        for (let s = 0; s <= 24; s++) {
+          const t = (vertical ? y0 + s / 24 * h : x0 + s / 24 * w), q = p + Math.sin(t * f + ph) * a;
+          vertical ? (s ? g.lineTo(q, t) : g.moveTo(q, t)) : (s ? g.lineTo(t, q) : g.moveTo(t, q));
+        }
+        g.stroke();
+      }
+    };
+    const cols = ['#b07a4a', '#a06c40', '#bb8654', '#966238', '#a87446', '#9c6a3e'];
+    // 胴：12 枚の板が横につなぎ目なく並ぶ
+    const sc = document.createElement('canvas'); sc.width = 512; sc.height = 256; const sg = sc.getContext('2d'), N = 12, sw = 512 / N;
+    for (let i = 0; i < N; i++) {
+      const x0 = i * sw; sg.fillStyle = cols[i % cols.length]; sg.fillRect(x0, 0, sw, 256);
+      sg.save(); sg.beginPath(); sg.rect(x0, 0, sw, 256); sg.clip();
+      grain(sg, x0, 0, sw, 256, 14, true);
+      if (Math.random() < 0.45) { sg.fillStyle = 'rgba(70,34,12,.45)'; sg.beginPath(); sg.ellipse(x0 + sw * (0.3 + Math.random() * 0.4), 40 + Math.random() * 176, 3 + Math.random() * 2, 6 + Math.random() * 3, 0, 0, Math.PI * 2); sg.fill(); }   // 節
+      sg.restore();
+      sg.fillStyle = 'rgba(255,225,180,.18)'; sg.fillRect(x0 + 1, 0, 2, 256);   // 板の左のふちの照り
+      sg.fillStyle = 'rgba(38,18,6,.75)'; sg.fillRect(x0 + sw - 2.5, 0, 2.5, 256);   // 板のすき間
+    }
+    const vg = sg.createLinearGradient(0, 0, 0, 256);
+    vg.addColorStop(0, 'rgba(40,20,6,.45)'); vg.addColorStop(0.14, 'rgba(40,20,6,0)'); vg.addColorStop(0.86, 'rgba(40,20,6,0)'); vg.addColorStop(1, 'rgba(40,20,6,.5)');
+    sg.fillStyle = vg; sg.fillRect(0, 0, 512, 256);
+    // ふた：横に並んだ 5 枚の板の丸と、外の暗いふち
+    const lc = document.createElement('canvas'); lc.width = lc.height = 256; const lg = lc.getContext('2d');
+    lg.save(); lg.beginPath(); lg.arc(128, 128, 128, 0, Math.PI * 2); lg.clip();
+    for (let i = 0; i < 5; i++) {
+      const y0 = i * 256 / 5, h = 256 / 5; lg.fillStyle = cols[(i * 2 + 1) % cols.length]; lg.fillRect(0, y0, 256, h);
+      lg.save(); lg.beginPath(); lg.rect(0, y0, 256, h); lg.clip(); grain(lg, 0, y0, 256, h, 9, false); lg.restore();
+      lg.fillStyle = 'rgba(38,18,6,.7)'; lg.fillRect(0, y0 + h - 2.5, 256, 2.5);
+    }
+    const rg = lg.createRadialGradient(128, 128, 90, 128, 128, 128); rg.addColorStop(0, 'rgba(40,20,6,0)'); rg.addColorStop(1, 'rgba(40,20,6,.55)');
+    lg.fillStyle = rg; lg.fillRect(0, 0, 256, 256); lg.restore();
+    const tex = (c, rep) => { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; if (rep) t.wrapS = THREE.RepeatWrapping; return t; };
+    return (TexCache.barrel = {
+      side: new THREE.MeshStandardMaterial({ map: tex(sc, true), roughness: 0.85, metalness: 0 }),
+      lid: new THREE.MeshStandardMaterial({ map: tex(lc), roughness: 0.9, metalness: 0 }),
+    });
+  }
+  // タルの形（足もと y=0 から高さ h、まん中の半径 r）：まん中がふくらんだ胴、ふたのまわりの板のはみ出し、へこんだふた、鉄のたが。
+  //   both：下にもふた（横にしたタル）。返すのは材質ごとのジオメトリ（mg に渡す）
+  barrelParts(r, h, both = false) {
+    const ends = r * 0.86, R = y => ends + (r - ends) * Math.sin(Math.PI * y / h), lip = r * 0.07, dip = h * 0.035, V2 = (a, b) => new THREE.Vector2(a, b);
+    const ys = [0, 0.08, 0.2, 0.35, 0.5, 0.65, 0.8, 0.92, 1].map(t => t * h);
+    const prof = [...(both ? [V2(ends - lip, dip), V2(ends - lip, 0)] : []), ...ys.map(y => V2(R(y), y)), V2(ends - lip, h), V2(ends - lip, h - dip)];
+    const body = new THREE.LatheGeometry(prof, 20), pa = body.attributes.position, uv = body.attributes.uv, wrap = Math.max(1, Math.round(2 * Math.PI * r / 2.8));
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * wrap, Math.min(1, Math.max(0, pa.getY(i) / h)));
+    const lids = [new THREE.CircleGeometry(ends - lip, 20).rotateX(-Math.PI / 2).translate(0, h - dip, 0)];
+    if (both) lids.push(new THREE.CircleGeometry(ends - lip, 20).rotateX(Math.PI / 2).translate(0, dip, 0));
+    // たが：胴に沿った細い帯（両はしの近くに二本ずつ）
+    const hoops = [0.07, 0.2, 0.8, 0.93].map(t => {
+      const y0 = (t - 0.035) * h, y1 = (t + 0.035) * h, o = r * 0.03;
+      return new THREE.LatheGeometry([V2(R(y0) - 0.005, y0), V2(R(y0) + o, y0), V2(R(y1) + o, y1), V2(R(y1) - 0.005, y1)], 20);
+    });
+    return { body, lid: THREEX.BufferGeometryUtils.mergeGeometries(lids), hoop: THREEX.BufferGeometryUtils.mergeGeometries(hoops) };
+  }
+  // 立てたタル：板の向きは場所から決める（並べたタルの板のすき間がそろわないように。乱数は使わない＝ほかの小物の置き場所が変わらない）
+  barrel(x, z) {
+    const M = this.barrelMats(), P = this.barrelParts(0.45, 1.1), y = this.gy(x, z), ry = [0, ((Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1) * Math.PI * 2, 0];
+    this.mg(M.side, P.body, x, y, z, ry); this.mg(M.lid, P.lid, x, y, z, ry); this.mg('iron', P.hoop, x, y, z, ry);
+    this.col(x, z, 0.45, 1.1);
+  }
   crate(x, z, s = 1.1) { this.box(x, z, s, s, s, 'wood', { round: true, ry: this.r() < 0.5 ? 0 : Math.PI / 2 }); }
   lantern(x, z, col = '#ffb04a', h = 2.6) {
     this.box(x, z, 0.18, h, 0.18, 'wood2');
@@ -9121,9 +9188,10 @@ const ZONE_BUILD = {
     K.demonDecor({ banners: false, flame: '#ffa04a' });
     // ミルク蔵：横にした大樽（台にのせる）
     const cask = (x, z, ry) => {
-      K.mesh(new THREE.CylinderGeometry(1, 1, 2.2, 16), 'wood', x, 1.25, z, { rz: Math.PI / 2, ry });
-      for (const u of [-0.8, 0.8]) K.mesh(new THREE.TorusGeometry(1.01, 0.05, 6, 20), 'iron', x + Math.cos(ry) * u, 1.25, z - Math.sin(ry) * u, { ry: ry + Math.PI / 2 });
-      K.mesh(new THREE.CircleGeometry(0.5, 16), 'white', x + Math.cos(ry) * 1.11, 1.3, z - Math.sin(ry) * 1.11, { ry: ry + Math.PI / 2, noShadow: true });
+      const M = K.barrelMats(), P = K.barrelParts(1, 2.2, true), y = K.gy(x, z), rot = [0, ry, Math.PI / 2];
+      for (const g of [P.body, P.lid, P.hoop]) g.translate(0, -1.1, 0);
+      K.mg(M.side, P.body, x, y + 1.25, z, rot); K.mg(M.lid, P.lid, x, y + 1.25, z, rot); K.mg('iron', P.hoop, x, y + 1.25, z, rot);
+      K.mesh(new THREE.CircleGeometry(0.42, 16), 'white', x + Math.cos(ry) * 1.04, 1.3, z - Math.sin(ry) * 1.04, { ry: ry + Math.PI / 2, noShadow: true });
       K.box(x, z, 2, 0.3, 1.6, 'wood2', { ry, col: false }); K.colBox(x, z, 1.1, 1.1, 2.3);
     };
     for (const z of [-19, -16, -5, -2, 1, 4]) cask(-8.6, z, 0);
