@@ -663,13 +663,94 @@ function backstageDoorFrame(out, g, w, thick, dh, room, T) {
     for (const a of [0, Math.PI / 2]) { const t = new THREE.TorusGeometry(0.13, 0.012, 4, 12, Math.PI).rotateX(Math.PI / 2).rotateZ(a); if (f < 0) t.rotateY(Math.PI); put('gold', t, 0, ly, zf + f * 0.04); }
   }
 }
-// まとめた飾りを、材質ごとに 1 メッシュにして置く。電球は A と B が、かわりばんこにまたたく
-function placeTowerDoorFrames(out, scene) {
-  const M = towerDoorMats(), hi = hdr('#fff0b0', 2.4), lo = hdr('#ffa868', 0.7);
+// 古代遺跡の扉：砂色の一枚石の扉板に、浮き彫りの枠と青銅の帯。鏡板には光る線で彫った世界樹（幹は合わせ目、枝と根は左右へ、梢の弧）。
+//   閉じると左右の彫りがそろって一本の樹になる。まわりは猫の耳の柱頭をのせた石の柱と、光る宝石のかなめ石のまぐさ（ruinFrameFace）
+//   封印の扉（ZoneKit.sealDoor）と同じ一族の、ふだんの扉。封印の間（ruins_seal）は、もとの扉のまま
+const RUIN_DOOR_M = {};
+function ruinDoorMats() {
+  if (RUIN_DOOR_M.slab) return RUIN_DOOR_M;
+  const std = (color, o) => new THREE.MeshStandardMaterial({ color, roughness: 0.92, metalness: 0.02, ...o });
+  return Object.assign(RUIN_DOOR_M, {
+    // 暗い迷宮でも黒くつぶれないよう、石はほんのり明るくしておく（封印の扉と同じ）
+    slab: std('#ffffff', { map: ruinSlabTex(), emissive: '#5a5442', emissiveIntensity: 0.55 }),
+    panel: std('#9a927a', { map: ruinSlabTex(), emissive: '#3a3a30', emissiveIntensity: 0.5 }),
+    stone: std('#e4dcc0', { map: ruinSlabTex(), emissive: '#5a5442', emissiveIntensity: 0.55 }),
+    bronze: std('#5e8a76', { metalness: 0.45, roughness: 0.55 }),
+    moss: std('#5e7a3e', { roughness: 1, flatShading: true }),
+    rune: glowMat('#8affe0', 1.4),
+  });
+}
+// 扉板 1 枚：蝶番が原点で、-s 側へ w のびる（高さ h）。表と裏の両面に彫る
+function ruinDoorLeaf(w, h, s) {
+  const M = ruinDoorMats(), parts = { slab: [], panel: [], stone: [], bronze: [], rune: [] }, T = 0.34, cx = -s * w / 2, ex = -s * w;   // ex：合わせ目
+  const put = (k, geo, x, y, z) => { geo.translate(x, y, z); parts[k].push(flatGeo(geo)); };
+  const B = (w0, h0, d0) => new THREE.BoxGeometry(w0, h0, d0);
+  put('slab', B(w, h, T), cx, h / 2, 0);
+  const k = Math.min(w, h * 0.42, 2.2);   // 樹の大きさ
+  for (const f of [-1, 1]) {
+    const zf = f * T / 2;
+    // 浮き彫りの枠と、くぼんだ鏡板（暗い石）
+    for (const u of [0.11, w - 0.11]) put('stone', B(0.22, h, 0.06), -s * u, h / 2, zf + f * 0.03);
+    for (const [y, t] of [[0.14, 0.28], [h - 0.14, 0.28]]) put('stone', B(w - 0.1, t, 0.06), cx, y, zf + f * 0.03);
+    put('panel', B(w - 0.44, h - 0.56, 0.02), cx, h / 2, zf + f * 0.01);
+    // 青銅の帯と鋲
+    for (const y of [0.62, h - 0.62]) {
+      put('bronze', B(w - 0.06, 0.18, 0.05), cx, y, zf + f * 0.045);
+      for (let u = 0.25; u < w - 0.15; u += 0.36) put('bronze', new THREE.SphereGeometry(0.045, 6, 4), -s * u, y, zf + f * 0.075);
+    }
+    // 光る世界樹：幹（合わせ目に半分）、枝、根、梢の弧と実
+    const zr = zf + f * 0.026, bar = (len, x0, y0, a) => put('rune', B(len, 0.055, 0.012).rotateZ(s * a), ex + s * Math.cos(a) * len / 2 + s * x0, y0 + Math.sin(a) * len / 2, zr);
+    const y0 = h * 0.24, y1 = h * 0.6;
+    put('rune', B(0.05, y1 - y0, 0.012), ex + s * 0.025, (y0 + y1) / 2, zr);
+    for (const [y, L, a] of [[0.4, 0.5, 0.55], [0.48, 0.42, 0.75], [0.55, 0.3, 0.95]]) bar(L * k, 0, h * y, a);
+    for (const [L, a] of [[0.36, -0.5], [0.24, -1.0]]) bar(L * k, 0, y0, a);
+    const side = s * f > 0, R = 0.48 * k;
+    put('rune', new THREE.RingGeometry(R - 0.03, R + 0.03, 10, 1, side ? 0 : Math.PI / 2, Math.PI / 2).rotateY(f > 0 ? 0 : Math.PI), ex, y1 - 0.05, zr);
+    for (const [a, r] of [[0.35, 0.8], [0.9, 0.62], [1.25, 0.9]]) put('rune', new THREE.CircleGeometry(0.06, 8).rotateY(f > 0 ? 0 : Math.PI), ex + s * Math.cos(a) * R * r, y1 - 0.05 + Math.sin(a) * R * r, zr + f * 0.008);
+  }
+  const g = new THREE.Group();
+  for (const key of Object.keys(parts)) {
+    const m = new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(parts[key]), M[key]);
+    m.castShadow = key !== 'rune'; m.receiveShadow = true; g.add(m);
+  }
+  return g;
+}
+function ruinDoorFrame(out, g, w, thick, dh, room, T) {
+  const { put, sides } = doorFrameKit(out, g, w, thick, T);
+  for (const f of [-1, 1]) ruinFrameFace(put, f, f * thick / 2, w, dh, room, sides(f));
+}
+// 遺跡の扉の飾りの片面（引数は circusFrameFace と同じ）：猫の耳の柱頭の石の柱（光るルーン）、まぐさとかなめ石（光る宝石）、苔
+function ruinFrameFace(put, f, zf, w, dh, room, sides) {
+  const B = (w0, h0, d0) => new THREE.BoxGeometry(w0, h0, d0), PW = 0.5, LH = 0.46;
+  let seed = Math.round((w * 7 + dh * 13 + zf * 31) * 100) | 1;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) & 0xffff) / 0x10000;
+  const moss = (x, y, r) => put('moss', new THREE.IcosahedronGeometry(r, 0).scale(1.3, 0.45, 0.9), x, y, zf + f * (0.12 + rnd() * 0.08));
+  for (const sx of sides) {
+    const px = sx * (w / 2 + PW / 2);
+    put('stone', B(PW + 0.16, 0.32, 0.26), px, 0.16, zf + f * 0.13);                // 台座
+    put('stone', B(PW, dh, 0.16), px, dh / 2, zf + f * 0.08);                       // 柱
+    put('stone', B(PW + 0.16, 0.28, 0.26), px, dh + 0.14, zf + f * 0.13);           // 柱頭
+    for (const e of [-1, 1]) put('stone', new THREE.ConeGeometry(0.11, 0.3, 4).rotateY(Math.PI / 4).rotateZ(-e * 0.15), px + e * 0.15, dh + 0.43, zf + f * 0.13);   // 猫の耳
+    for (const y of [0.32, 0.5, 0.68]) put('rune', B(0.06, 0.34, 0.012), px, dh * y, zf + f * 0.166);
+    moss(px + sx * 0.2, 0.34, 0.16);
+  }
+  // まぐさ（扉の上の横石）と、光るルーンの線
+  put('stone', B(w + 0.1, LH, 0.2), 0, dh + LH / 2, zf + f * 0.1);
+  for (const sx of [-1, 1]) put('rune', B(Math.max(0.1, w / 2 - 0.75), 0.04, 0.012), sx * (w / 4 + 0.2), dh + LH / 2, zf + f * 0.206);
+  // かなめ石と、光る宝石
+  if (room > LH + 0.5) {
+    put('stone', B(0.62, 0.78, 0.3), 0, dh + 0.39, zf + f * 0.15);
+    put('rune', new THREE.OctahedronGeometry(0.13, 0).scale(1, 1.4, 0.7), 0, dh + 0.42, zf + f * 0.31);
+  }
+  for (let i = 0; i < 4; i++) moss((rnd() * 2 - 1) * (w / 2), dh + LH + 0.02, 0.14 + rnd() * 0.1);
+}
+// まとめた飾りを、材質ごとに 1 メッシュにして置く（M：材質。ふだんは塔の扉）。電球は A と B が、かわりばんこにまたたく
+function placeDoorFrames(out, scene, M = towerDoorMats()) {
+  const hi = hdr('#fff0b0', 2.4), lo = hdr('#ffa868', 0.7);
   for (const k of Object.keys(out)) {
     if (!out[k].length) continue;
     const m = new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(out[k]), M[k]);
-    m.receiveShadow = !k.startsWith('bulb'); scene.add(m);
+    m.receiveShadow = !k.startsWith('bulb') && k !== 'rune'; scene.add(m);
     if (k === 'bulbA') m.onBeforeRender = () => { const on = (performance.now() / 420 | 0) % 2; M.bulbA.color.copy(on ? hi : lo); M.bulbB.color.copy(on ? lo : hi); };
   }
 }
@@ -778,7 +859,7 @@ const ARCH_STYLES = {
   // ニャハハ城の中：クリーム色の大理石、金の縁取りと灯り、格天井
   nyapalace: { look: 'palace', heavy: 'royal', roof: true, wallH: 8, wall: '#f6eee2', wall2: '#e6d6c0', trim: '#8a6a3a', cliff: '#eadfce', ceil: '#f2e6d4', step: '#efe6d8', glass: '#ffe8c0', glow: '#ffd27a', light: '#fff4dc', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   // 古代遺跡の中（壁画の大広間・崩れた迷宮・封印の間）：苔むした古い石の壁（天井あり、青緑に光る縁取り）
-  ruin: { look: 'palace', roof: true, wallH: 8, wall: '#c8c0a4', wall2: '#a8a088', trim: '#5a5a48', cliff: '#b0aa90', ceil: '#6a6a58', step: '#b8b098', glass: '#bfffe8', glow: '#8affe0', light: '#e8fff4', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
+  ruin: { look: 'palace', roof: true, wallH: 8, wall: '#c8c0a4', wall2: '#a8a088', trim: '#5a5a48', cliff: '#b0aa90', ceil: '#6a6a58', step: '#b8b098', glass: '#bfffe8', glow: '#8affe0', light: '#e8fff4', rail: 'ice', door: 'ruin', lift: 'cage', exit: 'gate' },
   // ねこ神の夢・うとうとの庭：お菓子の木立と、ケーキの段（cake：段の側面はスポンジとクリームの層で、なめらか。柵は立てない）
   dreamgarden: { look: 'cliff', outdoor: 'flora', roof: false, canopy: 3, cake: true, rock: '#e8b8d8', cap: '#ffd8e8', path: '#fff0c8', trim: '#c88ab8', cliff: '#ffffff', step: '#ffe8f0', glass: '#bfe8ff', glow: '#ff9ad8', rail: 'none', door: 'swing', lift: 'cage', exit: 'arch' },
   // ねこ神の夢・へんてこ回廊とねこ神の寝所：うす紫の壁と、夜空の色の天井（ゆめかわいい宮殿）
@@ -1068,6 +1149,19 @@ function backstageDoorTex() {
   g.stroke();
   noiseCanvas(g, H, 700, 0.05, '40,10,24');
   return (TexCache.backstageDoor = texOf(c));
+}
+// 遺跡の扉の一枚石（砂色の石に、まだらの風化・細いひび・上からの雨のすじ・足もとの苔のしみ）
+function ruinSlabTex() {
+  if (TexCache.ruinSlab) return TexCache.ruinSlab;
+  const W = 256, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  g.fillStyle = '#c4bc9e'; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 160; i++) { const v = 150 + Math.random() * 60 | 0; g.fillStyle = `rgba(${v},${v - 6},${v - 30},.35)`; g.beginPath(); g.ellipse(Math.random() * W, Math.random() * H, 8 + Math.random() * 30, 6 + Math.random() * 18, Math.random() * 3, 0, 7); g.fill(); }
+  for (let i = 0; i < 26; i++) { const x = Math.random() * W, l = 40 + Math.random() * 160; const gr = g.createLinearGradient(0, 0, 0, l); gr.addColorStop(0, 'rgba(60,56,40,.22)'); gr.addColorStop(1, 'rgba(60,56,40,0)'); g.fillStyle = gr; g.fillRect(x, 0, 3 + Math.random() * 8, l); }
+  g.strokeStyle = 'rgba(50,46,34,.45)'; g.lineWidth = 1.2;
+  for (let k = 0; k < 7; k++) { let x = Math.random() * W, y = Math.random() * H; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 6; j++) { x += (Math.random() - 0.5) * 30; y += 8 + Math.random() * 18; g.lineTo(x, y); } g.stroke(); }
+  for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(80,110,50,${0.15 + Math.random() * 0.25})`; g.beginPath(); g.ellipse(Math.random() * W, H - Math.random() * Math.random() * 120, 4 + Math.random() * 14, 3 + Math.random() * 8, 0, 0, 7); g.fill(); }
+  noiseCanvas(g, H, 1500, 0.08, '50,46,34');
+  return (TexCache.ruinSlab = texOf(c));
 }
 // ケーキの段の側面（幅4m × 高さ4m。2m ごとに、下からスポンジ・クリーム・いちごジャム・スポンジ・てっぺんの白いクリーム）
 function cakeTex() {
@@ -1463,7 +1557,8 @@ function buildArchitecture(view, T) {
   // 扉（D）：上の壁と扉板。ステーションは左右に滑り、それ以外は観音開き
   //   笑顔の塔はサーカス小屋の扉（circus）、楽屋の階は裏方の木の扉（backstage。区画の door で決める）。まわりの飾りは towerFrame にまとめる
   //   区画の starDoors（扉のまん中の [x, z]）は楽屋の入口で、扉に金の星をつける
-  const doorLook = zone.door || S.door, circus = doorLook === 'circus', backstage = doorLook === 'backstage', towerFrame = {};
+  //   古代遺跡は世界樹を彫った石の扉（ruin）
+  const doorLook = zone.door || S.door, circus = doorLook === 'circus', backstage = doorLook === 'backstage', ruin = doorLook === 'ruin', towerFrame = {};
   const starDoor = d => (zone.starDoors || []).some(([x, z]) => Math.abs(x - d.x) < 1.5 && Math.abs(z - d.z) < 1.5);
   const doorMat = style === 'station' ? new THREE.MeshStandardMaterial({ color: '#3a4266', metalness: 0.7, roughness: 0.3 })
     : style === 'palace' ? new THREE.MeshStandardMaterial({ color: '#e8eef8', map: marbleTex(), metalness: 0.2, roughness: 0.35 })
@@ -1474,14 +1569,14 @@ function buildArchitecture(view, T) {
     if (open) d.cells.forEach(i => { const c = T.colOf(i), r = T.rowOf(i); DIR4.forEach(([dc, dr]) => { const j = T.idx(c + dc, r + dr); if (j >= 0 && kind[j] <= K.WINDOW) top = Math.max(top, T.top[j]); }); });
     else d.cells.forEach(i => { top = Math.max(top, T.ceilOf(i)); });
     if (!top) top = d.h + wallH;
-    const dh = Math.min(style === 'station' ? 4 : circus ? 4.4 : backstage ? 4 : style === 'palace' ? 5.5 : 4.2, top - d.h - 0.5);
+    const dh = Math.min(style === 'station' ? 4 : circus ? 4.4 : backstage ? 4 : ruin ? 5.2 : style === 'palace' ? 5.5 : 4.2, top - d.h - 0.5);
     acc(style === 'station' || style === 'palace' || style === 'town' ? 'wall' : 'rock', 4).box(X0, d.h + dh, Z0, X1, top, Z1, 't');
     if (open) { acc('cap', 4).box(X0, top, Z0, X1, top + 0.12, Z1, 'b'); }
-    if (!circus && !backstage) acc(style === 'mine' ? 'wood' : style === 'palace' ? 'wall2' : 'trim', 4).box(X0 - 0.02, d.h + dh - 0.25, Z0 - 0.02, X1 + 0.02, d.h + dh, Z1 + 0.02, 't');
+    if (!circus && !backstage && !ruin) acc(style === 'mine' ? 'wood' : style === 'palace' ? 'wall2' : 'trim', 4).box(X0 - 0.02, d.h + dh - 0.25, Z0 - 0.02, X1 + 0.02, d.h + dh, Z1 + 0.02, 't');
     const g = new THREE.Group(); g.position.set(d.x, d.h, d.z); if (!d.alongX) g.rotation.y = Math.PI / 2;
     scene.add(g);
     const w = d.alongX ? d.w : d.d;
-    if (circus || backstage) (circus ? circusDoorFrame : backstageDoorFrame)(towerFrame, g, w, d.alongX ? d.d : d.w, dh, top - d.h - dh, T);
+    if (circus || backstage || ruin) (circus ? circusDoorFrame : backstage ? backstageDoorFrame : ruinDoorFrame)(towerFrame, g, w, d.alongX ? d.d : d.w, dh, top - d.h - dh, T);
     let panels, apply;
     if (S.door === 'slide') {
       panels = [-1, 1].map(s => {
@@ -1499,6 +1594,7 @@ function buildArchitecture(view, T) {
         const p = new THREE.Group(); p.position.x = s * w / 2; g.add(p);
         if (circus) { p.add(circusDoorLeaf(w / 2 - 0.04, dh, s)); return { p, s }; }
         if (backstage) { p.add(backstageDoorLeaf(w / 2 - 0.04, dh, s, starDoor(d))); return { p, s }; }
+        if (ruin) { p.add(ruinDoorLeaf(w / 2 - 0.04, dh, s)); return { p, s }; }
         if (S.heavy) { p.add(heavyDoorLeaf(w / 2 - 0.04, dh, s, null, S.heavy === true ? 'demon' : S.heavy)); return { p, s }; }
         const m = new THREE.Mesh(new THREE.BoxGeometry(w / 2 - 0.04, dh, 0.16), doorMat); m.position.set(-s * w / 4, dh / 2, 0); m.castShadow = true; p.add(m);
         for (const y of [0.25, 0.75]) { const bnd = new THREE.Mesh(new THREE.BoxGeometry(w / 2 - 0.1, 0.1, 0.19), band); bnd.position.set(-s * w / 4, dh * y, 0); p.add(bnd); }
@@ -1509,7 +1605,7 @@ function buildArchitecture(view, T) {
     }
     return { ...d, g, panels, w, dh, apply };
   });
-  placeTowerDoorFrames(towerFrame, scene);
+  placeDoorFrames(towerFrame, scene, ruin ? ruinDoorMats() : undefined);
 
   // 昇降機：床板・柱・枠・乗り場の柵（ステーションは光る近未来の昇降機、それ以外は鉄の籠と鎖）
   const cage = S.lift === 'cage';

@@ -2058,6 +2058,7 @@ const FIELD_ZONES = {
   // 封印の間：封印の扉の奥。樹の根をかたどった祭壇（第五章で守護神と戦い、守護神が語る場所）
   ruins_seal: { ci: 4, name: '封印の間', bgm: 'ruins', floor: '最奥', parent: 'ruins_in', stage: '5-3', after: 'c5_03', arenas: [[0, 1, 0]], build: 'ruinsSeal', bg: 'ruins', groups: 0, chests: 1, crystals: 0, calmAfter: '5-3', skyTree: false,
     world: true, arch: 'ruin', chestAt: [[8, -4]],
+    door: 'swing',   // 封印の間の口は、遺跡の扉（ruin）にせず、もとの扉のまま
     th: { pattern: 'tiles', floor: '#9a9478', floor2: '#8a846a', line: '#8affe0', floorGlow: 0.4, fog: '#2a3a34', fogD: 0.02, light: 0.9 },
     map: [
       '##############',
