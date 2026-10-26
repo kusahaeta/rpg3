@@ -3392,7 +3392,9 @@ const ZMAT = {
 };
 
 const INST_CELL = 32;   // 木・岩などの InstancedMesh を分ける区切りの大きさ（ZoneKit.flush）
-// 木の板の色（タル・ベンチのテクスチャ）
+// 置いた場所から決まる 0 以上の整数（小物の向き・模様を、乱数を使わずにばらけさせる）
+const posHash = (x, z) => Math.abs(Math.floor(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453));
+// 木の板の色（タル・ベンチ・木箱のテクスチャ）
 const WOOD_COLS = ['#b07a4a', '#a06c40', '#bb8654', '#966238', '#a87446', '#9c6a3e'];
 // canvas の (x0, y0, w, h) に、ゆらいだ木目の線を n 本描く。vertical：縦の木目（なければ横）
 function woodGrain(g, x0, y0, w, h, n, vertical) {
@@ -6031,15 +6033,15 @@ class ZoneKit {
       frame: new THREE.MeshStandardMaterial({ map: t, color: '#a08878', roughness: 0.9, metalness: 0 }),
     });
   }
+  // benchMats の模様を貼る、長さ len の板（箱の x の向きが板の長さ）。k で模様の段と木目の位置を変える
+  plankGeo(w, h, d, k, len) {
+    const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv, off = ((k * 37) % 100) / 100;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, off + uv.getX(i) * len / 2, (k % 4 + 0.12 + uv.getY(i) * 0.76) / 4);
+    return geo;
+  }
   // 木のベンチ：3 枚の板の座面、両はしの脚板と受け木、脚のあいだの横木。板の模様と木目の位置は場所から決める（乱数は使わない）
   bench(x, z, ry = 0) {
-    const M = this.benchMats(), y = this.gy(x, z), rot = [0, ry, 0], hs = Math.abs(Math.floor(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453));
-    // 長さ len の板（箱の x の向きが板の長さ）。k で模様の段、木目の位置もずらす
-    const plank = (w, h, d, k, len) => {
-      const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv, off = ((hs + k * 37) % 100) / 100;
-      for (let i = 0; i < uv.count; i++) uv.setXY(i, off + uv.getX(i) * len / 2, ((hs + k) % 4 + 0.12 + uv.getY(i) * 0.76) / 4);
-      return geo;
-    };
+    const M = this.benchMats(), y = this.gy(x, z), rot = [0, ry, 0], hs = posHash(x, z), plank = (w, h, d, k, len) => this.plankGeo(w, h, d, hs + k, len);
     for (const i of [-1, 0, 1]) this.mg(M.seat, plank(2, 0.07, 0.18, i + 1, 2).translate(0, 0.535, i * 0.2), x, y, z, rot);
     for (const sx of [-1, 1]) {
       this.mg(M.frame, plank(0.44, 0.08, 0.4, sx + 4, 0.44).rotateZ(Math.PI / 2).translate(sx * 0.72, 0.22, 0), x, y, z, rot);
@@ -6105,7 +6107,42 @@ class ZoneKit {
     this.mg(M.side, P.body, x, y, z, ry); this.mg(M.lid, P.lid, x, y, z, ry); this.mg('iron', P.hoop, x, y, z, ry);
     this.col(x, z, 0.45, 1.1);
   }
-  crate(x, z, s = 1.1) { this.box(x, z, s, s, s, 'wood', { round: true, ry: this.r() < 0.5 ? 0 : Math.PI / 2 }); }
+  // 木箱の面の材質：左半分＝横の面（横に並んだ 4 枚の板と、斜めの筋かい）、右半分＝上と下の面（板だけ）
+  crateMat() {
+    if (TexCache.crate) return TexCache.crate;
+    const c = document.createElement('canvas'); c.width = 512; c.height = 256; const g = c.getContext('2d');
+    for (const x0 of [0, 256]) for (let i = 0; i < 4; i++) {
+      const y0 = i * 64; g.fillStyle = WOOD_COLS[(i * 2 + (x0 ? 1 : 0)) % WOOD_COLS.length]; g.fillRect(x0, y0, 256, 64);
+      g.save(); g.beginPath(); g.rect(x0, y0, 256, 64); g.clip(); woodGrain(g, x0, y0, 256, 64, 9, false); g.restore();
+      g.fillStyle = 'rgba(38,18,6,.7)'; g.fillRect(x0, y0 + 61, 256, 3);   // 板のすき間
+    }
+    // 筋かい：左下から右上への板。下に落ちる影、木目、両はしの釘
+    g.save(); g.beginPath(); g.rect(0, 0, 256, 256); g.clip(); g.translate(128, 128); g.rotate(-Math.PI / 4);
+    g.fillStyle = 'rgba(30,14,4,.4)'; g.fillRect(-190, -18, 380, 44);
+    g.fillStyle = WOOD_COLS[3]; g.fillRect(-190, -24, 380, 44); woodGrain(g, -190, -24, 380, 44, 7, false);
+    g.fillStyle = 'rgba(255,225,180,.2)'; g.fillRect(-190, -24, 380, 3); g.fillStyle = 'rgba(38,18,6,.45)'; g.fillRect(-190, 17, 380, 3);
+    g.fillStyle = '#3a3a44'; for (const u of [-112, 112]) { g.beginPath(); g.arc(u, -2, 3.2, 0, Math.PI * 2); g.fill(); }
+    g.restore();
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    return (TexCache.crate = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, metalness: 0 }));
+  }
+  // 木箱（一辺 s）：板と筋かいを描いた箱に、12 本の辺に枠の角材を少し浮かせて打つ。向きは 0° か 90°
+  //   （向きの乱数は前のまま一回引く＝ほかの小物の置き場所が変わらない）
+  crate(x, z, s = 1.1) {
+    const ry = this.r() < 0.5 ? 0 : Math.PI / 2, y = this.gy(x, z), rot = [0, ry, 0], hs = posHash(x, z), F = this.benchMats().frame;
+    const body = new THREE.BoxGeometry(s, s, s), na = body.attributes.normal, uv = body.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setX(i, (Math.abs(na.getY(i)) > 0.5 ? 0.5 : 0) + uv.getX(i) * 0.5);
+    this.mg(this.crateMat(), body.translate(0, s / 2, 0), x, y, z, rot);
+    // 枠：縦の 4 本は高さいっぱい、横の 8 本は縦の角材のあいだ（角で面が重ならないように）
+    const t = s * 0.11, e = 0.015, a = s / 2 + e - t / 2, L = s + 2 * e, l = L - 2 * t;
+    let k = hs;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) this.mg(F, this.plankGeo(L, t, t, k++, L).rotateZ(Math.PI / 2).translate(sx * a, s / 2, sz * a), x, y, z, rot);
+    for (const yy of [t / 2 - e, s + e - t / 2]) for (const sd of [-1, 1]) {
+      this.mg(F, this.plankGeo(l, t, t, k++, l).translate(0, yy, sd * a), x, y, z, rot);
+      this.mg(F, this.plankGeo(l, t, t, k++, l).rotateY(Math.PI / 2).translate(sd * a, yy, 0), x, y, z, rot);
+    }
+    this.boxCol(x, z, s, s, s, ry);
+  }
   lantern(x, z, col = '#ffb04a', h = 2.6) {
     this.box(x, z, 0.18, h, 0.18, 'wood2');
     this.mesh(new THREE.BoxGeometry(0.7, 0.1, 0.1), 'wood2', x + 0.3, h - 0.1, z);
