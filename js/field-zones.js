@@ -7159,6 +7159,24 @@ function rack(K, x, z, ry) {
   for (let i = 0; i < 4; i++) { const u = -0.75 + i * 0.5; K.mesh(new THREE.BoxGeometry(0.35, 1.1, 0.12), pick(['clothRed', 'clothYellow', 'clothPurple', 'clothPink']), x + c * u, 1.2, z - sn * u, { ry }); }
   K.col(x, z, 1, 2);
 }
+// 空中ブランコの名札かけ：木の枠に、金の横木から「ピエロ」の名札が三枚さがる（ry で正面の向き。名札は表もうらも読める）
+function nameTags(K, x, z, ry) {
+  const c = document.createElement('canvas'); c.width = 192; c.height = 112; const g = c.getContext('2d');
+  g.fillStyle = '#f4ecd8'; g.fillRect(0, 0, 192, 112);
+  g.strokeStyle = '#c8304a'; g.lineWidth = 8; g.strokeRect(8, 8, 176, 96);
+  g.fillStyle = '#4a2a3a'; g.font = '900 44px "Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(Tx('ピエロ'), 96, 58, 164);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const face = new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }), edge = K.M('wood');
+  const cs = Math.cos(ry), sn = Math.sin(ry), at = u => [x + cs * u, z - sn * u];
+  for (const u of [-0.7, 0.7]) { const [px, pz] = at(u); K.mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.6, 8), 'wood2', px, 0.8, pz); K.mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.08, 10), 'wood2', px, 0.04, pz); K.mesh(new THREE.SphereGeometry(0.08, 10, 8), 'gold', px, 1.64, pz); }
+  K.mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.4, 8), 'gold', x, 1.5, z, { ry, rz: Math.PI / 2 });
+  for (const u of [-0.45, 0, 0.45]) {
+    const [px, pz] = at(u);
+    for (const s of [-1, 1]) K.mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.2, 4), 'gold', px + cs * s * 0.12, 1.4, pz - sn * s * 0.12, { noShadow: true });
+    K.mesh(new THREE.BoxGeometry(0.38, 0.22, 0.03), [edge, edge, edge, edge, face, face], px, 1.19, pz, { ry: ry + (K.r() - 0.5) * 0.12 });
+  }
+  K.colBox(x, z, Math.abs(cs) * 0.8 + Math.abs(sn) * 0.15, Math.abs(sn) * 0.8 + Math.abs(cs) * 0.15, 1.7);
+}
 // くす玉：金色の玉と房。open なら、ふたつに割れて「笑顔の塔　再開！」の垂れ幕と紙吹雪
 function kusudama(K, x, y, z, open) {
   const R = 0.9, top = y + R;
@@ -8270,6 +8288,8 @@ const ZONE_BUILD = {
       if (!cheer && !(K.v.flags && K.v.flags.mimics)) K.colBox(0, -9.5, 2.2, 0.6, 1.6);
     }
     for (const [x, z] of [[-31, 27], [31, 27], [-31, -20], [31, -20], [-14, -30], [14, -30]]) K.brazier(x, z, '#ffd27a', 1.1);
+    // 桟敷の名札かけ（調べるもの「空中ブランコの名札」）
+    nameTags(K, 10, -36, 0);
     K.cushions();
     K.light(0, 7, 3, '#fff0f8', 10, 30); K.light(0, 5, -34, '#ffe8c8', 8, 22); K.light(0, 4, -18, '#ffd8f0', 6, 16); K.light(0, 4, 34, '#fff0f8', 7, 22);
   },
