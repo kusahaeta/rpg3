@@ -510,6 +510,170 @@ function heavyDoorLeaf(w, h, s, glow, pal = 'demon') {
   return g;
 }
 
+// 笑顔の塔の扉：サーカス小屋の扉。扉板は上が紅白のしま、下が道化の菱形の模様で、金の枠と取っ手。
+//   合わせ目の金の顔は左右の扉に半分ずつで、閉じるとひとつの笑顔になる。まわりは電球の並ぶ柱と横木、上に紅白の扇（circusDoorFrame）
+//   楽屋の階は、裏方の木の扉（backstageDoorLeaf・backstageDoorFrame）。材質はどちらも TOWER_DOOR_M
+//   材質は区画をまたいで使い回す（戦闘の壁の切り取りで付く面は、戦闘のあとに戻る）
+const TOWER_DOOR_M = {};
+function towerDoorMats() {
+  if (TOWER_DOOR_M.gold) return TOWER_DOOR_M;
+  const std = (color, o) => new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.05, ...o });
+  return Object.assign(TOWER_DOOR_M, {
+    paint: std('#ffffff', { map: circusDoorTex() }),
+    gold: std('#f4c454', { metalness: 0.45, roughness: 0.3, emissive: '#5a3a08', emissiveIntensity: 0.45 }),
+    ink: std('#4a1838', { roughness: 0.6 }),
+    red: std('#d0446e', { roughness: 0.5 }),
+    cream: std('#fff0dc'),
+    plank: std('#ffffff', { map: backstageDoorTex(), roughness: 0.75 }),
+    wood: std('#c08a64', { map: woodTex(), roughness: 0.85 }),
+    lamp: glowMat('#ffe2a8', 2),
+    bulbA: glowMat('#fff0b0', 2.2), bulbB: glowMat('#fff0b0', 2.2),
+  });
+}
+// 部品をまとめる前の形をそろえる（索引なし・uv あり）
+function flatGeo(geo) {
+  const g = geo.index ? geo.toNonIndexed() : geo;
+  if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+  return g;
+}
+// 扉板 1 枚：蝶番が原点で、-s 側へ w のびる（高さ h）。表と裏の両面に飾りをつける
+function circusDoorLeaf(w, h, s) {
+  const M = towerDoorMats(), parts = { paint: [], gold: [], ink: [] }, T = 0.2, cx = -s * w / 2, ex = -s * w;   // ex：合わせ目
+  const put = (k, geo, x, y, z, rx = 0) => { if (rx) geo.rotateX(rx); geo.translate(x, y, z); parts[k].push(flatGeo(geo)); };
+  const B = (w0, h0, d0) => new THREE.BoxGeometry(w0, h0, d0);
+  put('paint', B(w, h, T), cx, h / 2, 0);
+  for (const f of [-1, 1]) {
+    const zf = f * T / 2;
+    // 金の枠：両はしの框と、上・中・下の横木（上下ふたつの鏡板）
+    for (const u of [0.07, w - 0.07]) put('gold', B(0.14, h, 0.05), -s * u, h / 2, zf + f * 0.025);
+    for (const [y, t] of [[0.1, 0.2], [h * 0.53, 0.16], [h - 0.1, 0.16]]) put('gold', B(w - 0.1, t, 0.05), cx, y, zf + f * 0.025);
+    // 取っ手：合わせ目の近くの金の握り
+    const hx = ex + s * 0.3, hy = h * 0.4;
+    put('gold', new THREE.CylinderGeometry(0.035, 0.035, 0.62, 8), hx, hy, zf + f * 0.13);
+    for (const dy of [-0.28, 0.28]) put('gold', B(0.07, 0.07, 0.13), hx, hy + dy, zf + f * 0.07);
+  }
+  // 笑顔の金具：合わせ目を中心にした金の半円に、目と口を半分ずつ
+  const r = Math.min(0.6, w * 0.32), cy = h * 0.76, D = T + 0.14, th0 = s > 0 ? 0 : Math.PI;
+  put('gold', new THREE.CylinderGeometry(r, r, D, 20, 1, false, th0, Math.PI), ex, cy, 0, Math.PI / 2);
+  put('gold', B(0.02, r * 2, D), ex + s * 0.01, cy, 0);   // 切り口をふさぐ（開いたとき、横から中が見えないように）
+  for (const f of [-1, 1]) {
+    const z = f * D / 2;
+    put('ink', new THREE.SphereGeometry(r * 0.12, 10, 8).scale(1, 1.45, 0.45), ex + s * r * 0.36, cy + r * 0.2, z);
+    // 口：下向きの弧の半分（s が正なら 270°〜340°、負なら 200°〜270°）
+    put('ink', new THREE.TorusGeometry(r * 0.56, r * 0.07, 6, 10, Math.PI * 0.39).rotateZ(s > 0 ? -Math.PI / 2 : Math.PI * 1.11), ex, cy - r * 0.04, z);
+    put('ink', new THREE.SphereGeometry(r * 0.08, 8, 6), ex + s * r * 0.53, cy - r * 0.19, z);   // 口のはしのえくぼ
+  }
+  const g = new THREE.Group();
+  for (const k of Object.keys(parts)) {
+    const m = new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(parts[k]), M[k]);
+    m.castShadow = true; m.receiveShadow = true; g.add(m);
+  }
+  return g;
+}
+// 扉のまわりの動かない飾り。区画の座標にして out（材質ごとの形の配列）へ足す（あとで区画の扉ぜんぶを、材質ごとにひとつにまとめる）
+//   g：扉の置き場所（位置と向き）、w：扉の幅、thick：扉のマスの厚み、dh：扉板の高さ、room：扉の上から天井までの高さ
+//   柱は、扉の横がその面から見える壁のときだけ立てる（通路のつきあたりの扉では、横の壁が奥へ向いているので立てない）
+function doorFrameKit(out, g, w, thick, T) {
+  g.updateMatrix();
+  const mx = g.matrix, v = new THREE.Vector3();
+  const put = (k, geo, x, y, z) => { geo.translate(x, y, z).applyMatrix4(mx); (out[k] || (out[k] = [])).push(flatGeo(geo)); };
+  const solid = (x, z) => { v.set(x, 0, z).applyMatrix4(mx); const i = T.at(v.x, v.z); return i < 0 || T.kind[i] < TK.FLOOR; };
+  // 面 f（扉の表 +1・裏 -1）から見える、扉の横の壁（-1 左・1 右）
+  const sides = f => [-1, 1].filter(sx => solid(sx * (w / 2 + 0.6), f * (thick / 2 - 0.6)) && !solid(sx * (w / 2 + 0.6), f * (thick / 2 + 0.6)));
+  return { put, sides, B: (w0, h0, d0) => new THREE.BoxGeometry(w0, h0, d0) };
+}
+function circusDoorFrame(out, g, w, thick, dh, room, T) {
+  const { put, sides } = doorFrameKit(out, g, w, thick, T);
+  for (const f of [-1, 1]) circusFrameFace(put, f, f * thick / 2, w, dh, room, sides(f));
+}
+// サーカスの扉の飾りの片面：面 f（+1 は +Z、-1 は -Z を向く）を、壁の面 z = zf に貼る。w：扉の幅、sides：柱を立てる側（-1 左・1 右）
+//   区画の出入口の門（FieldView.makeGate）でも使う。戻り値は扇の中心の高さと半径（扇がなければ null）
+function circusFrameFace(put, f, zf, w, dh, room, sides) {
+  const B = (w0, h0, d0) => new THREE.BoxGeometry(w0, h0, d0);
+  let n = 0;
+  const bulb = (x, y, z) => put(n++ % 2 ? 'bulbB' : 'bulbA', new THREE.SphereGeometry(0.075, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(f * Math.PI / 2), x, y, z);
+  const BH = 0.34, PW = 0.38, zb = zf + f * 0.05;   // 横木の高さ、柱の幅
+  // 柱：赤い板に金のふちと電球
+  for (const sx of sides) {
+    const px = sx * (w / 2 + PW / 2);
+    put('red', B(PW, dh + BH, 0.1), px, (dh + BH) / 2, zb);
+    for (const e of [-1, 1]) put('gold', B(0.05, dh + BH, 0.13), px + e * (PW / 2 - 0.025), (dh + BH) / 2, zf + f * 0.065);
+    n = 0; for (let y = 0.4; y < dh - 0.1; y += 0.42) bulb(px, y, zf + f * 0.1);
+  }
+  // 横木：扉の上の赤い帯に、金のふちと電球
+  const xl = -w / 2 - (sides.includes(-1) ? PW : 0), xr = w / 2 + (sides.includes(1) ? PW : 0), bw = xr - xl, bx = (xl + xr) / 2;
+  put('red', B(bw, BH, 0.1), bx, dh + BH / 2, zb);
+  for (const y of [dh + 0.025, dh + BH - 0.025]) put('gold', B(bw, 0.05, 0.13), bx, y, zf + f * 0.065);
+  const nb = Math.max(2, Math.round(bw / 0.42)); n = 0;
+  for (let i = 0; i < nb; i++) bulb(xl + (i + 0.5) * bw / nb, dh + BH / 2, zf + f * 0.1);
+  // 扇：横木の上の半円。紅白の光の筋と金の芯、ふちに金の輪と電球
+  const R = Math.min(w / 2 - 0.1, room - BH - 0.25), cy = dh + BH;
+  if (R < 0.6) return null;
+  const ray = (r, a0, a1) => new THREE.CircleGeometry(r, 3, a0, a1 - a0).rotateY(f > 0 ? 0 : Math.PI);
+  for (let i = 0; i < 10; i++) put(i % 2 ? 'cream' : 'red', ray(R - 0.04, Math.PI * i / 10, Math.PI * (i + 1) / 10), 0, cy, zf + f * 0.03);
+  put('gold', ray(R * 0.3, 0, Math.PI), 0, cy, zf + f * 0.04);
+  put('gold', new THREE.TorusGeometry(R * 0.3, 0.04, 6, 12, Math.PI), 0, cy, zf + f * 0.04);
+  put('gold', new THREE.TorusGeometry(R, 0.06, 6, 24, Math.PI), 0, cy, zf + f * 0.05);
+  n = 0;
+  for (let i = 0; i < 9; i++) { const a = Math.PI * (i + 0.5) / 9; bulb(Math.cos(a) * (R - 0.16), cy + Math.sin(a) * (R - 0.16), zf + f * 0.04); }
+  return { cy, R };
+}
+// 楽屋の扉板 1 枚：塗りのはげかけた板の扉に、真鍮の蹴り板・取っ手・名札入れ。star なら名札の上に金の星（楽屋の入口のしるし）
+//   名札と鏡板のふちは、板の絵（backstageDoorTex）に描いてある。蝶番が原点で、-s 側へ w のびる（高さ h）
+function backstageDoorLeaf(w, h, s, star) {
+  const M = towerDoorMats(), parts = { plank: [], gold: [] }, T = 0.16, cx = -s * w / 2, ex = -s * w;
+  const put = (k, geo, x, y, z) => { geo.translate(x, y, z); parts[k].push(flatGeo(geo)); };
+  const B = (w0, h0, d0) => new THREE.BoxGeometry(w0, h0, d0);
+  put('plank', B(w, h, T), cx, h / 2, 0);
+  const star5 = new THREE.Shape(), R = Math.min(0.36, w * 0.19);
+  for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? R * 0.45 : R; star5[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r); }
+  for (const f of [-1, 1]) {
+    const zf = f * T / 2;
+    put('gold', B(w - 0.12, 0.3, 0.02), cx, 0.18, zf + f * 0.01);                          // 蹴り板
+    put('gold', new THREE.SphereGeometry(0.075, 10, 8), ex + s * 0.24, h * 0.42, zf + f * 0.1);   // 取っ手
+    put('gold', new THREE.CylinderGeometry(0.03, 0.03, 0.08, 8).rotateX(Math.PI / 2), ex + s * 0.24, h * 0.42, zf + f * 0.04);
+    // 名札入れ：名札（絵）のまわりの真鍮のふち
+    const ny = h * 0.565, nw = w * 0.31, nh = h * 0.055;
+    for (const e of [-1, 1]) { put('gold', B(nw + 0.06, 0.03, 0.025), cx, ny + e * (nh / 2 + 0.015), zf + f * 0.012); put('gold', B(0.03, nh, 0.025), cx + e * (nw / 2 + 0.015), ny, zf + f * 0.012); }
+    if (star) put('gold', new THREE.ExtrudeGeometry(star5, { depth: 0.035, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 1 }).rotateY(f > 0 ? 0 : Math.PI), cx, h * 0.73, zf + f * 0.005);
+  }
+  // 蝶番
+  for (const y of [0.5, h - 0.5]) put('gold', B(0.08, 0.3, T + 0.04), -s * 0.04, y, 0);
+  const g = new THREE.Group();
+  for (const k of Object.keys(parts)) {
+    const m = new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(parts[k]), M[k]);
+    m.castShadow = true; m.receiveShadow = true; g.add(m);
+  }
+  return g;
+}
+// 楽屋の扉のまわり：木の額縁と、扉の上の網をかぶせた小さな灯り（まとめ方は circusDoorFrame と同じ）
+function backstageDoorFrame(out, g, w, thick, dh, room, T) {
+  const { put, sides: sidesOf, B } = doorFrameKit(out, g, w, thick, T), FW = 0.26;
+  for (const f of [-1, 1]) {
+    const zf = f * thick / 2, sides = sidesOf(f);
+    for (const sx of sides) put('wood', B(FW, dh + FW, 0.08), sx * (w / 2 + FW / 2), (dh + FW) / 2, zf + f * 0.04);
+    const xl = -w / 2 - (sides.includes(-1) ? FW : 0), xr = w / 2 + (sides.includes(1) ? FW : 0);
+    put('wood', B(xr - xl, FW, 0.08), (xl + xr) / 2, dh + FW / 2, zf + f * 0.04);
+    put('wood', B(xr - xl + 0.12, 0.08, 0.16), (xl + xr) / 2, dh + FW + 0.04, zf + f * 0.08);   // 額縁の上の笠木
+    if (room < FW + 1) continue;
+    const ly = dh + FW + 0.62;
+    put('gold', B(0.24, 0.34, 0.04), 0, ly, zf + f * 0.02);
+    put('lamp', new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).rotateX(f * Math.PI / 2), 0, ly, zf + f * 0.04);
+    // 網：灯りの丸みにかぶせた、十文字の金の針金
+    for (const a of [0, Math.PI / 2]) { const t = new THREE.TorusGeometry(0.13, 0.012, 4, 12, Math.PI).rotateX(Math.PI / 2).rotateZ(a); if (f < 0) t.rotateY(Math.PI); put('gold', t, 0, ly, zf + f * 0.04); }
+  }
+}
+// まとめた飾りを、材質ごとに 1 メッシュにして置く。電球は A と B が、かわりばんこにまたたく
+function placeTowerDoorFrames(out, scene) {
+  const M = towerDoorMats(), hi = hdr('#fff0b0', 2.4), lo = hdr('#ffa868', 0.7);
+  for (const k of Object.keys(out)) {
+    if (!out[k].length) continue;
+    const m = new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(out[k]), M[k]);
+    m.receiveShadow = !k.startsWith('bulb'); scene.add(m);
+    if (k === 'bulbA') m.onBeforeRender = () => { const on = (performance.now() / 420 | 0) % 2; M.bulbA.color.copy(on ? hi : lo); M.bulbB.color.copy(on ? lo : hi); };
+  }
+}
+
 class GeoAcc {
   constructor(uvScale = 4) { this.p = []; this.n = []; this.u = []; this.ix = []; this.s = uvScale; }
   // 表から見て反時計回りの4点
@@ -590,7 +754,7 @@ const ARCH_STYLES = {
   // 城塞：窓のない切り石の城壁（上端に狭間）
   fort: { look: 'town', facade: 'stone', roof: false, wallH: 11, wall: '#c4c8d2', wall2: '#a4aab8', trim: '#5c5660', cliff: '#9aa0ae', step: '#aab0bc', glass: '#bfe8ff', glow: '#ffd27a', rail: 'iron', door: 'swing', lift: 'cage', exit: 'gate' },
   // にゃんこファンタジー：笑顔の塔（ピンクの大理石と金の灯り）・黒影洞窟（紫の水晶）・魔王城（暗い紫の石）
-  tower: { look: 'palace', roof: true, wallH: 7, wall: '#f6d6e8', wall2: '#eab8d6', trim: '#8a4a7a', cliff: '#e8c0da', ceil: '#6a3a6a', step: '#f4d8e6', glass: '#ffd8f0', glow: '#ffd27a', light: '#fff0f8', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
+  tower: { look: 'palace', roof: true, wallH: 7, wall: '#f6d6e8', wall2: '#eab8d6', trim: '#8a4a7a', cliff: '#e8c0da', ceil: '#6a3a6a', step: '#f4d8e6', glass: '#ffd8f0', glow: '#ffd27a', light: '#fff0f8', rail: 'ice', door: 'circus', lift: 'cage', exit: 'gate' },
   cave: { look: 'mine', roof: true, wallH: 7, rock: '#6a5a7e', trim: '#3a2a4a', cliff: '#6a5a7e', ceil: '#3a3048', step: '#5a4a6a', glass: '#bfe8ff', glow: '#a07bff', light: '#b89aff', rail: 'wood', door: 'swing', lift: 'cage', exit: 'tunnel' },
   castle: { look: 'palace', heavy: true, roof: true, wallH: 9, wall: '#6a5a80', wall2: '#54466a', trim: '#2a1a3a', cliff: '#5a4a70', ceil: '#2e2240', step: '#7a6a90', glass: '#d8b0ff', glow: '#ff8ad8', light: '#ffd8f8', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
   court: { look: 'palace', roof: false, skyline: 'town', wallH: 10, wall: '#dfe8f4', wall2: '#c4d2e4', trim: '#6c84a8', cliff: '#b4c4d8', step: '#d8e2ee', glass: '#bfeaff', glow: '#9fd8ff', light: '#dff4ff', rail: 'ice', door: 'swing', lift: 'cage', exit: 'gate' },
@@ -836,6 +1000,74 @@ function woodTex() {
   for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? 'rgba(0,0,0,.12)' : 'rgba(255,220,180,.06)'; g.fillRect(0, i * 32, S, 30); g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, i * 32 + 30, S, 2); }
   g.strokeStyle = 'rgba(40,24,12,.25)'; for (let k = 0; k < 40; k++) { const y = Math.random() * S; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(80, y + 4, 160, y - 4, S, y + 2); g.stroke(); }
   return (TexCache.wood = texOf(c));
+}
+// 笑顔の塔の扉板（1 枚の表。上の鏡板は紅白のしまに、垂れ幕のふち。下の鏡板は道化の菱形。金の枠の下は濃い紫）
+//   扉板の高さに合わせて、上から 0〜4.5% と 45〜49% と 96〜100% が金の横木にかくれる
+function circusDoorTex() {
+  if (TexCache.circusDoor) return TexCache.circusDoor;
+  const W = 256, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  g.fillStyle = '#5a2450'; g.fillRect(0, 0, W, H);
+  const panel = (y0, y1, draw) => { g.save(); g.beginPath(); g.rect(0, y0, W, y1 - y0); g.clip(); draw(y0, y1); g.restore(); };
+  panel(H * 0.04, H * 0.46, (y0, y1) => {
+    for (let x = 0, i = 0; x < W; x += 32, i++) { g.fillStyle = i % 2 ? '#fff1dc' : '#d8436f'; g.fillRect(x, y0, 32, y1 - y0); }
+    // 上のふち：濃い紫の垂れ幕の波と、金の糸
+    g.fillStyle = '#7a2a62'; g.fillRect(0, y0, W, 10);
+    for (let x = 0; x < W; x += 32) { g.beginPath(); g.arc(x + 16, y0 + 10, 16, 0, Math.PI); g.fill(); }
+    g.strokeStyle = '#ffd27a'; g.lineWidth = 3;
+    g.beginPath(); for (let x = 0; x < W; x += 32) g.arc(x + 16, y0 + 10, 16, Math.PI, 0, true); g.stroke();
+    // 両はしを暗くして、へこんだ鏡板に見せる
+    const sh = g.createLinearGradient(0, 0, W, 0);
+    sh.addColorStop(0, 'rgba(60,0,40,.35)'); sh.addColorStop(0.2, 'rgba(60,0,40,0)'); sh.addColorStop(0.8, 'rgba(60,0,40,0)'); sh.addColorStop(1, 'rgba(60,0,40,.35)');
+    g.fillStyle = sh; g.fillRect(0, y0, W, y1 - y0);
+  });
+  panel(H * 0.49, H * 0.96, (y0, y1) => {
+    const dw = 64, dv = 84;
+    for (let i = -1; y0 + i * dv / 2 < y1 + dv; i++) for (let j = -1; j * dw < W + dw; j++) {
+      const x = j * dw + (i & 1 ? dw / 2 : 0), y = y0 + i * dv / 2;
+      g.fillStyle = i & 1 ? '#7a3a8e' : '#c8407a';
+      g.beginPath(); g.moveTo(x, y - dv / 2); g.lineTo(x + dw / 2, y); g.lineTo(x, y + dv / 2); g.lineTo(x - dw / 2, y); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(255,210,122,.75)'; g.lineWidth = 2; g.stroke();
+      g.fillStyle = '#ffd27a'; g.beginPath(); g.arc(x, y - dv / 2, 3.5, 0, 7); g.fill();
+    }
+    const sh = g.createLinearGradient(0, y0, 0, y1);
+    sh.addColorStop(0, 'rgba(60,0,40,.3)'); sh.addColorStop(0.15, 'rgba(60,0,40,0)'); sh.addColorStop(0.85, 'rgba(60,0,40,0)'); sh.addColorStop(1, 'rgba(60,0,40,.3)');
+    g.fillStyle = sh; g.fillRect(0, y0, W, y1 - y0);
+  });
+  noiseCanvas(g, H, 900, 0.06, '60,0,40');
+  return (TexCache.circusDoor = texOf(c));
+}
+// 楽屋の扉板（1 枚の表）：縦の板を濃い葡萄色に塗った扉。上下の鏡板のふち、塗りのはげ、まん中に手書きの名札
+//   扉板の高さ 4m・幅 2m ほどで描く（名札は上から 43.5% の高さ。名札入れの真鍮のふちは backstageDoorLeaf）
+function backstageDoorTex() {
+  if (TexCache.backstageDoor) return TexCache.backstageDoor;
+  const W = 256, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  for (let i = 0; i < 4; i++) {
+    const v = Math.random() * 14 - 7 | 0; g.fillStyle = `rgb(${128 + v},${52 + v},${74 + v})`; g.fillRect(i * 64, 0, 64, H);
+    g.fillStyle = 'rgba(40,10,24,.55)'; g.fillRect(i * 64, 0, 2, H);
+    g.fillStyle = 'rgba(255,220,230,.08)'; g.fillRect(i * 64 + 2, 0, 3, H);
+  }
+  g.strokeStyle = 'rgba(50,14,30,.22)'; g.lineWidth = 1;
+  for (let k = 0; k < 60; k++) { const x = Math.random() * W; g.beginPath(); g.moveTo(x, 0); g.bezierCurveTo(x + 3, H * 0.3, x - 3, H * 0.7, x + 2, H); g.stroke(); }
+  // 鏡板のふち（上は明るく、下は暗く）
+  for (const [y0, y1] of [[34, 250], [276, 462]]) {
+    g.fillStyle = 'rgba(40,10,24,.12)'; g.fillRect(30, y0, W - 60, y1 - y0);
+    g.lineWidth = 5; g.strokeStyle = 'rgba(255,215,225,.22)'; g.beginPath(); g.moveTo(30, y1); g.lineTo(30, y0); g.lineTo(W - 30, y0); g.stroke();
+    g.strokeStyle = 'rgba(30,6,18,.5)'; g.beginPath(); g.moveTo(W - 30, y0); g.lineTo(W - 30, y1); g.lineTo(30, y1); g.stroke();
+  }
+  // 塗りのはげ（下の方と、まわりの角に木の地が見える）
+  for (let k = 0; k < 26; k++) {
+    const x = Math.random() * W, y = H * (0.75 + Math.random() * 0.2) * (k % 3 ? 1 : Math.random());
+    g.fillStyle = `rgba(${150 + Math.random() * 30 | 0},100,64,${0.25 + Math.random() * 0.3})`; g.beginPath(); g.ellipse(x, y, 2 + Math.random() * 7, 1 + Math.random() * 3, Math.random(), 0, 7); g.fill();
+  }
+  // 名札：クリーム色のカードに、手書きの名前（読めない走り書き）
+  const ny = H * 0.435, nw = W * 0.31, nh = H * 0.055;
+  g.fillStyle = '#f4ead4'; g.fillRect(W / 2 - nw / 2, ny - nh / 2, nw, nh);
+  g.strokeStyle = '#3a2440'; g.lineWidth = 2.2; g.lineCap = 'round';
+  g.beginPath(); let x = W / 2 - nw / 2 + 9; g.moveTo(x, ny + 2);
+  while (x < W / 2 + nw / 2 - 12) { x += 4 + Math.random() * 5; g.quadraticCurveTo(x - 2, ny - 7 - Math.random() * 3, x, ny + 3 + Math.random() * 2); }
+  g.stroke();
+  noiseCanvas(g, H, 700, 0.05, '40,10,24');
+  return (TexCache.backstageDoor = texOf(c));
 }
 // ケーキの段の側面（幅4m × 高さ4m。2m ごとに、下からスポンジ・クリーム・いちごジャム・スポンジ・てっぺんの白いクリーム）
 function cakeTex() {
@@ -1229,6 +1461,10 @@ function buildArchitecture(view, T) {
   }
 
   // 扉（D）：上の壁と扉板。ステーションは左右に滑り、それ以外は観音開き
+  //   笑顔の塔はサーカス小屋の扉（circus）、楽屋の階は裏方の木の扉（backstage。区画の door で決める）。まわりの飾りは towerFrame にまとめる
+  //   区画の starDoors（扉のまん中の [x, z]）は楽屋の入口で、扉に金の星をつける
+  const doorLook = zone.door || S.door, circus = doorLook === 'circus', backstage = doorLook === 'backstage', towerFrame = {};
+  const starDoor = d => (zone.starDoors || []).some(([x, z]) => Math.abs(x - d.x) < 1.5 && Math.abs(z - d.z) < 1.5);
   const doorMat = style === 'station' ? new THREE.MeshStandardMaterial({ color: '#3a4266', metalness: 0.7, roughness: 0.3 })
     : style === 'palace' ? new THREE.MeshStandardMaterial({ color: '#e8eef8', map: marbleTex(), metalness: 0.2, roughness: 0.35 })
     : new THREE.MeshStandardMaterial({ color: '#8a6040', map: woodTex(), metalness: 0, roughness: 0.85 });
@@ -1238,13 +1474,14 @@ function buildArchitecture(view, T) {
     if (open) d.cells.forEach(i => { const c = T.colOf(i), r = T.rowOf(i); DIR4.forEach(([dc, dr]) => { const j = T.idx(c + dc, r + dr); if (j >= 0 && kind[j] <= K.WINDOW) top = Math.max(top, T.top[j]); }); });
     else d.cells.forEach(i => { top = Math.max(top, T.ceilOf(i)); });
     if (!top) top = d.h + wallH;
-    const dh = Math.min(style === 'station' ? 4 : style === 'palace' ? 5.5 : 4.2, top - d.h - 0.5);
+    const dh = Math.min(style === 'station' ? 4 : circus ? 4.4 : backstage ? 4 : style === 'palace' ? 5.5 : 4.2, top - d.h - 0.5);
     acc(style === 'station' || style === 'palace' || style === 'town' ? 'wall' : 'rock', 4).box(X0, d.h + dh, Z0, X1, top, Z1, 't');
     if (open) { acc('cap', 4).box(X0, top, Z0, X1, top + 0.12, Z1, 'b'); }
-    acc(style === 'mine' ? 'wood' : style === 'palace' ? 'wall2' : 'trim', 4).box(X0 - 0.02, d.h + dh - 0.25, Z0 - 0.02, X1 + 0.02, d.h + dh, Z1 + 0.02, 't');
+    if (!circus && !backstage) acc(style === 'mine' ? 'wood' : style === 'palace' ? 'wall2' : 'trim', 4).box(X0 - 0.02, d.h + dh - 0.25, Z0 - 0.02, X1 + 0.02, d.h + dh, Z1 + 0.02, 't');
     const g = new THREE.Group(); g.position.set(d.x, d.h, d.z); if (!d.alongX) g.rotation.y = Math.PI / 2;
     scene.add(g);
     const w = d.alongX ? d.w : d.d;
+    if (circus || backstage) (circus ? circusDoorFrame : backstageDoorFrame)(towerFrame, g, w, d.alongX ? d.d : d.w, dh, top - d.h - dh, T);
     let panels, apply;
     if (S.door === 'slide') {
       panels = [-1, 1].map(s => {
@@ -1260,6 +1497,8 @@ function buildArchitecture(view, T) {
       const band = style === 'palace' ? glowMat(line, 1.2) : mats.iron;
       panels = [-1, 1].map(s => {
         const p = new THREE.Group(); p.position.x = s * w / 2; g.add(p);
+        if (circus) { p.add(circusDoorLeaf(w / 2 - 0.04, dh, s)); return { p, s }; }
+        if (backstage) { p.add(backstageDoorLeaf(w / 2 - 0.04, dh, s, starDoor(d))); return { p, s }; }
         if (S.heavy) { p.add(heavyDoorLeaf(w / 2 - 0.04, dh, s, null, S.heavy === true ? 'demon' : S.heavy)); return { p, s }; }
         const m = new THREE.Mesh(new THREE.BoxGeometry(w / 2 - 0.04, dh, 0.16), doorMat); m.position.set(-s * w / 4, dh / 2, 0); m.castShadow = true; p.add(m);
         for (const y of [0.25, 0.75]) { const bnd = new THREE.Mesh(new THREE.BoxGeometry(w / 2 - 0.1, 0.1, 0.19), band); bnd.position.set(-s * w / 4, dh * y, 0); p.add(bnd); }
@@ -1270,6 +1509,7 @@ function buildArchitecture(view, T) {
     }
     return { ...d, g, panels, w, dh, apply };
   });
+  placeTowerDoorFrames(towerFrame, scene);
 
   // 昇降機：床板・柱・枠・乗り場の柵（ステーションは光る近未来の昇降機、それ以外は鉄の籠と鎖）
   const cage = S.lift === 'cage';
