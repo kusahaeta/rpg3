@@ -1672,35 +1672,91 @@ const MOVES = {
     },
   },
   // ---------------- 友情技（コンボスキル） ----------------
-  // にゃんこブレイク：ミケとクロが敵の左右へ跳びこみ、ミケが斬り上げ、クロが返す刀で十字に斬る
+  // にゃんこブレイク：二人の背中ごしに身をかがめ、敵の左右へ跳びこむ。ミケが斬り上げた線が残り、
+  //   クロが居合の返す刀で逆の線を引いて十字がそろう。ふたりがこちらを向いて刀をはらうと、十字がはじける
   pairIn: {
     async attack(e, ts, c) {
-      const t = ts[0], k = this.allyEnt('kuro'), r = t.model.radius + 0.6;
-      const L = t.home.clone().add(V3(-r * 0.75, 0, r * 0.7)), R = t.home.clone().add(V3(r * 0.75, 0, r * 0.7));
-      this.setCam(V3(t.home.x + 0.6, 1.3, t.home.z + r + 3.4), V3(t.home.x, 0.8, t.home.z), { snap: true });
-      await Promise.all([this.dashTo(e, L, { pose: POSES.windup, dur: 0.3, hop: 0.4 }), k && k.u.alive ? GFX.delay(0.06).then(() => this.dashTo(k, R, { pose: POSES.windup, dur: 0.3, hop: 0.4 })) : null]);
-      this.face(e, t.home); if (k) this.face(k, t.home);
-      await this.tweenPose(e.model, POSES.strike, 0.08);
-      this.fx.slash(this.hitPoint(t.u), c.col, { cam: this.camera, size: 3, angle: 0.75 });
+      const t = ts[0], k = this.allyEnt('kuro'), kOk = !!k && k.u.alive, m = e.model;
+      const s = !kOk || e.home.x <= k.home.x ? 1 : -1;   // ミケが左なら 1（並びが逆なら左右を入れかえる）
+      const r = t.model.radius + 0.55;
+      const L = t.home.clone().add(V3(-s * r * 0.8, 0, r * 0.65)), R = t.home.clone().add(V3(s * r * 0.8, 0, r * 0.65));
+      const pair = kOk ? [e, k] : [e];
+      for (const x of this.ents.values()) if (x.ally) x.model.group.visible = pair.includes(x);
+      // 背中ごしに：ミケは振りかぶり、クロは居合の構え。足もとにそれぞれの色の輪
+      const mx = pair.reduce((a, x) => a + x.home.x, 0) / pair.length, hz = e.home.z;
+      this.setCam(V3(mx + 0.2, 1.35, hz + 3.7), V3(lerp(mx, t.home.x, 0.5), 0.7, t.home.z), { snap: true });
+      this.hitGlow = 0.4;   // 命中の光をひかえめに（十字の線が白い光にうもれないよう。attackEnd で戻る）
+      pair.forEach(x => { this.face(x, t.home); if (x === e) x.model.flash(e.u.color, 0.6); this.fx.ring(x.home.clone().add(V3(0, 0.05, 0)), x === e ? e.u.color : KURO_SHADOW, { r: 1.0, life: 0.5, width: 0.12 }); });
+      this.tweenPose(m, POSES.windup, 0.2);
+      if (kOk) this.tweenPose(k.model, POSES.iai, 0.2);
+      Sfx.tone(180, 0.35, 'sawtooth', 0.04, 260);
+      await GFX.delay(0.32);
+      // 敵の左右へ、高く跳びこむ（カメラから遠ざかるので、だれもカメラの前をふさがない）
+      await Promise.all([
+        this.dashTo(e, L, { pose: POSES.jump, dur: 0.34, hop: 1.1 }),
+        kOk ? GFX.delay(0.05).then(() => this.dashTo(k, R, { pose: POSES.jump, dur: 0.3, hop: 0.9 })) : null,
+      ]);
+      // 着地で切りかえ：敵の斜め前の少し上から。十字がまるごと入るよう、線の長さに合わせて引く
+      //   ふたりの戻り道から遠い側に置く（戻るときにカメラの前を通らないように）。高さは、戻ったあとの wide で仲間の頭の上を通るように
+      const p = this.hitPoint(t.u), len = Math.max(3.0, t.model.height * 2.4, t.model.radius * 4.5), d = Math.max(t.model.radius + 2.4, len * 1.2);
+      const cz = t.home.z + d * 0.92, roads = [[e, L], kOk ? [k, R] : null].filter(Boolean).map(([x, at]) => lerp(at.x, x.home.x, Math.min(1, Math.max(0, (cz - at.z) / (x.home.z - at.z)))));
+      const gap = sd => Math.min(...roads.map(x => Math.abs(t.home.x + sd * d * 0.45 - x))), side = gap(1) >= gap(-1) ? 1 : -1;
+      this.setCam(V3(t.home.x + side * d * 0.45, p.y + 1.3, cz), V3(t.home.x, p.y - 0.1, t.home.z), { snap: true });
+      this.face(e, t.home); if (kOk) this.face(k, t.home);
+      m.setPose({ ...POSES.strike, hipsY: -0.2 });
+      if (kOk) k.model.setPose(POSES.iai);
+      await GFX.delay(0.08);
+      // ミケの斬り上げ：下から上へ、ミケの色の線が引かれて残る
+      Sfx.swing();
+      const a1 = s > 0 ? 0.85 : Math.PI - 0.85;
+      this.sweep(m, { ...POSES.windup, twist: -0.3 }, 0.12, e.u.color);
+      const line = this.breakLine(p, e.u.color, { angle: a1, len, w: 0.11 });
+      this.breakX = { t: t.u, line, a1, len, p };
+      await GFX.delay(0.12);
+      this.squash(t, 0.18);
+      this.p.burst(p, e.u.color, 24, { speed: 5, life: 0.5, size: 0.1, drag: 3 });
     },
   },
   pairX: {
     keep: true,
     async attack(e, ts, c) {
-      const t = ts[0];
-      if (!this.partners.has(e) && !this.lastAttack.moved) await this.dashTo(e, this.meleeSpot(t, 0.6), { dur: 0.25 });
+      const t = ts[0], m = e.model, bx = this.breakX && this.breakX.t === t.u ? this.breakX : null, mk = this.allyEnt('mike');
+      this.breakX = null;
+      if (!bx || (!this.partners.has(e) && !this.lastAttack.moved)) {
+        // ミケが跳びこんでいない（ふつうはない）：ひとりで跳んでいき、正面から斬る
+        if (!this.partners.has(e) && !this.lastAttack.moved) await this.dashTo(e, this.meleeSpot(t, 0.6), { dur: 0.25 });
+        this.face(e, t.home);
+        await this.tweenPose(m, POSES.strike2, 0.08);
+        this.fx.slash(this.hitPoint(t.u), MOON, { cam: this.camera, size: 3, angle: -0.75 });
+        return;
+      }
+      const pair = [e, mk].filter(x => x && x.u.alive && x.model.group.position.distanceTo(x.home) > 0.5);
+      for (const x of this.ents.values()) if (x.ally) x.model.group.visible = pair.includes(x);
+      // クロの居合：残像を置いて刀を返す。ミケの線と逆の向きの線で、十字がそろう
       this.face(e, t.home);
-      await this.tweenPose(e.model, POSES.strike2, 0.08);
-      const p = this.hitPoint(t.u);
-      this.fx.slash(p, c.col, { cam: this.camera, size: 3, angle: -0.75 });
-      GFX.delay(0.08).then(() => {
-        this.fx.slash(p, '#ffffff', { cam: this.camera, size: 4.2, angle: 0.75 });
-        this.fx.slash(p, '#ffffff', { cam: this.camera, size: 4.2, angle: -0.75 });
-        this.fx.ring(p, '#ffcf4a', { r: 2.2, life: 0.5, face: this.camera.position, width: 0.12 });
-        this.fx.shards(p, '#ffcf4a', 14, 5);
-        GFX.flash('#fff4c8', 0.3, 0.25); GFX.shake(0.3);
-      });
-      await GFX.delay(0.15);
+      this.afterimage(e, { life: 0.4, op: 0.5 });
+      Sfx.swing();
+      this.sweep(m, POSES.strike2, 0.1, MOON);
+      const line = this.breakLine(bx.p, KURO_SHADOW, { angle: Math.PI - bx.a1, len: bx.len, w: 0.11, core: MOON });
+      await GFX.delay(0.12);
+      Sfx.tone(2400, 0.12, 'triangle', 0.06); Sfx.tone(3200, 0.25, 'sine', 0.03, 0, 0.03);
+      GFX.slowmo(0.2, 0.3);
+      await GFX.delay(0.22);
+      // 決め：ふたりがこちらを向いて刀をはらう。うしろで十字がはじける
+      for (const x of pair) { this.face(x, this.camera.position); this.tweenPose(x.model, POSES.chiburi, 0.1); }
+      await GFX.delay(0.1);
+      bx.line.end(); line.end();
+      const q = this.camera.quaternion;
+      this.fx.ring(bx.p, '#ffcf4a', { r: bx.len * 0.55, life: 0.5, face: this.camera.position, width: 0.1 });
+      this.fx.shards(bx.p, mk ? mk.u.color : '#ff6a3c', 10, 5);
+      this.fx.shards(bx.p, MOON, 10, 5);
+      for (const a of [bx.a1, Math.PI - bx.a1]) {
+        const dir = V3(Math.cos(a), Math.sin(a), 0).applyQuaternion(q);
+        for (let i = 0; i < 14; i++) { const f = (Math.random() - 0.5) * bx.len, sp = (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random() * 2); this.p.emit(bx.p.clone().addScaledVector(dir, f), dir.clone().multiplyScalar(sp).add(V3(0, 0.6, 0)), hdr(i % 2 ? '#ffcf4a' : '#fff4c8', 2.5), { life: 0.5, size: 0.08, drag: 2 }); }
+      }
+      this.squash(t, 0.35);
+      Sfx.slam(); GFX.shake(0.35);
+      await GFX.delay(0.08);
     },
   },
   // ファイアボール：ミケが魚を放り投げ、シロの炎で大きな火の玉になって敵へ落ちる
@@ -1848,6 +1904,35 @@ Object.assign(BattleView.prototype, {
   glint(p, col, size = 1) {
     this.fx.sprite(p, col, size * 0.8, 0.3, { k: 4, grow: 1.2, top: true });
     for (const a of [0, Math.PI / 2]) this.fx.slash(p, col, { cam: this.camera, size: size * 1.6, angle: a, life: 0.3, sym: true, top: true });
+  },
+  // 残る斬撃の線（にゃんこブレイクの十字の一本）：p を通る、画面の上で angle の向きの線を、dur 秒で引く。
+  //   end() で太く光ってはじけて消える（呼ばれなければ hold 秒で消える）。明るい草原でも見えるよう、色の芯はふつうの合成で
+  breakLine(p, col, { angle = 0.8, len = 3, w = 0.11, dur = 0.12, hold = 1.3, glow = col, core = '#ffffff' } = {}) {
+    const q = this.camera.quaternion, dir = V3(Math.cos(angle), Math.sin(angle), 0).applyQuaternion(q);
+    const g = new THREE.Group();
+    g.position.copy(p).addScaledVector(dir, -len / 2);
+    g.quaternion.copy(q); g.rotateZ(angle);
+    const layer = (color, h, add, op) => {
+      const geo = new THREE.PlaneGeometry(1, 1); geo.translate(0.5, 0, 0);
+      const ms = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: flareTex(), color, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, transparent: true, opacity: op, depthWrite: false, depthTest: false, side: THREE.DoubleSide }));
+      ms.scale.y = h; ms.renderOrder = 12; ms.userData.h = h; ms.userData.op = op; g.add(ms); return ms;
+    };
+    const ls = [layer(hdr(glow, 1.4), w * 4, true, 0.7), layer(new THREE.Color(col), w * 1.4, false, 1), layer(hdr(core, 2.2), w * 0.45, true, 1)];
+    const life = hold + 0.6, ctl = { endAt: -1, end() { if (ctl.endAt < 0) ctl.endAt = ctl.age; } };
+    ctl.age = 0;
+    this.fx.add(g, life, kk => {
+      const age = ctl.age = kk * life, draw = Ease.out(Math.min(1, age / dur));
+      let thick = 1, op = 1, grow = 1;
+      if (ctl.endAt >= 0) { const f = Math.min(1, (age - ctl.endAt) / 0.35); thick = 1 + Math.sin(Math.min(1, f * 2.5) * Math.PI / 2) * 0.8; op = 1 - f * f; grow = 1 + f * 0.25; }
+      else if (age > hold) op = Math.max(0, 1 - (age - hold) / 0.3);
+      else if (age > dur) thick = 1 + Math.sin((age - dur) * 14) * 0.06;
+      if (ctl.endAt >= 0 && age - ctl.endAt > 0.35) op = 0;
+      g.scale.x = len * draw * grow;
+      g.position.copy(p).addScaledVector(dir, -len * grow / 2);
+      for (const ms of ls) { ms.scale.y = ms.userData.h * thick; ms.material.opacity = ms.userData.op * op; }
+      if (age < dur) { const tip = g.position.clone().addScaledVector(dir, len * draw); for (let i = 0; i < 3; i++) this.p.emit(tip, V3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(1.2), hdr(glow, 3), { life: 0.35, size: 0.09, drag: 3 }); }
+    });
+    return ctl;
   },
   // ---------- シロ（大ばくはつの杖）の技の部品 ----------
   // 杖を立てたシロを、前の斜め下から（顔と杖の先が見えるように）
