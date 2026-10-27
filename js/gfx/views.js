@@ -161,7 +161,8 @@ function barkTileTex() {
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4;
   return (TexCache.barkTile = t);
 }
-function titleTree(health = 0.95, fruit = 0) {
+// eye：実を置くための、いつもの画のカメラ（樹の中の座標での位置 pos と、画面のどこに写るか screen(x, y, z) → [横, 縦]（-1〜1））
+function titleTree(health = 0.95, fruit = 0, eye = null) {
   const g = new THREE.Group(), BU = THREEX.BufferGeometryUtils, lo = GFX.low;
   let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   // 値ノイズ（0〜1）：茂みのでこぼこと、樹皮のうねり
@@ -257,7 +258,7 @@ function titleTree(health = 0.95, fruit = 0) {
 
   // ---------- 樹冠 ----------
   // [x, y, z, 半径]：上の丸屋根（つぶれた楕円の面に、フィボナッチの並びで）、下のふち（ひさし）、内がわの底、芯
-  const clumps = [], rim = [];
+  const clumps = [];
   const ND = lo ? 26 : 34;
   for (let i = 0; i < ND; i++) {
     const v = (i + 0.5) / ND, ph = Math.acos(1 - v * 1.12), th = i * 2.39996 + 0.4, sx = Math.sin(ph);
@@ -266,14 +267,14 @@ function titleTree(health = 0.95, fruit = 0) {
   const NR = lo ? 14 : 18;
   for (let i = 0; i < NR; i++) {
     const th = (i + rnd() * 0.4) / NR * Math.PI * 2, R = 25 + rnd() * 5, droop = i % 3 === 1 ? 3 : 0;
-    const c = [Math.cos(th) * R, 44 - droop + rnd() * 2, Math.sin(th) * R, 6.5 + rnd() * 2.5]; clumps.push(c); rim.push(c);
+    const c = [Math.cos(th) * R, 44 - droop + rnd() * 2, Math.sin(th) * R, 6.5 + rnd() * 2.5]; clumps.push(c);
   }
   for (let i = 0; i < 6; i++) { const th = (i + 0.5) / 6 * Math.PI * 2; clumps.push([Math.cos(th) * 14, 46, Math.sin(th) * 14, 9.5]); }
   clumps.push([0, 54, 0, 22]);
   // 色：下と奥ほど暗い青緑、上ほど明るい黄緑。元気がないほど灰色に（タイトルではいつも元気）。茂みごとに少し色をずらす
   const gray = new THREE.Color('#8a8a7a'), fade = c => new THREE.Color(c).lerp(gray, Math.max(0, 1 - health) * 0.9);
   const Csh = fade('#2e7464'), Cmid = fade('#5cc066'), Clit = fade('#e4f89a'), tints = [fade('#80d874'), fade('#4cbc98'), fade('#b8e070')];
-  const leaves = [], cards = [], P0 = V3();
+  const leaves = [], cards = [], spots = [], P0 = V3();
   // 茂みの形の元（細かい球）。一度だけ作って、茂みごとに写す
   const base = BU.mergeVertices((() => { const q = new THREE.IcosahedronGeometry(1, lo ? 4 : 7); q.deleteAttribute('normal'); q.deleteAttribute('uv'); return q; })());
   // ほかの茂みとの近さ（y は 0.8 倍につぶした形）。d < k のとき、その茂みの中（k：半径の何倍か）
@@ -311,11 +312,14 @@ function titleTree(health = 0.95, fruit = 0) {
     q.setAttribute('color', new THREE.BufferAttribute(col, 3));
     leaves.push(q);
     // 葉の房の板：ほかの茂みにうもれていない頂点から、いくつかを選んで、少し外へ浮かせて置く（大きい茂みほど多く）
-    const want = r * r * (lo ? 0.7 : 1.8) / n, isRim = rim.includes(clumps[ci]);
+    const want = r * r * (lo ? 0.7 : 1.8) / n;
     for (let i = 0; i < n; i++) {
       const x = P.getX(i), y = P.getY(i), z = P.getZ(i), nx = N.getX(i), ny = N.getY(i), nz = N.getZ(i);
-      // 実をぶら下げるところ：下のふちの茂みの、手前（カメラのほう）の下向きの面
-      if (isRim && ny < -0.55 && nz > 0.15 && !buried(x, y, z)) (clumps[ci].hang ||= []).push([x, y, z]);
+      // 実をつけられるところ：カメラのほうを向いた、うもれていない面
+      if (fruit && eye && i % 3 === 0) {
+        P0.set(eye.pos.x - x, eye.pos.y - y, eye.pos.z - z).normalize();
+        if (nx * P0.x + ny * P0.y + nz * P0.z > 0.35 && !buried(x, y, z)) spots.push([x, y, z, nx, ny, nz, ...eye.screen(x, y, z)]);
+      }
       if (rnd() > want || (aboveA[i] > 0 && ny > -0.25)) continue;   // 上の茂みの陰の、上向きの面には置かない（上の茂みを突きぬけて光る）
       if (buried(x, y, z)) continue;
       const lift = 0.2 + rnd() * 0.5;
@@ -342,16 +346,40 @@ function titleTree(health = 0.95, fruit = 0) {
     const cm = new THREE.Mesh(q, treeMat({ map: leafTuftTex(), alphaTest: 0.5 }, '#e0a870', 0.55, true)); cm.frustumCulled = false; g.add(cm);
   }
 
-  // 感情の実（光る）：手前がわ（カメラに近い）の、下のふちの茂みの下にぶら下げる
-  const fruitCols = ['#ffd24a', '#ff4f9a', '#5ac8ff', '#9aff6a'], fruits = [];
-  const front = rim.filter(c => c[2] > 4 && c.hang).sort((a, b) => a[0] - b[0]);
-  front.forEach(c => c.hang.sort((a, b) => a[0] - b[0]));
-  const NF = fruit && front.length ? Math.round(health * 16) : 0, per = Math.ceil(NF / Math.max(1, front.length));
-  for (let i = 0; i < NF; i++) {
-    // 一つの茂みに下げる実は、左から右へ間をあけて
-    const H = front[i % front.length].hang, k = Math.floor(i / front.length), [x, y, z] = H[Math.min(H.length - 1, Math.floor((k + 0.3 + rnd() * 0.4) / per * H.length))];
-    const f = new THREE.Mesh(new THREE.SphereGeometry(1.1 * fruit, 10, 8), glowMat(fruitCols[i % 4], 4 * lumaBoost(fruitCols[i % 4]), { fog: false }));
-    f.position.set(x, y - 0.6 - fruit * 1.1, z + 0.4); g.add(f); fruits.push(f);
+  // 感情の実（光る）：樹冠の手前の面に、ばらばらに散らす。
+  //   いつもの画で見えるのは樹冠の下のふちだけなので、まずそこに NF 個、つづけて画面の外の上のほう（はじめに樹を見上げたときに見える）に NU 個。
+  //   置くところは乱数の順に試し、もう置いた実と近すぎるところはとばす。近さの下限は一つずつちがう長さにして、
+  //   間がつまったところ・あいたところが混ざるように（きっちり同じ間隔だと、作りものっぽい）。近さは画面の上で測る（下から見上げる面もあるので）。
+  //   手前の茂みのかげになるところもとばす
+  const fruitCols = ['#ffd24a', '#ff4f9a', '#5ac8ff', '#9aff6a'], fruits = [], LIFT = 1.3;
+  const NF = fruit && spots.length ? Math.round(health * 16) : 0, NU = NF ? Math.round(health * 12) : 0;
+  const Q = V3(), D = V3(), AS = 16 / 9, placed = [];
+  const hidden = (x, y, z) => {
+    D.set(eye.pos.x - x, eye.pos.y - y, eye.pos.z - z).normalize();
+    for (let t = 2; t < 40; t += 1.5) { Q.set(x + D.x * t, y + D.y * t, z + D.z * t); if (clumps.some(C => dist(Q.x, Q.y, Q.z, C) < 0.85)) return true; }
+    return false;
+  };
+  const inBand = s => Math.abs(s[6]) < 0.9 && s[7] < 0.88;
+  for (const [band, want] of [[true, NF], [false, NU]]) {
+    const pool = spots.filter(s => inBand(s) === band);
+    if (!want || !pool.length) continue;
+    for (let k = pool.length - 1; k > 0; k--) { const m = Math.floor(rnd() * (k + 1)); [pool[k], pool[m]] = [pool[m], pool[k]]; }
+    // 同じ間隔で敷きつめたときの間隔（樹冠の画面での広さから）。下限はその 0.35〜1.05 倍
+    let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
+    for (const s of pool) { x0 = Math.min(x0, s[6]); x1 = Math.max(x1, s[6]); y0 = Math.min(y0, s[7]); y1 = Math.max(y1, s[7]); }
+    const gap = Math.sqrt((x1 - x0) * AS * (y1 - y0) * 0.7 / want);
+    let n = 0;
+    for (const s of pool) {
+      if (n >= want) break;
+      const [x, y, z, nx, ny, nz, sx, sy] = s, dmin = gap * (0.35 + 0.7 * rnd());
+      if (placed.some(([px, py]) => Math.hypot((px - sx) * AS, py - sy) < dmin)) continue;
+      if (hidden(x + nx * LIFT, y + ny * LIFT, z + nz * LIFT)) continue;
+      placed.push([sx, sy]);
+      const i = fruits.length, c = fruitCols[i % 4], r = 1.1 * fruit * (0.8 + 0.4 * rnd());   // 大きさも少しずつちがう
+      const f = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), glowMat(c, 4 * lumaBoost(c), { fog: false }));
+      // 葉の房（面から 0.7 ほど浮く）にうもれないよう、面から少し前へ
+      f.position.set(x + nx * LIFT, y + ny * LIFT, z + nz * LIFT); g.add(f); fruits.push(f); n++;
+    }
   }
   // 樹のうしろの、ほのかな光
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#fff0c8', 0.3 * health + 0.08), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
@@ -371,7 +399,11 @@ class TitleView extends BaseView {
     if (lights[1]) { lights[1].color.set('#b8b8ff'); lights[1].intensity = 1.2; }
     if (hemi) { hemi.color.set('#d0c0f0'); hemi.groundColor.set('#7a5a40'); hemi.intensity = 1.25; }
     // 感情の実は、第八章で樹がよみがえってから（ほかの場所の樹と同じ。それまで実は実らない）
-    const { g, fruits } = titleTree(0.95, treeHealth() >= 1 ? 0.6 : 0); g.scale.setScalar(1.4); g.position.set(8, -8, -150); this.scene.add(g); this.fruits = fruits;
+    // 実は、カメラが下りきったあとの画（update の camPos・camLook）で見えるところに散らす
+    const TS = 1.4, TP = V3(8, -8, -150), cam = this.camera.clone();
+    cam.position.set(0, 1.3, 8.1); cam.lookAt(0.6, 3.5, -40); cam.updateMatrixWorld();
+    const eye = { pos: cam.position.clone().sub(TP).divideScalar(TS), screen: (x, y, z) => { const p = V3(x, y, z).multiplyScalar(TS).add(TP).project(cam); return [p.x, p.y]; } };
+    const { g, fruits } = titleTree(0.95, treeHealth() >= 1 ? 0.6 : 0, eye); g.scale.setScalar(TS); g.position.copy(TP); this.scene.add(g); this.fruits = fruits;
     this.cats = ['mike', 'kuro', 'shiro', 'tama', 'maou'].map((k, i) => {
       const m = buildCharacter(k); m.group.position.set((i - 2) * 0.95, 0, 2.5 + Math.abs(i - 2) * 0.35); m.group.rotation.y = Math.PI + (i - 2) * 0.08; m.setPose(POSES.idle); this.scene.add(m.group);
       m.look = { t: 2 + i * 1.7, y: 0, tw: 0 };   // ときどき、となりの子や樹のてっぺんのほうへ顔を向ける
