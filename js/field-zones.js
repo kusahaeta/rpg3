@@ -102,7 +102,7 @@ const FIELD_ZONES = {
     notes: [{ at: [6.4, -11], face: 0, board: ['村の掲示板', '収穫祭は延期します　——村長'], title: '村の掲示板', text: '「にゃんだーの樹の実りが悪く、今年の収穫祭は延期します——村長」' , until: 'done' },
       { at: [6.4, -11], face: 0, board: ['村の掲示板', '収穫祭をひらきます　——村長'], title: '村の掲示板', when: 'done', text: '「にゃんだーの樹に、実がもどりました。今年の収穫祭は、盛大にひらきます！——村長」' },
       { at: [-21.8, -8], mark: [-0.9, 2.3, 0], title: 'ミケの家', text: '表札に「ミケ」。……窓辺に、食べかけの魚が干してある。' },
-      { at: [24, -23], mark: [0, 2.6, 1.4], reach: 3.2, title: '猫神社', text: '世界を作った猫の神さまの社。お賽銭箱の上の絵の神さまは、大きなあくびをしている。' }],
+      { at: [24, -23.5], mark: [0, 1.5, 2.55], reach: 3.2, title: '猫神社', text: '世界を作った猫の神さまの社。お賽銭箱の上の絵の神さまは、大きなあくびをしている。' }],
     map2d: [470, 380],
     // 第八章「村を守る」：c8_01 を見てから c8_02 を見るまで、影の獣が広場を囲む（c8_01 の舞台と同じ場所に、一行のほうを向いて立つ）。
     //   子猫たちと村人は家に隠れている。店の主人と村長は、いつもの場所でふんばっている
@@ -3273,6 +3273,94 @@ function graveTex(name) {
     stackText(g, Tx(name), 128 + dx, 140 + dy, Math.min(92, 300 / [...name].length), 230, 300);
   };
   carve(2, 2, 'rgba(255,255,255,.35)'); carve(0, 0, 'rgba(58,52,74,.85)');
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (TexCache[k] = t);
+}
+
+// 猫神社の格子戸（一間ぶん）：木の枠に細かい格子、奥は暗い。下の四分の一は板
+function shrineDoorTex() {
+  const k = 'shrineDoor'; if (TexCache[k]) return TexCache[k];
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#2a1a12'; g.fillRect(0, 0, 128, 128);
+  g.fillStyle = '#6a4428';
+  for (let x = 6; x < 128; x += 14) g.fillRect(x, 0, 4, 96);
+  for (let y = 4; y < 96; y += 22) g.fillRect(0, y, 128, 4);
+  g.fillStyle = '#7a5030'; g.fillRect(0, 94, 128, 34);
+  g.fillStyle = 'rgba(40,20,8,.35)'; for (const y of [104, 113, 121]) g.fillRect(8, y, 112, 1.5);
+  g.strokeStyle = '#5a3820'; g.lineWidth = 8; g.strokeRect(4, 4, 120, 120);
+  g.fillStyle = '#5a3820'; g.fillRect(0, 92, 128, 5);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (TexCache[k] = t);
+}
+// 猫神社の鈴緒：紅白のななめのしま（よった縄に見える）
+function shrineRopeTex() {
+  const k = 'shrineRope'; if (TexCache[k]) return TexCache[k];
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff8f0'; g.fillRect(0, 0, 32, 32);
+  g.fillStyle = '#d8403a';
+  for (const o of [-32, 0, 32]) { g.beginPath(); g.moveTo(o, 32); g.lineTo(o + 16, 32); g.lineTo(o + 48, 0); g.lineTo(o + 32, 0); g.closePath(); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 10);
+  return (TexCache[k] = t);
+}
+// 猫神社の絵：空と雲を背に、両手をのばして大あくびをするねこ神（クリーム色のとら猫、金の冠、ぎゅっと閉じた目に涙）
+function yawnGodTex() {
+  const k = 'yawnGod'; if (TexCache[k]) return TexCache[k];
+  const W = 320, H = 224, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), cx = 160;
+  const E = (x, y, rx, ry, rot = 0) => { g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2); };
+  const fur = '#ffe8a8', stripe = '#e8b450', pale = '#fff6dc', line = '#8a5a2a', pink = '#ffb0b8';
+  // 空と雲、光の輪
+  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#9ed2ff'); bg.addColorStop(1, '#ffd6e6'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  const halo = g.createRadialGradient(cx, 120, 30, cx, 120, 130); halo.addColorStop(0, 'rgba(255,240,180,.9)'); halo.addColorStop(1, 'rgba(255,240,180,0)'); g.fillStyle = halo; g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(255,255,255,.92)';
+  for (const [x, y, s] of [[38, 190, 1.1], [286, 182, 1.2], [44, 36, 0.7], [282, 30, 0.75]]) for (const [dx, dy, r] of [[-18, 4, 14], [0, -5, 18], [18, 4, 14]]) { E(x + dx * s, y + dy * s, r * s, r * s * 0.8); g.fill(); }
+  g.lineJoin = g.lineCap = 'round';
+  // 体と白いマント
+  g.fillStyle = '#ffffff'; E(cx, 232, 96, 58); g.fill(); g.strokeStyle = line; g.lineWidth = 3; g.stroke();
+  g.fillStyle = fur; E(cx, 226, 58, 44); g.fill(); g.stroke();
+  // のびをする前足（両手を上へ。肉球を見せる）
+  for (const s of [-1, 1]) {
+    g.strokeStyle = line; g.lineWidth = 36; g.beginPath(); g.moveTo(cx + s * 50, 196); g.quadraticCurveTo(cx + s * 100, 150, cx + s * 112, 74); g.stroke();
+    g.strokeStyle = fur; g.lineWidth = 30; g.stroke();
+    g.strokeStyle = stripe; g.lineWidth = 5; for (const t of [0.45, 0.62]) { const py = 196 - t * 122, px = cx + s * (50 + t * 64); g.beginPath(); g.moveTo(px - 12, py + s * 4); g.lineTo(px + 12, py - s * 4); g.stroke(); }
+    g.fillStyle = pale; E(cx + s * 112, 66, 21, 19); g.fill(); g.strokeStyle = line; g.lineWidth = 3; g.stroke();
+    g.fillStyle = pink; E(cx + s * 112, 71, 8, 7); g.fill();
+    for (const [tx, ty] of [[-11, -6], [-4, -12], [4, -12], [11, -6]]) { E(cx + s * 112 + tx, 66 + ty, 3.5, 4); g.fill(); }
+  }
+  // 耳
+  for (const s of [-1, 1]) {
+    g.fillStyle = fur; g.beginPath(); g.moveTo(cx + s * 64, 104); g.lineTo(cx + s * 70, 46); g.lineTo(cx + s * 22, 78); g.closePath(); g.fill(); g.strokeStyle = line; g.lineWidth = 3; g.stroke();
+    g.fillStyle = pink; g.beginPath(); g.moveTo(cx + s * 58, 96); g.lineTo(cx + s * 64, 58); g.lineTo(cx + s * 32, 80); g.closePath(); g.fill();
+  }
+  // 顔
+  g.fillStyle = fur; E(cx, 132, 76, 64); g.fill(); g.strokeStyle = line; g.lineWidth = 3; g.stroke();
+  g.strokeStyle = stripe; g.lineWidth = 6; for (const dx of [-14, 0, 14]) { g.beginPath(); g.moveTo(cx + dx, 72); g.lineTo(cx + dx * 0.8, 92); g.stroke(); }
+  for (const s of [-1, 1]) for (const dy of [0, 12]) { g.beginPath(); g.moveTo(cx + s * 74, 120 + dy); g.lineTo(cx + s * 58, 124 + dy); g.stroke(); }
+  // 金の冠
+  g.fillStyle = '#ffcf4a'; g.strokeStyle = '#b8862a'; g.lineWidth = 2.5; g.beginPath();
+  g.moveTo(cx - 26, 76); g.lineTo(cx - 28, 52); g.lineTo(cx - 13, 64); g.lineTo(cx, 44); g.lineTo(cx + 13, 64); g.lineTo(cx + 28, 52); g.lineTo(cx + 26, 76); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle = '#ff7a8a'; E(cx, 66, 4, 4); g.fill();
+  // ぎゅっと閉じた目と、あくびの涙
+  g.strokeStyle = '#5a3a2a'; g.lineWidth = 4.5;
+  for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * 46, 106); g.lineTo(cx + s * 28, 114); g.lineTo(cx + s * 46, 121); g.stroke(); }
+  g.fillStyle = '#bfe6ff'; g.strokeStyle = '#6aa8d8'; g.lineWidth = 1.5;
+  for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * 52, 118); g.quadraticCurveTo(cx + s * 60, 130, cx + s * 54, 134); g.quadraticCurveTo(cx + s * 47, 130, cx + s * 52, 118); g.fill(); g.stroke(); }
+  // ほお・鼻・大きく開けた口
+  g.fillStyle = 'rgba(255,130,150,.4)'; for (const s of [-1, 1]) { E(cx + s * 50, 146, 13, 8); g.fill(); }
+  g.fillStyle = '#7a2838'; E(cx, 160, 23, 28); g.fill(); g.strokeStyle = line; g.lineWidth = 3; g.stroke();
+  g.fillStyle = '#ff8aa0'; E(cx, 177, 15, 9); g.fill();
+  g.fillStyle = '#ffffff'; for (const s of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * 15, 138); g.lineTo(cx + s * 10, 150); g.lineTo(cx + s * 6, 137); g.closePath(); g.fill(); }
+  g.fillStyle = pale; for (const s of [-1, 1]) { E(cx + s * 17, 132, 17, 11); g.fill(); }
+  g.fillStyle = '#ff9aa8'; g.beginPath(); g.moveTo(cx - 7, 124); g.lineTo(cx + 7, 124); g.lineTo(cx, 131); g.closePath(); g.fill();
+  g.strokeStyle = line; g.lineWidth = 2;
+  for (const s of [-1, 1]) for (const a of [-0.15, 0.05, 0.25]) { g.beginPath(); g.moveTo(cx + s * 34, 136 + a * 20); g.lineTo(cx + s * 92, 132 + a * 70); g.stroke(); }
+  // きらきら
+  g.fillStyle = '#fffbe0';
+  for (const [x, y, r] of [[60, 120, 5], [262, 110, 6], [96, 26, 4], [228, 24, 4]]) { g.beginPath(); g.moveTo(x, y - r * 2); g.lineTo(x + r * 0.5, y); g.lineTo(x, y + r * 2); g.lineTo(x - r * 0.5, y); g.closePath(); g.fill(); g.beginPath(); g.moveTo(x - r * 2, y); g.lineTo(x, y + r * 0.5); g.lineTo(x + r * 2, y); g.lineTo(x, y - r * 0.5); g.closePath(); g.fill(); }
+  g.strokeStyle = '#b8862a'; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, H - 6);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return (TexCache[k] = t);
 }
@@ -6473,15 +6561,156 @@ class ZoneKit {
     this.mesh(new THREE.BoxGeometry(3.4 * s, 0.18 * s, 0.25 * s), 'red', x, 2.9 * s, z, { ry });
     this.mesh(new THREE.BoxGeometry(4.6 * s, 0.14 * s, 0.4 * s), '#2a2a34', x, 3.68 * s, z, { ry });
   }
+  // 猫神社の社：石の基壇に、朱の柱と白壁の社。反りのある屋根の棟に、かつお木と両端の猫耳。
+  //   正面は格子戸の三間で、まん中の上に、あくびをするねこ神の絵。縁側には魚のお供え、軒に二つの鈴としめ縄。
+  //   縁側の前に木の段とお賽銭箱（金の肉球の紋）、基壇の前に石段、その両わきに赤いよだれかけの狛猫（左はまりを押さえる）。
+  //   ry = 正面の向き。中心から正面へ 3.6m（石段の先）まで。部品は材質ごとにまとめて描く
   shrine(x, z, ry = 0) {
-    this.box(x, z, 4.4, 0.6, 3.6, 'stone', { ry });
-    this.box(x, z, 3.2, 2.4, 2.4, 'wood', { ry, y: 0.6 });
-    const g = new THREE.ConeGeometry(3.1, 1.6, 4); g.rotateY(Math.PI / 4);
-    const r = this.mesh(g, '#3a3a4a', x, 3.8, z, { ry }); r.scale.set(1.2, 1, 0.9);
-    this.mesh(new THREE.BoxGeometry(1.6, 0.5, 0.1), 'gold', x + Math.sin(ry) * 1.25, 2.6, z + Math.cos(ry) * 1.25, { ry, noShadow: true });
-    this.mesh(new THREE.SphereGeometry(0.22, 12, 10), 'gold', x + Math.sin(ry) * 1.35, 2.0, z + Math.cos(ry) * 1.35);
-    this.catStatue(x + Math.sin(ry) * 2.6 + Math.cos(ry) * 1.6, z + Math.cos(ry) * 2.6 - Math.sin(ry) * 1.6, ry, 0.8);
-    this.catStatue(x + Math.sin(ry) * 2.6 - Math.cos(ry) * 1.6, z + Math.cos(ry) * 2.6 + Math.sin(ry) * 1.6, ry, 0.8);
+    const y0 = this.gy(x, z), c = Math.cos(ry), sn = Math.sin(ry), PI = Math.PI;
+    // 社の中の座標（正面 +z）で、回して（z → y → x の順）から置く
+    const put = (mat, geo, lx, ly, lz, rx = 0, gry = 0, rz = 0) => {
+      if (rz) geo.rotateZ(rz); if (gry) geo.rotateY(gry); if (rx) geo.rotateX(rx);
+      geo.translate(lx, ly, lz); if (ry) geo.rotateY(ry);
+      return this.mg(mat, geo, x, y0, z);
+    };
+    const B = (w, h, d) => new THREE.BoxGeometry(w, h, d), RB = (w, h, d, r = 0.04) => new THREEX.RoundedBoxGeometry(w, h, d, 2, r);
+    const stoneA = this.stdM('#b4aea0', 0.94), stoneB = this.stdM('#c6c0b2', 0.92), red = 'red', plaster = 'plaster';
+    const woodM = this.stdM('#93633c', 0.85), woodD = this.stdM('#4e3626', 0.9), roofM = this.stdM('#565a72', 0.72), roofD = this.stdM('#3e4256', 0.8);
+    // 屋根の形：棟（z = RC）から軒先へ、上は急で軒先はゆるく反る
+    const RC = -0.3, RZ = 2.45, EAVE = 3.1, RH = 1.4, TH = 0.18, L = 5.0;
+    const top = u => { const t = Math.min(1, Math.abs(u - RC) / RZ); return EAVE + RH * Math.pow(1 - t, 1.5) + 0.12 * Math.pow(t, 5); };
+    const under = u => top(u) - TH;
+    // 基壇と石段
+    put(stoneA, RB(5.0, 0.4, 5.25, 0.06), 0, 0.2, 0.325);
+    put(stoneB, RB(4.8, 0.06, 5.05, 0.02), 0, 0.41, 0.325);
+    put(stoneA, RB(2.0, 0.27, 0.32, 0.04), 0, 0.135, 3.1);
+    put(stoneA, RB(2.2, 0.13, 0.32, 0.03), 0, 0.065, 3.4);
+    // 床下の板と、縁側の床・床下の短い柱
+    put(woodD, B(3.4, 0.4, 2.5), 0, 0.6, -0.675);
+    put(woodM, B(3.8, 0.1, 1.05), 0, 0.85, 1.1);
+    for (const u of [-0.58, 0.58]) put(woodD, B(0.1, 0.4, 0.1), u, 0.6, 1.45);
+    // 壁：両横は屋根の下まで（妻壁）、前と後ろは四角
+    const side = new THREE.Shape(); side.moveTo(-1.95, 0.9);
+    for (let i = 0; i <= 12; i++) { const u = -1.95 + 2.55 * i / 12; side.lineTo(u, under(u) - 0.01); }
+    side.lineTo(0.6, 0.9); side.closePath();
+    for (const s of [-1, 1]) put(plaster, new THREE.ExtrudeGeometry(side, { depth: 0.1, bevelEnabled: false }), s * 1.75 + 0.05, 0, 0, 0, -PI / 2);
+    const hf = under(0.6) - 0.9, hb = under(-1.95) - 0.9;
+    put(plaster, B(3.5, hf, 0.1), 0, 0.9 + hf / 2, 0.6);
+    put(plaster, B(3.5, hb, 0.1), 0, 0.9 + hb / 2, -1.95);
+    // 朱の柱と梁
+    for (const [u, w] of [[-1.75, -1.95], [1.75, -1.95], [-1.75, 0.6], [1.75, 0.6], [-0.58, 0.6], [0.58, 0.6], [-1.75, 1.35], [1.75, 1.35]]) {
+      const h = under(w) - 0.4; put(red, new THREE.CylinderGeometry(0.1, 0.1, h, 10), u, 0.4 + h / 2, w);
+    }
+    put(red, B(3.7, 0.13, 0.12), 0, 2.06, 0.68);
+    put(red, B(3.7, 0.12, 0.1), 0, 3.18, 0.68);
+    put(red, B(3.7, 0.13, 0.12), 0, 0.96, 0.68);
+    // 横と後ろの壁にも梁を通し、横のまん中に柱、妻壁に束
+    for (const y of [0.96, 2.06, 3.18]) {
+      for (const s of [-1, 1]) put(red, B(0.12, y > 3 ? 0.12 : 0.13, 2.6), s * 1.81, y, -0.675);
+      put(red, B(3.7, y > 3 ? 0.12 : 0.13, 0.12), 0, y, -2.01);
+    }
+    for (const s of [-1, 1]) {
+      const h = under(-0.675) - 0.4; put(red, new THREE.CylinderGeometry(0.09, 0.09, h, 10), s * 1.77, 0.4 + h / 2, -0.675);
+      const hk = under(RC) - 3.24; put(red, B(0.1, hk, 0.14), s * 1.81, 3.24 + hk / 2, RC);
+    }
+    const eb = under(1.35) - 0.08;
+    put(red, B(3.8, 0.15, 0.14), 0, eb, 1.35);
+    for (const s of [-1, 1]) put(red, B(0.1, 0.12, 0.75), s * 1.75, eb, 0.975);
+    // 縁側の両横の手すり
+    for (const s of [-1, 1]) {
+      put(red, B(0.06, 0.06, 1.0), s * 1.86, 1.3, 1.1);
+      for (const w of [0.95, 1.55]) put(red, B(0.05, 0.4, 0.05), s * 1.86, 1.1, w);
+    }
+    // 格子戸（三間）
+    const doorM = this.mc.shrineDoor || (this.mc.shrineDoor = new THREE.MeshStandardMaterial({ map: shrineDoorTex(), roughness: 0.85 }));
+    for (const u of [-1.165, 0, 1.165]) put(doorM, new THREE.PlaneGeometry(1.06, 1.04), u, 1.5, 0.661);
+    // あくびをするねこ神の絵（金の額）
+    const paintM = this.mc.shrinePaint || (this.mc.shrinePaint = new THREE.MeshStandardMaterial({ map: yawnGodTex(), roughness: 0.8, emissive: '#ffffff', emissiveMap: yawnGodTex(), emissiveIntensity: 0.28 }));
+    put('gold', B(1.14, 0.84, 0.05), 0, 2.6, 0.69);
+    put(paintM, new THREE.PlaneGeometry(1.0, 0.7), 0, 2.6, 0.717);
+    // 屋根：反りのある切妻。軒先に金のふち、棟に覆いとかつお木、両端に猫耳
+    const rs = new THREE.Shape(), N = 28, U = i => RC - RZ + 2 * RZ * i / N;
+    for (let i = 0; i <= N; i++) i ? rs.lineTo(U(i), top(U(i))) : rs.moveTo(U(0), top(U(0)));
+    for (let i = N; i >= 0; i--) rs.lineTo(U(i), top(U(i)) - TH);
+    const rg = new THREE.ExtrudeGeometry(rs, { depth: L, bevelEnabled: false, curveSegments: 1 }); rg.translate(0, 0, -L / 2);
+    put(roofM, rg, 0, 0, 0, 0, -PI / 2);
+    for (const s of [-1, 1]) put('gold', B(L + 0.02, 0.05, 0.05), 0, top(RC + s * RZ) - 0.07, RC + s * (RZ + 0.015));
+    const ridge = top(RC);
+    put(roofD, RB(L + 0.3, 0.24, 0.34, 0.06), 0, ridge + 0.04, RC);
+    for (const u of [-1.2, -0.4, 0.4, 1.2]) {
+      put(woodD, new THREE.CylinderGeometry(0.08, 0.08, 0.5, 10), u, ridge + 0.24, RC, PI / 2);
+      for (const s of [-1, 1]) put('gold', new THREE.CylinderGeometry(0.085, 0.085, 0.03, 10), u, ridge + 0.24, RC + s * 0.25, PI / 2);
+    }
+    for (const s of [-1, 1]) { const eg = new THREE.ConeGeometry(0.26, 0.5, 4); eg.rotateY(PI / 4); eg.scale(1, 1, 0.5); put(roofD, eg, s * (L / 2 + 0.02), ridge + 0.38, RC, 0, 0, -s * 0.18); }
+    // しめ縄（よった二本の縄）と紙垂
+    const rope = this.stdM('#e2cf94', 0.95), sag = u => 0.05 * (1 - (u / 1.95) ** 2);
+    for (const ph of [0, PI]) {
+      const pts = [];
+      for (let i = 0; i <= 64; i++) { const u = -1.95 + 3.9 * i / 64, a = u * 9 + ph; pts.push(V3(u, eb - 0.12 - sag(u) + Math.sin(a) * 0.03, 1.47 + Math.cos(a) * 0.03)); }
+      put(rope, new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, 0.045, 6), 0, 0, 0);
+    }
+    const paper = this.stdM('#ffffff', 0.9, { side: THREE.DoubleSide });
+    for (const u of [-1.45, -0.66, 0.66, 1.45]) for (let k = 0; k < 4; k++) put(paper, new THREE.PlaneGeometry(0.09, 0.1), u + (k % 2) * 0.05, eb - 0.22 - sag(u) - k * 0.1, 1.5);
+    // 鈴と鈴緒（紅白によった縄）
+    const ropeM = this.mc.shrineRope || (this.mc.shrineRope = new THREE.MeshStandardMaterial({ map: shrineRopeTex(), roughness: 0.9 }));
+    for (const u of [-0.95, 0.95]) {
+      put(woodD, new THREE.CylinderGeometry(0.012, 0.012, 0.32, 5), u, eb - 0.23, 1.35);
+      put('gold', new THREE.SphereGeometry(0.15, 14, 10), u, 2.56, 1.35);
+      put('gold', new THREE.TorusGeometry(0.15, 0.016, 5, 18), u, 2.56, 1.35, PI / 2);
+      put('gold', new THREE.TorusGeometry(0.045, 0.012, 5, 10), u, 2.74, 1.35);
+      put(woodD, B(0.13, 0.025, 0.03), u, 2.47, 1.48);
+      put(ropeM, new THREE.CylinderGeometry(0.045, 0.045, 1.36, 8), u, 1.73, 1.35);
+      put(ropeM, new THREE.CylinderGeometry(0.06, 0.03, 0.14, 8), u, 1.0, 1.35);
+    }
+    // 縁側のお供え：三方に焼き魚
+    put(this.stdM('#d8b07a', 0.8), B(0.24, 0.14, 0.24), 0, 0.97, 1.15);
+    put(this.stdM('#d8b07a', 0.8), B(0.38, 0.04, 0.38), 0, 1.06, 1.15);
+    put(this.stdM('#b88a5a', 0.6), new THREE.SphereGeometry(0.13, 12, 8).scale(1.3, 0.42, 0.5), -0.02, 1.13, 1.15);
+    put(this.stdM('#b88a5a', 0.6), new THREE.ConeGeometry(0.06, 0.12, 4).scale(1, 1, 0.3), 0.2, 1.13, 1.15, 0, 0, PI / 2);
+    // 木の段とお賽銭箱（金の肉球の紋）
+    put(woodM, B(1.5, 0.33, 0.25), 0, 0.565, 1.75);
+    put(woodM, B(1.5, 0.17, 0.25), 0, 0.485, 2.0);
+    const boxM = this.stdM('#7e5232', 0.82);
+    put(boxM, B(1.3, 0.5, 0.5), 0, 0.65, 2.55);
+    for (const s of [-1, 1]) { put(woodD, B(1.32, 0.06, 0.06), 0, 0.92, 2.55 + s * 0.23); put(woodD, B(0.06, 0.06, 0.5), s * 0.63, 0.92, 2.55); }
+    for (let k = 0; k < 5; k++) put(woodM, B(1.2, 0.03, 0.08), 0, 0.92, 2.37 + k * 0.09, (k % 2 ? 1 : -1) * 0.5);
+    for (const s of [-1, 1]) for (const t of [-1, 1]) put('gold', B(0.09, 0.09, 0.09), s * 0.63, 0.92, 2.55 + t * 0.23);
+    put('gold', new THREE.CircleGeometry(0.1, 16), 0, 0.6, 2.802);
+    for (const [tx, ty] of [[-0.1, 0.09], [-0.035, 0.14], [0.035, 0.14], [0.1, 0.09]]) put('gold', new THREE.CircleGeometry(0.035, 10), tx, 0.6 + ty, 2.802);
+    // 狛猫：二段の台座にすわる石の猫。赤いよだれかけ、左の猫はまりを押さえる
+    const catS = this.stdM('#c4beb2', 0.9), pedS = this.stdM('#a29c90', 0.95), bib = this.stdM('#d8463c', 0.85, { side: THREE.DoubleSide }), eyeS = this.stdM('#6e685e', 0.9);
+    for (const s of [-1, 1]) {
+      const lx = s * 2.35, lz = 3.6, face = -s * 0.3, ball = s < 0;
+      const ps = (mat, geo, px, py, pz, rx = 0, gry = 0, rz = 0) => {
+        if (rz) geo.rotateZ(rz); if (gry) geo.rotateY(gry); if (rx) geo.rotateX(rx);
+        geo.translate(px, py, pz); geo.rotateY(face); return put(mat, geo, lx, 0, lz);
+      };
+      ps(pedS, RB(0.95, 0.45, 0.95, 0.05), 0, 0.225, 0);
+      ps(stoneB, RB(0.78, 0.32, 0.78, 0.05), 0, 0.61, 0);
+      ps(catS, new THREE.SphereGeometry(0.36, 16, 12).scale(1, 1.2, 0.92), 0, 1.16, -0.04);
+      for (const t of [-1, 1]) {
+        ps(catS, new THREE.SphereGeometry(0.24, 12, 10).scale(0.8, 0.95, 1.15), t * 0.22, 0.98, -0.1);
+        ps(catS, new THREE.CylinderGeometry(0.07, 0.08, 0.42, 10), t * 0.13, 1.0, 0.22);
+        ps(catS, new THREE.SphereGeometry(0.095, 10, 8).scale(1, 0.6, 1.25), t * 0.13, 0.82, 0.27);
+      }
+      ps(catS, new THREE.SphereGeometry(0.33, 16, 12).scale(1.12, 0.95, 1), 0, 1.66, 0.04);
+      for (const t of [-1, 1]) ps(catS, new THREE.SphereGeometry(0.085, 10, 8).scale(1, 0.8, 0.75), t * 0.065, 1.55, 0.31);
+      ps(eyeS, new THREE.SphereGeometry(0.03, 8, 6).scale(1.3, 0.8, 0.8), 0, 1.6, 0.37);
+      for (const t of [-1, 1]) {
+        const eg = new THREE.ConeGeometry(0.12, 0.26, 4); eg.rotateY(PI / 4); eg.scale(1, 1, 0.55);
+        ps(catS, eg, t * 0.21, 1.95, 0.02, 0, 0, -t * 0.3);
+        ps(eyeS, new THREE.SphereGeometry(0.035, 8, 6).scale(1.4, 0.6, 0.6), t * 0.13, 1.7, 0.33);
+      }
+      ps(catS, new THREE.TorusGeometry(0.3, 0.06, 6, 14, PI * 0.9), 0, 0.82, -0.02, PI / 2, -s * 0.3);
+      ps(bib, new THREE.SphereGeometry(0.375, 16, 8, PI / 2 - 0.95, 1.9, 0.62, 0.62).scale(1, 1.2, 0.92), 0, 1.16, -0.04);
+      if (ball) ps(catS, new THREE.IcosahedronGeometry(0.13, 1), -0.2, 0.92, 0.3);
+      const [wx, wz] = [x + lx * c + lz * sn, z - lx * sn + lz * c];
+      this.col(wx, wz, 0.55, 2.2);
+    }
+    // 当たり：基壇と石段（社の屋根まで）
+    const [cx, cz] = [x + 0.625 * sn, z + 0.625 * c];
+    this.boxCol(cx, cz, 5.0, 5.85, ridge + 0.3, ry);
+    this.reserve(x, z, 4.5);
   }
   // 猫の石像（台座つき）
   catStatue(x, z, ry = 0, s = 1, mat = 'stone', eye) {
@@ -7640,9 +7869,9 @@ const ZONE_BUILD = {
     for (let i = 0; i < 10; i++) { const a = K.r() * 6, d = K.r() * 3.4, x = 24.5 + Math.cos(a) * d, z = 20 + Math.sin(a) * d * 1.3; const pad = K.mesh(new THREE.CircleGeometry(0.35 + K.r() * 0.25, 12, 0.3, Math.PI * 1.85), 'leaf2', x, 0.06, z, { rx: -Math.PI / 2, noShadow: true }); pad.rotation.z = K.r() * 6; if (i % 3 === 0) K.mesh(new THREE.SphereGeometry(0.12, 8, 6), '#ffb8d8', x, 0.14, z, { noShadow: true }); }
     K.bench(24, 13.1, 0); K.flowers(17, 26.5, 10, 1.4, ['#ffb8d8', '#ffffff']); K.flowers(31.5, 13.2, 8, 1.2, ['#ffb8d8', '#ffffff']); K.rock(31.2, 22, 0.6);
     // 猫神社：参道の鳥居と石灯籠、丘の上の小さな鳥居、飛び石、社。奥の道に灯籠
-    K.torii(24, -6.8, 0, 1); K.torii(24, -15.4, 0, 0.82); K.shrine(24, -23, 0);
+    K.torii(24, -6.8, 0, 1); K.torii(24, -15.4, 0, 0.82); K.shrine(24, -23.5, 0);
     for (const [x, z] of [[21.2, -7.6], [26.8, -7.6], [21.4, -16.4], [26.6, -16.4], [31.2, -16.8], [31.2, -23.2]]) K.stoneLantern(x, z);
-    for (let z = -16.6; z > -20.8; z -= 1.4) K.mesh(new THREE.BoxGeometry(1.6, 0.06, 1), 'stone', 24, 0.03, z, { noShadow: true });
+    for (let z = -16.6; z > -20; z -= 1.4) K.mesh(new THREE.BoxGeometry(1.6, 0.06, 1), 'stone', 24, 0.03, z, { noShadow: true });
     K.roundTree(29.5, -26, 1.3, 'leaf2', { lush: true }); K.flowers(19, -19, 10, 1.6, ['#ffffff', '#ffb8d8']);
     // 村の小物
     K.bench(-6, 8, 0.4); K.bench(7.2, -1.6, -0.9);
