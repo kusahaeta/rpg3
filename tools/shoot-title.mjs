@@ -2,7 +2,8 @@
 //   node tools/shoot-title.mjs <出力.png> [倍率=1.5] [start|nostart] [幅x高さ=1280x720]
 // ゲームの画面は 1280×720 固定なので、倍率 1.5 で 1920×1080、3 で 3840×2160 になる。
 // iPhone の枠は、その画面の大きさ（たとえば 956x440）を倍率 3 で撮る。16:9 より横長だと両はしに余白が出る（実機と同じ）。
-// 「タップして はじめる」は start で出す（既定）、nostart で隠す（フィーチャー画像・ヘッダ用）。
+// 「タップして はじめる」は start で出す（既定）、nostart で隠す（フィーチャー画像・ヘッダ用。右上の言語ボタンも隠す）。
+// SHOT_LANG=en で英語の画面（既定は日本語）。
 // 先に `PORT=8937 node .claude/serve.js` を動かしておく。セーブは空の新しいプロフィールで撮る（はじめて遊ぶ人と同じ画面）
 import { spawn } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
@@ -38,11 +39,13 @@ try {
   };
 
   await send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: scale, mobile: false });
+  await send('Page.enable');
+  await send('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('nyanko_lang', ${JSON.stringify(process.env.SHOT_LANG || 'ja')})` });
   await send('Page.navigate', { url: URL });
   for (let i = 0; i < 100; i++) { await sleep(300); if (await ev(`typeof GFX !== 'undefined' && !!(GFX.view && GFX.view.key === 'title' && document.querySelector('.screen.title'))`)) break; }
   // 画質を「なめらか」に固定し、細かさの上限を倍率まで上げる（ヘッドレスはコマ数が少なく見え、そのままだと軽量に落とされる）
   await ev(`GFX.watchFps = () => {}; GFX.setTier(0); GFX.Q.prMax = ${scale}; GFX.resize(GFX.appScale); document.body.classList.add('touch');
-    document.querySelector('.t-start').style.visibility = '${showStart ? 'visible' : 'hidden'}'; true`);
+    for (const el of document.querySelectorAll('.t-start, .t-lang')) el.style.visibility = '${showStart ? 'visible' : 'hidden'}'; true`);
   // はじめは樹を見上げていて、数秒かけて 5 匹の後ろへ下りてくる。下りきって、ロゴの文字がそろうまで待つ
   for (let i = 0; i < 120; i++) {
     await sleep(250);
