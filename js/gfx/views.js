@@ -873,6 +873,7 @@ class BattleView extends BaseView {
       await GFX.tween(0.3, t => { m.group.position.lerpVectors(from, e.home, t); m.group.position.y = Math.sin(t * Math.PI) * 0.5; });
     } else if (src.alive) this.tweenPose(m, POSES.ready, 0.3);
     m.group.rotation.y = Math.PI;
+    if (this.kkb) { for (const x of this.kkb.marks) x.ctl.fade(); this.kkb = null; }   // 黒白連撃のしるし（決めまで行かなかったとき）
     this.lastAttack = null; this.hitGlow = 1; this.breakX = null;
     this.wide();
   }
@@ -908,7 +909,7 @@ class BattleView extends BaseView {
     const k = e.ally ? 0.45 : this.hitGlow, sz = e.ally ? 0.6 : 0.4 + 0.6 * k;
     this.fx.sprite(p, col, (big ? 2.6 : 1.5) * sz, 0.3, { k: 4 * k });
     this.fx.sprite(p, '#ffffff', (big ? 1.2 : 0.7) * sz, 0.15, { k: 4 * k });
-    if (!e.ally) this.fx.ring(p, col, { r: big ? 1.6 : 1.0, life: 0.35, face: this.camera.position, width: 0.1 });
+    if (!e.ally) this.fx.ring(p, col, { r: big ? 1.6 : 1.0, life: 0.35, face: this.camera.position, width: 0.1, k: 3 * k });
     this.p.burst(p, col, big ? 50 : 24, { speed: big ? 7 : 4.5, life: 0.5, size: 0.09, drag: 4 });
     if (crit) this.p.burst(p, '#ffe066', 30, { speed: 8, life: 0.6, size: 0.07, drag: 4 });
     e.model.flash(e.ally ? '#ff3040' : '#ffffff', e.ally ? 1.2 : 1.6 * Math.max(0.4, k));

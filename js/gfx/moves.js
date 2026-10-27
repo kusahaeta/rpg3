@@ -1796,28 +1796,22 @@ const MOVES = {
       if (mk) { mk.model.group.rotation.y = Math.PI; this.tweenPose(mk.model, POSES.ready, 0.3); }   // 相方の向きを戻す（attackEnd はシロだけ）
     },
   },
-  // 黒白連撃：クロは敵から敵へ跳びまわって斬り、シロはうしろから雷の矢で続く。カメラは引きの一枚のまま
+  // 黒白連撃：構えた二人を前から。クロは影にしずみ、敵のそばの影から跳びだして斬る。シロは杖から白い稲妻。
+  //   ひと太刀・ひと雷ごとに、敵に黒と白のしるしが残る。最後は白い稲妻がしるしからしるしへ走り、クロが刀をおさめると、いっせいにはじける
+  //   （技の run が opt.hit に何発目かを入れる。0 が最初のクロ、5 が最後のシロ）
   kokubyaku: {
     keep: true,
     async attack(e, ts, c) {
-      const t = ts[0], k = this.allyEnt('kuro'), sh = this.allyEnt('shiro'), cen = this.enemyCenter();
-      for (const x of this.ents.values()) if (x.ally) x.model.group.visible = x === k || x === sh;
-      const ax = sh ? sh.home.x : 0;
-      this.setCam(V3(ax + 3.6, 3.2, 5.4), V3((ax + cen.x) / 2 - 0.4, 0.6, cen.z + 1.2), { snap: true });
-      if (CHARS[e.u.key].gear.style === 'melee') {
-        const a = (Math.random() - 0.5) * 1.6, r = t.model.radius + 0.6;
-        await this.dashTo(e, t.home.clone().add(V3(Math.sin(a) * r, 0, Math.cos(a) * r)), { pose: POSES.windup, dur: 0.2, hop: 0.5 });
-        this.face(e, t.home);
-        await this.tweenPose(e.model, Math.random() < 0.5 ? POSES.strike : POSES.strike2, 0.07);
-        this.fx.slash(this.hitPoint(t.u), c.col, { cam: this.camera, size: 2.4 });
-      } else {
-        this.face(e, t.home);
-        await this.tweenPose(e.model, POSES.cast, 0.1);
-        this.fx.bolt(e.model.tipPos(), this.hitPoint(t.u), c.col, { life: 0.18, segs: 12, jag: 0.12, r: 0.025 });
-        this.fx.sprite(this.hitPoint(t.u), c.col, 1.4, 0.2, { k: 4 });
-        Sfx.zap();
-        await GFX.delay(0.08);
-      }
+      const t = ts[0], i = c.opt.hit || 0, k = this.allyEnt('kuro'), sh = this.allyEnt('shiro');
+      if (i === 0 || !this.kkb) this.kkb = { marks: [], side: 1, bside: 1 };
+      const S = this.kkb, pair = [k, sh].filter(x => x && x.u.alive);
+      for (const x of this.ents.values()) if (x.ally) x.model.group.visible = pair.includes(x);
+      this.hitGlow = 0.4;   // 命中の光をひかえめに（しるしが白い光にうもれないよう。attackEnd で戻る）
+      const fast = 1 - Math.min(i, 5) * 0.07;   // だんだん速く
+      if (i === 0) await this.kkOpen(pair, k);
+      if (e.u.key === 'kuro') await this.kkSlash(e, t, S, fast);
+      else await this.kkBolt(e, t, S, fast, i === 5);
+      if (i === 5) await this.kkFinish(S, k);
     },
   },
   // にゃんにゃんヒール：みんなでこちらを向いて声を合わせ、音符と光が一行をつつむ
@@ -1933,6 +1927,169 @@ Object.assign(BattleView.prototype, {
       if (age < dur) { const tip = g.position.clone().addScaledVector(dir, len * draw); for (let i = 0; i < 3; i++) this.p.emit(tip, V3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(1.2), hdr(glow, 3), { life: 0.35, size: 0.09, drag: 3 }); }
     });
     return ctl;
+  },
+  // ---------- 黒白連撃の部品 ----------
+  // 構え：敵がわから二人を。クロは居合に構えて黒い気、シロは杖を立てて白い火花。クロは足もとの影にしずむ
+  async kkOpen(pair, k) {
+    const mx = pair.reduce((a, x) => a + x.home.x, 0) / pair.length, hz = pair[0].home.z, wide = Math.abs(pair[0].home.x - mx);
+    this.setCam(V3(mx + 0.5, 0.95, hz - 3.0 - wide * 1.2), V3(mx, 0.72, hz), { snap: true });
+    for (const x of pair) {
+      const kuro = x === k, m = x.model;
+      m.group.rotation.y = Math.PI;
+      this.tweenPose(m, kuro ? POSES.iai : POSES.staffUp, 0.2);
+      this.fx.ring(x.home.clone().add(V3(0, 0.05, 0)), kuro ? KURO_SHADOW : '#ffe9a0', { r: 1.0, life: 0.5, width: 0.12 });
+      if (kuro) this.miasma(x.home, 8, { size: 0.5, up: 1.0, spread: 0.5, life: 0.7 });
+    }
+    const sh = pair.find(x => x !== k);
+    Sfx.tone(90, 0.5, 'sawtooth', 0.04, 40);
+    await this.every(0.4, 8, n => {
+      if (!sh) return;
+      const tp = sh.model.tipPos();
+      this.fx.bolt(tp, tp.clone().add(V3((Math.random() - 0.5) * 0.8, Math.random() * 0.6, (Math.random() - 0.5) * 0.5)), n % 2 ? '#ffffff' : '#ffd23c', { life: 0.1, segs: 5, jag: 0.06, r: 0.014 });
+      if (n % 3 === 0) Sfx.zap();
+    });
+    if (k && k.u.alive) {
+      this.glare(k);
+      await GFX.delay(0.12);
+      // 影にしずむ
+      const m = k.model;
+      this.shadowPool(k.home, 0.55, 0.5);
+      this.afterimage(k, { life: 0.35, op: 0.5 });
+      await GFX.tween(0.14, t => { m.group.position.y = -1.1 * Ease.in(t); });
+      m.group.visible = false;
+    }
+  },
+  // クロ：ねらう敵のななめ前の影から跳びだして、ひと太刀。黒いしるしが残る
+  //   カメラはクロと敵を結ぶ線の真横（手前がわ）から。クロの横顔と敵が並ぶ。左右はひと太刀ごとに入れかえる
+  async kkSlash(e, t, S, fast) {
+    S.side = -S.side;
+    const m = e.model, a = S.side * (0.85 + Math.random() * 0.3), r = t.model.radius + 0.55;
+    const dir = V3(Math.sin(a), 0, Math.cos(a)), dest = t.home.clone().addScaledVector(dir, r), mid = dest.clone().add(t.home).multiplyScalar(0.5);
+    const D = 2.4 + t.model.radius * 1.4 + t.model.height * 0.6, perp = V3(-dir.z, 0, dir.x).multiplyScalar(S.side);   // 線に直角で、手前（+z）がわ
+    this.setCam(mid.clone().addScaledVector(perp, D).add(V3(0, 0.55 + t.model.height * 0.35, 0)), V3(mid.x, t.model.height * 0.45, mid.z), { snap: true });
+    this.shadowPool(dest, 0.5, 0.5);
+    m.group.visible = true;
+    m.group.position.set(dest.x, -1.1, dest.z);
+    this.face(e, t.home);
+    m.setPose(POSES.iai);
+    this.lastAttack.moved = true;
+    await GFX.delay(0.07 * fast);
+    // 影から跳びだす
+    this.tweenPose(m, POSES.windup, 0.12 * fast);
+    this.miasma(dest, 4, { size: 0.45, up: 1.2, spread: 0.4, life: 0.5 });
+    await GFX.tween(0.13 * fast, k => { m.group.position.y = -1.1 * (1 - Ease.out(k)) + Math.sin(k * Math.PI) * 0.3; });
+    m.group.position.y = 0;
+    this.afterimage(e, { life: 0.3, op: 0.45 });
+    Sfx.swing();
+    const up = S.marks.filter(x => x.black).length % 2 === 0, ang = up ? 0.75 : -0.75;
+    await this.sweep(m, up ? POSES.strike : POSES.strike2, 0.08 * fast, KURO_SHADOW, { n: 4 });
+    const p = this.hitPoint(t.u);
+    S.marks.push({ t, black: true, ctl: this.kkMark(t, true, ang, S) });
+    this.p.burst(p, hdr(KURO_SHADOW, 2.5), 14, { speed: 3, life: 0.4, size: 0.1, drag: 4 });
+    this.squash(t, 0.15);
+    await GFX.delay(0.05);
+  },
+  // シロ：杖から白い稲妻。白いしるしが残る。カメラはシロの肩ごし（左右をかわりばんこに）
+  async kkBolt(e, t, S, fast, last) {
+    const m = e.model, h = e.home, d = t.home.clone().sub(h).setY(0).normalize();
+    S.bside = -S.bside;
+    const perp = V3(d.z, 0, -d.x).multiplyScalar(S.bside);
+    this.setCam(h.clone().addScaledVector(perp, 1.5).addScaledVector(d, -2.3).add(V3(0, 1.25, 0)), h.clone().lerp(t.home, 0.62).setY(0.6), { snap: true });
+    this.face(e, t.home);
+    await this.tweenPose(m, last ? POSES.staffUp : POSES.cast, 0.1 * fast);
+    const tip = m.tipPos(), p = this.hitPoint(t.u), big = last ? 1.25 : 1;
+    this.fx.sprite(tip, '#fff4c8', 0.45 * big, 0.15, { k: 3 });
+    this.fx.bolt(tip, p, '#ffd23c', { life: 0.3, segs: 16, jag: 0.25, r: 0.035 * big, k: 3 });
+    this.fx.bolt(tip, p, '#ffffff', { life: 0.24, segs: 16, jag: 0.2, r: 0.014 * big, k: 4 });
+    this.fx.sprite(p, '#ffffff', 1.0 * big, 0.15, { k: 3 });
+    Sfx.zap(); if (last) Sfx.zap();
+    S.marks.push({ t, black: false, ctl: this.kkMark(t, false, Math.random() * 0.6, S) });
+    this.p.burst(p, '#ffd23c', 16, { speed: 4, life: 0.35, size: 0.08, drag: 3 });
+    this.squash(t, 0.12);
+    await GFX.delay(0.08 * fast);
+    if (!last) this.tweenPose(m, POSES.ready, 0.2);
+  },
+  // しるし：敵に残る黒い斬りあと（black）／白い稲妻の十字。カメラに向いた板なので、カメラを切りかえても形はくずれない
+  //   ctl.burst() で太く光ってはじけ、ctl.fade() で消える（敵が倒れても消える）
+  kkMark(t, black, angle, S) {
+    const g = new THREE.Group(), L = Math.max(1.0, t.model.height * 1.0, t.model.radius * 1.8);
+    const n = S.marks.filter(x => x.t === t).length, off = V3((n % 2 ? 1 : -1) * 0.12 * Math.min(n, 3), (n % 3 - 1) * 0.1, 0);
+    const sp = (col, sx, sy, rot, add, op, tex = flareTex()) => {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: col, rotation: rot, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, transparent: true, opacity: op, depthWrite: false, depthTest: false }));
+      s.renderOrder = 12; s.userData = { sx, sy, op, rot }; g.add(s); return s;
+    };
+    if (black) {
+      sp(new THREE.Color(KURO_SHADOW), L * 1.15, 0.36, angle, false, 0.55);
+      sp(new THREE.Color('#14101f'), L, 0.2, angle, false, 1);
+      sp(hdr(MOON, 1.6), L * 0.8, 0.04, angle, true, 0.9);
+    } else {
+      sp(new THREE.Color('#ffc21a'), L * 0.95, 0.32, angle, false, 0.6); sp(new THREE.Color('#ffc21a'), L * 0.95, 0.32, angle + Math.PI / 2, false, 0.6);
+      for (const a of [angle, angle + Math.PI / 2]) sp(new THREE.Color('#ffffff'), L * 0.8, 0.16, a, false, 1);
+    }
+    const life = 8, ctl = { age: 0, at: -1, mode: 0, burst() { if (!ctl.mode) { ctl.mode = 1; ctl.at = ctl.age; } }, fade() { if (!ctl.mode) { ctl.mode = 2; ctl.at = ctl.age; } } };
+    this.fx.add(g, life, kk => {
+      const age = ctl.age = kk * life;
+      if (!ctl.mode && (!t.u.alive || age > life - 0.4)) ctl.fade();
+      g.position.copy(this.hitPoint(t.u)).add(off);
+      const draw = Ease.out(Math.min(1, age / 0.1));
+      let thick = 1 + (age < 0.25 ? (1 - age / 0.25) * 0.5 : Math.sin(age * 9) * 0.05), op = 1, grow = draw, jit = 0;
+      if (!black) { op = 0.85 + Math.random() * 0.15; jit = (Math.random() - 0.5) * 0.08; }
+      if (ctl.mode) {
+        const f = Math.min(1, (age - ctl.at) / (ctl.mode === 1 ? 0.35 : 0.3));
+        if (ctl.mode === 1) { thick = 1 + Math.sin(Math.min(1, f * 2.5) * Math.PI / 2) * 0.8; grow = 1 + f * 0.5; }
+        op *= 1 - f * f;
+        if (f >= 1) { g.visible = false; return; }
+      }
+      for (const s of g.children) { const u = s.userData; s.scale.set(u.sx * grow, u.sy * (u.sx === u.sy ? grow : thick), 1); s.material.opacity = u.op * op; s.material.rotation = u.rot + jit; }
+    });
+    return ctl;
+  },
+  // 決め：しるしのついた敵をみんな映す。白い稲妻がしるしからしるしへ走り、クロが刀をおさめると、いっせいにはじける
+  async kkFinish(S, k) {
+    const marks = S.marks.filter(x => x.t.u.alive && !x.ctl.mode), ts = [...new Set(marks.map(x => x.t))];
+    if (!ts.length) return;
+    await GFX.delay(0.24);   // シロの稲妻が消えてから切りかえる
+    this.focus(k);   // 敵のそばのクロだけ映す（シロの稲妻は空から。仲間は attackEnd の wide で戻る）
+    const cx = ts.reduce((a, t) => a + t.home.x, 0) / ts.length, z = Math.max(...ts.map(t => t.home.z)), wide = Math.max(...ts.map(t => Math.abs(t.home.x - cx) + t.model.radius));
+    const tall = Math.max(...ts.map(t => t.model.height));
+    //   背の高い敵は頭まで入るように引く。クロの戻り道（持ち場のある側）と逆の側から映す（戻るときにカメラの前を通らないように）
+    //   カメラは仲間の列より前に止め、入りきらない分は画角を広げる（attackEnd の wide で 38 に戻る）
+    const want = Math.max(1.6 + wide * 1.45 + tall * 0.9, tall * 2.4), side = k && k.home.x > cx ? -1 : 1;
+    const dist = Math.min(want, Math.max(3, (k ? k.home.z : 2.6) - 1.2 - z));
+    if (dist < want) this.setFov(Math.min(60, 2 * Math.atan(Math.tan(19 * Math.PI / 180) * want / dist) * 180 / Math.PI));
+    this.setCam(V3(cx + side * 1.0, 2.0 + tall * 0.45, z + dist), V3(cx, tall * 0.45, z - 0.4), { snap: true });   // 高めに（wide へ引くとき、仲間の頭の上を通るように）
+    const kOk = k && k.u.alive && k.model.group.visible;
+    if (kOk) this.tweenPose(k.model, POSES.iai, 0.15);
+    await GFX.delay(0.15);
+    // 白い稲妻が、しるしをつけた順に、敵から敵へ
+    let from = this.hitPoint(ts[0].u).add(V3(0.6, 5, 0.4));
+    for (const t of ts) {
+      const p = this.hitPoint(t.u);
+      this.fx.bolt(from, p, '#ffd23c', { life: 0.5, segs: 14, jag: 0.25, r: 0.04, k: 3 });
+      this.fx.bolt(from, p, '#ffffff', { life: 0.45, segs: 14, jag: 0.2, r: 0.016, k: 4 });
+      this.fx.sprite(p, '#ffffff', 0.9, 0.2, { k: 3 });
+      Sfx.zap();
+      from = p;
+      await GFX.delay(0.07);
+    }
+    await GFX.delay(0.12);
+    // 刀をおさめる、ちん
+    if (kOk) { this.face(k, this.camera.position); await this.tweenPose(k.model, POSES.ready, 0.12); this.glare(k); }
+    Sfx.tone(2400, 0.12, 'triangle', 0.06); Sfx.tone(3200, 0.25, 'sine', 0.03, 0, 0.03);
+    GFX.slowmo(0.25, 0.25);
+    await GFX.delay(0.12);
+    for (const x of marks) x.ctl.burst();
+    for (const t of ts) {
+      const p = this.hitPoint(t.u);
+      this.fx.sprite(p, '#ffd23c', 1.6 + t.model.radius, 0.3, { k: 1.6 });
+      this.fx.shards(p, '#2a2240', 8, 5);
+      this.fx.shards(p, '#fffbe8', 8, 5);
+      this.squash(t, 0.3);
+    }
+    Sfx.slam(); GFX.shake(0.3);
+    await GFX.delay(0.4);
+    // いつもの引きの画へ切りかえてから、クロが戻る（なめらかに引くと、戻るクロの頭のすぐ上をカメラが通る）
+    this.wide(); this.camera.position.copy(this.camPos); this.curLook.copy(this.camLook);
   },
   // ---------- シロ（大ばくはつの杖）の技の部品 ----------
   // 杖を立てたシロを、前の斜め下から（顔と杖の先が見えるように）
