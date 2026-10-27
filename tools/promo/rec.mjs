@@ -106,7 +106,9 @@ const HELPERS = `(() => {
   return true;
 })()`;
 
-export async function session(fn) {
+// opts { w, h, scale } で画面の大きさを変えられる（ストアのスクショなど。既定は動画の 936×432・2.5 倍）。
+// lang（'ja' か 'en'）でゲームの言語を決める（なければ端末の言語）
+export async function session(fn, { w = VW, h = VH, scale = SCALE, lang } = {}) {
   const port = 9400 + Math.floor(Math.random() * 400);
   const profile = mkdtempSync(join(tmpdir(), 'nyanko-rec-'));
   const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${port}`, '--use-angle=metal',
@@ -135,9 +137,10 @@ export async function session(fn) {
     };
     await send('Runtime.enable');
     await send('Page.enable');
-    await send('Emulation.setDeviceMetricsOverride', { width: VW, height: VH, deviceScaleFactor: SCALE, mobile: false });
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: scale, mobile: false });
     await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
     await send('Page.addScriptToEvaluateOnNewDocument', { source: SHIM });
+    if (lang) await send('Page.addScriptToEvaluateOnNewDocument', { source: `localStorage.setItem('nyanko_lang', ${JSON.stringify(lang)})` });
     await send('Page.navigate', { url: URL });
     // 読みこみは本物の時間で待ちつつ、仮の時計も進める
     for (let i = 0; i < 200; i++) {
@@ -150,7 +153,7 @@ export async function session(fn) {
     await ev(SFX_LOG);
     await ev(HELPERS);
     // 画質を「なめらか」に固定（ヘッドレスはコマ数が少なく見え、そのままだと軽量に落とされる）。タッチの表示に
-    await ev(`GFX.watchFps = () => {}; GFX.setTier(0); GFX.Q.prMax = ${SCALE}; GFX.resize(GFX.appScale); Touch.set(true);
+    await ev(`GFX.watchFps = () => {}; GFX.setTier(0); GFX.Q.prMax = ${scale}; GFX.resize(GFX.appScale); Touch.set(true);
       { const st = document.createElement('style'); st.textContent = '#diag { display: none !important; }${process.env.PROMO_NOZONE ? " .fd-title { display: none !important; }" : ''}'; document.head.appendChild(st); } true`);
     let frames = 0, dir = null;
     const api = {
