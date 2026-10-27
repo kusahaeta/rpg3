@@ -518,6 +518,7 @@ class BattleView extends BaseView {
     if (loc) { buildBattleSet(this, loc); this.initCutaway(); }
     this.bloomStrength = 0.55;
     this.ents = new Map();
+    this.hitGlow = 1;   // 敵が受ける命中の光の強さ（技のあいだだけ変える。attackEnd で 1 に戻る）
     this.partners = new Set();   // 技を撃つ子のほかに、持ち場をはなれている子（友情技の相方）
     this.markGeo = new THREE.RingGeometry(0.75, 0.9, 64);
     this.sway = 0.4; this.swayOff = V3(); this.roll = 0;
@@ -862,16 +863,17 @@ class BattleView extends BaseView {
   }
   async attackEnd(src) {
     const e = this.ent(src); if (!e) return;
-    const m = e.model;
-    if (this.lastAttack && this.lastAttack.src === src && this.lastAttack.moved && src.alive) {
+    const m = e.model, la = this.lastAttack, moved = !!la && la.src === src && la.moved;
+    // 相方を戻す。src 自身が相方として跳びこんだまま（友情技で、先の一撃で敵が倒れた）なら、src も戻す
+    const away = this.recall(src);
+    if ((moved || away) && src.alive) {
       await GFX.delay(0.12);
       const from = m.group.position.clone();
       this.tweenPose(m, POSES.ready, 0.3);
       await GFX.tween(0.3, t => { m.group.position.lerpVectors(from, e.home, t); m.group.position.y = Math.sin(t * Math.PI) * 0.5; });
     } else if (src.alive) this.tweenPose(m, POSES.ready, 0.3);
     m.group.rotation.y = Math.PI;
-    this.recall(src);
-    this.lastAttack = null;
+    this.lastAttack = null; this.hitGlow = 1; this.breakX = null;
     this.wide();
   }
 
@@ -902,14 +904,14 @@ class BattleView extends BaseView {
   hit(t, elem, big, crit) {
     const e = this.ent(t); if (!e) return;
     const col = ELEMENTS[elem].color, p = this.hitPoint(t);
-    // 味方が受けるときは、光をひかえめに（敵の技の動きが見えるように）
-    const k = e.ally ? 0.45 : 1;
-    this.fx.sprite(p, col, (big ? 2.6 : 1.5) * (e.ally ? 0.6 : 1), 0.3, { k: 4 * k });
-    this.fx.sprite(p, '#ffffff', (big ? 1.2 : 0.7) * (e.ally ? 0.6 : 1), 0.15, { k: 4 * k });
+    // 味方が受けるときは、光をひかえめに（敵の技の動きが見えるように）。hitGlow：技の線や光を見せたい技が、そのあいだだけ弱める
+    const k = e.ally ? 0.45 : this.hitGlow, sz = e.ally ? 0.6 : 0.4 + 0.6 * k;
+    this.fx.sprite(p, col, (big ? 2.6 : 1.5) * sz, 0.3, { k: 4 * k });
+    this.fx.sprite(p, '#ffffff', (big ? 1.2 : 0.7) * sz, 0.15, { k: 4 * k });
     if (!e.ally) this.fx.ring(p, col, { r: big ? 1.6 : 1.0, life: 0.35, face: this.camera.position, width: 0.1 });
     this.p.burst(p, col, big ? 50 : 24, { speed: big ? 7 : 4.5, life: 0.5, size: 0.09, drag: 4 });
     if (crit) this.p.burst(p, '#ffe066', 30, { speed: 8, life: 0.6, size: 0.07, drag: 4 });
-    e.model.flash(e.ally ? '#ff3040' : '#ffffff', e.ally ? 1.2 : 1.6);
+    e.model.flash(e.ally ? '#ff3040' : '#ffffff', e.ally ? 1.2 : 1.6 * Math.max(0.4, k));
     const g = e.model.group, home = e.home.clone();
     const dir = e.ally ? 1 : -1;
     if (!this.lastAttack || this.lastAttack.src !== t) {
