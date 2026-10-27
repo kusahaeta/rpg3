@@ -287,6 +287,17 @@ class Battle {
         <div class="o-face">${x.u.side === 'ally' ? avatarSVG(x.u.key) : enemyMini(x.u.key)}</div>
         <div class="o-av">${x.label}</div>
       </div>`).join('');
+    this.orderUnits = list.map(x => x.u);
+    this.markOrderTargets();
+  }
+  // 狙っている相手を行動順でも光らせる（同じ種類の敵が並んでも、どれがいつ動くかわかるように）
+  markOrderTargets() {
+    const items = this.root.querySelectorAll('.order .o-item');
+    (this.orderUnits || []).forEach((u, i) => {
+      const it = items[i]; if (!it) return;
+      it.classList.toggle('tgt', !!u.el && u.el.classList.contains('tgt'));
+      it.classList.toggle('tgt2', !!u.el && u.el.classList.contains('tgt2'));
+    });
   }
 
   // ============================================================
@@ -983,6 +994,7 @@ class Battle {
       case 'allies': this.aliveAllies().forEach(a => a.el.classList.add('tgt')); break;
       case 'self': u.el.classList.add('tgt'); break;
     }
+    this.markOrderTargets();
   }
 
   onKey(e) {
