@@ -203,8 +203,6 @@ Object.assign(EN, {
   '大樹のうろ': 'Great Tree Hollow',
   'ぽっかりと開いた、大きな木のうろ。……中には、どんぐりが山のようにつまっている。': 'A big, gaping hollow in the tree. ...Inside, it\'s packed with mountains of acorns.',
   'リスの村のどんぐり': 'Squirrel Village Acorns',
-  'ふゆのたくわえ': 'WINTER FOOD',
-  'たりない': 'NOT ENUF',
   '「ふゆのたくわえ　たりない」……小さな字の立て札と、からっぽのどんぐりのかご。': '"NOT ENUF FOOD FOR WINTER" ...A sign in tiny letters, and an empty acorn basket.',
   // ── field-zones.js FIELD_ZONES.road2
   'ごろごろ団に注意': 'Beware the Rumble Gang',
@@ -371,7 +369,9 @@ Object.assign(EN, {
   '王さまの笑い声が、ついに城の外まで響くようになったぞ！': 'The king\'s laughter finally reaches beyond the castle walls!',
   'ここは、ニャハハ王国の大図書館。……笑いが消えてから、本を読みに来る者も、いなくなってしまいました。': 'This is the Great Library of the Kingdom of Nyahaha. ...Since the laughter vanished, no one comes to read anymore.',
   '回廊へは、まん中の大階段から上れますよ。': 'You can reach the upper gallery by the grand staircase in the middle.',
-  '王さまのお言いつけで、白い魔法使いさまのために、奥の古い書物の棚を開けました。……古代文字の本ばかりですが、どうぞ、お好きなだけ。': 'At the king\'s request, I\'ve opened the old bookshelves in the back for the white mage. ...They\'re all books in ancient script, but please, read as much as you like.',
+  '大階段を上りきった扉の奥は、王家の書庫。……代々の王さまのお許しがなければ、誰も入れないのです。': 'Past the door at the top of the grand staircase lies the Royal Archive. ...No one may enter without leave from the king.',
+  '王さまのお言いつけで、白い魔法使いさまのために、奥の王家の書庫の扉を開けました。……古代文字の本ばかりですが、どうぞ、お好きなだけ。': 'At the king\'s request, I\'ve opened the door to the Royal Archive in the back for the white mage. ...They\'re all books in ancient script, but please, read as much as you like.',
+  '書庫へは、大階段を上りきった、正面の扉からお入りくださいませ。': 'For the archive, climb the grand staircase and go through the door straight ahead.',
   '大図書館に、また本を読みに来る者が戻ってまいりました。': 'Readers have started coming back to the Great Library.',
   '……白い魔法使いさまに魔法の本を書いてほしいと、子どもたちにせがまれておりますよ。': '...The children keep begging the white mage to write them a book of magic.',
   'ここは衛兵の詰め所だ。……交代の時間まで、あと少し。': 'This is the guard room. ...Almost time for the shift change.',
@@ -382,6 +382,20 @@ Object.assign(EN, {
   '宝物庫の台座': 'Treasury Pedestal',
   '「笑いの実」とあった台座。……今は、何もない。': 'The pedestal that held the Laughter Fruit. ...Now there\'s nothing on it.',
   '「笑いの実」の台座。戻ってきた実が、ほんのりと光っている。': 'The pedestal of the Laughter Fruit. The returned fruit glows softly.',
+  // ── field-zones.js FIELD_ZONES.castle_archive
+  'ニャハハ城・王家の書庫': 'Nyahaha Castle: Royal Archive',
+  '書庫': 'Archive',
+  '古代文字の大きな本': 'Great Book in Ancient Script',
+  '古代文字で、びっしりと書かれた大きな本。ページのあいだに、シロの字のメモがはさまっている。……「ひと晩じゃ、半分しか読めなかったわ」': 'A huge book packed with ancient script. Between the pages are notes in Shiro\'s handwriting. ..."One night was only enough for half of it."',
+  '初代ニャハハ王の織物': 'Tapestry of the First King Nyahaha',
+  'にゃんだーの樹の下で、初代ニャハハ王と民が、大口をあけて笑っている織物。樹の枝には、金色の笑いの実が、たわわに実っている。': 'A tapestry of the first King Nyahaha and his people laughing with their mouths wide open beneath the Nyander Tree. Golden Laughter Fruit hang heavy from its branches.',
+  'シロの読書机': 'Shiro\'s Reading Desk',
+  '読みかけの本の山と、燃えつきたろうそく。いすには毛布がかけてある。……シロがひと晩じゅう、本を読みふけった机だ。': 'A pile of half-read books and a candle burned down to the stub. A blanket is draped over the chair. ...This is where Shiro read all night long.',
+  '古代文字の石板': 'Ancient Script Tablet',
+  '樹の形が彫られた、古い石板。そのまわりを、古代文字がぐるりと囲んでいる。……王家の誰も、もう読めないという。': 'An old stone tablet carved with the shape of a tree, ringed all around by ancient script. ...They say no one in the royal family can read it anymore.',
+  '代々の王の肖像': 'Portraits of the Kings',
+  '代々のニャハハ王の肖像画。どの王も、大口をあけて笑っている。……いちばん新しい額だけは、まだ空っぽだ。王さまが「わしの笑った顔を描かせるまで、待っておれ」と言ったらしい。': 'Portraits of the Nyahaha kings through the ages. Every one of them is laughing with his mouth wide open. ...Only the newest frame is still empty. The king apparently said, "Wait until you can paint me laughing."',
+  '代々のニャハハ王の肖像画。どの王も、大口をあけて笑っている。……いちばん新しい額には、おなかをかかえて大笑いする、今の王さまが描かれている。': 'Portraits of the Nyahaha kings through the ages. Every one of them is laughing with his mouth wide open. ...The newest frame now holds the current king, clutching his belly with laughter.',
   // ── field-zones.js FIELD_ZONES.tower
   '笑顔の塔': 'Tower of Smiles',
   '笑顔の塔・入口の広間': 'Tower of Smiles: Entrance Hall',
@@ -1024,6 +1038,8 @@ Object.assign(EN, {
   '……余を待たせるとは、いい度胸だ。': '...You dare keep Us waiting. Bold.',
   // ── field-zones.js clownBoard
   '顔を出してね': 'Stick your face in!',
+  // ── field-zones.js nameTags
+  'ピエロ': 'Clown',
   // ── field-zones.js kusudama
   '再開！': 'Reopened!',
   // ── field-zones.js ZONE_BUILD
@@ -1048,6 +1064,8 @@ Object.assign(EN, {
   '仲間募集': 'Seeking Companions',
   'ひとりで行かないこと': 'Don\'t go alone',
   'ようこそ': 'Welcome',
+  'ふゆのたくわえ': 'WINTER FOOD',
+  'たりない': 'NOT ENUF',
   'ごろごろ団': 'Rumble Gang',
   'たまり場　夜露死苦': 'Hangout — Roll Hard!',
   'ニャハハ王国まで あと少し': 'Almost to Nyahaha',
@@ -1101,7 +1119,6 @@ Object.assign(EN, {
   '5 大笑い…ピエロ': '5 Big Laugh...Clown',
   'ブランコ': 'Trapeze',
   '跳ぶ人': 'Flyer',
-  'ピエロ': 'Clown',
   '受け止める人': 'Catcher',
   '……': '...',
   'つなわたり': 'Tightrope',

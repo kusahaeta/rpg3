@@ -1091,7 +1091,7 @@ const FIELD_ZONES = {
     map2d: [330, 95] },
 
   // ニャハハ城の中（areas の部屋ごとに場所の名前が変わる）：入口の大広間から北の扉を抜けると玉座の間。
-  //   西の翼は大図書館（北・西・南の壁ぞいに高さ 3m の回廊。まん中の大階段から上る）と食堂、東の翼は宝物庫・衛兵の詰め所・厨房
+  //   西の翼は大図書館（北・西・南の壁ぞいに高さ 3m の回廊。まん中の大階段から上る。上りきった西の壁の扉の奥が王家の書庫）と食堂、東の翼は宝物庫・衛兵の詰め所・厨房
   castle_in: { ci: 2, name: 'ニャハハ城・城内', bgm: 'royal', floor: '城内', parent: 'nyahaha', stage: '3-1', arenas: [[0, -10, 0]], build: 'castleIn', town: true, groups: 0, chests: 1, crystals: 0, skyTree: false,
     world: true, arch: 'nyapalace', chestAt: [[41, -31]], noAnchor: true,   // 敵が出ないので休む場所はいらない。ミャオニアの地図では城下町にまとめる
     th: { pattern: 'checker', floor: '#f6eee2', floor2: '#e4d2b8', line: '#ffd27a', floorGlow: 0, fog: '#f4e6d8', fogD: 0.008, sky: '#fff4e8', ground: '#8a7a6a', light: 1.15 },
@@ -1104,8 +1104,8 @@ const FIELD_ZONES = {
       '#3300000000000#0000000000000000#0000000000000#',
       '#3300000000000#0000000000000000#0000000000000#',
       '#3300000000000#0000000000000000#0000000000000#',
-      '#33<<<00000000D0000000000000000D0000000000000W',
-      '#33<<<00000000D0000000000000000D0000000000000#',
+      'b33<<<00000000D0000000000000000D0000000000000W',
+      'b33<<<00000000D0000000000000000D0000000000000#',
       '#3300000000000#0000000000000000#0000000000000#',
       '#3300000000000#0000000000000000###############',
       '#3300000000000#0000000000000000#0000000000000#',
@@ -1133,7 +1133,7 @@ const FIELD_ZONES = {
       '#0000000000000#0000000000000000#0000000000000#',
       '####W####W########W##aaaa##W########W####W####',
     ],
-    anchor: [8, 28], exits: [{ key: 'a', to: 'castle', gateH: 6.2 }],
+    anchor: [8, 28], exits: [{ key: 'a', to: 'castle', gateH: 6.2 }, { key: 'b', to: 'castle_archive' }],
     // 部屋の範囲 [x0, z0, x1, z1]：画面左上と、区画に入ったときに出る場所の名前
     areas: [{ name: 'ニャハハ城・玉座の間', at: [-16, -34, 16, -2] }, { name: 'ニャハハ城・大広間', at: [-16, -2, 16, 34] }, { name: 'ニャハハ城・大図書館', at: [-44, -34, -16, 10] },
       { name: 'ニャハハ城・食堂', at: [-44, 10, -16, 34] }, { name: 'ニャハハ城・宝物庫', at: [16, -34, 44, -14] }, { name: 'ニャハハ城・衛兵の詰め所', at: [16, -14, 44, 8] },
@@ -1143,13 +1143,47 @@ const FIELD_ZONES = {
         v: [['clear:3-3', '塔のピエロを救ってくれたそうじゃな。……ふふ、ふははは！　礼を言うぞ！'], ['scene:c6_04', '笑いの実が戻ってきたぞ！　盗んでいった魔王軍の兵たちが、ぺこぺこ頭を下げて返しに来おった。', '……おぬしらが、魔王に話をつけてくれたのじゃな。ぶはははは！'], ['done', 'おお、勇者たちよ！　あの日、国じゅうで笑った声は、樹に届いたかの？', '……ぶはははは！　届いたに決まっておる！　宝物庫の実が、こんなに光っとるんじゃからな！']] },
       { key: 'daijin', at: [-6, -23], face: Math.PI / 4, lines: ['宝物庫の台座は、空っぽのままでございます……。'], v: [['scene:c6_04', '笑いの実が、宝物庫の台座に戻りました。……ほれ、よく光っておりますでしょう。'], ['done', '笑いの実が、前よりもまぶしく光っております。……世界じゅうの笑い声のおかげでしょうな。']] },
       { key: 'eihei', at: [-4, 4], face: Math.PI / 2, lines: ['玉座の間は、この奥の扉だ。……王さまに、失礼のないようにな。'], v: [['clear:3-3', '王さまの笑い声が、城じゅうに響いておるぞ！'], ['done', '王さまの笑い声が、ついに城の外まで響くようになったぞ！']] },
-      { key: 'shisho', at: [-22, -13], face: Math.PI / 2, lines: ['ここは、ニャハハ王国の大図書館。……笑いが消えてから、本を読みに来る者も、いなくなってしまいました。', '回廊へは、まん中の大階段から上れますよ。'],
-        v: [['scene:c3_06', '王さまのお言いつけで、白い魔法使いさまのために、奥の古い書物の棚を開けました。……古代文字の本ばかりですが、どうぞ、お好きなだけ。'], ['done', '大図書館に、また本を読みに来る者が戻ってまいりました。', '……白い魔法使いさまに魔法の本を書いてほしいと、子どもたちにせがまれておりますよ。']] },
+      { key: 'shisho', at: [-22, -13], face: Math.PI / 2, lines: ['ここは、ニャハハ王国の大図書館。……笑いが消えてから、本を読みに来る者も、いなくなってしまいました。', '回廊へは、まん中の大階段から上れますよ。', '大階段を上りきった扉の奥は、王家の書庫。……代々の王さまのお許しがなければ、誰も入れないのです。'],
+        v: [['scene:c3_06', '王さまのお言いつけで、白い魔法使いさまのために、奥の王家の書庫の扉を開けました。……古代文字の本ばかりですが、どうぞ、お好きなだけ。', '書庫へは、大階段を上りきった、正面の扉からお入りくださいませ。'], ['done', '大図書館に、また本を読みに来る者が戻ってまいりました。', '……白い魔法使いさまに魔法の本を書いてほしいと、子どもたちにせがまれておりますよ。']] },
       { key: 'eihei', at: [34, -3], face: -Math.PI / 2, lines: ['ここは衛兵の詰め所だ。……交代の時間まで、あと少し。'], v: [['clear:3-3', '王さまが笑うようになってから、詰め所でも笑い話がはやっておる。'], ['done', '詰め所の笑い話、いちばん人気は「魔王に会うにはハンコが五つ」だ。……本当の話だというから、また笑える。']] },
     ],
     notes: [{ at: [-28, -14.6], mark: 1.9, title: 'ニャハハ王国の歴史書', text: '「初代ニャハハ王は、にゃんだーの樹に実った笑いの実を民と分け合い、国じゅうで笑った。これが、笑いの祭りのはじまりである」' },
       { at: [31, -24], mark: 2.3, title: '宝物庫の台座', text: '「笑いの実」とあった台座。……今は、何もない。', until: 'scene:c6_04' },
       { at: [31, -24], mark: 2.3, title: '宝物庫の台座', text: '「笑いの実」の台座。戻ってきた実が、ほんのりと光っている。', when: 'scene:c6_04' }],
+    map2d: [330, 95] },
+
+  // 王家の書庫：大図書館の大階段を上りきった扉の奥。代々の王しか開けられなかった、古代文字の本の書庫（第三章の終わり c3_06 で、王がシロのために開ける）。
+  //   東の入口から、代々の王の肖像の並ぶ回廊（高さ 2m）を抜け、階段を下りると、八角の閲覧の間。まん中の天窓の下に、古代文字の大きな本の書見台。
+  //   北のくぼみに初代王の織物、南のくぼみにシロが夜どおし本を読んだ机、西の一段高い壇（最奥）に古代文字の石板
+  castle_archive: { ci: 2, name: 'ニャハハ城・王家の書庫', bgm: 'royal', floor: '書庫', parent: 'nyahaha', stage: '3-1', after: 'c3_06', arenas: [[-6, 6, 0]], build: 'castleArchive', town: true, groups: 0, chests: 2, crystals: 0, skyTree: false,
+    world: true, arch: 'nyaarchive', chestAt: [[-17.4, -2], [1.0, 5.4]], noAnchor: true,
+    th: { pattern: 'checker', floor: '#7a5a44', floor2: '#684a36', line: '#ffd27a', floorGlow: 0, fog: '#2e2018', fogD: 0.012, sky: '#2e2018', ground: '#3a2a20', light: 1.0 },
+    map: [
+      '#######################',
+      '#######000#############',
+      '#######000#############',
+      '######00000############',
+      '#####0000000###########',
+      '####000000000##########',
+      '###00000000000#########',
+      '#111<000000000>>222222a',
+      '#111<000000000>>222222a',
+      '#111<000000000>>222222a',
+      '###00000000000#########',
+      '####000000000##########',
+      '#####0000000###########',
+      '######00000############',
+      '#######000#############',
+      '#######000#############',
+      '#######################',
+    ],
+    anchor: [16, 0], exits: [{ key: 'a', to: 'castle_in' }],
+    notes: [{ at: [-6, 0], mark: 2.1, title: '古代文字の大きな本', text: '古代文字で、びっしりと書かれた大きな本。ページのあいだに、シロの字のメモがはさまっている。……「ひと晩じゃ、半分しか読めなかったわ」' },
+      { at: [-6, -14.2], mark: 3.4, reach: 2.6, title: '初代ニャハハ王の織物', text: 'にゃんだーの樹の下で、初代ニャハハ王と民が、大口をあけて笑っている織物。樹の枝には、金色の笑いの実が、たわわに実っている。' },
+      { at: [-6, 13.4], mark: 1.5, title: 'シロの読書机', text: '読みかけの本の山と、燃えつきたろうそく。いすには毛布がかけてある。……シロがひと晩じゅう、本を読みふけった机だ。' },
+      { at: [-20.2, 0], mark: [0.4, 2.6, 0], reach: 2.6, title: '古代文字の石板', text: '樹の形が彫られた、古い石板。そのまわりを、古代文字がぐるりと囲んでいる。……王家の誰も、もう読めないという。' },
+      { at: [15, -2.4], mark: 3.4, title: '代々の王の肖像', text: '代々のニャハハ王の肖像画。どの王も、大口をあけて笑っている。……いちばん新しい額だけは、まだ空っぽだ。王さまが「わしの笑った顔を描かせるまで、待っておれ」と言ったらしい。', until: 'done' },
+      { at: [15, -2.4], mark: 3.4, title: '代々の王の肖像', text: '代々のニャハハ王の肖像画。どの王も、大口をあけて笑っている。……いちばん新しい額には、おなかをかかえて大笑いする、今の王さまが描かれている。', when: 'done' }],
     map2d: [330, 95] },
 
   // 笑顔の塔：円い塔の四つの階（parent：ワールドマップでは塔の入口にまとめる）。どの階も、笑い方を忘れた相手が道をふさいでいて、
@@ -3058,7 +3092,7 @@ prepareMapZones(FIELD_ZONES);
 const CHAPTER_ZONES = [
   ['pokapoka', 'hill', 'forest_in', 'forest_deep', 'rat_nest'],
   ['road1', 'road1_hill', 'road_rest', 'woods', 'woods_valley', 'woods_deep', 'road2', 'road2_gate', 'sekisho'],
-  ['nyahaha', 'castle', 'castle_in', 'tower', 'tower_2f', 'tower_3f', 'tower_top'],
+  ['nyahaha', 'castle', 'castle_in', 'castle_archive', 'tower', 'tower_2f', 'tower_3f', 'tower_top'],
   ['valley', 'valley_village', 'cave', 'cave_lake', 'cave_deep'],
   ['ruins_out', 'old_road', 'ruins_hill', 'ruins_in', 'ruins_maze', 'ruins_seal'],
   ['demon_land', 'demon_castle', 'demon_clinic', 'demon_barracks', 'demon_court', 'demon_cellar', 'demon_castle_2f', 'demon_throne'],
@@ -7422,6 +7456,140 @@ function audienceMat(k, happy) {
   return (TexCache[key] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.95, transparent: true, alphaTest: 0.5 }));
 }
 
+// ニャハハ王家の紋（ry = 正面）：金の縁の赤い円盤に、白い猫の顔と金の王冠。y は床からではなく、そのままの高さ
+function royalCrest(K, x, y, z, ry, s = 1) {
+  const nx = Math.sin(ry), nz = Math.cos(ry), at = (out, dy, u = 0) => [x + nx * out + Math.cos(ry) * u, y + dy * s, z + nz * out - Math.sin(ry) * u];
+  const disc = (r, t, mat, out) => { const g = new THREE.CylinderGeometry(r * s, r * s, t, 28); g.rotateX(Math.PI / 2); K.mg(mat, g, ...at(out, 0), [0, ry, 0]); };
+  disc(0.9, 0.1, 'gold', 0.05); disc(0.76, 0.12, 'clothRed', 0.07);
+  { const g = new THREE.TorusGeometry(0.62 * s, 0.03 * s, 6, 28); K.mg('gold', g, ...at(0.14, 0), [0, ry, 0]); }
+  K.mg('white', new THREE.SphereGeometry(0.34 * s, 14, 10), ...at(0.16, -0.08), [0, ry, 0], [1.1, 0.95, 0.35]);
+  for (const sd of [-1, 1]) { const e = new THREE.ConeGeometry(0.12 * s, 0.24 * s, 4); e.rotateZ(-sd * 0.35); K.mg('white', e, ...at(0.16, 0.26, sd * 0.22), [0, ry, 0], [1, 1, 0.4]); }
+  for (const sd of [-1, 1]) K.mg('#3a2a2a', new THREE.SphereGeometry(0.045 * s, 8, 6), ...at(0.28, -0.04, sd * 0.13));
+  // 王冠：帯と三つの山、まん中の山に赤い玉
+  K.mg('gold', new THREE.BoxGeometry(0.5 * s, 0.1 * s, 0.08 * s), ...at(0.2, 0.42), [0, ry, 0]);
+  for (const u of [-0.18, 0, 0.18]) K.mg('gold', new THREE.ConeGeometry(0.07 * s, (u ? 0.2 : 0.28) * s, 4), ...at(0.2, u ? 0.56 : 0.6, u), [0, ry, 0]);
+  K.mg(K.glow('#ff6a8a', 2), new THREE.SphereGeometry(0.05 * s, 8, 6), ...at(0.24, 0.47));
+}
+// 王家の書庫の絵：初代王の織物（にゃんだーの樹の下で笑う王と民）・古代文字の石板の彫り（光る線だけ）・天窓のステンドグラス
+function archiveTapestryTex() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 320; const g = c.getContext('2d');
+  g.fillStyle = '#7a2434'; g.fillRect(0, 0, 256, 320);
+  g.strokeStyle = '#e8c060'; g.lineWidth = 8; g.strokeRect(10, 10, 236, 300); g.lineWidth = 2; g.strokeRect(22, 22, 212, 276);
+  for (let x = 30; x < 230; x += 16) { g.fillStyle = '#e8c060'; g.beginPath(); g.arc(x, 16, 2.5, 0, 7); g.fill(); g.beginPath(); g.arc(x, 304, 2.5, 0, 7); g.fill(); }
+  // 丘と樹
+  g.fillStyle = '#4a7a3a'; g.beginPath(); g.ellipse(128, 300, 140, 60, 0, Math.PI, 0); g.fill();
+  g.fillStyle = '#6a4428'; g.beginPath(); g.moveTo(112, 250); g.quadraticCurveTo(122, 170, 104, 120); g.lineTo(152, 120); g.quadraticCurveTo(134, 170, 144, 250); g.closePath(); g.fill();
+  g.fillStyle = '#3e8a46';
+  for (const [x, y, r] of [[128, 92, 62], [78, 118, 40], [178, 118, 40], [98, 66, 36], [158, 66, 36], [128, 46, 32]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+  g.fillStyle = '#5aa858'; for (const [x, y, r] of [[112, 78, 22], [150, 96, 18], [86, 108, 14]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+  g.fillStyle = '#ffd24a'; g.shadowColor = '#fff0a0'; g.shadowBlur = 6;
+  for (const [x, y] of [[96, 96], [128, 70], [160, 100], [80, 130], [176, 132], [112, 126], [146, 54], [110, 50], [136, 112], [196, 112], [62, 112]]) { g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill(); }
+  g.shadowBlur = 0;
+  // 笑う猫たち（まん中が王冠の初代王）
+  const cat = (x, y, s, col, crown) => {
+    g.fillStyle = col; g.beginPath(); g.ellipse(x, y + 22 * s, 16 * s, 18 * s, 0, 0, 7); g.fill();
+    g.beginPath(); g.arc(x, y, 15 * s, 0, 7); g.fill();
+    for (const d of [-1, 1]) { g.beginPath(); g.moveTo(x + d * 14 * s, y - 2 * s); g.lineTo(x + d * 11 * s, y - 20 * s); g.lineTo(x + d * 3 * s, y - 11 * s); g.closePath(); g.fill(); }
+    g.strokeStyle = '#3a2020'; g.lineWidth = 2 * s;
+    for (const d of [-1, 1]) { g.beginPath(); g.arc(x + d * 6 * s, y - 1 * s, 3 * s, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); }
+    g.fillStyle = '#c84a5a'; g.beginPath(); g.arc(x, y + 5 * s, 5 * s, 0, Math.PI); g.fill();
+    if (crown) { g.fillStyle = '#ffd24a'; g.beginPath(); g.moveTo(x - 10 * s, y - 13 * s); g.lineTo(x - 10 * s, y - 24 * s); g.lineTo(x - 5 * s, y - 17 * s); g.lineTo(x, y - 27 * s); g.lineTo(x + 5 * s, y - 17 * s); g.lineTo(x + 10 * s, y - 24 * s); g.lineTo(x + 10 * s, y - 13 * s); g.closePath(); g.fill(); }
+  };
+  cat(128, 236, 1.25, '#fff4e4', true);
+  cat(70, 252, 0.9, '#f0c890'); cat(186, 252, 0.9, '#d8d0c8'); cat(40, 270, 0.7, '#a8a098'); cat(216, 270, 0.7, '#f4e0c8');
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+function ancientTabletTex() {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  const rnd = seeded(hashStr('ancientTablet'));
+  g.strokeStyle = '#8affe0'; g.lineCap = 'round'; g.lineJoin = 'round'; g.shadowColor = '#8affe0'; g.shadowBlur = 8;
+  // まん中の樹：幹と枝と根、丸い樹冠
+  g.lineWidth = 4;
+  g.beginPath(); g.moveTo(128, 196); g.lineTo(128, 120); g.moveTo(128, 150); g.lineTo(100, 124); g.moveTo(128, 140); g.lineTo(156, 116); g.stroke();
+  for (const d of [-1, 1]) { g.beginPath(); g.moveTo(128, 196); g.quadraticCurveTo(128 + d * 20, 200, 128 + d * 40, 212); g.stroke(); }
+  g.beginPath(); g.arc(128, 98, 44, 0, 7); g.stroke();
+  // 樹のまわりを、古代文字がぐるりと囲む（二重の輪のあいだ）
+  g.lineWidth = 2.5; for (const r of [96, 120]) { g.beginPath(); g.arc(128, 128, r, 0, 7); g.stroke(); }
+  for (let i = 0; i < 26; i++) {
+    const a = i / 26 * Math.PI * 2, x = 128 + Math.cos(a) * 108, y = 128 + Math.sin(a) * 108;
+    g.save(); g.translate(x, y); g.rotate(a + Math.PI / 2); g.beginPath();
+    for (let k = 0; k < 2 + Math.floor(rnd() * 2); k++) {
+      const q = Math.floor(rnd() * 4), u = (rnd() - 0.5) * 6;
+      if (q === 0) { g.moveTo(u - 4, -6); g.lineTo(u + 4, 6); }
+      else if (q === 1) { g.moveTo(u + 3, -6); g.arc(u, -3, 3, 0, Math.PI * 1.5); }
+      else if (q === 2) { g.moveTo(-5, u); g.lineTo(5, u); }
+      else { g.moveTo(u - 4, 6); g.lineTo(u, -6); g.lineTo(u + 4, 6); }
+    }
+    g.stroke(); g.restore();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function skylightTex() {
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = '#fff4d0'; g.beginPath(); g.arc(128, 128, 128, 0, 7); g.fill();
+  const cols = ['#ffd27a', '#ffb0c0', '#a8e0ff', '#c8f0a8'];
+  for (let i = 0; i < 12; i++) {   // 花びら
+    const a = i / 12 * Math.PI * 2; g.fillStyle = cols[i % 4];
+    g.save(); g.translate(128, 128); g.rotate(a); g.beginPath(); g.ellipse(0, -72, 20, 46, 0, 0, 7); g.fill(); g.restore();
+  }
+  g.fillStyle = '#fff8e0'; g.beginPath(); g.arc(128, 128, 30, 0, 7); g.fill();
+  g.strokeStyle = '#6a4a2a'; g.lineWidth = 4;
+  for (const r of [30, 124]) { g.beginPath(); g.arc(128, 128, r, 0, 7); g.stroke(); }
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.beginPath(); g.moveTo(128 + Math.cos(a) * 30, 128 + Math.sin(a) * 30); g.lineTo(128 + Math.cos(a) * 124, 128 + Math.sin(a) * 124); g.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+// ニャハハ城の内装の小物（城内と王家の書庫で使う）：シャンデリア・壁の燭台・肖像画・本棚・いす・読書灯・地球儀
+function palaceProps(K) {
+  const T = K.T;
+  const clothC = '#e87aa8', lit = '#ffd8a0';
+  const ceil = (x, z) => T.ceilOf(T.at(x, z));
+  // シャンデリア：天井から金の鎖、二段の輪に灯り
+  const chandelier = (x, z, s = 1) => {
+    const top = ceil(x, z), y = top - 2.6 * s;
+    K.mg('gold', new THREE.CylinderGeometry(0.04, 0.04, top - y, 6), x, (top + y) / 2, z);
+    for (const [r0, dy] of [[1.3 * s, 0], [0.8 * s, 0.55 * s]]) {
+      const ring = new THREE.TorusGeometry(r0, 0.06, 6, 28); ring.rotateX(Math.PI / 2); K.mg('gold', ring, x, y + dy, z);
+      const n = Math.round(r0 * 6);
+      for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; K.mg(K.glow(lit, 2.2), new THREE.CylinderGeometry(0.05, 0.05, 0.2, 6), x + Math.cos(a) * r0, y + dy + 0.16, z + Math.sin(a) * r0); }
+    }
+    K.mg(K.glow(lit, 1.6), new THREE.SphereGeometry(0.28 * s, 12, 10), x, y - 0.2, z);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(lit, 0.5), blending: THREE.AdditiveBlending, depthWrite: false }));
+    sp.scale.setScalar(4 * s); sp.position.set(x, y + 0.2, z); K.scene.add(sp);
+  };
+  // 壁の燭台（ry = 壁の正面）
+  const sconce = (x, z, ry) => { const y = K.gy(x, z); K.mg('gold', new THREE.BoxGeometry(0.1, 0.5, 0.3), x, y + 2.6, z, [0, ry, 0]); K.mg(K.glow(lit, 2.2), new THREE.BoxGeometry(0.18, 0.28, 0.18), x + Math.sin(ry) * 0.25, y + 2.95, z + Math.cos(ry) * 0.25); };
+  // 額の絵（肖像画）
+  const portrait = (x, z, ry, face, y = 3.2) => {
+    K.mg('gold', new THREE.BoxGeometry(1.5, 1.9, 0.12), x, K.gy(x, z) + y, z, [0, ry, 0]);
+    K.mg(face, new THREE.BoxGeometry(1.2, 1.6, 0.14), x, K.gy(x, z) + y, z, [0, ry, 0]);
+    K.mg('#ffe0b0', new THREE.SphereGeometry(0.34, 12, 10), x + Math.sin(ry) * 0.12, K.gy(x, z) + y + 0.1, z + Math.cos(ry) * 0.12, [0, ry, 0], [1, 1, 0.35]);
+    K.mg('gold', new THREE.ConeGeometry(0.22, 0.28, 5), x + Math.sin(ry) * 0.1, K.gy(x, z) + y + 0.55, z + Math.cos(ry) * 0.1);
+  };
+  // 本棚（ry = 正面）：棚板と色とりどりの背表紙。h：高さ（回廊の下は低い棚）
+  const shelf = (x, z, ry, w = 3, h = 3.2) => {
+    const y = K.gy(x, z), c = Math.cos(ry), sn = Math.sin(ry), rows = Math.max(2, Math.floor((h - 0.3) / 0.75));
+    K.box(x, z, w, h, 0.6, 'wood2', { ry });
+    K.mg('gold', new THREE.BoxGeometry(w + 0.1, 0.1, 0.66), x, y + h - 0.05, z, [0, ry, 0]);
+    for (let k = 0; k < rows; k++) for (let b = 0; b < Math.floor(w / 0.22); b++) {
+      if (K.r() < 0.12) continue;
+      const u = -w / 2 + 0.2 + b * 0.22, bh = 0.45 + K.r() * 0.2;
+      K.mg(pick(['#b84a4a', '#4a6ab8', '#4a9a5a', '#c8a040', '#8a5ab8', '#6a4a30']), new THREE.BoxGeometry(0.18, bh, 0.42), x + u * c + sn * 0.12, y + 0.3 + k * 0.75 + bh / 2, z - u * sn + c * 0.12, [0, ry, 0]);
+    }
+  };
+  // 両面の本棚（部屋のまん中に立つ列）
+  const stack = (x, z, ry, w, h) => { const c = Math.cos(ry), sn = Math.sin(ry); shelf(x + sn * 0.3, z + c * 0.3, ry, w, h); shelf(x - sn * 0.3, z - c * 0.3, ry + Math.PI, w, h); };
+  // 壁ぞいに本棚を並べる：a0〜a1 のあいだ（軸は along）、もう一方の座標は at
+  const shelfRow = (along, a0, a1, at, ry, h, w = 3.3) => {
+    const n = Math.max(1, Math.floor((a1 - a0) / (w + 0.3))), step = (a1 - a0) / n;
+    for (let i = 0; i < n; i++) { const a = a0 + step * (i + 0.5); along === 'x' ? shelf(a, at, ry, w, h) : shelf(at, a, ry, w, h); }
+  };
+  // いす（ry = 座った子の向き）と、緑のかさの読書灯
+  const chair = (x, z, ry, mat = 'wood2') => { K.box(x, z, 0.55, 0.45, 0.55, mat, { col: false }); K.mesh(new THREE.BoxGeometry(0.55, 0.9, 0.1), mat, x - Math.sin(ry) * 0.27, 0.9, z - Math.cos(ry) * 0.27, { ry }); };
+  const lamp = (x, z, y) => { K.mg('gold', new THREE.CylinderGeometry(0.03, 0.08, 0.4, 8), x, y + 0.2, z); K.mg(K.glow('#a8f0b0', 1.6), new THREE.ConeGeometry(0.2, 0.18, 12, 1, true), x, y + 0.48, z); };
+  // 大きな地球儀（台つき）
+  const globe = (x, z, s = 1) => { K.cyl(x, z, 0.1 * s, 1.0 * s, 'wood2', { seg: 6 }); K.mesh(new THREE.SphereGeometry(0.3 * s, 16, 12), '#6ab0e8', x, 1.3 * s, z); K.mesh(new THREE.TorusGeometry(0.34 * s, 0.025, 6, 24), 'gold', x, 1.3 * s, z, { rz: 0.4 }); };
+  return { ceil, chandelier, sconce, portrait, shelf, stack, shelfRow, chair, lamp, globe, clothC, lit };
+}
 const ZONE_BUILD = {
   // ---------------- 第一章 ----------------
   // ぽかぽか村：広場の井戸、高台の村長の家、西の住宅地のミケの家と畑、南の店の並び、魚屋の屋台、丘の上の猫神社、南東の池
@@ -8176,54 +8344,7 @@ const ZONE_BUILD = {
   // ニャハハ城の中：玉座の間（列柱・壇・天蓋つきの玉座・シャンデリア）、大広間（歴代の王の肖像画）、
   //   大図書館（回廊と大階段・本棚の列・閲覧机・書見台の歴史書）、食堂、宝物庫、衛兵の詰め所、厨房
   castleIn(K) {
-    const T = K.T;
-    const clothC = '#e87aa8', lit = '#ffd8a0';
-    const ceil = (x, z) => T.ceilOf(T.at(x, z));
-    // シャンデリア：天井から金の鎖、二段の輪に灯り
-    const chandelier = (x, z, s = 1) => {
-      const top = ceil(x, z), y = top - 2.6 * s;
-      K.mg('gold', new THREE.CylinderGeometry(0.04, 0.04, top - y, 6), x, (top + y) / 2, z);
-      for (const [r0, dy] of [[1.3 * s, 0], [0.8 * s, 0.55 * s]]) {
-        const ring = new THREE.TorusGeometry(r0, 0.06, 6, 28); ring.rotateX(Math.PI / 2); K.mg('gold', ring, x, y + dy, z);
-        const n = Math.round(r0 * 6);
-        for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; K.mg(K.glow(lit, 2.2), new THREE.CylinderGeometry(0.05, 0.05, 0.2, 6), x + Math.cos(a) * r0, y + dy + 0.16, z + Math.sin(a) * r0); }
-      }
-      K.mg(K.glow(lit, 1.6), new THREE.SphereGeometry(0.28 * s, 12, 10), x, y - 0.2, z);
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(lit, 0.5), blending: THREE.AdditiveBlending, depthWrite: false }));
-      sp.scale.setScalar(4 * s); sp.position.set(x, y + 0.2, z); K.scene.add(sp);
-    };
-    // 壁の燭台（ry = 壁の正面）
-    const sconce = (x, z, ry) => { const y = K.gy(x, z); K.mg('gold', new THREE.BoxGeometry(0.1, 0.5, 0.3), x, y + 2.6, z, [0, ry, 0]); K.mg(K.glow(lit, 2.2), new THREE.BoxGeometry(0.18, 0.28, 0.18), x + Math.sin(ry) * 0.25, y + 2.95, z + Math.cos(ry) * 0.25); };
-    // 額の絵（肖像画）
-    const portrait = (x, z, ry, face, y = 3.2) => {
-      K.mg('gold', new THREE.BoxGeometry(1.5, 1.9, 0.12), x, K.gy(x, z) + y, z, [0, ry, 0]);
-      K.mg(face, new THREE.BoxGeometry(1.2, 1.6, 0.14), x, K.gy(x, z) + y, z, [0, ry, 0]);
-      K.mg('#ffe0b0', new THREE.SphereGeometry(0.34, 12, 10), x + Math.sin(ry) * 0.12, K.gy(x, z) + y + 0.1, z + Math.cos(ry) * 0.12, [0, ry, 0], [1, 1, 0.35]);
-      K.mg('gold', new THREE.ConeGeometry(0.22, 0.28, 5), x + Math.sin(ry) * 0.1, K.gy(x, z) + y + 0.55, z + Math.cos(ry) * 0.1);
-    };
-    // 本棚（ry = 正面）：棚板と色とりどりの背表紙。h：高さ（回廊の下は低い棚）
-    const shelf = (x, z, ry, w = 3, h = 3.2) => {
-      const y = K.gy(x, z), c = Math.cos(ry), sn = Math.sin(ry), rows = Math.max(2, Math.floor((h - 0.3) / 0.75));
-      K.box(x, z, w, h, 0.6, 'wood2', { ry });
-      K.mg('gold', new THREE.BoxGeometry(w + 0.1, 0.1, 0.66), x, y + h - 0.05, z, [0, ry, 0]);
-      for (let k = 0; k < rows; k++) for (let b = 0; b < Math.floor(w / 0.22); b++) {
-        if (K.r() < 0.12) continue;
-        const u = -w / 2 + 0.2 + b * 0.22, bh = 0.45 + K.r() * 0.2;
-        K.mg(pick(['#b84a4a', '#4a6ab8', '#4a9a5a', '#c8a040', '#8a5ab8', '#6a4a30']), new THREE.BoxGeometry(0.18, bh, 0.42), x + u * c + sn * 0.12, y + 0.3 + k * 0.75 + bh / 2, z - u * sn + c * 0.12, [0, ry, 0]);
-      }
-    };
-    // 両面の本棚（部屋のまん中に立つ列）
-    const stack = (x, z, ry, w) => { const c = Math.cos(ry), sn = Math.sin(ry); shelf(x + sn * 0.3, z + c * 0.3, ry, w); shelf(x - sn * 0.3, z - c * 0.3, ry + Math.PI, w); };
-    // 壁ぞいに本棚を並べる：a0〜a1 のあいだ（軸は along）、もう一方の座標は at
-    const shelfRow = (along, a0, a1, at, ry, h, w = 3.3) => {
-      const n = Math.max(1, Math.floor((a1 - a0) / (w + 0.3))), step = (a1 - a0) / n;
-      for (let i = 0; i < n; i++) { const a = a0 + step * (i + 0.5); along === 'x' ? shelf(a, at, ry, w, h) : shelf(at, a, ry, w, h); }
-    };
-    // いす（ry = 座った子の向き）と、緑のかさの読書灯
-    const chair = (x, z, ry, mat = 'wood2') => { K.box(x, z, 0.55, 0.45, 0.55, mat, { col: false }); K.mesh(new THREE.BoxGeometry(0.55, 0.9, 0.1), mat, x - Math.sin(ry) * 0.27, 0.9, z - Math.cos(ry) * 0.27, { ry }); };
-    const lamp = (x, z, y) => { K.mg('gold', new THREE.CylinderGeometry(0.03, 0.08, 0.4, 8), x, y + 0.2, z); K.mg(K.glow('#a8f0b0', 1.6), new THREE.ConeGeometry(0.2, 0.18, 12, 1, true), x, y + 0.48, z); };
-    // 大きな地球儀（台つき）
-    const globe = (x, z, s = 1) => { K.cyl(x, z, 0.1 * s, 1.0 * s, 'wood2', { seg: 6 }); K.mesh(new THREE.SphereGeometry(0.3 * s, 16, 12), '#6ab0e8', x, 1.3 * s, z); K.mesh(new THREE.TorusGeometry(0.34 * s, 0.025, 6, 24), 'gold', x, 1.3 * s, z, { rz: 0.4 }); };
+    const { ceil, chandelier, sconce, portrait, shelf, stack, shelfRow, chair, lamp, globe, clothC, lit } = palaceProps(K);
 
     // ---- 玉座の間（x -16〜16, z -34〜-2。北の壇は高さ 1m）----
     K.mesh(new THREE.PlaneGeometry(3.6, 24), 'clothRed', 0, 0.03, -14, { rx: -Math.PI / 2, noShadow: true });
@@ -8258,18 +8379,36 @@ const ZONE_BUILD = {
     K.bench(-6, 17, Math.PI / 2); K.bench(6, 17, -Math.PI / 2);
 
     // ---- 大図書館（x -44〜-18, z -34〜10）：北・西・南の回廊（高さ 3m）、西の回廊への大階段（z -20〜-16） ----
+    //   大階段を上りきった西の壁に、王家の書庫の扉（第三章の終わり c3_06 で開く。それまでは王家の紋の錠と鎖）
     //   回廊の下の面と、回廊の上の外壁ぞいに本棚。まん中に、本棚の列と閲覧机
-    shelfRow('z', -30, -20, -39.7, Math.PI / 2, 2.7);       // 西の回廊の下（大階段の北と南）
+    shelfRow('z', -30, -20, -39.7, Math.PI / 2, 2.7);     // 西の回廊の下（大階段の北と南）
     shelfRow('z', -16, 6, -39.7, Math.PI / 2, 2.7);
     shelfRow('x', -39.4, -18.3, -29.7, 0, 2.7);              // 北の回廊の下
     shelfRow('x', -39.4, -22, 5.7, Math.PI, 2.7);            // 南の回廊の下（東の端は、大広間からの扉をあける）
-    shelfRow('z', -33.4, 9.4, -43.7, Math.PI / 2, 3.2);      // 回廊の上：外壁ぞい
+    shelfRow('z', -33.4, -22.6, -43.7, Math.PI / 2, 3.2);    // 回廊の上：外壁ぞい（書庫の扉のまわりはあける）
+    shelfRow('z', -13.4, 9.4, -43.7, Math.PI / 2, 3.2);
     shelfRow('x', -43.4, -18.6, -33.7, 0, 3.2);
     shelfRow('x', -43.4, -18.6, 9.7, Math.PI, 3.2);
-    // 大階段：扉から西へのびるじゅうたん、階段の両わきの灯り
+    // 大階段：扉から西へのびるじゅうたんは、階段を上って書庫の扉まで続く。階段の両わきの灯り
     K.mesh(new THREE.PlaneGeometry(16, 3.6), 'clothRed', -26, 0.03, -18, { rx: -Math.PI / 2, noShadow: true });
     for (const z of [-19.9, -16.1]) K.mesh(new THREE.BoxGeometry(16, 0.04, 0.12), 'gold', -26, 0.04, z, { noShadow: true });
+    { const run = Math.hypot(6, 3), a = Math.atan2(3, 6);   // 階段（x -40〜-34 で 3m 上る）の段鼻にかぶせる
+      K.mesh(new THREE.PlaneGeometry(run, 3.6), 'clothRed', -37, 1.58, -18, { abs: true, noShadow: true }).rotation.set(-Math.PI / 2, 0, -a, 'ZYX');
+      K.mesh(new THREE.PlaneGeometry(6, 3.6), 'clothRed', -43, 3.03, -18, { rx: -Math.PI / 2, abs: true, noShadow: true });
+      for (const z of [-19.9, -16.1]) K.mesh(new THREE.BoxGeometry(6, 0.04, 0.12), 'gold', -43, 3.04, z, { abs: true, noShadow: true }); }
     for (const z of [-20.6, -15.4]) K.brazier(-33.4, z, '#ffd27a', 1.1);
+    // 書庫の扉の両わきに、金の猫の像と燭台。扉の上に王家の紋
+    for (const z of [-21.3, -14.7]) { K.catStatue(-42.6, z, Math.PI / 2, 0.9, 'gold', '#ffffff'); sconce(-43.9, z + (z < -18 ? -1.1 : 1.1), Math.PI / 2); }
+    royalCrest(K, -45.85, K.gy(-42, -18) + 6.5, -18, Math.PI / 2, 1);
+    if (!storyCond('scene:c3_06')) {
+      // 開くまで：扉に、王家の紋の錠と、ななめに交わる金の鎖
+      royalCrest(K, -45.75, K.gy(-42, -18) + 2.6, -18, Math.PI / 2, 0.62);
+      for (const sd of [-1, 1]) for (let i = 0; i < 15; i++) {
+        const u = (i - 7) * 0.24, ring = new THREE.TorusGeometry(0.14, 0.035, 6, 12);
+        if (i % 2) ring.rotateY(Math.PI / 2); else ring.rotateX(Math.atan2(1, 0.82 * sd));   // 輪を交互に、扉の面にそわせる／扉から立てる
+        K.mg('gold', ring, -45.7 + (i % 2 ? 0 : 0.06), K.gy(-42, -18) + 2.6 + u * 0.82 * sd, -18 + u);
+      }
+    }
     // 書見台の歴史書（大きな本が開いている）
     K.box(-28, -14.6, 0.5, 1.0, 0.5, 'wood2', { round: true });
     K.mesh(new THREE.BoxGeometry(0.9, 0.06, 0.6), 'wood', -28, 1.05, -14.6, { rx: -0.35 });
@@ -8373,6 +8512,112 @@ const ZONE_BUILD = {
     chandelier(31, 22, 0.8);
 
     K.light(0, 7, -16, '#fff0d8', 9, 28); K.light(0, 6, 17, '#fff0d8', 8, 26); K.light(-29, 8, -10, '#fff0d8', 8, 30);
+  },
+  // 王家の書庫：八角の閲覧の間（壁いっぱいの高い本棚とはしご、斜めに並ぶ本棚の列、天窓の光の下の書見台と古代文字の大きな本）、
+  //   北のくぼみの初代王の織物、南のくぼみのシロの読書机、西の壇の古代文字の石板、東の回廊の代々の王の肖像
+  castleArchive(K) {
+    const { ceil, chandelier, sconce, portrait, shelf, stack, chair, lamp } = palaceProps(K);
+    const M = K.T.zone.map, R = M.length, C = M[0].length;
+    const cx = c => 2 * c - C + 1, cz = r => 2 * r - R + 1, ch = (c, r) => (M[r] || '')[c] || '#', wall = (c, r) => ch(c, r) === '#';
+    const book = () => pick(['#b84a4a', '#4a6ab8', '#4a9a5a', '#c8a040', '#8a5ab8', '#6a4a30', '#2a4a6a']);
+    // 立てかけたはしご（ry = 本棚の正面。x, z は本棚の前の面）
+    const ladder = (x, z, ry, h) => {
+      const H = h - 0.3, run = 0.85, th = -Math.atan2(run, H), L = Math.hypot(run, H), y0 = K.gy(x, z);
+      const W = (u, lz) => [x + u * Math.cos(ry) + lz * Math.sin(ry), z - u * Math.sin(ry) + lz * Math.cos(ry)];
+      for (const u of [-0.24, 0.24]) { const g = new THREE.CylinderGeometry(0.03, 0.03, L, 6); g.rotateX(th); const [px, pz] = W(u, 0.05 + run / 2); K.mg('wood', g, px, y0 + H / 2, pz, [0, ry, 0]); }
+      for (let y = 0.35; y < H; y += 0.4) { const [px, pz] = W(0, 0.05 + run * (1 - y / H)); K.mg('wood', new THREE.BoxGeometry(0.5, 0.04, 0.05), px, y0 + y, pz, [0, ry, 0]); }
+    };
+
+    // ---- 壁ぞいの本棚：閲覧の間と北・南のくぼみの壁を、高い本棚でうめる（八角の斜めの壁は、段ごとに短い棚）。回廊・西の壇はのぞく ----
+    for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) {
+      const k = ch(c, r); if (k !== '0' || c >= 14) continue;
+      for (const [dc, dr] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+        if (!wall(c + dc, r + dr) || (dr === -1 && r === 1)) continue;   // 北のくぼみの奥は、初代王の織物
+        const ax = -dr, az = dc, e1 = wall(c + ax, r + az) ? 0.62 : 0.04, e0 = wall(c - ax, r - az) ? 0.62 : 0.04, w = 2 - e0 - e1, mid = (e0 - e1) / 2;
+        const x = cx(c) + dc * 0.69 + ax * mid, z = cz(r) + dr * 0.69 + az * mid, ry = Math.atan2(-dc, -dr);
+        shelf(x, z, ry, w, 4.6);
+        if (w > 1.8 && K.r() < 0.22) ladder(x - dc * 0.3, z - dr * 0.3, ry, 4.6);
+      }
+    }
+    // 斜めに並ぶ本棚の列（閲覧の間のまん中から四方へ）
+    const X0 = -6, Z0 = 0;
+    for (let i = 0; i < 4; i++) { const a = Math.PI / 4 + i * Math.PI / 2; stack(X0 + Math.cos(a) * 6.4, Z0 + Math.sin(a) * 6.4, -a, 3.2, 3.4); }
+
+    // ---- まん中：星図を描いた低い円壇と、書見台の古代文字の大きな本。天窓のステンドグラスから光がさす ----
+    const y0 = K.gy(X0, Z0);
+    K.cyl(X0, Z0, 3.2, 0.1, 'marble', { seg: 40, col: false });
+    for (const r of [3.2, 2.2]) { const g = new THREE.TorusGeometry(r, 0.05, 6, 48); g.rotateX(Math.PI / 2); K.mg('gold', g, X0, y0 + 0.11, Z0); }
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; K.mg('gold', new THREE.BoxGeometry(0.9, 0.02, 0.06), X0 + Math.cos(a) * 2.7, y0 + 0.11, Z0 + Math.sin(a) * 2.7, [0, -a, 0]); }
+    for (let i = 0; i < 16; i++) { const a = K.r() * Math.PI * 2, r = 2.35 + K.r() * 0.7; K.mg(K.glow('#fff2b0', 1.6), new THREE.CylinderGeometry(0.05, 0.05, 0.02, 8), X0 + Math.cos(a) * r, y0 + 0.115, Z0 + Math.sin(a) * r); }
+    K.cyl(X0, Z0, 0.5, 0.14, 'gold', { seg: 16, y: 0.1 });
+    K.cyl(X0, Z0, 0.18, 1.0, 'wood2', { seg: 8, y: 0.2 });
+    { const g = new THREE.Group(); g.position.set(X0, y0 + 1.25, Z0); g.rotation.z = -0.38;   // 東（入口のほう）へかたむけた台
+      const part = (geo, mat, x, y, z, rx = 0) => { const m = new THREE.Mesh(geo, K.M(mat)); m.position.set(x, y, z); m.rotation.x = rx; m.castShadow = true; g.add(m); return m; };
+      part(new THREE.BoxGeometry(1.1, 0.08, 1.5), 'wood');
+      part(new THREE.BoxGeometry(1.06, 0.05, 1.42), '#6a2030', 0, 0.06, 0);
+      for (const sd of [-1, 1]) {
+        part(new THREE.BoxGeometry(0.98, 0.07, 0.66), '#f4ecd8', 0, 0.12, sd * 0.35, sd * 0.06);
+        for (let i = 0; i < 7; i++) part(new THREE.BoxGeometry(0.05, 0.01, 0.2 + K.r() * 0.3), K.glow('#ffe2a0', 1.1), -0.36 + i * 0.12, 0.165, sd * 0.35, sd * 0.06);
+      }
+      K.scene.add(g); }
+    // 本のまわりを、ほこりのような光の粒がゆっくり舞い上がる
+    const motes = Array.from({ length: 12 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), K.glow('#ffe9a8', 2.6)); K.scene.add(m); return { m, a: K.r() * 7, r: 0.3 + K.r() * 0.8, h: K.r(), s: 0.2 + K.r() * 0.4 }; });
+    K.tick((dt, t) => motes.forEach(o => { const a = o.a + t * o.s, f = (o.h + t * 0.06 * (1 + o.s)) % 1; o.m.position.set(X0 + Math.cos(a) * o.r, y0 + 1.5 + f * 2.4, Z0 + Math.sin(a) * o.r); o.m.scale.setScalar(Math.sin(f * Math.PI)); }));
+    { const top = ceil(X0, Z0);
+      const sky = new THREE.Mesh(new THREE.CircleGeometry(3, 48), new THREE.MeshBasicMaterial({ map: skylightTex(), color: hdr('#ffffff', 1.3), toneMapped: false }));
+      sky.rotation.x = Math.PI / 2; sky.position.set(X0, top - 0.03, Z0); K.scene.add(sky);
+      const ring = new THREE.TorusGeometry(3.05, 0.12, 8, 48); ring.rotateX(Math.PI / 2); K.mg('gold', ring, X0, top - 0.08, Z0);
+      // 光の柱：上が明るく、床に向かって消える
+      const c = document.createElement('canvas'); c.width = 4; c.height = 64; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 64);
+      gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#000000'); g.fillStyle = gr; g.fillRect(0, 0, 4, 64);
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(2.9, 3.4, top - y0 - 0.1, 40, 1, true), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), color: hdr('#ffe8b0', 0.22), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+      shaft.position.set(X0, (top + y0) / 2, Z0); K.scene.add(shaft); }
+
+    // ---- 北のくぼみ：初代ニャハハ王の織物（金の竿に下げる）と、入口の猫の像 ----
+    { const x = -6, z = cz(1) - 0.94, y = K.gy(x, z);
+      { const tex = archiveTapestryTex(); K.mesh(new THREE.PlaneGeometry(4.4, 5.5), new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: '#ffffff', emissiveIntensity: 0.35, roughness: 0.95 }), x, 3.95, z, { noShadow: true }); }
+      K.mg('gold', new THREE.CylinderGeometry(0.06, 0.06, 5.2, 8), x, y + 6.8, z + 0.05, [0, 0, Math.PI / 2]);
+      for (const sd of [-1, 1]) { K.mg('gold', new THREE.SphereGeometry(0.12, 10, 8), x + sd * 2.65, y + 6.8, z + 0.05); K.mg('#c83a4a', new THREE.ConeGeometry(0.1, 0.5, 8), x + sd * 2.3, y + 1.0, z + 0.06); } }
+    for (const x of [-8.3, -3.7]) K.catStatue(x, -10.4, 0, 1.0, 'gold', '#ffffff');
+
+    // ---- 南のくぼみ：シロが夜どおし本を読んだ机（読みかけの本の山、燃えつきたろうそく、いすの毛布）----
+    { const x = -6, z = 12.3, y = K.gy(x, z) + 0.8;
+      K.box(x, z, 2.2, 0.8, 1.0, 'wood', { round: true });
+      chair(x, z + 1.15, Math.PI);
+      K.mesh(new THREE.BoxGeometry(0.62, 0.05, 0.5), '#a8b8e8', x, 0.5, z + 1.15, { noShadow: true });   // いすの毛布
+      K.mesh(new THREE.BoxGeometry(0.6, 0.62, 0.06), '#a8b8e8', x, 0.86, z + 1.46, { rx: 0.12 });
+      for (const sd of [-1, 1]) K.mg('#f4ecd8', new THREE.BoxGeometry(0.34, 0.03, 0.46), x + sd * 0.18, y + 0.02, z - 0.05, [0, 0, sd * 0.05]);
+      for (const [bx, n] of [[-0.8, 6], [0.75, 4]]) for (let i = 0; i < n; i++) K.mg(book(), new THREE.BoxGeometry(0.36, 0.08, 0.28), x + bx + (K.r() - 0.5) * 0.06, y + 0.04 + i * 0.08, z + 0.1, [0, (K.r() - 0.5) * 0.5, 0]);
+      K.mg('gold', new THREE.CylinderGeometry(0.1, 0.12, 0.03, 12), x + 0.5, y + 0.015, z - 0.3);   // 燃えつきたろうそく
+      K.mg('white', new THREE.CylinderGeometry(0.04, 0.045, 0.06, 8), x + 0.5, y + 0.06, z - 0.3);
+      K.mg('white', new THREE.CylinderGeometry(0.07, 0.05, 0.08, 10), x - 0.45, y + 0.04, z - 0.32);   // 紅茶のカップ
+      for (let i = 0; i < 4; i++) K.mg('white', new THREE.SphereGeometry(0.06, 6, 5), x - 0.2 + K.r() * 0.6, y + 0.04, z - 0.35 + K.r() * 0.2, null, [1, 0.6, 1]);   // 丸めた書きそこない
+      lamp(x - 0.95, z - 0.3, y);
+      for (const [bx, bz, n] of [[-1.6, 1.0, 5], [1.5, 0.8, 3], [1.7, -0.4, 4]]) for (let i = 0; i < n; i++) K.mesh(new THREE.BoxGeometry(0.4, 0.1, 0.3), book(), x + bx, 0.05 + i * 0.1, z + bz, { ry: K.r() * 0.8, noShadow: i > 0 }); }
+
+    // ---- 西の壇（最奥）：古代文字の石板と、青緑の灯り ----
+    { const x = cx(1) - 0.75, z = 0, y = K.gy(x, z);
+      K.box(x, z, 0.5, 3.8, 3.4, 'stone', { round: true });
+      K.mesh(new THREE.PlaneGeometry(3.1, 3.1), new THREE.MeshBasicMaterial({ map: ancientTabletTex(), color: hdr('#ffffff', 0.9), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), x + 0.27, 1.95, z, { ry: Math.PI / 2, noShadow: true });
+      K.box(x + 0.1, z, 0.8, 0.3, 3.8, 'stone2', { col: false });
+      for (const sd of [-1, 1]) K.brazier(x + 1.6, sd * 2.1, '#8affe0', 1.0);
+      K.rug(-17.6, 0, 3.4, 4.6, 'clothRed'); }
+
+    // ---- 東の回廊（高さ 2m）：代々の王の肖像（いちばん新しい額は、旅が終わるまで空っぽ）、じゅうたん、燭台 ----
+    const kings = ['#7a3a4a', '#3a4a7a', '#3a6a4a', '#6a4a2a', '#5a3a6a'];
+    [[18.5, -1], [15, -1], [11.5, -1], [18.5, 1], [15, 1]].forEach(([x, sd], i) => portrait(x, sd * 2.9, sd < 0 ? 0 : Math.PI, kings[i], 3.3));
+    { const x = 11.5, z = 2.9, y = K.gy(x, z) + 3.3;
+      if (storyCond('done')) portrait(x, z, Math.PI, '#c83a3a', 3.3);
+      else { K.mg('gold', new THREE.BoxGeometry(1.5, 1.9, 0.12), x, y, z, [0, Math.PI, 0]); K.mg('#3a2a20', new THREE.BoxGeometry(1.2, 1.6, 0.14), x, y, z, [0, Math.PI, 0]); } }
+    for (const x of [13.25, 16.75]) { sconce(x, -2.95, 0); sconce(x, 2.95, Math.PI); }
+    K.mesh(new THREE.PlaneGeometry(12, 3.0), 'clothRed', 15, 0.03, 0, { rx: -Math.PI / 2, noShadow: true });
+    { const a = Math.atan2(2, 4); K.mesh(new THREE.PlaneGeometry(Math.hypot(4, 2), 3.0), 'clothRed', 7, 1.08, 0, { abs: true, noShadow: true }).rotation.set(-Math.PI / 2, 0, a, 'ZYX'); }
+    K.mesh(new THREE.PlaneGeometry(7.8, 3.0), 'clothRed', 1.1, 0.03, 0, { rx: -Math.PI / 2, noShadow: true });
+    for (const sd of [-1, 1]) K.brazier(9.8, sd * 2.2, '#ffd27a', 1.1);
+    chandelier(15, 0, 0.8);
+    royalCrest(K, 22.9, K.gy(20, 0) + 6.6, 0, -Math.PI / 2, 0.8);
+
+    K.light(X0, 8, Z0, '#ffe8c0', 12, 30); K.light(-19, 2.5, 0, '#8affe0', 5, 10); K.light(15, 4.5, 0, '#ffd8a0', 6, 16); K.light(-6, 2.2, 12.6, '#ffd8a0', 3, 8);
   },
   // 笑顔の塔 1F：大ロビーの玉のりのリング（休演中）と太鼓、びっくり鏡の回廊、風船の間、きっぷ売り場、楽団の控え室、むすっと幕
   tower(K) {
