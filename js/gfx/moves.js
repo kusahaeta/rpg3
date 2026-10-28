@@ -1673,7 +1673,8 @@ const MOVES = {
   },
   // ---------------- 友情技（コンボスキル） ----------------
   // にゃんこブレイク：二人の背中ごしに身をかがめ、敵の左右へ跳びこむ。ミケが斬り上げた線が残り、
-  //   クロが居合の返す刀で逆の線を引いて十字がそろう。ふたりがこちらを向いて刀をはらうと、十字がはじける
+  //   クロが居合の返す刀で逆の線を引いて十字がそろう。ふたりがこちらを向いて刀をはらうと、十字がはじけて、二人分のダメージが続けて入る
+  //   （battle の markHits。決めとダメージは pairIn の finish）
   pairIn: {
     async attack(e, ts, c) {
       const t = ts[0], k = this.allyEnt('kuro'), kOk = !!k && k.u.alive, m = e.model;
@@ -1711,10 +1712,37 @@ const MOVES = {
       const a1 = s > 0 ? 0.85 : Math.PI - 0.85;
       this.sweep(m, { ...POSES.windup, twist: -0.3 }, 0.12, e.u.color);
       const line = this.breakLine(p, e.u.color, { angle: a1, len, w: 0.11 });
-      this.breakX = { t: t.u, line, a1, len, p };
+      this.breakX = { t: t.u, te: t, line, a1, len, p, col: e.u.color };
       await GFX.delay(0.12);
       this.squash(t, 0.18);
       this.p.burst(p, e.u.color, 24, { speed: 5, life: 0.5, size: 0.1, drag: 3 });
+    },
+    // 決め（battle の markHits。ダメージは land で入る）：十字がそろっていれば、ふたりがこちらを向いて刀をはらい、
+    //   うしろで十字がはじけて、ミケ・クロの順にダメージが入る
+    async finish(n, land) {
+      const bx = this.breakX; this.breakX = null;
+      if (!bx || !bx.line2) {
+        // クロが斬らなかった（ミケの一撃で倒れる見込み）：ミケの線だけがはじける
+        if (bx) { bx.line.end(); this.fx.shards(bx.p, bx.col, 8, 4); this.squash(bx.te, 0.25); }
+        for (let j = 0; j < n; j++) await land(j);
+        if (bx) await this.breakWide();
+        return;
+      }
+      for (const x of bx.pair) { this.face(x, this.camera.position); this.tweenPose(x.model, POSES.chiburi, 0.1); }
+      await GFX.delay(0.1);
+      bx.line.end(); bx.line2.end();
+      const q = this.camera.quaternion;
+      this.fx.ring(bx.p, '#ffcf4a', { r: bx.len * 0.55, life: 0.5, face: this.camera.position, width: 0.1 });
+      this.fx.shards(bx.p, bx.col, 10, 5);
+      this.fx.shards(bx.p, MOON, 10, 5);
+      for (const a of [bx.a1, Math.PI - bx.a1]) {
+        const dir = V3(Math.cos(a), Math.sin(a), 0).applyQuaternion(q);
+        for (let i = 0; i < 14; i++) { const f = (Math.random() - 0.5) * bx.len, sp = (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random() * 2); this.p.emit(bx.p.clone().addScaledVector(dir, f), dir.clone().multiplyScalar(sp).add(V3(0, 0.6, 0)), hdr(i % 2 ? '#ffcf4a' : '#fff4c8', 2.5), { life: 0.5, size: 0.08, drag: 2 }); }
+      }
+      this.squash(bx.te, 0.35);
+      Sfx.slam(); GFX.shake(0.35);
+      for (let j = 0; j < n; j++) { await land(j); await GFX.delay(0.09); }
+      await this.breakWide();
     },
   },
   pairX: {
@@ -1742,21 +1770,8 @@ const MOVES = {
       Sfx.tone(2400, 0.12, 'triangle', 0.06); Sfx.tone(3200, 0.25, 'sine', 0.03, 0, 0.03);
       GFX.slowmo(0.2, 0.3);
       await GFX.delay(0.22);
-      // 決め：ふたりがこちらを向いて刀をはらう。うしろで十字がはじける
-      for (const x of pair) { this.face(x, this.camera.position); this.tweenPose(x.model, POSES.chiburi, 0.1); }
-      await GFX.delay(0.1);
-      bx.line.end(); line.end();
-      const q = this.camera.quaternion;
-      this.fx.ring(bx.p, '#ffcf4a', { r: bx.len * 0.55, life: 0.5, face: this.camera.position, width: 0.1 });
-      this.fx.shards(bx.p, mk ? mk.u.color : '#ff6a3c', 10, 5);
-      this.fx.shards(bx.p, MOON, 10, 5);
-      for (const a of [bx.a1, Math.PI - bx.a1]) {
-        const dir = V3(Math.cos(a), Math.sin(a), 0).applyQuaternion(q);
-        for (let i = 0; i < 14; i++) { const f = (Math.random() - 0.5) * bx.len, sp = (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random() * 2); this.p.emit(bx.p.clone().addScaledVector(dir, f), dir.clone().multiplyScalar(sp).add(V3(0, 0.6, 0)), hdr(i % 2 ? '#ffcf4a' : '#fff4c8', 2.5), { life: 0.5, size: 0.08, drag: 2 }); }
-      }
-      this.squash(t, 0.35);
-      Sfx.slam(); GFX.shake(0.35);
-      await GFX.delay(0.08);
+      // 決め（十字がはじけてダメージが入る）は pairIn の finish で
+      this.breakX = { ...bx, line2: line, pair };
     },
   },
   // ファイアボール：ミケが魚を放り投げ、シロの炎で大きな火の玉になって敵へ落ちる
@@ -1797,7 +1812,8 @@ const MOVES = {
     },
   },
   // 黒白連撃：構えた二人を前から。クロは影にしずみ、敵のそばの影から跳びだして斬る。シロは杖から白い稲妻。
-  //   ひと太刀・ひと雷ごとに、敵に黒と白のしるしが残る。最後は白い稲妻がしるしからしるしへ走り、クロが刀をおさめると、いっせいにはじける
+  //   ひと太刀・ひと雷ごとに、敵に黒と白のしるしが残る。最後は白い稲妻がしるしからしるしへ走り、クロが刀をおさめると、
+  //   しるしがつぎつぎにはじけて、そのたびにダメージが入る（battle の markHits。ダメージは finish の land で入る）
   //   （技の run が opt.hit に何発目かを入れる。0 が最初のクロ、5 が最後のシロ）
   kokubyaku: {
     keep: true,
@@ -1805,14 +1821,15 @@ const MOVES = {
       const t = ts[0], i = c.opt.hit || 0, k = this.allyEnt('kuro'), sh = this.allyEnt('shiro');
       if (i === 0 || !this.kkb) this.kkb = { marks: [], side: 1, bside: 1 };
       const S = this.kkb, pair = [k, sh].filter(x => x && x.u.alive);
+      S.hit = i;
       for (const x of this.ents.values()) if (x.ally) x.model.group.visible = pair.includes(x);
       this.hitGlow = 0.4;   // 命中の光をひかえめに（しるしが白い光にうもれないよう。attackEnd で戻る）
       const fast = 1 - Math.min(i, 5) * 0.07;   // だんだん速く
       if (i === 0) await this.kkOpen(pair, k);
       if (e.u.key === 'kuro') await this.kkSlash(e, t, S, fast);
       else await this.kkBolt(e, t, S, fast, i === 5);
-      if (i === 5) await this.kkFinish(S, k);
     },
+    async finish(n, land) { await this.kkFinish(this.kkb, this.allyEnt('kuro'), n, land); },
   },
   // にゃんにゃんヒール：みんなでこちらを向いて声を合わせ、音符と光が一行をつつむ
   chorus: {
@@ -1899,6 +1916,12 @@ Object.assign(BattleView.prototype, {
     this.fx.sprite(p, col, size * 0.8, 0.3, { k: 4, grow: 1.2, top: true });
     for (const a of [0, Math.PI / 2]) this.fx.slash(p, col, { cam: this.camera, size: size * 1.6, angle: a, life: 0.3, sym: true, top: true });
   },
+  // にゃんこブレイクの決めのあと：いつもの引きの画へ切りかえてから、ふたりが戻る
+  //   （十字を映すカメラのまま wide へなめらかに引くと、敵が真ん中のとき、戻るクロの頭のすぐ前をカメラが通る）
+  async breakWide() {
+    await GFX.delay(0.35);
+    this.wide(); this.camera.position.copy(this.camPos); this.curLook.copy(this.camLook);
+  },
   // 残る斬撃の線（にゃんこブレイクの十字の一本）：p を通る、画面の上で angle の向きの線を、dur 秒で引く。
   //   end() で太く光ってはじけて消える（呼ばれなければ hold 秒で消える）。明るい草原でも見えるよう、色の芯はふつうの合成で
   breakLine(p, col, { angle = 0.8, len = 3, w = 0.11, dur = 0.12, hold = 1.3, glow = col, core = '#ffffff' } = {}) {
@@ -1984,7 +2007,7 @@ Object.assign(BattleView.prototype, {
     const up = S.marks.filter(x => x.black).length % 2 === 0, ang = up ? 0.75 : -0.75;
     await this.sweep(m, up ? POSES.strike : POSES.strike2, 0.08 * fast, KURO_SHADOW, { n: 4 });
     const p = this.hitPoint(t.u);
-    S.marks.push({ t, black: true, ctl: this.kkMark(t, true, ang, S) });
+    S.marks.push({ t, hit: S.hit, black: true, ctl: this.kkMark(t, true, ang, S) });
     this.p.burst(p, hdr(KURO_SHADOW, 2.5), 14, { speed: 3, life: 0.4, size: 0.1, drag: 4 });
     this.squash(t, 0.15);
     await GFX.delay(0.05);
@@ -2003,7 +2026,7 @@ Object.assign(BattleView.prototype, {
     this.fx.bolt(tip, p, '#ffffff', { life: 0.24, segs: 16, jag: 0.2, r: 0.014 * big, k: 4 });
     this.fx.sprite(p, '#ffffff', 1.0 * big, 0.15, { k: 3 });
     Sfx.zap(); if (last) Sfx.zap();
-    S.marks.push({ t, black: false, ctl: this.kkMark(t, false, Math.random() * 0.6, S) });
+    S.marks.push({ t, hit: S.hit, black: false, ctl: this.kkMark(t, false, Math.random() * 0.6, S) });
     this.p.burst(p, '#ffd23c', 16, { speed: 4, life: 0.35, size: 0.08, drag: 3 });
     this.squash(t, 0.12);
     await GFX.delay(0.08 * fast);
@@ -2044,10 +2067,11 @@ Object.assign(BattleView.prototype, {
     });
     return ctl;
   },
-  // 決め：しるしのついた敵をみんな映す。白い稲妻がしるしからしるしへ走り、クロが刀をおさめると、いっせいにはじける
-  async kkFinish(S, k) {
-    const marks = S.marks.filter(x => x.t.u.alive && !x.ctl.mode), ts = [...new Set(marks.map(x => x.t))];
-    if (!ts.length) return;
+  // 決め：しるしのついた敵をみんな映す。白い稲妻がしるしからしるしへ走り、クロが刀をおさめると、
+  //   しるしがつけた順につぎつぎはじけて、land(j) で j 発目のダメージが入る
+  async kkFinish(S, k, n, land) {
+    const marks = S ? S.marks.filter(x => x.t.u.alive && !x.ctl.mode) : [], ts = [...new Set(marks.map(x => x.t))];
+    if (!ts.length) { for (let j = 0; j < n; j++) await land(j); return; }
     await GFX.delay(0.24);   // シロの稲妻が消えてから切りかえる
     this.focus(k);   // 敵のそばのクロだけ映す（シロの稲妻は空から。仲間は attackEnd の wide で戻る）
     const cx = ts.reduce((a, t) => a + t.home.x, 0) / ts.length, z = Math.max(...ts.map(t => t.home.z)), wide = Math.max(...ts.map(t => Math.abs(t.home.x - cx) + t.model.radius));
@@ -2078,13 +2102,20 @@ Object.assign(BattleView.prototype, {
     Sfx.tone(2400, 0.12, 'triangle', 0.06); Sfx.tone(3200, 0.25, 'sine', 0.03, 0, 0.03);
     GFX.slowmo(0.25, 0.25);
     await GFX.delay(0.12);
-    for (const x of marks) x.ctl.burst();
-    for (const t of ts) {
-      const p = this.hitPoint(t.u);
-      this.fx.sprite(p, '#ffd23c', 1.6 + t.model.radius, 0.3, { k: 1.6 });
-      this.fx.shards(p, '#2a2240', 8, 5);
-      this.fx.shards(p, '#fffbe8', 8, 5);
-      this.squash(t, 0.3);
+    // しるしがつぎつぎにはじけて、ひとつごとにダメージ。稲妻が走った順に、敵ごとに
+    const order = ts.flatMap(t => marks.filter(m => m.t === t).map(m => m.hit)).filter(j => j < n);
+    for (let j = 0; j < n; j++) if (!order.includes(j)) order.push(j);
+    for (const j of order) {
+      const x = marks.find(m => m.hit === j);
+      if (x) {
+        x.ctl.burst();
+        const p = this.hitPoint(x.t.u);
+        this.fx.sprite(p, '#ffd23c', 1.2 + x.t.model.radius, 0.25, { k: 1.6 });
+        this.fx.shards(p, x.black ? '#2a2240' : '#fffbe8', 6, 5);
+        this.squash(x.t, 0.22);
+      }
+      await land(j);
+      await GFX.delay(0.07);
     }
     Sfx.slam(); GFX.shake(0.3);
     await GFX.delay(0.4);

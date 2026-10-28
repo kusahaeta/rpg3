@@ -253,11 +253,11 @@ const HERO = 'mike';
 // ------------------------------------------------------------
 const COMBOS = [
   { id: 'nyankoBreak', pair: ['mike', 'kuro'], name: 'にゃんこブレイク', elem: 'physical', desc: 'ミケとクロの連携。指定した敵単体にミケの攻撃力250%＋クロの攻撃力250%の物理ダメージ。弱点ゲージを大きく削る。', target: 'single',
-    run: async (B, a, t) => { const [m, k] = a; let r = await B.single(m, t, 2.5, 30, 'combo', { heavy: true, anim: 'pairIn' }); if (t.alive) r = r.concat(await B.single(k, t, 2.5, 30, 'combo', { heavy: true, anim: 'pairX' })); return r; } },
+    run: async (B, a, t) => { const [m, k] = a; return B.markHits([m, k], 2.5, 30, 'combo', i => ({ heavy: true, anim: i ? 'pairX' : 'pairIn' }), en => en.includes(t) ? t : null); } },
   { id: 'fireball', pair: ['mike', 'shiro'], name: 'ファイアボール', elem: 'fire', desc: 'ミケが投げた魚にシロが火をつける。敵全体にシロの攻撃力180%の炎ダメージ、燃焼（2ターン）。', target: 'aoe',
     run: async (B, a) => { const [, s] = a; const r = await B.aoe(s, 1.8, 20, 'combo', { heavy: true, anim: 'fireball' }); B.aliveEnemies().forEach(e => B.dot(s, e, { type: 'burn', mult: 0.5, turns: 2, chance: 1 })); return r; } },
   { id: 'kokubyaku', pair: ['kuro', 'shiro'], name: '黒白連撃', elem: ['physical', 'lightning'], desc: 'クロとシロの交互攻撃。ランダムな敵に、クロ（物理）とシロ（雷）が交互に攻撃力80%のダメージを計6回。', target: 'aoe',
-    run: async (B, a) => { const [k, s] = a; let r = []; for (let i = 0; i < 6 && B.aliveEnemies().length; i++) r = r.concat(await B.bounce(i % 2 ? s : k, 1, 0.8, 8, 'combo', { anim: 'kokubyaku', hit: i, elem: i % 2 ? 'lightning' : 'physical' })); return r; } },
+    run: async (B, a) => { const [k, s] = a; return B.markHits([k, s, k, s, k, s], 0.8, 8, 'combo', i => ({ anim: 'kokubyaku', hit: i, elem: i % 2 ? 'lightning' : 'physical' })); } },
   { id: 'nyanHeal', pair: ['tama', '*'], name: 'にゃんにゃんヒール', desc: 'タマとみんなで声を合わせる。味方全体のHPを最大HP40%回復し、デバフを解除、シールドを付与。', target: 'allies', anim: 'chorus',
     run: async (B, a) => { const t = a[0]; B.aliveAllies().forEach(x => { B.heal(t, x, x.maxHp * 0.4); B.cleanse(x); B.cleanse(x); B.shield(t, x, x.maxHp * 0.12, 2); }); return []; } },
   { id: 'gorei', pair: ['maou', '*'], name: '魔王の号令', elem: 'quantum', desc: 'マオウの号令で全員が奮い立つ。味方全体の行動順を50%早め、攻撃力+30%（2ターン）。敵全体にマオウの攻撃力120%の闇ダメージ。', target: 'aoe',
