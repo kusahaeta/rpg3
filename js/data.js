@@ -253,7 +253,7 @@ const HERO = 'mike';
 // ------------------------------------------------------------
 const COMBOS = [
   { id: 'nyankoBreak', pair: ['mike', 'kuro'], name: 'にゃんこブレイク', elem: 'physical', desc: 'ミケとクロの連携。指定した敵単体にミケの攻撃力250%＋クロの攻撃力250%の物理ダメージ。弱点ゲージを大きく削る。', target: 'single',
-    run: async (B, a, t) => { const [m, k] = a; let r = await B.single(m, t, 2.5, 30, 'combo', { heavy: true, anim: 'pairIn' }); if (t.alive) r = r.concat(await B.single(k, t, 2.5, 30, 'combo', { heavy: true, anim: 'pairX' })); return r; } },
+    run: async (B, a, t) => { const [m, k] = a; return B.markHits([m, k], 2.5, 30, 'combo', i => ({ heavy: true, anim: i ? 'pairX' : 'pairIn' }), en => en.includes(t) ? t : null); } },
   { id: 'fireball', pair: ['mike', 'shiro'], name: 'ファイアボール', elem: 'fire', desc: 'ミケが投げた魚にシロが火をつける。敵全体にシロの攻撃力180%の炎ダメージ、燃焼（2ターン）。', target: 'aoe',
     run: async (B, a) => { const [, s] = a; const r = await B.aoe(s, 1.8, 20, 'combo', { heavy: true, anim: 'fireball' }); B.aliveEnemies().forEach(e => B.dot(s, e, { type: 'burn', mult: 0.5, turns: 2, chance: 1 })); return r; } },
   { id: 'kokubyaku', pair: ['kuro', 'shiro'], name: '黒白連撃', elem: ['physical', 'lightning'], desc: 'クロとシロの交互攻撃。ランダムな敵に、クロ（物理）とシロ（雷）が交互に攻撃力80%のダメージを計6回。', target: 'aoe',
