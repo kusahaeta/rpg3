@@ -840,6 +840,12 @@ class BattleView extends BaseView {
     if (mv.attack) { this.lastAttack = { src, moved: this.recall(src) }; await mv.attack.call(this, e, ts, { col, ult: false, kind: 'skill', opt: {} }); }
     else if (mv.support) await mv.support.call(this, e, targets, { col });
   }
+  // しるしをつけた連撃の決め（battle の markHits）：land(j) で j 発目のダメージが入る。技に finish がなければ、そのまま順に当てる
+  async finishMarks(n, land, opt) {
+    const mv = MOVES[this.animOf(opt)];
+    if (mv && mv.finish) return mv.finish.call(this, n, land);
+    for (let j = 0; j < n; j++) await land(j);
+  }
   // 友情技で先に飛びこんだ相方を、もとの位置へ戻す。src 自身が持ち場をはなれていたら true（戻すのは attackEnd）
   recall(src) {
     const away = this.park(src), list = [...this.partners];

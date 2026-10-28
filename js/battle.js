@@ -1148,6 +1148,35 @@ class Battle {
     return all;
   }
 
+  // しるしをつけていって、決めでまとめて当てる連撃（黒白連撃）：srcs[i] が i 発目を撃つ。一撃ごとに的を決めて動きだけ見せ、
+  //   決めの動き（view の finishMarks）で、しるしがはじける順にダメージを入れる（合計は一撃ずつ当てるのと同じ）。
+  //   的は、それまでのしるしで倒れる見込みの敵をはずして選ぶ（見込みはクリティカルなしで数える）
+  async markHits(srcs, mult, tough, kind, optOf) {
+    if (!this.v) {
+      let all = [];
+      for (let i = 0; i < srcs.length && this.aliveEnemies().length; i++) all = all.concat(await this.bounce(srcs[i], 1, mult, tough, kind, optOf(i)));
+      return all;
+    }
+    const left = new Map(), marks = [];
+    for (let i = 0; i < srcs.length; i++) {
+      const en = this.aliveEnemies().filter(e => (left.has(e) ? left.get(e) : e.hp) > 0); if (!en.length) break;
+      const src = srcs[i], t = pick(en), opt = optOf(i);
+      left.set(t, (left.has(t) ? left.get(t) : t.hp) - this.calcDamage(src, t, mult, kind, { ...opt, noCrit: true }).value);
+      Sfx.swing();
+      await this.v.attack(src, [t], kind, opt);
+      marks.push({ src, t, opt });
+      await wait(120);
+    }
+    const results = [];
+    if (marks.length) await this.v.finishMarks(marks.length, async j => {
+      const m = marks[j];
+      if (m.t.alive && m.t.hp > 0) results.push(await this.hitOne(m.src, m.t, mult, tough, kind, m.opt));
+    }, marks[0].opt);
+    await wait(180);
+    await this.resolveDeaths(srcs[0], kind);
+    return results;
+  }
+
   // ダメージのない技の動き（anim は js/gfx/moves.js の MOVES）
   async motion(src, anim, targets = []) { if (this.v) await this.v.motion(src, anim, targets); }
 

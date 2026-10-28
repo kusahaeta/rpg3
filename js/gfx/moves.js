@@ -1797,7 +1797,8 @@ const MOVES = {
     },
   },
   // 黒白連撃：構えた二人を前から。クロは影にしずみ、敵のそばの影から跳びだして斬る。シロは杖から白い稲妻。
-  //   ひと太刀・ひと雷ごとに、敵に黒と白のしるしが残る。最後は白い稲妻がしるしからしるしへ走り、クロが刀をおさめると、いっせいにはじける
+  //   ひと太刀・ひと雷ごとに、敵に黒と白のしるしが残る。最後は白い稲妻がしるしからしるしへ走り、クロが刀をおさめると、
+  //   しるしがつぎつぎにはじけて、そのたびにダメージが入る（battle の markHits。ダメージは finish の land で入る）
   //   （技の run が opt.hit に何発目かを入れる。0 が最初のクロ、5 が最後のシロ）
   kokubyaku: {
     keep: true,
@@ -1805,14 +1806,15 @@ const MOVES = {
       const t = ts[0], i = c.opt.hit || 0, k = this.allyEnt('kuro'), sh = this.allyEnt('shiro');
       if (i === 0 || !this.kkb) this.kkb = { marks: [], side: 1, bside: 1 };
       const S = this.kkb, pair = [k, sh].filter(x => x && x.u.alive);
+      S.hit = i;
       for (const x of this.ents.values()) if (x.ally) x.model.group.visible = pair.includes(x);
       this.hitGlow = 0.4;   // 命中の光をひかえめに（しるしが白い光にうもれないよう。attackEnd で戻る）
       const fast = 1 - Math.min(i, 5) * 0.07;   // だんだん速く
       if (i === 0) await this.kkOpen(pair, k);
       if (e.u.key === 'kuro') await this.kkSlash(e, t, S, fast);
       else await this.kkBolt(e, t, S, fast, i === 5);
-      if (i === 5) await this.kkFinish(S, k);
     },
+    async finish(n, land) { await this.kkFinish(this.kkb, this.allyEnt('kuro'), n, land); },
   },
   // にゃんにゃんヒール：みんなでこちらを向いて声を合わせ、音符と光が一行をつつむ
   chorus: {
@@ -1984,7 +1986,7 @@ Object.assign(BattleView.prototype, {
     const up = S.marks.filter(x => x.black).length % 2 === 0, ang = up ? 0.75 : -0.75;
     await this.sweep(m, up ? POSES.strike : POSES.strike2, 0.08 * fast, KURO_SHADOW, { n: 4 });
     const p = this.hitPoint(t.u);
-    S.marks.push({ t, black: true, ctl: this.kkMark(t, true, ang, S) });
+    S.marks.push({ t, hit: S.hit, black: true, ctl: this.kkMark(t, true, ang, S) });
     this.p.burst(p, hdr(KURO_SHADOW, 2.5), 14, { speed: 3, life: 0.4, size: 0.1, drag: 4 });
     this.squash(t, 0.15);
     await GFX.delay(0.05);
@@ -2003,7 +2005,7 @@ Object.assign(BattleView.prototype, {
     this.fx.bolt(tip, p, '#ffffff', { life: 0.24, segs: 16, jag: 0.2, r: 0.014 * big, k: 4 });
     this.fx.sprite(p, '#ffffff', 1.0 * big, 0.15, { k: 3 });
     Sfx.zap(); if (last) Sfx.zap();
-    S.marks.push({ t, black: false, ctl: this.kkMark(t, false, Math.random() * 0.6, S) });
+    S.marks.push({ t, hit: S.hit, black: false, ctl: this.kkMark(t, false, Math.random() * 0.6, S) });
     this.p.burst(p, '#ffd23c', 16, { speed: 4, life: 0.35, size: 0.08, drag: 3 });
     this.squash(t, 0.12);
     await GFX.delay(0.08 * fast);
@@ -2044,10 +2046,11 @@ Object.assign(BattleView.prototype, {
     });
     return ctl;
   },
-  // 決め：しるしのついた敵をみんな映す。白い稲妻がしるしからしるしへ走り、クロが刀をおさめると、いっせいにはじける
-  async kkFinish(S, k) {
-    const marks = S.marks.filter(x => x.t.u.alive && !x.ctl.mode), ts = [...new Set(marks.map(x => x.t))];
-    if (!ts.length) return;
+  // 決め：しるしのついた敵をみんな映す。白い稲妻がしるしからしるしへ走り、クロが刀をおさめると、
+  //   しるしがつけた順につぎつぎはじけて、land(j) で j 発目のダメージが入る
+  async kkFinish(S, k, n, land) {
+    const marks = S ? S.marks.filter(x => x.t.u.alive && !x.ctl.mode) : [], ts = [...new Set(marks.map(x => x.t))];
+    if (!ts.length) { for (let j = 0; j < n; j++) await land(j); return; }
     await GFX.delay(0.24);   // シロの稲妻が消えてから切りかえる
     this.focus(k);   // 敵のそばのクロだけ映す（シロの稲妻は空から。仲間は attackEnd の wide で戻る）
     const cx = ts.reduce((a, t) => a + t.home.x, 0) / ts.length, z = Math.max(...ts.map(t => t.home.z)), wide = Math.max(...ts.map(t => Math.abs(t.home.x - cx) + t.model.radius));
@@ -2078,13 +2081,20 @@ Object.assign(BattleView.prototype, {
     Sfx.tone(2400, 0.12, 'triangle', 0.06); Sfx.tone(3200, 0.25, 'sine', 0.03, 0, 0.03);
     GFX.slowmo(0.25, 0.25);
     await GFX.delay(0.12);
-    for (const x of marks) x.ctl.burst();
-    for (const t of ts) {
-      const p = this.hitPoint(t.u);
-      this.fx.sprite(p, '#ffd23c', 1.6 + t.model.radius, 0.3, { k: 1.6 });
-      this.fx.shards(p, '#2a2240', 8, 5);
-      this.fx.shards(p, '#fffbe8', 8, 5);
-      this.squash(t, 0.3);
+    // しるしがつぎつぎにはじけて、ひとつごとにダメージ。稲妻が走った順に、敵ごとに
+    const order = ts.flatMap(t => marks.filter(m => m.t === t).map(m => m.hit)).filter(j => j < n);
+    for (let j = 0; j < n; j++) if (!order.includes(j)) order.push(j);
+    for (const j of order) {
+      const x = marks.find(m => m.hit === j);
+      if (x) {
+        x.ctl.burst();
+        const p = this.hitPoint(x.t.u);
+        this.fx.sprite(p, '#ffd23c', 1.2 + x.t.model.radius, 0.25, { k: 1.6 });
+        this.fx.shards(p, x.black ? '#2a2240' : '#fffbe8', 6, 5);
+        this.squash(x.t, 0.22);
+      }
+      await land(j);
+      await GFX.delay(0.07);
     }
     Sfx.slam(); GFX.shake(0.3);
     await GFX.delay(0.4);
