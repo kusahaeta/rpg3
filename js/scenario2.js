@@ -1392,8 +1392,8 @@ const STORY = [
     { t: 'field', zone: 'valley_village', at: [-12, 1], scene: 'c4_01', g: '城下町の東、くろねこ谷を抜けて谷の集落へ' },
     { t: 'field', zone: 'valley', at: [-16, -8], scene: 'c4_02', battle: '4-1', after: 'c4_02b', g: '谷の丘の上の墓標へ' },
     { t: 'field', zone: 'valley', at: [18, -5], scene: 'c4_02c', g: '谷の北東、川のほとりの野営あとで、影の四剣の記録をさがす' },
-    { t: 'field', zone: 'cave', at: [0, 37], scene: 'c4_03', battle: '4-2', g: '谷の北、黒影洞窟へ' },
-    { t: 'field', zone: 'cave', at: [2, -15], scene: 'c4_03b', g: '黒影洞窟の奥へ進む' },
+    { t: 'field', zone: 'cave', at: [0, 37], scene: 'c4_03', battle: '4-2', after: 'c4_03a', g: '谷の北、黒影洞窟へ' },
+    { t: 'field', zone: 'cave', at: [2, -15], scene: 'c4_03b', start: ['cave', -2, 6], yaw: Math.PI, g: '黒影洞窟の奥へ進む' },   // start：c4_03a を話した大空洞から歩き出す
     { t: 'field', zone: 'cave_lake', at: [-11, 15], scene: 'c4_03c', g: '光の水晶を三つ灯し、大水晶の光を光の鏡で影の壁まで導いて、洞窟の下の階へ' },
     { t: 'field', zone: 'cave_deep', at: [0, 35], scene: 'c4_03d', g: '最初の光が消える前に光の水晶を三つとも灯して橋の影の壁を消し、洞窟の最深部へ' },
     { t: 'field', zone: 'cave_deep', at: [0, -30], scene: 'c4_04', battle: '4-3', after: 'c4_05', g: '影の四剣が集まった順に記憶のかけらにふれて闇の扉を開き、三本の剣の眠る大広間へ' },
@@ -1495,7 +1495,7 @@ const BATTLE_SETS = {
   '3-2': { zone: 'tower_3f', at: [0, 4], face: 0 },
   '3-3': { zone: 'tower_top', at: [0, -26], face: 0 },
   '4-1': { zone: 'valley', at: [-4, -12], face: 90 },
-  '4-2': { zone: 'cave', at: [0, 39], face: 0 },
+  '4-2': { zone: 'cave', at: [-2, 8], face: 0 },   // c4_03 で、クロがひとりで駆けていった大空洞
   '4-3': { zone: 'cave_deep', at: [0, -33], face: 0 },
   '5-1': { zone: 'ruins_out', at: [-2, 6], face: 0 },
   '5-2': { zone: 'ruins_in', at: [0, -12], face: 0 },

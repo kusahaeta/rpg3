@@ -314,6 +314,25 @@ function setLines(scene, set) {
   }
   return out;
 }
+// 影の姿：役を、黒く透けたシルエットにする（ふちの線は col で光る）。消すときに透明度を動かす素材を返す
+const SHADE_OPACITY = 0.82;
+function shadeModel(m, col) {
+  const mats = [];
+  m.group.traverse(o => {
+    if (!o.isMesh || !o.material || Array.isArray(o.material)) return;
+    const mt = o.material = o.material.clone();
+    if (o.userData.outline) { if (mt.color) mt.color.set(col); }
+    else {
+      if (mt.color) mt.color.set('#120a1e');
+      if (mt.map && !o.userData.face) mt.map = null;
+      if (mt.emissive) { mt.emissive.set(col); mt.emissiveIntensity = 0.3; mt.userData.e0 = mt.emissive.clone(); mt.userData.ei0 = 0.3; }
+    }
+    mt.transparent = true; mt.opacity = SHADE_OPACITY;
+    o.castShadow = false;
+    mats.push(mt);
+  });
+  return mats;
+}
 class StageView extends BaseView {
   constructor(scene, id, set = null) {
     const st = set ? scene.sets[set] : SCENE_STAGES[id], Z = FIELD_ZONES[st.zone], bg = st.bg || Z.bg || CHAPTERS[Z.ci].bg;
@@ -394,6 +413,7 @@ class StageView extends BaseView {
         if (o.weapon === false || (!foe && o.weapon !== true && key !== 'shiro')) a.showWeapon(false);
         if (o.item) a.hold(o.item);
         if (o.f && m.face) m.face.set(o.f);
+        if (o.shade) a.shadeMats = shadeModel(m, o.shade);   // shade：黒く透けた影の姿（色は、ふちの光）
         this.actors[id] = a;
         if (!foe) this.party.push(a);
       });
@@ -656,7 +676,8 @@ class StageView extends BaseView {
     each(d.meow, a => Sfx.meow(a.base));
     each(d.lift, (a, v) => { const y0 = a.lift; GFX.tween(0.5, e => { a.lift = lerp(y0, v, e); }); });
     if (d.enter) [].concat(d.enter).forEach(k => this.enter(k, d.enterFx));
-    if (d.exit) [].concat(d.exit).forEach(k => { const a = this.actors[k]; if (a) GFX.tween(0.5, e => { a.alpha = 1 - e; }).then(() => { a.m.group.visible = false; }); });
+    // 影の姿（shade）は、ゆっくり闇にとけるように消える
+    if (d.exit) [].concat(d.exit).forEach(k => { const a = this.actors[k]; if (a) GFX.tween(a.shadeMats ? 1.2 : 0.5, e => { a.alpha = 1 - e; if (a.shadeMats) a.shadeMats.forEach(mt => { mt.opacity = SHADE_OPACITY * (1 - e); }); }).then(() => { a.m.group.visible = false; }); });
     if (d.defeat) [].concat(d.defeat).forEach(k => Object.values(this.actors).filter(a => a.base === k).forEach(a => { a.dead = 0.001; a.m.flash('#ffffff', 1.2); }));
     if (d.fx) [].concat(d.fx).forEach(f => { const i = f.indexOf(':'), n = i < 0 ? f : f.slice(0, i), arg = i < 0 ? undefined : f.slice(i + 1); const h = this.hooks[n]; if (h) h.call(this, arg); else if (n === 'glow') this.chestGlow(arg); });
     if (d.bgm) Music.play(d.bgm);
@@ -672,6 +693,7 @@ class StageView extends BaseView {
     const list = Object.values(this.actors).filter(a => a.key === k || a.base === k);
     list.forEach((a, i) => {
       a.m.group.visible = true; a.alpha = 1;
+      if (a.shadeMats) GFX.tween(1.0, e => a.shadeMats.forEach(mt => { mt.opacity = SHADE_OPACITY * e; }));   // 影の姿は、闇からにじみ出る
       if (a.still) { a.still = false; a.m.critter.setPose(POSES.ready); a.m.critter.face.shut = false; a.faceT = this.O.clone(); }   // 石像が目をさまして、一行のほうを向く
       if (style === 'quiet') return;
       const p = a.pos.clone(); p.y += 1 + a.lift;
