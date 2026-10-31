@@ -1327,6 +1327,7 @@ const SCENES = {
       ['n', '【目的】谷の北、黒影洞窟へ。', { cam: 'wide', dur: 5 }],
     ] },
   // 入口：ハヤテの声に続いて、四つの猫の影が現れ、黒猫の影だけが残る。闇は「お前が仲間なんか作るから」とささやく。
+  // 影が消える行は lock で、消えきるまで次へ進めない（三匹はひとつずつ 1.4 秒おきに、とけきるまで 1.2 秒）
   // クロはひとりで大空洞まで駆けていき（set: 'deep'）、影に囲まれてひざをつく。輪がせばまったところで、三匹が駆けつける
   c4_03: { title: '黒影洞窟', bgm: 'zone',
     stage: { zone: 'cave', at: [0, 39], face: 0,
@@ -1357,11 +1358,11 @@ const SCENES = {
       ['shiro', '……まぼろしよ。気をつけて。', { f: 'serious', stance: { shiro: 'ready' } }],
       ['tama', '……でも……やさしい声、だった。', { f: 'worry', g: 'tilt' }],
       ['n', '闇がゆらいで、四つの猫の影が形をとった。', { enter: ['hayate', 'rin', 'gorou', 'kuro#1'], enterFx: 'quiet', fx: 'darkness', cam: 'vision', dur: 7, look: { mike: 'rin', kuro: 'kuro#1', shiro: 'gorou', tama: 'rin' }, r: { mike: 'surprise', kuro: 'surprise', shiro: 'surprise', tama: 'surprise' } }],
-      ['n', 'ひとつ、またひとつと、闇にのまれて……黒猫の影だけが、ぽつんと残った。', { exit: ['hayate'], later: [1.4, { exit: ['rin'], later: [1.4, { exit: ['gorou'] }] }], cam: 'vision', dur: 8, r: { kuro: 'pained' } }],
+      ['n', 'ひとつ、またひとつと、闇にのまれて……黒猫の影だけが、ぽつんと残った。', { exit: ['hayate'], later: [1.4, { exit: ['rin'], later: [1.4, { exit: ['gorou'] }] }], lock: 4.1, cam: 'vision', dur: 8, r: { kuro: 'pained' } }],
       ['n', '（闇の奥から、ささやき声がする）……おぼえているか。お前が仲間なんか作るから、あいつらは闇にのまれた。', { cam: 'vision', dur: 6 }],
       ['n', '（ささやき声）……ひとりで行けばよかったんだ。そうすれば、だれも巻きこまずにすんだ。', { cam: 'kuroFace', dur: 6, r: { kuro: 'pained' } }],
       ['n', '（ささやき声）……次は、そいつらの番だ。', { shake: 0.3, cam: 'wide', dur: 5, r: { mike: 'worry', shiro: 'worry', tama: 'worry' } }],
-      ['kuro', '……だまれ。', { f: 'angry', g: 'fist', exit: ['kuro#1'], cam: 'vision', dur: 5 }],
+      ['kuro', '……だまれ。', { f: 'angry', g: 'fist', exit: ['kuro#1'], lock: 1.3, cam: 'vision', dur: 5 }],
       ['kuro', '……お前たちは、ここで待っていろ。この先は、俺ひとりで行く。', { f: 'angry', g: 'turnAway' }],
       ['n', 'クロは、ふり返らずに、闇の奥へ駆けだした。', { move: { kuro: [0.3, 15] }, speed: 4.5, cam: 'wide', dur: 5, look: { mike: 'kuro', shiro: 'kuro', tama: 'kuro' } }],
       ['mike', 'クロ！　待って！', { f: 'worry', g: 'reach', look: { mike: 'kuro', kuro: 'deep' }, face: { kuro: 'deep' }, cam: 'dark', dur: 5 }],
