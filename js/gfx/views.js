@@ -654,6 +654,7 @@ class BattleView extends BaseView {
     this.ents = new Map();
     this.hitGlow = 1;   // 敵が受ける命中の光の強さ（技のあいだだけ変える。attackEnd で 1 に戻る）
     this.partners = new Set();   // 技を撃つ子のほかに、持ち場をはなれている子（友情技の相方）
+    this.late = new Set();   // 毎フレーム、体の骨を動かしたあとに呼ぶ（update の最後）
     this.markGeo = new THREE.RingGeometry(0.75, 0.9, 64);
     this.sway = 0.4; this.swayOff = V3(); this.roll = 0;
     this.scene.add(this.camera);   // カメラ子のスプラッシュ背景を描くため
@@ -1703,6 +1704,8 @@ class BattleView extends BaseView {
         u.anchor.style.transform = `translate(${((v.x + 1) * 640).toFixed(1)}px, ${((1 - v.y) * 360).toFixed(1)}px)`;
       }
     }
+    // 体の骨を動かしたあとに置くもの（剣から出る光の柱など、武器にぴったり沿わせたいもの）
+    for (const fn of this.late) fn(dt);
   }
 }
 

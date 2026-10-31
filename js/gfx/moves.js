@@ -45,6 +45,30 @@ function frostTex() {
   }
   return (TexCache.frost = new THREE.CanvasTexture(c));
 }
+// 光の柱の帯（白、アルファ付き）：横はまんなかが明るくふちへうすれ、縦は根もと（下）から先へ同じ明るさで、先の 2 割だけうすれる
+function pillarTex() {
+  if (TexCache.pillar) return TexCache.pillar;
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256;
+  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 64, 0);
+  gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.3, 'rgba(255,255,255,.55)'); gr.addColorStop(0.5, 'rgba(255,255,255,1)');
+  gr.addColorStop(0.7, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 256);
+  const v = g.createLinearGradient(0, 0, 0, 256);
+  v.addColorStop(0, 'rgba(0,0,0,1)'); v.addColorStop(0.2, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0)');
+  g.globalCompositeOperation = 'destination-out'; g.fillStyle = v; g.fillRect(0, 0, 64, 256);
+  return (TexCache.pillar = new THREE.CanvasTexture(c));
+}
+// 衝撃波の壁（白、アルファ付き）：根もと（下）が明るく、上へうすれる
+function shockTex() {
+  if (TexCache.shock) return TexCache.shock;
+  const c = document.createElement('canvas'); c.width = 8; c.height = 64;
+  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 64, 0, 0);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 8, 64);
+  return (TexCache.shock = new THREE.CanvasTexture(c));
+}
+// にゃんだー斬りの構え：右手を横へ高くかかげ（剣は柱の部品がまっすぐ天へ向ける。柱が顔の前を通らない）、左手は前でかまえる。顔はまっすぐ前
+const NYANDER_KIME = { hipsY: -0.1, lean: -0.05, twist: -0.1, headX: 0, headY: 0, armRx: -0.3, armRz: -2.4, elbowR: -0.1, armLx: -0.7, armLz: 0.3, elbowL: -0.9, legLx: -0.5, kneeL: 0.5, legRx: 0.45, kneeR: 0.3 };
 const MOVES = {
   // ねこパンチ：剣を持たない左の手で、ぽかっと
   punch: {
@@ -286,47 +310,105 @@ const MOVES = {
       GFX.delay(0.2).then(() => this.weaponGrow(m, 1, 0.25));
     },
   },
-  // にゃんだー斬り：その場で大剣を高くかかげると、天までとどく光の剣になる。振りおろすと光の筋が地面を走り、敵をまっぷたつ
+  // にゃんだー斬り：その場で大剣を右手で天へかかげると、刃の根もとから天へ光の柱がのびる。キメ顔を見せてから、その柱ごと振りおろして敵をまっぷたつ、
+  //   地面に衝撃波がひろがる（柱が敵に当たったところで終わり、ダメージが入る）
   nyander: {
     async attack(e, ts, c) {
-      const t = ts[0], m = e.model, h = e.home;
+      const t = ts[0], m = e.model, h = e.home, col = '#ffd84a', up = V3(0, 1, 0);
       this.focus(e); this.face(e, t.home);
-      // うしろから少し見上げて：両手で立てた剣が、空へ向かってのびていく
-      this.setCam(V3(h.x + 1.5, 0.8, h.z + 4.4), V3(h.x, 2.0, h.z - 1.0), { snap: true });
-      await this.tweenPose(m, POSES.swordUp, 0.25);
-      m.flash(c.col, 1);
-      const grow = this.weaponGrow(m, 5, 0.7);
-      await this.every(0.7, 21, i => {
-        const tp = m.tipPos();
+      this.hitGlow = 0.5;
+      // 敵がわの斜め前、剣を持つ手のがわから低く見上げて：かかげた剣と、その刃から天へのびる柱
+      //   （手は頭より少しうしろにあるので、手のがわから映すと柱が顔の横に立つ。真横からだと手が顔の手前に来て、柱が顔にかかる）
+      const f0 = V3(t.home.x - h.x, 0, t.home.z - h.z).normalize(), r0 = V3(-f0.z, 0, f0.x);
+      const side = h.x > 0.3 ? -1 : 1;
+      m.group.updateMatrixWorld(true);
+      const hs = Math.sign(m.handPos().sub(h).dot(r0)) || 1;   // 剣を持つ手は、体のどちらがわか
+      this.setFov(40);
+      this.setCam(h.clone().addScaledVector(f0, 4.2).addScaledVector(r0, hs * 2.0).add(V3(0, 0.45, 0)), h.clone().addScaledVector(r0, hs * 0.2).add(V3(0, 1.7, 0)), { snap: true });
+      // 剣は柱の部品が向きを決める（はじめは今の向き。かかげながら、まっすぐ天へ）
+      const pl = this.lightPillar(m, col, { w: 1, life: 4.5 });
+      const d0 = pl.dir.clone();
+      this.tweenPose(m, NYANDER_KIME, 0.25);
+      await GFX.tween(0.25, k => pl.dir.copy(d0).lerp(up, k).normalize());
+      this.weaponGrow(m, 1.6, 0.3);
+      // 刃へ、光があつまる
+      m.flash(col, 0.8);
+      Sfx.tone(330, 0.6, 'triangle', 0.05, 330);
+      await this.every(0.4, 12, () => {
+        const tp = pl.base.clone().lerp(m.tipPos(), Math.random());
         for (let j = 0; j < 2; j++) {
-          const a = Math.random() * Math.PI * 2, from = tp.clone().add(V3(Math.cos(a) * 1.5, (Math.random() - 0.5) * 1.5, Math.sin(a) * 1.5));
-          this.p.emit(from, tp.clone().sub(from).multiplyScalar(2.4), hdr(c.col, 3), { life: 0.4, size: 0.14, drag: 0 });
+          const a = Math.random() * Math.PI * 2, from = tp.clone().add(V3(Math.cos(a) * 1.2, (Math.random() - 0.3) * 1.2, Math.sin(a) * 1.2));
+          this.p.emit(from, tp.clone().sub(from).multiplyScalar(2.6), hdr(col, 3), { life: 0.38, size: 0.12, drag: 0 });
         }
-        if (i % 7 === 0) this.fx.ring(h.clone().add(V3(0, 0.05, 0)), c.col, { r: 2.2, life: 0.5, width: 0.15 });
       });
-      await grow;
-      this.fx.sprite(m.tipPos(), c.col, 3, 0.4, { k: 3 });
-      GFX.flash(c.col, 0.2, 0.25);
-      await GFX.delay(0.2);
-      // 斜めうしろ上から：振りおろす弧と、光の筋が地面を走って敵へとどくのが見えるように
-      this.setCam(V3(h.x + 2.6, 2.2, h.z + 3.6), V3(t.home.x * 0.6 + h.x * 0.4, 0.5, t.home.z * 0.6 + h.z * 0.4), { snap: true });
-      // 切りかわってすぐ振らず、光の剣をかかげたまま少しそって、ためる
-      await this.tweenPose(m, { ...POSES.swordUp, lean: -0.3, hipsY: -0.12 }, 0.4);
-      await GFX.delay(0.12);
+      // 刃の根もとから、天へ光の柱
+      Sfx.ult();
+      this.fx.sprite(pl.base.clone(), col, 1.6, 0.35, { k: 3 });
+      this.fx.ring(h.clone().add(V3(0, 0.05, 0)), col, { r: 2.0, life: 0.5, width: 0.14 });
+      await GFX.tween(0.3, k => { pl.len = 14 * k; pl.w = 0.3 + 0.7 * k; }, Ease.out);
+      // かかげたまま：柱のまわりを光の粒がのぼる
+      await this.every(0.35, 7, () => {
+        const b = pl.base;
+        for (let j = 0; j < 3; j++) this.p.emit(b.clone().add(V3((Math.random() - 0.5) * 0.7, Math.random() * 4, (Math.random() - 0.5) * 0.7)), V3(0, 3 + Math.random() * 2, 0), hdr(col, 2.6), { life: 0.5, size: 0.1, drag: 0.5 });
+      });
+      // キメ顔：敵がわの前から、剣を持つ手のがわへ少し回って顔へ寄る
+      //   （手は頭より少しうしろにあるので、手のがわへ回ると柱が顔の横へはなれる）。
+      //   きりっとした顔で、目がきらり
+      const face0 = m.face && m.face.expr;
+      if (m.face) m.face.set('serious');
+      const eye = m.eyePos(-1).add(m.eyePos(1)).multiplyScalar(0.5);
+      const look = eye.clone().addScaledVector(r0, hs * 0.12).add(V3(0, -0.08, 0));
+      // きらりは、剣と反対がわの目（柱にかくれない）
+      const far = [-1, 1].find(k => m.eyePos(k).sub(eye).dot(r0) * hs < 0) || 1;
+      const cam = eye.clone().addScaledVector(f0, 1.9).addScaledVector(r0, hs * 0.45).add(V3(0, -0.12, 0));
+      pl.w = 0.45;
+      this.setFov(34);
+      this.setCam(cam, look, { snap: true });
+      this.setCam(eye.clone().addScaledVector(f0, 1.55).addScaledVector(r0, hs * 0.38).add(V3(0, -0.1, 0)), look, { speed: 1.5 });   // ゆっくり寄る
+      await this.every(0.75, 10, i => {
+        const b = pl.base;
+        for (let j = 0; j < 2; j++) this.p.emit(b.clone().add(V3((Math.random() - 0.5) * 0.4, Math.random() * 1.5, (Math.random() - 0.5) * 0.4)), V3(0, 2 + Math.random(), 0), hdr(col, 2.6), { life: 0.5, size: 0.06, drag: 0.5 });
+        if (i === 4) { this.glint(m.eyePos(far), col, 0.32); Sfx.tone(1800, 0.15, 'triangle', 0.04, 400); }
+      });
+      // 横から引いて：柱をかかげた子と敵が並び、柱が弧をえがいて敵へ落ちるのが見えるように
+      this.setFov(40); pl.w = 1;
+      const p = this.hitPoint(t.u), mid = h.clone().lerp(t.home, 0.5);
+      const span = h.distanceTo(t.home);
+      this.setCam(mid.clone().addScaledVector(r0, side * (span * 1.25 + 2.5)).addScaledVector(f0, -0.8).add(V3(0, 2.6, 0)), mid.clone().add(V3(0, 2.4, 0)), { snap: true });
+      const reach = () => pl.base.distanceTo(p) + 0.6;
+      pl.len = span + 1.5;
+      // すこしそって、ためる（剣と柱もうしろへかたむく）
+      const back = up.clone().addScaledVector(f0, -0.3).normalize();
+      this.tweenPose(m, { ...NYANDER_KIME, lean: -0.3, hipsY: -0.14 }, 0.35);
+      await GFX.tween(0.35, k => pl.dir.copy(up).lerp(back, k).normalize(), Ease.out);
+      await GFX.delay(0.08);
+      // 振りおろす：剣と柱がひとつながりのまま弧をえがいて、敵の上へ。向きは、いまの手もとから敵へ（手が動いても行きすぎない）
       Sfx.swing();
-      await this.sweep(m, POSES.cleave, 0.38, c.col, { n: 8, size: 0.2, ease: Ease.inOut });
-      Sfx.slam(); GFX.shake(0.4);
-      const g0 = h.clone().add(V3(0, 0.06, 0)), g1 = t.home.clone().add(V3(0, 0.06, 0));
-      this.fx.beam(g0, g1, c.col, { life: 0.6, r: 0.08 });
-      await this.every(0.15, 8, i => this.p.burst(g0.clone().lerp(g1, (i + 1) / 8), hdr(c.col, 3), 8, { speed: 2, up: 2, life: 0.5, size: 0.12 }));
-      const p = this.hitPoint(t.u);
-      // 天から地まで、細い光の線で敵をまっぷたつ
-      this.fx.beam(V3(p.x, 10, p.z), V3(p.x, 0, p.z), c.col, { life: 0.45, r: 0.1 });
-      this.fx.beam(V3(p.x, 10, p.z), V3(p.x, 0, p.z), '#ffffff', { life: 0.3, r: 0.035 });
-      this.fx.ring(g1, c.col, { r: 4.5, life: 0.7, width: 0.3 });
-      this.fx.shards(p, c.col, 16, 7);
-      GFX.flash('#ffffff', 0.2, 0.25);
-      GFX.delay(0.25).then(() => this.weaponGrow(m, 1, 0.3));
+      pl.depth = false;
+      this.tweenPose(m, { ...POSES.cleave, armRx: -1.4, armLx: -1.4 }, 0.3);
+      const L0 = pl.len;
+      let last = 0;
+      await GFX.tween(0.3, k => {
+        const to = p.clone().sub(m.handPos()).normalize();
+        const q = new THREE.Quaternion().setFromUnitVectors(back, to);
+        pl.dir.copy(back).applyQuaternion(new THREE.Quaternion().slerp(q, k));
+        pl.len = lerp(L0, reach(), k);
+        // 柱の通り道に、光の粒の残像
+        if (k - last > 0.06) {
+          last = k;
+          for (let i = 1; i <= 7; i++) this.p.emit(pl.base.clone().addScaledVector(pl.dir, pl.len * i / 7), V3(0, 0, 0), hdr(col, 2.4), { life: 0.35, size: 0.2, drag: 2 });
+        }
+      }, Ease.in);
+      pl.dir.copy(p).sub(m.handPos()).normalize(); pl.len = reach();
+      // 当たる：柱が太く光り、敵の足もとから衝撃波がひろがる
+      Sfx.slam(); GFX.shake(0.55);
+      GFX.tween(0.12, k => { pl.w = 1 + 0.15 * Math.sin(k * Math.PI); });
+      GFX.delay(0.1).then(() => pl.end(0.3));
+      this.shockwave(p, col, { r: 4 + t.model.radius });
+      this.fx.shards(p, col, 14, 6);
+      this.squash(t, 0.35);
+      GFX.delay(0.5).then(async () => { await pl.release(0.2); this.weaponGrow(m, 1, 0.3); if (m.face) m.face.set(face0 || 'neutral'); });
+      await GFX.delay(0.05);
     },
   },
   // ---------------- クロ（刀）：影と月。ひとりで戦ってきた、静かで速い太刀すじ ----------------
@@ -2296,6 +2378,87 @@ Object.assign(BattleView.prototype, {
     };
     set(0);
     return this.fx.add(mesh, life, set);
+  },
+  // 剣から出る光の柱（にゃんだー斬り）：m の右手の剣を ctl.dir へ向け、刃の根もと（持ち手の根もとから root の高さ）から
+  //   同じ向きに長さ ctl.len の柱を出す（刃は柱の光につつまれる）。
+  //   剣の向きは持ち手の根もと（extras.hold）を回して合わせるので、2頭身で腕が上がらなくても剣はまっすぐ立つ。
+  //   置くのは体の骨を動かしたあと（view.late）なので、振っているあいだも剣と柱がずれない。
+  //   柱はカメラのほうを向く帯の三枚重ね（外のにじみ・色の芯・白い芯）。根もとは刃の幅からひろがる。
+  //   ctl.depth：奥行きを見て描く（頭のうしろを通る柱は頭にかくれる）。地面に横たわる振りおろしでは false にして、
+  //   下が地面で四角く切れないよう、いつも手前に描く
+  //   ctl.end(dur) で細くなって消える。ctl.release(dur) で剣の向きを元へ戻す
+  lightPillar(m, col, { w = 1, life = 6, root = 0.08 } = {}) {
+    const hold = m.extras.hold, q0 = hold.quaternion.clone(), g = new THREE.Group();
+    // 帯の形（幅 1・長さ 1）：下の段は細く、TAPER の長さでひろがる。段の高さは毎フレーム、長さに合わせて直す
+    const geo = new THREE.BufferGeometry(), TAPER = 0.9;
+    const pos = new Float32Array([-0.08, 0, 0, 0.08, 0, 0, -0.5, 0.1, 0, 0.5, 0.1, 0, -0.5, 1, 0, 0.5, 1, 0]);
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0.35, 0, 0.65, 0, 0, 0.1, 1, 0.1, 0, 1, 1, 1]), 2));
+    geo.setIndex([0, 1, 3, 0, 3, 2, 2, 3, 5, 2, 5, 4]);
+    const layer = (color, wd, add, op) => {
+      const ms = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: pillarTex(), color, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+      ms.userData.w = wd; ms.userData.op = op; ms.renderOrder = 12; ms.frustumCulled = false; g.add(ms); return ms;
+    };
+    const ls = [layer(hdr(col, 1.1), 2.2, true, 0.35), layer(new THREE.Color(col), 1.1, false, 0.9), layer(hdr('#ffffff', 1.4), 0.36, true, 0.9)];
+    const X = V3(), Z = V3(), M = new THREE.Matrix4(), Y = V3(0, 1, 0), pq = new THREE.Quaternion(), wq = new THREE.Quaternion();
+    // 剣のいまの向き（はじめは今の構えのまま）
+    m.group.updateMatrixWorld(true);
+    const ctl = { dir: m.tipPos().sub(m.handPos()).normalize(), len: 0, w, op: 1, depth: true, endAt: -1, endDur: 0.4, age: 0, aim: 1, base: V3(),
+      end(d = 0.4) { if (ctl.endAt < 0) { ctl.endAt = ctl.age; ctl.endDur = d; } },
+      release(d = 0.2) { return GFX.tween(d, k => { ctl.aim = 1 - k; }); } };
+    const late = dt => {
+      ctl.age += dt;
+      // 剣を ctl.dir へ（aim：1 でぴったり、0 で元の持ち方）
+      m.group.updateMatrixWorld(true);
+      hold.parent.getWorldQuaternion(pq);
+      wq.copy(pq).multiply(q0);
+      const want = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(wq), ctl.dir.clone().normalize()).multiply(wq);
+      hold.quaternion.copy(pq.clone().invert().multiply(want)).slerp(q0, 1 - ctl.aim);
+      hold.updateMatrixWorld(true);
+      const b = hold.localToWorld(ctl.base.set(0, root, 0)), d = ctl.dir.clone().normalize();
+      let op = ctl.op, wk = ctl.w * (1 + Math.sin(ctl.age * 31) * 0.04);
+      if (ctl.endAt >= 0) { const f = Math.min(1, (ctl.age - ctl.endAt) / ctl.endDur); op *= 1 - f; wk *= 1 - f * 0.7; if (f >= 1) op = 0; }
+      // 帯の面をカメラへ向ける（柱の向きのまわりに回す）
+      Z.copy(this.camera.position).sub(b); Z.addScaledVector(d, -Z.dot(d));
+      if (Z.lengthSq() < 1e-6) Z.set(0, 0, 1);
+      Z.normalize(); X.crossVectors(d, Z);
+      M.makeBasis(X, d, Z); g.quaternion.setFromRotationMatrix(M);
+      // 刃にかくれないよう、カメラのほうへ少しだけ出す（刃をつつむ光に見える。頭よりは奥のまま）
+      g.position.copy(b).addScaledVector(Z, 0.15);
+      const L = Math.max(0.001, ctl.len), ty = Math.min(0.45, TAPER / L);
+      pos[7] = pos[10] = ty; geo.attributes.position.needsUpdate = true;
+      geo.attributes.uv.array[5] = geo.attributes.uv.array[7] = ty; geo.attributes.uv.needsUpdate = true;
+      for (const ms of ls) { ms.material.depthTest = ctl.depth; ms.scale.set(ms.userData.w * wk, L, 1); ms.material.opacity = ms.userData.op * op; ms.visible = op > 0.001 && ctl.len > 0.01; }
+    };
+    this.late.add(late);
+    this.fx.add(g, life, k => { if (k >= 1) { this.late.delete(late); hold.quaternion.copy(q0); } });
+    return ctl;
+  },
+  // 衝撃波：p を中心に、地面すれすれの光の壁の輪がひろがり、白い土けむりが外へ舞う
+  shockwave(p, col, { r = 5.5, life = 0.55 } = {}) {
+    const g0 = V3(p.x, 0.02, p.z);
+    const wall = (color, add, op, h, delay) => {
+      const mat = new THREE.MeshBasicMaterial({ map: shockTex(), color, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false });
+      const ms = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 48, 1, true), mat);
+      ms.geometry.translate(0, 0.5, 0); ms.position.copy(g0); ms.renderOrder = 11; ms.visible = false;
+      GFX.delay(delay).then(() => {
+        ms.visible = true;
+        this.fx.add(ms, life, t => {
+          const e = Ease.out(t);
+          ms.scale.set(0.3 + r * e, h * (1 - t * 0.7), 0.3 + r * e);
+          mat.opacity = op * (t < 0.1 ? t * 10 : 1 - (t - 0.1) / 0.9);
+        });
+      });
+    };
+    wall(hdr(col, 2.2), true, 0.9, 1.1, 0);
+    wall(new THREE.Color('#fffbe8'), false, 0.55, 0.7, 0);
+    wall(hdr(col, 1.8), true, 0.6, 0.6, 0.1);
+    this.fx.ring(V3(p.x, 0.06, p.z), col, { r: r * 1.05, life: life + 0.1, width: 0.45 });
+    // 土けむり：輪の上の何か所かから、外へ
+    for (let i = 0; i < 7; i++) {
+      const a = i / 7 * Math.PI * 2 + Math.random() * 0.4, at = V3(p.x + Math.cos(a) * 0.9, 0.15, p.z + Math.sin(a) * 0.9);
+      this.smokePuffs(at, 0.45, 2, { up: 0.5, spread: 1.6, life: 0.7, dark: -0.7 });
+    }
   },
   // 右手の武器を s 倍に（技のあいだだけ。終わったら 1 に戻す）
   weaponGrow(m, s, dur) {
