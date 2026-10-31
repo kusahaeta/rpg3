@@ -49,7 +49,7 @@ const Lang = {
     [ELEMENTS, PATHS, CHARS, COMBOS, ALLSTARS, BOND_INFO, ENEMY_MOVES, ENEMIES, CHAPTERS, ITEMS, BANTER,
       WEAPONS, WEAPON_KIND, NPCS, FIELD_ZONES, TIME_CRYS, MIRROR_COLS, FRUIT_KINDS, FRUIT_LINES, SIZE_LINES,
       LOOP_TALK, SHADOW_LINES, CUSHION_LINES, HOLD_LINES, STORY, RECAP, BOND_TAGS, STAT_LABEL, DOT_INFO, TARGET_NAME,
-      SHOP_NAMES, SULK_LINES, PASS_STAMPS, GFX_TIERS].forEach(walk);
+      SHOP_NAMES, SULK_LINES, PASS_STAMPS, GFX_TIERS, OUTFITS, OUTFIT_SLOT_NAME].forEach(walk);
     // シーンの上に出す章の名前は、読みこみのときに章の題名（日本語）から作っているので、作りなおす
     STORY.forEach(ch => ch.steps.forEach(st => [st.id, st.scene, st.after].filter(Boolean).forEach(id => { if (SCENES[id]) SCENES[id].chapter = ch.title.split('　')[0]; })));
     document.title = 'Nyanko Fantasy';

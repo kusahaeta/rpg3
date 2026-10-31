@@ -6,9 +6,11 @@
 <script>const Game = { speed: 1 }; const Save = { data: { flags: {} } }; const NPCS = {}; const clamp = (v, a, b) => Math.max(a, Math.min(b, v));</script>
 <script src="../js/data.js"></script>
 <script src="../js/weapons.js"></script>
+<script src="../js/outfits.js"></script>
 <script src="../js/gfx/core.js"></script>
 <script src="../js/gfx/models.js"></script>
 <script src="../js/gfx/cats.js"></script>
+<script src="../js/gfx/outfit-models.js"></script>
 <script src="../js/gfx/weapon-models.js"></script>
 <script src="../js/gfx/monsters.js"></script>
 <script>
@@ -25,7 +27,10 @@ const q = new URLSearchParams(location.search);
 // w=武器の id,…：その武器を持った持ち主を並べる（例：?w=mike_flame,kuro_moon）
 const wk = q.get('w') ? q.get('w').split(',') : null;
 const keys = wk ? wk.map(id => WEAPONS[id].owner) : (q.get('k') || 'mike,kuro,shiro,tama,maou').split(',');
-const gearOf = i => wk ? { gear: { model: wk[i], tint: WEAPONS[wk[i]].look || null, shine: q.has('shine') } } : {};
+// o=おしゃれの id,…：みんなに着せる（例：?o=g_round,h_silk,c_night,w_tux）。o=none でいつものものをはずす
+const outfit = q.get('o') ? (() => { const look = {}; for (const id of q.get('o').split(',')) { const slots = id === 'none' ? OUTFIT_SLOTS : [OUTFITS[id].slot]; for (const sl of slots) for (const k of OUTFIT_SLOT_LOOK[sl]) look[k] = null; if (OUTFITS[id]) Object.assign(look, OUTFITS[id].look); } return look; })() : null;
+const gearOf = i => outfit ? { look: outfit, ...gearOf0(i) } : gearOf0(i);
+const gearOf0 = i => wk ? { gear: { model: wk[i], tint: WEAPONS[wk[i]].look || null, shine: q.has('shine') } } : {};
 const poseName = q.get('pose') || 'idle', expr = q.get('expr') || 'neutral';
 const ek = q.get('e') ? q.get('e').split(',') : null;
 const models = ek ? ek.map((k, i) => { const m = buildEnemy(k); m.group.position.x = (i - (ek.length - 1) / 2) * +(q.get('gap') || 1.8); scene.add(m.group); return m; }) : keys.map((k, i) => { const m = buildCat(k, gearOf(i)); m.group.position.x = (i - (keys.length - 1) / 2) * 0.95; scene.add(m.group); m.setPose(POSES[poseName] || POSES.idle); m.face.set(expr); return m; });

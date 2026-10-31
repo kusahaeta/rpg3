@@ -636,6 +636,9 @@ Object.assign(EN, {
   // ── npcs.js NPCS.kannushi
   '神主': 'Shrine Keeper',
   '猫神社の神主': 'Keeper of the Cat Shrine',
+  // ── npcs.js NPCS.ann
+  'アン': 'Anne',
+  'ぽかぽか村のおしゃれ好き': 'Cozyville\'s fashionista',
   // ── npcs.js NPCS.koneko_a
   'こねこのチビ': 'Tiny the Kitten',
   '村の子ども': 'Village Kid',
@@ -689,6 +692,9 @@ Object.assign(EN, {
   '笑顔の塔の道化': 'Jester of the Tower of Smiles',
   // ── npcs.js NPCS.douguya2
   '王国の道具屋': 'Kingdom Item Shop',
+  // ── npcs.js NPCS.ishouya
+  'おしゃれ屋のマダム': 'Madame Costumier',
+  'ニャハハ王国のおしゃれ屋': 'Nyahaha\'s clothes shop',
   // ── npcs.js NPCS.yadoya2
   '宿の主人': 'Innkeeper',
   'わらいねこ亭': 'The Laughing Cat Inn',
@@ -753,6 +759,59 @@ Object.assign(EN, {
   '魔王軍四天王・庭師': 'Big Four of the Demon King\'s Army: Gardener',
   // ── npcs.js NPCS.dodon
   '魔王軍四天王のまとめ役（有給明け）': 'Leader of the Big Four (Just Back from Paid Leave)',
+  // ── outfits.js OUTFIT_SLOT_NAME
+  'メガネ': 'Glasses',
+  '帽子': 'Hat',
+  'マント': 'Cape',
+  '服': 'Clothes',
+  // ── outfits.js OUTFITS.g_round
+  'まるメガネ': 'Round Glasses',
+  'ふちの細い、まるいメガネ。ちょっと、かしこそうに見える。': 'Thin round frames. They make you look a little bit clever.',
+  // ── outfits.js OUTFITS.g_sun
+  'サングラス': 'Sunglasses',
+  'まっくろなレンズ。まぶしい日も、てれた日も、これで平気。': 'Pitch-black lenses. Bright days or bashful days, you\'re covered.',
+  // ── outfits.js OUTFITS.g_star
+  'ほしがたメガネ': 'Star Glasses',
+  'お祭りの夜にかける、星の形のメガネ。': 'Star-shaped glasses for festival nights.',
+  // ── outfits.js OUTFITS.g_clown
+  'ピエロのはな': 'Clown Nose',
+  'まっかな、まんまるの鼻。つけると、なぜか笑われる。': 'A big, round, bright red nose. Somehow, people laugh when you wear it.',
+  // ── outfits.js OUTFITS.h_straw
+  'むぎわら帽子': 'Straw Hat',
+  'つばの広い、麦わらの帽子。赤いリボンつき。': 'A wide-brimmed straw hat with a red ribbon.',
+  // ── outfits.js OUTFITS.h_silk
+  'シルクハット': 'Top Hat',
+  '背の高い、紳士の帽子。かぶると、背すじがのびる。': 'A tall gentleman\'s hat. Wear it and you\'ll stand up straighter.',
+  // ── outfits.js OUTFITS.h_beret
+  'ベレー帽': 'Beret',
+  'ななめにかぶる、やわらかい帽子。絵がうまくなりそうな気がする。': 'A soft hat worn at a tilt. You feel like you could paint a masterpiece.',
+  // ── outfits.js OUTFITS.h_clown
+  'ピエロの帽子': 'Clown Hat',
+  'しましまの、とんがり帽子。てっぺんのぽんぽんが、ゆれる。': 'A striped, pointy hat. The pom-pom on top bounces around.',
+  // ── outfits.js OUTFITS.c_night
+  'よぞらのマント': 'Night Sky Cape',
+  '夜空のような紺色に、星がちりばめてある。': 'Navy like the night sky, sprinkled with stars.',
+  // ── outfits.js OUTFITS.c_sakura
+  'さくらのマント': 'Sakura Cape',
+  '春の花びらを染めた、うすもものマント。': 'A pale pink cape dyed with spring petals.',
+  // ── outfits.js OUTFITS.c_royal
+  '王さまのマント': 'Royal Cape',
+  'ふちに白い毛皮をつけた、まっかなマント。えらくなった気分。': 'A bright red cape trimmed with white fur. You feel very important.',
+  // ── outfits.js OUTFITS.c_clown
+  'ピエロのマント': 'Clown Cape',
+  'ひし形もようの、にぎやかなマント。': 'A lively cape with a diamond pattern.',
+  // ── outfits.js OUTFITS.w_sweater
+  'しましまセーター': 'Striped Sweater',
+  'ふかふかの毛糸のセーター。寒い日も、ぬくぬく。': 'A fluffy wool sweater. Snug and toasty on cold days.',
+  // ── outfits.js OUTFITS.w_happi
+  'はっぴ': 'Happi Coat',
+  'お祭りの服。着ると、なんだか元気が出る。': 'A festival coat. Wearing it somehow fills you with energy.',
+  // ── outfits.js OUTFITS.w_tux
+  'タキシード': 'Tuxedo',
+  'ぱりっとした黒い礼服に、赤い蝶ネクタイ。': 'A crisp black suit with a red bow tie.',
+  // ── outfits.js OUTFITS.w_clown
+  'ピエロの服': 'Clown Suit',
+  '右と左で色のちがう、水玉の服。ひらひらの襟と、ぽんぽんのボタン。': 'A polka-dot suit with a different color on each side. Frilly collar and pom-pom buttons.',
   // ── weapons.js WEAPON_KIND
   '剣': 'Sword',
   '刀': 'Katana',

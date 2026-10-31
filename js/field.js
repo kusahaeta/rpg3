@@ -1146,7 +1146,10 @@ class FieldView extends BaseView {
   // ============================================================
   nearestInteract() {
     const p = this.player.pos, Z = this.zone;
-    for (const n of this.npcs) if (n.pos.distanceTo(p) < 2.2) return { type: 'npc', n, text: n.shop ? Tx('{0}と話す（{1}）', speakerName(n.key), SHOP_NAMES[n.shop]) : Tx('{0}と話す', speakerName(n.key)) };
+    // 2.2m 以内でいちばん近い人（市場の屋台のように、店の主人がとなりあって立つところがある）
+    let n = null, nd = 2.2;
+    for (const x of this.npcs) { const d = x.pos.distanceTo(p); if (d < nd) { n = x; nd = d; } }
+    if (n) return { type: 'npc', n, text: n.shop ? Tx('{0}と話す（{1}）', speakerName(n.key), SHOP_NAMES[n.shop]) : Tx('{0}と話す', speakerName(n.key)) };
     for (const n of this.notes) {
       const m = n.markAt, nearMark = m && Math.hypot(m.x - p.x, m.z - p.z) < (n.reach || 2.0) + 0.4 && Math.abs(m.y - p.y) < 1.6;
       if (n.pos.distanceTo(p) < (n.reach || 2.0) || nearMark) return { type: 'note', n, text: Tx('調べる：{0}', Tx(n.title)) };
@@ -3195,7 +3198,7 @@ class FieldView extends BaseView {
     super.dispose();
   }
 
-  // ---------------- お店（武器屋・道具屋・宿屋・魚屋） ----------------
+  // ---------------- お店（武器屋・道具屋・宿屋・魚屋・おしゃれ屋） ----------------
   shopMenu(n) {
     const o = this.root.querySelector('.overlay');
     this.busy = true; this.overlayOpen = true; this.keys.clear();
