@@ -2692,6 +2692,16 @@ class FieldView extends BaseView {
     r.querySelector('.fd-prompt').onclick = () => this.interact();
     // メニュー・あらすじ・お店などの上では、ホイールは中の一覧のスクロールに使う
     r.addEventListener('wheel', e => { if (e.target.closest('.overlay')) return; this.camDist = clamp(this.camDist + e.deltaY * 0.004, 2.4, 9); e.preventDefault(); }, { passive: false });
+    // メニュー・あらすじ・オプション・お店は、枠の外を押しても閉じる（その画面の閉じるボタンを押したのと同じ）。
+    // 枠の中で押して外で離したとき（つまみを動かしたあとなど）は閉じない
+    const ov = r.querySelector('.overlay');
+    let downOut = false;
+    ov.addEventListener('pointerdown', e => { downOut = e.target === ov; });
+    ov.addEventListener('click', e => {
+      if (e.target !== ov || !downOut) return;
+      const b = ov.querySelector(':scope > .ov-box:is(.fm-box, .recap, .shop) [data-close]');
+      if (b) b.click();
+    });
     r.querySelector('[data-menu]').onclick = () => this.menu();
     r.querySelector('[data-map]').onclick = () => this.mapMenu();
     r.querySelector('.fd-map').onclick = () => this.zoneMapMenu();
@@ -2733,7 +2743,6 @@ class FieldView extends BaseView {
     o.innerHTML = `<div class="ov-box fm-box"><h2>${Tx('メニュー')}</h2>
       <div class="dim">${Tx('{0}：{1} ／ まだ開けていない宝箱 {2}', this.zone.name, this.siege ? Tx('影の獣に囲まれている') : this.town ? Tx('安全なところ') : Tx('残りの敵 {0}', left), chests)}</div>
       ${pout ? `<div class="fm-pout" style="--c:${CHARS[pout.k].color}"><div class="hp-face">${avatarSVG(pout.k)}</div><div class="hp-say"><b>${CHARS[pout.k].name}</b>${pout.line}</div></div>` : ''}
-      <button class="btn gold" data-m="resume">${Tx('冒険を続ける')}</button>
       <div class="fm-grid">
         ${item('map', 'ワールドマップ', '行ったことのある場所へひとっとび')}
         ${item('chars', 'なかま', 'ステータス・わざの確認')}
@@ -2743,6 +2752,7 @@ class FieldView extends BaseView {
         ${item('opt', 'オプション', '音量・BGM・画質の設定')}
         ${Debug.on ? item('debug', 'デバッグ', '章へジャンプ・全ての武器を入手') : ''}
       </div>
+      <button class="btn gold" data-m="resume" data-close>${Tx('冒険を続ける')}</button>
       ${Debug.on ? `<div class="fm-foot">
         <button class="link" data-reset>${Tx('データを初期化')}</button>
       </div>` : ''}</div>`;
