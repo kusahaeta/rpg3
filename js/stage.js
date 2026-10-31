@@ -62,6 +62,8 @@ const GESTURES = {
   turnAway: [[{ headY: -0.7, twist: -0.18 }, 2.2]],
   hop: [[{}, 0.4, { hop: 0.25 }]],
   pout: [['pout', 1.8]],
+  slash: [['windup', 0.16], ['strike', 0.5]],   // 刀を振りかぶって、横に斬る（演出 strike で、踏みこみながら）
+  hurt: [['hurt', 0.55]],
   gazeHand: [['gazeHand', 8]],   // 左手に持った物（手紙など）を、胸の前で見つめる
 };
 // キャラクターごとの普段の立ち方と表情、戦うときの構え、よく使う身振り
@@ -212,7 +214,7 @@ class Actor {
   updateFoe(dt, t) {
     const m = this.m;
     if (this.roarT != null) { this.roarT += dt; const k = Math.max(0, 1 - this.roarT / 0.6); m.group.scale.setScalar(this.scale0 * (1 + Math.sin(this.roarT * 18) * 0.05 * k)); if (this.roarT > 0.6) this.roarT = null; }
-    if (this.dead > 0) {
+    if (this.dead > 0 && m.group.visible) {   // 消えきったら、もう粒は出さない
       this.dead = Math.min(1, this.dead + dt / 1.8);
       m.group.scale.setScalar(this.scale0 * (1 - Ease.in(this.dead) * 0.9));
       if (Math.random() < 0.9) this.v.p.emit(this.headPos().add(V3((Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 1.5)), V3(0, 1.5 + Math.random() * 2, 0), hdr(m.color || '#ff4d6d', 2.4), { life: 1.2, size: 0.12 });
@@ -689,8 +691,10 @@ class StageView extends BaseView {
   }
   handOf(k) { const a = this.actors[k]; return a ? (a.item ? a.item.getWorldPosition(V3()) : a.m.handPos()) : this.point(k); }
   // 登場：敵は赤い閃光、それ以外は風を巻いて現れる（style 'quiet'：演出なしで姿だけ見せる。遠くから転がってくる岩など）
+  //   同じ敵を何匹も並べたとき、e:敵 はみんなをいっしょに出す。一匹ずつ出すときは e:敵#0（一匹め）・e:敵#1 …と書く。倒れた敵は出さない
   enter(k, style) {
-    const list = Object.values(this.actors).filter(a => a.key === k || a.base === k);
+    const one = k.endsWith('#0') ? k.slice(0, -2) : null;
+    const list = Object.values(this.actors).filter(a => (one ? a.key === one : a.key === k || a.base === k) && !(a.dead > 0));
     list.forEach((a, i) => {
       a.m.group.visible = true; a.alpha = 1;
       if (a.shadeMats) GFX.tween(1.0, e => a.shadeMats.forEach(mt => { mt.opacity = SHADE_OPACITY * e; }));   // 影の姿は、闇からにじみ出る
@@ -1151,6 +1155,40 @@ const STAGE_FX = {
         // ピコッ：頭がぺこっとつぶれて、はねかえる
         GFX.tween(0.4, e => { a.lift = lift + bob(); pv.userData.head.scale.set(1, 1 - Math.sin(Math.min(1, e / 0.6) * Math.PI) * 0.35, 1); pv.rotation.x = HIT - Math.sin(Math.min(1, e / 0.6) * Math.PI) * 0.25; }).then(() => GFX.tween(0.5, e => { a.pos.lerpVectors(to, home, e); a.lift = (lift + bob()) * (1 - e); pv.rotation.x = lerp(HIT, rest, e); pv.rotation.z = lerp(0, tilt, e); }, Ease.inOut).then(() => { a.bonking = false; a.faceT = face0; a.lift = 0; }));
       }));
+  },
+  // 踏みこんで斬る：strike:攻める役,受ける役[,defeat|knock]（敵も e: のまま書ける。fx の名前は最初の : で切る）
+  //   攻める役は相手の手前まで踏みこみ、当たったら元の場所へ下がる。defeat：受けた敵は光の粒になって消える。knock：受けた役は、うしろへはじかれる（向きは変えない）
+  strike(arg) {
+    const [ka, kb, opt] = String(arg).split(','), a = this.actors[ka], b = this.actors[kb]; if (!a || !b || a.striking) return;
+    const home = a.pos.clone(), dir = V3(b.pos.x - a.pos.x, 0, b.pos.z - a.pos.z), dist = dir.length(); if (dist < 0.01) return;
+    dir.multiplyScalar(1 / dist);
+    const reach = (a.m.radius || 0.4) + (b.m.radius || 0.4) + (a.foe ? 0.5 : 0.35), to = home.clone().addScaledVector(dir, Math.max(0, dist - reach));
+    const yawT = Math.atan2(dir.x, dir.z), face0 = a.faceT;
+    a.striking = true; a.faceT = b.pos.clone(); a.yaw = yawT;
+    if (!a.foe) { a.setFace('angry'); a.gesture('slash'); } else a.roar();
+    Sfx.swing();
+    GFX.tween(0.26, e => { a.pos.lerpVectors(home, to, e); a.pos.y = this.gy(a.pos.x, a.pos.z); a.yaw = yawT; }, Ease.in).then(() => {
+      // 当たり：斬撃の光・火花・白い光
+      const c = b.pos.clone(); c.y += (b.m.height || 1) * 0.55;
+      this.fx.slash(c, a.foe ? '#ff6a8a' : '#d8e8ff', { size: 2.4, cam: this.camera, angle: a.foe ? -0.5 : 0.4 });
+      this.p.burst(c, a.foe ? '#ff8aa0' : '#ffffff', 26, { speed: 5, life: 0.5, size: 0.08 });
+      b.m.flash(a.foe ? '#ff4d6d' : '#ffffff', 1); Sfx.hit(); GFX.shake(a.foe ? 0.45 : 0.18);
+      if (!b.foe) { b.setFace('pained'); b.gesture('hurt'); }
+      if (opt === 'defeat' && b.foe) b.dead = 0.001;
+      if (opt === 'knock') { const b0 = b.pos.clone(), b1 = b0.clone().addScaledVector(dir, 1.0), y0 = b.yaw; GFX.tween(0.3, e => { b.pos.lerpVectors(b0, b1, e); b.pos.y = this.gy(b.pos.x, b.pos.z); b.yaw = y0; }, Ease.out); }
+      GFX.delay(0.35).then(() => GFX.tween(0.4, e => { a.pos.lerpVectors(to, home, e); a.pos.y = this.gy(a.pos.x, a.pos.z); a.yaw = yawT; }, Ease.inOut).then(() => { a.striking = false; a.faceT = face0; }));
+    });
+  },
+  // 光の波：wave:役（シロの魔法など）。その役から光の輪が広がり、輪にふれた敵が白く光る
+  wave(arg) {
+    const a = this.actors[arg || 'shiro']; if (!a) return;
+    const c = a.pos.clone(); c.y += 0.3;
+    STAGE_FX.spell.call(this, a.key);
+    this.fx.ring(c, '#d8e8ff', { r: 7, life: 0.9, width: 0.45, k: 2.2 });
+    GFX.delay(0.12).then(() => this.fx.ring(c.clone().add(V3(0, 0.6, 0)), '#fff4c8', { r: 5.5, life: 0.8, width: 0.25, k: 2 }));
+    for (let i = 0; i < 70; i++) { const t = Math.random() * Math.PI * 2, s = 6 + Math.random() * 4; this.p.emit(c.clone(), V3(Math.cos(t) * s, 0.4 + Math.random() * 1.2, Math.sin(t) * s), hdr(pick(['#d8e8ff', '#fff4c8']), 2.6), { life: 0.8, size: 0.1, drag: 0.6 }); }
+    for (const f of Object.values(this.actors)) if (f.foe && f.visible() && !(f.dead > 0)) { const d = Math.hypot(f.pos.x - c.x, f.pos.z - c.z); GFX.delay(d / 9).then(() => f.m.flash('#ffffff', 1)); }
+    GFX.flash('#e8f0ff', 0.22, 0.4); Sfx.tone(880, 0.5, 'sine', 0.06, 440);
   },
   // 動く小道具：item:名前,動き,引数…（STAGE_ITEMS）
   item(arg) { const [name, act, ...p] = String(arg).split(','); const items = this.items || (this.items = {}); const it = items[name] || (STAGE_ITEMS[name] && (items[name] = STAGE_ITEMS[name](this))); if (it && it[act]) it[act](...p); },
