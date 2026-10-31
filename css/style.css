@@ -729,7 +729,8 @@ kbd { display: inline-block; font-family: inherit; font-size: 11px; background: 
 .dbg-step:hover { border-color: rgba(232, 199, 122, .6); background: rgba(232, 199, 122, .08); }
 .dbg-step.now { border-color: var(--gold); background: rgba(232, 199, 122, .15); color: var(--gold2); }
 .dbg-step span { width: 20px; flex: none; text-align: center; }
-.dbg-foot { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+.dbg-foot { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 12px; }
+.dbg-foot .btn { white-space: nowrap; }
 
 
 /* ============================================================
