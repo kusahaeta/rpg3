@@ -113,5 +113,5 @@ class FaceRig {
 function lathe(points, seg = 28) { return new THREE.LatheGeometry(points.map(([r, y]) => new THREE.Vector2(r, y)), seg); }
 
 // 仲間・住人はすべて2頭身のにゃんこ（ネズミ・イヌも同じ骨組み）
-// 仲間は、いま装備している武器を持つ
-function buildCharacter(key) { return buildCat(key, CHARS[key] && Save.data ? { gear: weaponGear(key) } : {}); }
+// 仲間は、いま装備している武器を持ち、おしゃれ（js/outfits.js）を着る
+function buildCharacter(key) { return buildCat(key, CHARS[key] && Save.data ? { gear: weaponGear(key), look: outfitLook(key) } : {}); }

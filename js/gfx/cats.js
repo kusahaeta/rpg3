@@ -331,9 +331,13 @@ function buildCat(key, opt = {}) {
   if (L.cape) {
     const cp = new THREE.Group(); cp.position.set(0, 0.0, -0.13); neck.add(cp);
     const geo = capeGeo(0.26, 0.4, 0.34, 0.1);
-    const outer = new THREE.Mesh(geo, T(L.cape, { side: THREE.FrontSide })); outer.castShadow = true; cp.add(outer);
-    const inner = new THREE.Mesh(geo, T(L.capeIn || L.cape, { side: THREE.BackSide })); cp.add(inner);
-    const ol = new THREE.Mesh(geo, outlineMat(dark(L.cape), 0.0026)); ol.userData.outline = true; cp.add(ol);
+    // 板の表（FrontSide）は体のほうを向くので、後ろから見えるのは capeIn の側。
+    //   capeTex：おしゃれのマントの柄（js/gfx/outfit-models.js）は、後ろから見える側に貼り、体のほうは裏地の色 capeIn
+    const tex = !!L.capeTex;
+    const outer = new THREE.Mesh(geo, T(tex ? L.capeIn : L.cape, { side: THREE.FrontSide })); outer.castShadow = true; cp.add(outer);
+    const inner = new THREE.Mesh(geo, T(tex ? '#ffffff' : L.capeIn || L.cape, { side: THREE.BackSide, ...(tex ? { map: outfitCapeTex(L) } : {}) })); cp.add(inner);
+    const ol = new THREE.Mesh(geo, outlineMat(dark(tex ? L.capeTexCol[0] : L.cape), 0.0026)); ol.userData.outline = true; cp.add(ol);
+    if (tex) outfitCapeTrim(cp, L, 0.4, 0.34, 0.1, P, T);
     for (const s of [-1, 1]) { const clasp = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), accM); clasp.position.set(s * 0.11, 0.0, 0.07); neck.add(clasp); }
     if (L.collar) {   // 立ち襟（マオウ）
       const cg = capeGeo(0.34, 0.26, 0.2, 0.12); cg.rotateX(Math.PI); cg.translate(0, 0.0, 0);
@@ -461,6 +465,9 @@ function buildCat(key, opt = {}) {
   }
   // ほっぺの傷（歴戦の猫）
   if (L.scar) { const sc = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.012, 0.01), new THREE.MeshBasicMaterial({ color: '#5a3438' })); sc.position.set(0.2, 0.08, 0.26); sc.rotation.set(0, 0.6, 0.6); headG.add(sc); }
+
+  // おしゃれ（メガネ・帽子・服。js/gfx/outfit-models.js）
+  if (typeof buildCatOutfit === 'function') buildCatOutfit(L, { headG, neck, hips, armR, armL, legR, legL, P, T, upd });
 
   // ---------- 武器 ----------
   const extras = buildCatWeapon(G.weapon, armR, armL, hips, L, charCol, P, T, glow, G);

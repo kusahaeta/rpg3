@@ -18,7 +18,7 @@ const SRC = [...fs.readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.j
   ...fs.readdirSync(path.join(ROOT, 'js/gfx')).filter(f => f.endsWith('.js')).map(f => 'js/gfx/' + f)];
 // どのソースの文を、どの辞書に入れるか
 const DICT_OF = f => ({ 'js/scenario.js': 'scenario', 'js/scenario2.js': 'scenario2', 'js/field-zones.js': 'zones',
-  'js/data.js': 'data', 'js/weapons.js': 'data', 'js/npcs.js': 'data' })[f] || 'ui';
+  'js/data.js': 'data', 'js/weapons.js': 'data', 'js/outfits.js': 'data', 'js/npcs.js': 'data' })[f] || 'ui';
 const DICTS = ['ui', 'data', 'zones', 'scenario', 'scenario2'];
 const dictPath = d => path.join(ROOT, `js/lang/en-${d}.js`);
 // 開発用で英語にしない範囲：その名前の宣言から、対になる閉じかっこまで

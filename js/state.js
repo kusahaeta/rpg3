@@ -20,6 +20,8 @@ const Save = {
       usage: {},          // 戦闘に出た回数（出番の少ない子がすねる）
       weapons: {},        // 持っている武器と強化段階（はじめの武器は持っていなくても使える。js/weapons.js）
       equip: {},          // にゃんこごとに装備している武器
+      wardrobe: {},       // 買ったおしゃれ（js/outfits.js。一度買えば、だれでも着られる）
+      outfit: {},         // にゃんこごとに着ているおしゃれ（枠ごと。'none' は何もつけない）
       auto: false, speed: 1, ver: 12,
       eco: null,          // 画質（false なめらか・true 省エネ・'low' 軽量）。null はおまかせ（スマホなら省エネ）
       gfxAuto: null,      // おまかせのとき、コマ数が足りなくて落とした画質の段階（GFX.watchFps）

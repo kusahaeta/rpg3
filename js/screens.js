@@ -251,8 +251,21 @@ function weaponList(key) {
   </div>`;
 }
 
+// おしゃれの枠ごとの選びかた（なかまの画面）：いつもの（その枠にいつものものがなければ「なし」）・はずす・買ったもの
+function outfitList(key) {
+  return `<div class="ck-fits"><div class="ck-wps-h"><b>${Tx('おしゃれ')}</b><small>${Tx('見た目だけで、力は変わらない。おしゃれ屋で買うと、だれでも着られる')}</small></div>
+    ${OUTFIT_SLOTS.map(slot => {
+      const cur = outfitOf(key, slot) || '', def = outfitHasDefault(key, slot);
+      const owned = Object.keys(OUTFITS).filter(id => OUTFITS[id].slot === slot && hasOutfit(id));
+      const opts = [['', def ? Tx('いつもの') : Tx('なし')], ...(def ? [['none', Tx('はずす')]] : []), ...owned.map(id => [id, `<i>${OUTFITS[id].icon}</i>${OUTFITS[id].name}`])];
+      return `<div class="fit-slot"><span class="fit-h">${OUTFIT_SLOT_NAME[slot]}</span><div class="fit-opts">${opts.map(([v, n]) => `<button class="fit-op ${v === cur ? 'on' : ''}" data-fit="${slot}" data-v="${v}">${n}</button>`).join('')}
+        ${owned.length ? '' : `<small class="fit-none">${Tx('おしゃれ屋で買うと、ここで選べる')}</small>`}</div></div>`;
+    }).join('')}
+  </div>`;
+}
+
 // ------------------------------------------------------------
-//  なかま（ステータス・わざ・武器）
+//  なかま（ステータス・わざ・武器・おしゃれ）
 //  左はしに顔の列、まんなかにネコと足もとの名札（役割・名前・Lv）、右にステータスと「わざ」「武器」のタブ。
 //  背景はその子に合う場所の景色の一枚絵（ShowcaseView・SHOWCASE_BG）。右の板と名札は、その景色に合う暗めの色（pane）
 //  上の帯（帯の影と、はばいっぱいの帯）はなく、左上の角に戻るボタンと題だけ。右のステータスと一覧は、画面の上から使う
@@ -288,20 +301,21 @@ function CharScreen(sel) {
     </div>
     <div class="ck-info" style="--c:${col}">
       <div class="ck-stats">${stats.map(([n, v]) => `<div><span>${n}</span><b>${v}</b></div>`).join('')}</div>
-      <div class="ck-tabs"><button data-tab="abs">${Tx('わざ')}</button><button data-tab="wp">${Tx('武器')}</button></div>
+      <div class="ck-tabs"><button data-tab="abs">${Tx('わざ')}</button><button data-tab="wp">${Tx('武器')}</button><button data-tab="fit">${Tx('おしゃれ')}</button></div>
       <div class="ck-pane ck-abs" data-pane="abs">
         ${ab(Tx('通常攻撃'), c.basic)}${ab(Tx('戦闘スキル'), c.skill)}${ab(Tx('必殺技'), c.ult)}
         ${ab(Tx('とくせい'), c.talent)}${ab(Tx('初手技'), c.technique)}
         ${combos.map(x => ab(x.pair[1] === '*' ? Tx('コンボ（みんなと・友情Lv3）') : Tx('コンボ（{0}と・友情Lv3）', CHARS[x.pair.find(p => p !== sel)].name), x)).join('')}
       </div>
       <div class="ck-pane" data-pane="wp">${weaponList(sel)}</div>
+      <div class="ck-pane" data-pane="fit">${outfitList(sel)}</div>
     </div></div>`);
   const showTab = t => {
     charTab = t;
     s.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     s.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== t));
   };
-  showTab(charTab === 'wp' ? 'wp' : 'abs');
+  showTab(['wp', 'fit'].includes(charTab) ? charTab : 'abs');
   wireBack(s);
   on(s, '[data-tab]', 'click', el => showTab(el.dataset.tab));
   on(s, '.ck-face', 'click', el => { if (el.dataset.key !== sel) App.go(CharScreen, el.dataset.key); });
@@ -309,6 +323,14 @@ function CharScreen(sel) {
     if (el.dataset.wp === wid) return;
     equipWeapon(sel, el.dataset.wp); Sfx.select();
     App.go(CharScreen, sel); if (v3) v3.setChar(sel);
+  });
+  // 着がえ：選びなおすと、モデルを着せかえる（スクロールの位置はそのまま）
+  on(s, '.fit-op', 'click', el => {
+    const v = el.dataset.v; if (v === (outfitOf(sel, el.dataset.fit) || '')) return;
+    const top = s.querySelector('[data-pane="fit"]').scrollTop;
+    setOutfit(sel, el.dataset.fit, v || null); Sfx.select();
+    App.go(CharScreen, sel); if (v3) v3.setChar(sel);
+    const p2 = App.el && App.el.querySelector('.screen.chars [data-pane="fit"]'); if (p2) p2.scrollTop = top;
   });
   if (v3) v3.bindDrag(s.querySelector('.ck-art'));
   return s;
@@ -354,8 +376,9 @@ function BondScreen() {
 // ------------------------------------------------------------
 //  お店（フィールドの住人から）
 // ------------------------------------------------------------
-const SHOP_NAMES = { weapon: '武器を鍛える', item: '道具屋', inn: 'ひと休み', fish: '魚屋' };
-function renderShop(o, kind, name, close, field) {
+const SHOP_NAMES = { weapon: '武器を鍛える', item: '道具屋', inn: 'ひと休み', fish: '魚屋', fashion: 'おしゃれ屋' };
+// stock：おしゃれ屋の品ぞろえ（mura・oukoku。js/outfits.js）
+function renderShop(o, kind, name, close, field, stock = 'mura') {
   const d = Save.data;
   let shopTab = 'forge';
   const draw = (keepScroll = true) => {
@@ -386,6 +409,12 @@ function renderShop(o, kind, name, close, field) {
       body = `<div class="dim">${Tx('どうぐは、戦闘中に「どうぐ」<span class="pc-only">（Rキー）</span>で使える。ひとつにつき {0} こまで持てる。', ITEM_MAX)}</div><div class="sh-list">
         ${goods}
       </div>`;
+    } else if (kind === 'fashion') {
+      const goods = outfitsForSale(stock).map(id => {
+        const it = OUTFITS[id], own = hasOutfit(id);
+        return `<div class="sh-row"><div class="sh-icon">${it.icon}</div><div class="sh-info"><b>${it.name}<em class="sh-have">${OUTFIT_SLOT_NAME[it.slot]}</em></b><small>${it.desc}</small></div><button class="btn small" data-obuy="${id}" ${own || d.niboshi < it.price ? 'disabled' : ''}>${own ? Tx('買ってある') : Tx('にぼし {0}', it.price)}</button></div>`;
+      }).join('');
+      body = `<div class="dim">${Tx('おしゃれは見た目だけ。一度買えば、だれでも着られる。「なかま」の画面の「おしゃれ」で着がえよう。')}</div><div class="sh-list">${goods}</div>`;
     } else if (kind === 'fish') {
       body = `<div class="sh-list">
         <div class="sh-row"><div class="sh-icon">🐟</div><div class="sh-info"><b>${Tx('焼き魚')}</b><small>${Tx('冒険中のみんなのHPが全回復する')}</small></div><button class="btn small" data-item="fish" ${d.niboshi < 30 ? 'disabled' : ''}>${Tx('にぼし {0}', 30)}</button></div>
@@ -410,6 +439,12 @@ function renderShop(o, kind, name, close, field) {
       const id = b.dataset.wbuy, w = WEAPONS[id];
       d.niboshi -= w.get.price; gainWeapon(id); Save.save(); Sfx.win(); Sfx.meow(w.owner);
       field && field.toast(Tx('「{0}」を買った！（なかまの画面で{1}に装備できる）', w.name, CHARS[w.owner].name));
+      draw();
+    });
+    o.querySelectorAll('[data-obuy]').forEach(b => b.onclick = () => {
+      const id = b.dataset.obuy, it = OUTFITS[id];
+      d.niboshi -= it.price; gainOutfit(id); Save.save(); Sfx.win();
+      field && field.toast(Tx('「{0}」を買った！（なかまの画面の「おしゃれ」で着がえられる）', it.name));
       draw();
     });
     o.querySelectorAll('[data-ibuy]').forEach(b => b.onclick = () => {

@@ -395,6 +395,13 @@ Object.assign(EN, {
   '装備中': 'Equipped',
   'そうび': 'Equip',
   '？': '?',
+  // ── screens.js outfitList
+  'おしゃれ': 'Style',
+  '見た目だけで、力は変わらない。おしゃれ屋で買うと、だれでも着られる': 'Looks only—stats don\'t change. Anything bought at a clothes shop can be worn by anyone',
+  'いつもの': 'Usual',
+  'なし': 'None',
+  'はずす': 'Remove',
+  'おしゃれ屋で買うと、ここで選べる': 'Buy items at a clothes shop to choose them here',
   // ── screens.js TARGET_NAME
   '単体': 'Single',
   '拡散': 'Spread',
@@ -424,6 +431,7 @@ Object.assign(EN, {
   '仲間がふえると、ここに友情が記録されます。': 'As your party grows, your bonds will be recorded here.',
   // ── screens.js SHOP_NAMES
   '武器を鍛える': 'Forge Weapons',
+  'おしゃれ屋': 'Clothes Shop',
   // ── screens.js renderShop
   '{0}の{1}': '{0}\'s {1}',
   '（装備中）': ' (equipped)',
@@ -437,6 +445,8 @@ Object.assign(EN, {
   '持っている数 {0}': 'Owned: {0}',
   'もう持てない': 'Can\'t carry more',
   'どうぐは、戦闘中に「どうぐ」<span class="pc-only">（Rキー）</span>で使える。ひとつにつき {0} こまで持てる。': 'Items can be used in battle with "Items"<span class="pc-only"> (R key)</span>. You can carry up to {0} of each.',
+  '買ってある': 'Owned',
+  'おしゃれは見た目だけ。一度買えば、だれでも着られる。「なかま」の画面の「おしゃれ」で着がえよう。': 'Style is just for looks. Buy it once and anyone can wear it. Change outfits under "Style" on the Cats screen.',
   '焼き魚': 'Grilled Fish',
   '冒険中のみんなのHPが全回復する': 'Fully restores the HP of everyone on the adventure',
   'ひと晩休む': 'Rest for the Night',
@@ -445,6 +455,7 @@ Object.assign(EN, {
   '「{0}」になった！': 'It became "{0}"!',
   '（武器が光りはじめた）': ' (The weapon began to glow!)',
   '「{0}」を買った！（なかまの画面で{1}に装備できる）': 'Bought "{0}"! (Equip it on {1} from the Cats screen)',
+  '「{0}」を買った！（なかまの画面の「おしゃれ」で着がえられる）': 'Bought "{0}"! (Change outfits under "Style" on the Cats screen)',
   '{0} {1}を買った！（持っている数 {2}）': 'Bought {0} {1}! (Owned: {2})',
   '焼き魚をみんなで食べた。HPが全回復！': 'Everyone ate grilled fish. HP fully restored!',
   'ぐっすり眠った。みんなのHPが全回復！': 'Everyone slept soundly. HP fully restored!',
@@ -492,5 +503,4 @@ Object.assign(EN, {
   'ひそ…': 'psst...',
   // ── gfx/monsters.js buildEnemy
   '総長': 'BOSS',
-  // ── ソースに見当たらない文（直したか、消したもの）
 });
