@@ -100,35 +100,42 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 .tm-hint { position: absolute; top: 350px; left: 0; right: 0; text-align: center; font-size: 13px; color: var(--dim); }
 .tm-roster { position: absolute; top: 385px; left: 60px; right: 60px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 
-/* ---------- キャラクター ---------- */
-.chars { background: linear-gradient(90deg, rgba(6, 8, 20, .92), rgba(6, 8, 20, .6)); }
-.ck-list { position: absolute; left: 20px; top: 70px; bottom: 20px; width: 232px; display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start; overflow-y: auto; }
-.ck-list .chip { width: 108px; height: 140px; }
-.ck-art { position: absolute; left: 270px; top: 70px; width: 400px; height: 620px; clip-path: polygon(0 0, 100% 0, 88% 100%, 0 100%); box-shadow: inset 0 0 80px rgba(0, 0, 0, .6); }
-.ck-art::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(6, 8, 20, .8), transparent 30%); }
-.ck-info { position: absolute; left: 660px; right: 24px; top: 70px; bottom: 20px; display: flex; flex-direction: column; }
+/* ---------- なかま ---------- */
+/* 左はしに顔の列、まんなかにネコと足もとの名札、右にステータス（いつも見える）と「わざ」「武器」のタブ */
+.chars { background: linear-gradient(90deg, rgba(62, 40, 34, .85) 0, rgba(62, 40, 34, .5) 8%, rgba(62, 40, 34, 0) 13%, rgba(62, 40, 34, 0) 44%, rgba(62, 40, 34, .9) 49%); }
+.ck-dock { position: absolute; left: 14px; top: 70px; bottom: 14px; width: 92px; display: flex; flex-direction: column; align-items: center; gap: 8px; overflow-y: auto; padding-top: 4px; }
+.ck-face { flex: none; position: relative; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0; background: none; border: 0; font: inherit; color: #f0dcc8; cursor: pointer; }
+.ck-face-img { display: block; width: 66px; height: 66px; border-radius: 50%; overflow: hidden; background: #fff6ea; border: 3px solid rgba(255, 240, 220, .5); transition: transform .15s, box-shadow .15s; }
+.ck-face:hover .ck-face-img { border-color: #ffd98a; }
+.ck-face.on .ck-face-img { border-color: #fff0dc; box-shadow: 0 0 0 3px var(--c), 0 0 18px var(--c); transform: scale(1.08); }
+.ck-face-name { font-size: 12px; font-weight: 700; } .ck-face.on .ck-face-name { color: #fff; }
+.ck-face.inteam::after { content: 'へんせい'; position: absolute; left: 50%; top: 56px; transform: translateX(-50%); background: #ff9a6a; color: #fff; font-size: 10px; font-weight: 700; padding: 0 6px; border-radius: 99px; white-space: nowrap; }
+html[lang=en] .ck-face.inteam::after { content: 'Team'; }
+.ck-art { position: absolute; left: 112px; top: 64px; width: 500px; height: 490px; }
+.ck-art.is3d { cursor: grab; }
+.ck-plate { position: absolute; left: 124px; width: 476px; bottom: 16px; padding: 12px 20px 14px; border-radius: 18px; background: rgba(62, 40, 34, .85); border: 2px solid var(--line); }
+.ck-tags { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.ck-path { padding: 1px 12px; border-radius: 99px; background: color-mix(in srgb, var(--c) 45%, transparent); border: 1px solid var(--c); }
+.ck-eid { color: var(--gold); }
+.ck-name { display: flex; align-items: baseline; gap: 14px; margin: 2px 0 4px; min-width: 0; }
+.ck-name h2 { margin: 0; font-size: 36px; letter-spacing: .1em; white-space: nowrap; }
+.ck-title { color: var(--dim); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ck-lv { display: flex; align-items: center; gap: 4px; }
+.ck-lv b { font-size: 22px; } .ck-lv > span { color: var(--dim); }
+.ck-lv .bar { flex: 1; height: 6px; margin: 0 10px; }
+.ck-lv small { color: var(--dim); font-size: 12px; white-space: nowrap; }
+.ck-info { position: absolute; left: 640px; right: 24px; top: 70px; bottom: 14px; display: flex; flex-direction: column; gap: 12px; }
+.ck-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: none; }
+.ck-stats div { display: flex; flex-direction: column; padding: 7px 14px 8px; border-radius: 14px; background: rgba(0, 0, 0, .28); }
+.ck-stats span { font-size: 12px; color: var(--dim); } .ck-stats b { font-size: 22px; line-height: 1.2; }
+.ck-tabs { display: flex; gap: 8px; flex: none; }
+.ck-tabs button { flex: 1; padding: 7px 0; font-size: 15px; font-weight: 700; letter-spacing: .08em; border-radius: 99px; background: rgba(255, 255, 255, .06); border: 2px solid var(--line); color: var(--dim); }
+.ck-tabs button.on { color: #fff; border-color: var(--c); background: color-mix(in srgb, var(--c) 30%, transparent); }
 .ck-pane { flex: 1; min-height: 0; overflow-y: auto; padding-right: 6px; }
 /* 下にまだ続くのがわかるよう、下のふちはぼかす。最後の行はぼかしの上まで送れるよう、下に余白 */
 .ck-pane { padding-bottom: 32px; -webkit-mask-image: linear-gradient(#000 calc(100% - 36px), transparent); mask-image: linear-gradient(#000 calc(100% - 36px), transparent); }
-.ck-head h2 { margin: 2px 0; font-size: 38px; letter-spacing: .1em; }
-.ck-title { color: var(--dim); }
-.ck-tags { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 14px; }
-.ck-path { border: 1px solid var(--line); padding: 2px 10px; }
-.ck-eid { color: var(--gold); }
-.ck-lv { margin: 10px 0 12px; }
-.ck-lv-n { display: flex; align-items: baseline; gap: 2px; }
-.ck-lv b { font-size: 28px; } .ck-lv-n > span { color: var(--dim); } .ck-lv-n small { margin-left: auto; color: var(--dim); font-size: 13px; }
-.ck-lv .bar { margin-top: 6px; height: 5px; }
-.ck-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
-.ck-tabs button { flex: 1; padding: 7px 0; font-size: 15px; font-weight: 700; letter-spacing: .08em; background: rgba(255, 255, 255, .06); border: 1px solid var(--line); color: var(--dim); }
-.ck-tabs button.on { color: var(--ink); border-color: var(--c); background: color-mix(in srgb, var(--c) 30%, transparent); }
-.ck-nav { position: absolute; top: 340px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: rgba(0, 0, 0, .35); font-size: 28px; line-height: 1; padding-bottom: 4px; }
-.ck-nav.prev { left: 272px; } .ck-nav.next { left: 604px; }
-.ck-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; background: rgba(0, 0, 0, .3); padding: 10px 16px; font-size: 14px; }
-.ck-stats div { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, .06); padding: 3px 0; }
-.ck-stats span { color: var(--dim); }
 .ck-abs { display: flex; flex-direction: column; gap: 8px; }
-.ck-ab { background: rgba(255, 255, 255, .04); border-left: 3px solid var(--c); padding: 8px 12px; }
+.ck-ab { background: rgba(255, 255, 255, .04); border-left: 3px solid var(--c); border-radius: 14px; padding: 8px 12px; }
 .ck-ab-h { display: flex; gap: 10px; align-items: center; }
 .ck-kind { font-size: 11px; color: var(--gold); border: 1px solid rgba(232, 199, 122, .4); padding: 1px 6px; }
 .ck-tg { margin-left: auto; font-size: 11px; color: var(--dim); }
@@ -403,9 +410,6 @@ svg.avatar { display: block; width: 100%; height: 100%; }
 #gl { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; z-index: 0; transition: opacity .3s; display: block; }
 img.avatar { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; pointer-events: none; }
 .team { background: rgba(6, 8, 20, .45); }
-.chars { background: linear-gradient(90deg, rgba(6, 8, 20, .9) 0, rgba(6, 8, 20, .75) 20%, rgba(6, 8, 20, 0) 30%, rgba(6, 8, 20, 0) 50%, rgba(6, 8, 20, .8) 58%); }
-.ck-art.is3d { clip-path: none; box-shadow: none; cursor: grab; }
-.ck-art.is3d::after { display: none; }
 .warp { background: radial-gradient(ellipse at 34% 50%, transparent 30%, rgba(4, 6, 14, .6) 75%); }
 .wp-banner { background: linear-gradient(90deg, transparent 40%, rgba(8, 10, 24, .75) 50%); }
 .wp-art.is3d { cursor: grab; clip-path: none; }
@@ -794,16 +798,8 @@ html[lang=en] .op-row > b { width: 176px; letter-spacing: 0; }
 .chip.inteam::before { content: 'へんせい中'; background: #ff9a6a; color: #fff; border-radius: 0 0 0 8px; }
 
 /* へんせい・なかま・友情 */
-.team, .chars, .bondscr { background: linear-gradient(90deg, rgba(62, 40, 34, .88), rgba(62, 40, 34, .55)); }
+.team, .bondscr { background: linear-gradient(90deg, rgba(62, 40, 34, .88), rgba(62, 40, 34, .55)); }
 .tm-slot { border-radius: 18px; }
-.ck-ab { border-radius: 14px; }
-/* なかま：にゃんこの立つまんなかは幕をかけず、くっきり見せる */
-.chars { background: linear-gradient(90deg, rgba(62, 40, 34, .88) 0, rgba(62, 40, 34, .7) 18%, rgba(62, 40, 34, 0) 25%, rgba(62, 40, 34, 0) 46%, rgba(62, 40, 34, .88) 54%); }
-.ck-stats { border-radius: 14px; }
-.ck-tabs button { border-radius: 99px; border-width: 2px; }
-.ck-tabs button.on { color: #fff; }
-.ck-nav { border: 2px solid var(--line); background: rgba(62, 40, 34, .7); }
-.ck-nav:hover { border-color: #ffd98a; }
 
 /* 友情 */
 .bd-intro { position: absolute; left: 40px; right: 40px; top: 72px; font-size: 13px; color: #f0dcc8; line-height: 1.7; }
@@ -833,7 +829,7 @@ html[lang=en] .op-row > b { width: 176px; letter-spacing: 0; }
 /* 武器 */
 .wp-ic { width: 40px; height: 40px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 18px; font-weight: bold;
   color: #fff; background: radial-gradient(circle at 35% 30%, var(--wg, #888), var(--wc, #555) 70%); border: 2px solid rgba(255, 240, 220, .6); text-shadow: 0 1px 2px rgba(0, 0, 0, .7); }
-.ck-wps { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.ck-wps { display: flex; flex-direction: column; gap: 6px; }
 .wp-side { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex: none; }
 .wp-techs { display: block; font-size: 12px; color: #ffe2c4; margin-top: 2px; }
 .wp-diff { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; font-weight: 700; margin-top: 2px; }
