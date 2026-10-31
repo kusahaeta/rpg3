@@ -356,7 +356,6 @@ Object.assign(EN, {
   'スマホを横にしてね': 'Please turn your phone sideways',
   'このゲームは横画面で遊べます': 'This game is played in landscape',
   // ── screens.js topBar
-  'にぼし（お金）': 'Sardines (money)',
   // ── screens.js TitleScreen
   'にゃんこ|ファンタジー': 'Nyanko|Fantasy',
   '〜 流れ星のおちた丘から 〜': '~ From the Hill Where the Star Fell ~',

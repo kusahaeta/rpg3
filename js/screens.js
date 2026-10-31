@@ -16,20 +16,17 @@ const App = {
 function h(str) { const t = document.createElement('template'); t.innerHTML = str.trim(); return t.content.firstElementChild; }
 function on(root, sel, ev, fn) { root.querySelectorAll(sel).forEach(el => el.addEventListener(ev, e => { Sfx.click(); fn(el, e); })); }
 
+// 上の帯：戻るボタンと題（へんせい・友情。にぼしの表示は使わないので出さない）
 function topBar(title, back = true) {
-  const d = Save.data;
   return `<div class="topbar">
     ${back ? '<button class="back" data-back>‹</button>' : ''}
-    <div class="tb-title">${title}</div>
-    <div class="currency">
-      <span class="c-item" title="${Tx('にぼし（お金）')}"><i class="ic-jade"></i>${fmt(d.niboshi)}</span>
-    </div></div>`;
+    <div class="tb-title">${title}</div></div>`;
 }
 function wireBack(node, fn = () => App.go(FieldScreen)) {
   const b = node.querySelector('[data-back]'); if (!b) return;
   b.onclick = () => { Sfx.click(); fn(); };
   // タッチのときは、となりの題（「なかま」など）を押しても戻る
-  const t = node.querySelector('.topbar .tb-title'); if (t) t.onclick = () => { if (document.body.classList.contains('touch')) b.onclick(); };
+  const t = node.querySelector('.tb-title'); if (t) t.onclick = () => { if (document.body.classList.contains('touch')) b.onclick(); };
 }
 
 function charChip(key, extra = '') {
@@ -228,6 +225,8 @@ function weaponList(key) {
 // ------------------------------------------------------------
 //  なかま（ステータス・わざ・武器）
 //  左はしに顔の列、まんなかにネコと足もとの名札（役割・名前・Lv）、右にステータスと「わざ」「武器」のタブ。
+//  背景はその子に合う場所の景色の一枚絵（ShowcaseView・SHOWCASE_BG）。右の板と名札は、その景色に合う暗めの色（pane）
+//  上の帯（帯の影と、はばいっぱいの帯）はなく、左上の角に戻るボタンと題だけ。右のステータスと一覧は、画面の上から使う
 //  ステータスはタブの外に出して、いつも見える（武器を選ぶときの増減と見くらべられる）。タブは子を替えても、そのまま
 //  ←→（↑↓）キーでも子を替えられる
 // ------------------------------------------------------------
@@ -236,7 +235,7 @@ const TARGET_NAME = { single: '単体', blast: '拡散', aoe: '全体', bounce: 
 function CharScreen(sel) {
   const keys = Object.keys(CHARS).filter(k => Save.data.owned[k]);
   sel = sel && Save.data.owned[sel] ? sel : Save.data.team[0];
-  const v3 = GFX.show('chars', () => new ShowcaseView(sel, { screenX: 360, dist: 4.4, height: 0.6 }));
+  const v3 = GFX.show('chars', () => new ShowcaseView(sel));
   if (v3 && (!v3.model || v3.model.key !== sel)) v3.setChar(sel);
   const c = charKit(sel), o = Save.data.owned[sel], col = c.color, wid = equippedWeapon(sel);
   const st = charStats(sel, o.lv, o.eid);
@@ -247,7 +246,8 @@ function CharScreen(sel) {
   const max = o.lv >= 80;
   const stats = [['HP', fmt(st.maxHp)], [Tx('攻撃力'), fmt(st.atk)], [Tx('防御力'), fmt(st.def)],
     [Tx('速度'), st.spd], [Tx('会心率'), Math.round(st.crit * 100) + '%'], [Tx('会心ダメージ'), Math.round(st.critDmg * 100) + '%']];
-  const s = h(`<div class="screen chars">${topBar(Tx('なかま'))}
+  const bg = SHOWCASE_BG[sel] || SHOWCASE_BG.mike;
+  const s = h(`<div class="screen chars" style="--pane:${bg.pane}">${GFX.ok ? '' : `<div class="ck-bg" style="background-image:url(${showcaseBgUrl(sel)})"></div>`}<div class="ck-top"><button class="back" data-back>‹</button><div class="tb-title">${Tx('なかま')}</div></div>
     <div class="ck-dock">${keys.map(k => `<button class="ck-face ${k === sel ? 'on' : ''} ${Save.data.team.includes(k) ? 'inteam' : ''}" data-key="${k}" style="--c:${CHARS[k].color}">
       <span class="ck-face-img">${avatarSVG(k)}</span><span class="ck-face-name">${CHARS[k].name}</span></button>`).join('')}</div>
     <div class="ck-art ${GFX.ok ? 'is3d' : ''}" style="--c:${col}">${GFX.ok ? '' : avatarSVG(sel)}</div>

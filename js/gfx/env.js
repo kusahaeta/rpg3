@@ -49,6 +49,9 @@ const THEMES = {
   dusk: { top: '#1e2660', horizon: '#ffa070', bottom: '#5a4a48', nebA: '#ff9aa8', nebB: '#a890ff', fog: '#e8a890', fogD: 0.0055, clouds: 0.6, sun: '#ffc890', stars: 0.8,
     sunDir: [0.55, 0.07, -0.83], starLo: 0.14, cloudDim: 0.62, hzW: 0.34,
     floor: '#7aa458', floor2: '#6a944a', line: '#ffe08a', key: '#ffbc80', sky: '#a8a8e0', ground: '#5a4a3a', rim: '#ffb070', metal: 0, pattern: 'grass', floorGlow: 0, rough: 0.95, light: 1.0 },
+  // なかまの画面（景色は一枚絵を貼り、床と空は描かない。ここは子を照らす光と照り返しの元だけ。光の色は子ごとに場所の光へ差しかえる）
+  studio: { top: '#ffe8d8', horizon: '#fff4ea', bottom: '#d8c0b0', nebA: '#ffffff', nebB: '#ffffff', fog: '#ffffff', fogD: 0, clouds: 0, sun: '#ffffff', stars: 0,
+    floor: '#e8d6c0', floor2: '#e8d6c0', line: '#ffffff', key: '#fff8ee', sky: '#fff4ea', ground: '#b89a8a', rim: '#ffffff', metal: 0, pattern: 'grid', floorGlow: 0, rough: 0.9, light: 1.05 },
   // ねこ神の夢：パステルのへんてこな夢
   dream: { top: '#ffb8e0', horizon: '#fff0d8', bottom: '#b8d8ff', nebA: '#ffffff', nebB: '#b8f0ff', fog: '#ffe0f0', fogD: 0.006, clouds: 1, sun: '#fffff0', stars: 0.3,
     floor: '#ffd8e8', floor2: '#ffe8f0', line: '#ff9ad8', key: '#fff8f0', sky: '#ffe8f8', ground: '#d8b8e8', rim: '#b8e8ff', metal: 0, pattern: 'checker', floorGlow: 0.1, rough: 0.7, light: 1.1 },
@@ -354,6 +357,7 @@ function motes(T, col, rate = 20, o = {}) {
 }
 
 const ENV_PROPS = {
+  studio(T) { T.noTree = true; },
   meadow(T) {
     hills(T, '#7ab85a'); farTrees(T, '#5aa048', T.bare ? 30 : 40); puffClouds(T, 12);
     motes(T, '#ffe8f0', 14, { fall: true, drift: 1.2, size: 0.07, life: 7 });   // 花びら
