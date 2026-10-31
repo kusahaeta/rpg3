@@ -252,14 +252,17 @@ function weaponList(key) {
 }
 
 // おしゃれの枠ごとの選びかた（なかまの画面）：いつもの（その枠にいつものものがなければ「なし」）・はずす・買ったもの
+// 第二章までは王国のおしゃれ屋に行けないので、第三章から買えると出す
 function outfitList(key) {
+  const open = outfitShopOpen();
   return `<div class="ck-fits"><div class="ck-wps-h"><b>${Tx('おしゃれ')}</b><small>${Tx('見た目だけで、力は変わらない。おしゃれ屋で買うと、だれでも着られる')}</small></div>
+    ${open ? '' : `<div class="fit-soon">${Tx('第3章からニャハハ王国のおしゃれ屋で買えるようになる')}</div>`}
     ${OUTFIT_SLOTS.map(slot => {
       const cur = outfitOf(key, slot) || '', def = outfitHasDefault(key, slot);
       const owned = Object.keys(OUTFITS).filter(id => OUTFITS[id].slot === slot && hasOutfit(id));
       const opts = [['', def ? Tx('いつもの') : Tx('なし')], ...(def ? [['none', Tx('はずす')]] : []), ...owned.map(id => [id, `<i>${OUTFITS[id].icon}</i>${OUTFITS[id].name}`])];
       return `<div class="fit-slot"><span class="fit-h">${OUTFIT_SLOT_NAME[slot]}</span><div class="fit-opts">${opts.map(([v, n]) => `<button class="fit-op ${v === cur ? 'on' : ''}" data-fit="${slot}" data-v="${v}">${n}</button>`).join('')}
-        ${owned.length ? '' : `<small class="fit-none">${Tx('おしゃれ屋で買うと、ここで選べる')}</small>`}</div></div>`;
+        ${owned.length || !open ? '' : `<small class="fit-none">${Tx('おしゃれ屋で買うと、ここで選べる')}</small>`}</div></div>`;
     }).join('')}
   </div>`;
 }
@@ -377,8 +380,7 @@ function BondScreen() {
 //  お店（フィールドの住人から）
 // ------------------------------------------------------------
 const SHOP_NAMES = { weapon: '武器を鍛える', item: '道具屋', inn: 'ひと休み', fish: '魚屋', fashion: 'おしゃれ屋' };
-// stock：おしゃれ屋の品ぞろえ（mura・oukoku。js/outfits.js）
-function renderShop(o, kind, name, close, field, stock = 'mura') {
+function renderShop(o, kind, name, close, field) {
   const d = Save.data;
   let shopTab = 'forge';
   const draw = (keepScroll = true) => {
@@ -410,7 +412,7 @@ function renderShop(o, kind, name, close, field, stock = 'mura') {
         ${goods}
       </div>`;
     } else if (kind === 'fashion') {
-      const goods = outfitsForSale(stock).map(id => {
+      const goods = Object.keys(OUTFITS).map(id => {
         const it = OUTFITS[id], own = hasOutfit(id);
         return `<div class="sh-row"><div class="sh-icon">${it.icon}</div><div class="sh-info"><b>${it.name}<em class="sh-have">${OUTFIT_SLOT_NAME[it.slot]}</em></b><small>${it.desc}</small></div><button class="btn small" data-obuy="${id}" ${own || d.niboshi < it.price ? 'disabled' : ''}>${own ? Tx('買ってある') : Tx('にぼし {0}', it.price)}</button></div>`;
       }).join('');

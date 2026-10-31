@@ -397,11 +397,12 @@ Object.assign(EN, {
   '？': '?',
   // ── screens.js outfitList
   'おしゃれ': 'Style',
-  '見た目だけで、力は変わらない。おしゃれ屋で買うと、だれでも着られる': 'Looks only—stats don\'t change. Anything bought at a clothes shop can be worn by anyone',
+  '見た目だけで、力は変わらない。おしゃれ屋で買うと、だれでも着られる': 'Looks only—stats don\'t change. Anything bought at the clothes shop can be worn by anyone',
+  '第3章からニャハハ王国のおしゃれ屋で買えるようになる': 'From Chapter 3, you can buy these at the clothes shop in the Kingdom of Nyahaha',
   'いつもの': 'Usual',
   'なし': 'None',
   'はずす': 'Remove',
-  'おしゃれ屋で買うと、ここで選べる': 'Buy items at a clothes shop to choose them here',
+  'おしゃれ屋で買うと、ここで選べる': 'Buy items at the clothes shop to choose them here',
   // ── screens.js TARGET_NAME
   '単体': 'Single',
   '拡散': 'Spread',
@@ -431,7 +432,6 @@ Object.assign(EN, {
   '仲間がふえると、ここに友情が記録されます。': 'As your party grows, your bonds will be recorded here.',
   // ── screens.js SHOP_NAMES
   '武器を鍛える': 'Forge Weapons',
-  'おしゃれ屋': 'Clothes Shop',
   // ── screens.js renderShop
   '{0}の{1}': '{0}\'s {1}',
   '（装備中）': ' (equipped)',

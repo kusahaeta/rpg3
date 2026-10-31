@@ -636,9 +636,9 @@ Object.assign(EN, {
   // ── npcs.js NPCS.kannushi
   '神主': 'Shrine Keeper',
   '猫神社の神主': 'Keeper of the Cat Shrine',
-  // ── npcs.js NPCS.shitateya
-  '仕立て屋のアン': 'Anne the Tailor',
-  'ぽかぽか村の仕立て屋': 'Cozyville\'s tailor',
+  // ── npcs.js NPCS.ann
+  'アン': 'Anne',
+  'ぽかぽか村のおしゃれ好き': 'Cozyville\'s fashionista',
   // ── npcs.js NPCS.koneko_a
   'こねこのチビ': 'Tiny the Kitten',
   '村の子ども': 'Village Kid',
@@ -693,8 +693,8 @@ Object.assign(EN, {
   // ── npcs.js NPCS.douguya2
   '王国の道具屋': 'Kingdom Item Shop',
   // ── npcs.js NPCS.ishouya
-  '衣装屋のマダム': 'Madame Costumier',
-  'ニャハハ王国の衣装屋': 'Nyahaha\'s costume shop',
+  'おしゃれ屋のマダム': 'Madame Costumier',
+  'ニャハハ王国のおしゃれ屋': 'Nyahaha\'s clothes shop',
   // ── npcs.js NPCS.yadoya2
   '宿の主人': 'Innkeeper',
   'わらいねこ亭': 'The Laughing Cat Inn',

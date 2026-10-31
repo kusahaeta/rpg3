@@ -320,6 +320,11 @@ const GFX = {
     const next = () => { const k = keys.find(k => !(k in sq)); if (k) this.drawPortrait(k, true).then(() => idle(next)); };
     setTimeout(() => idle(next), 1500);
   },
+  // 見た目が変わった（おしゃれを着がえた）ので、次に使うときに描き直す
+  forgetPortrait(key) {
+    if (!this.portraitStore) return;
+    delete this.portraitStore.sq[key]; delete this.portraitStore.wide[key];
+  },
   // wait：シェーダーができあがるのを待ってから描く（待つあいだ、画面を止めない）
   drawPortrait(key, wait = false) {
     const size = 256, WW = 300, WH = 104, { sq, wide } = this.portraitStore;

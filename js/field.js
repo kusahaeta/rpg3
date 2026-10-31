@@ -3205,7 +3205,7 @@ class FieldView extends BaseView {
     renderShop(o, n.shop, speakerName(n.key), () => {
       this.closeOverlay(); this.renderHud(); this.renderTeam();
       if (n.shop === 'weapon') this.spawnPlayer(this.player.pos, this.player.yaw);   // 鍛えた武器を持ちなおす
-    }, this, n.stock);
+    }, this);
   }
 }
 
