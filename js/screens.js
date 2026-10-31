@@ -226,16 +226,17 @@ function weaponList(key) {
 }
 
 // ------------------------------------------------------------
-//  なかま（ステータス・わざ）
-//  右側は「ステータス」（力と武器）と「わざ」のタブ。タブは子を替えても、そのまま
-//  ←→ キーでも子を替えられる
+//  なかま（ステータス・わざ・武器）
+//  左はしに顔の列、まんなかにネコと足もとの名札（役割・名前・Lv）、右にステータスと「わざ」「武器」のタブ。
+//  ステータスはタブの外に出して、いつも見える（武器を選ぶときの増減と見くらべられる）。タブは子を替えても、そのまま
+//  ←→（↑↓）キーでも子を替えられる
 // ------------------------------------------------------------
-let charTab = 'stat';
+let charTab = 'abs';
 const TARGET_NAME = { single: '単体', blast: '拡散', aoe: '全体', bounce: 'バウンド', ally: '味方単体', allies: '味方全体', self: '自分' };
 function CharScreen(sel) {
   const keys = Object.keys(CHARS).filter(k => Save.data.owned[k]);
   sel = sel && Save.data.owned[sel] ? sel : Save.data.team[0];
-  const v3 = GFX.show('chars', () => new ShowcaseView(sel, { screenX: 470 }));
+  const v3 = GFX.show('chars', () => new ShowcaseView(sel, { screenX: 360, dist: 4.4, height: 0.6 }));
   if (v3 && (!v3.model || v3.model.key !== sel)) v3.setChar(sel);
   const c = charKit(sel), o = Save.data.owned[sel], col = c.color, wid = equippedWeapon(sel);
   const st = charStats(sel, o.lv, o.eid);
@@ -244,40 +245,37 @@ function CharScreen(sel) {
   const learned = ([a, b]) => b === '*' ? keys.filter(k => k !== a && bondLv(a, k) >= 3).length >= 2 : bondLv(a, b) >= 3;
   const combos = COMBOS.filter(x => x.pair.includes(sel) && learned(x.pair));
   const max = o.lv >= 80;
+  const stats = [['HP', fmt(st.maxHp)], [Tx('攻撃力'), fmt(st.atk)], [Tx('防御力'), fmt(st.def)],
+    [Tx('速度'), st.spd], [Tx('会心率'), Math.round(st.crit * 100) + '%'], [Tx('会心ダメージ'), Math.round(st.critDmg * 100) + '%']];
   const s = h(`<div class="screen chars">${topBar(Tx('なかま'))}
-    <div class="ck-list">${keys.map(k => charChip(k, (k === sel ? 'on ' : '') + (Save.data.team.includes(k) ? 'inteam' : ''))).join('')}</div>
+    <div class="ck-dock">${keys.map(k => `<button class="ck-face ${k === sel ? 'on' : ''} ${Save.data.team.includes(k) ? 'inteam' : ''}" data-key="${k}" style="--c:${CHARS[k].color}">
+      <span class="ck-face-img">${avatarSVG(k)}</span><span class="ck-face-name">${CHARS[k].name}</span></button>`).join('')}</div>
     <div class="ck-art ${GFX.ok ? 'is3d' : ''}" style="--c:${col}">${GFX.ok ? '' : avatarSVG(sel)}</div>
-    ${keys.length > 1 ? `<button class="ck-nav prev" data-nav="-1" title="${Tx('前の子（←）')}">‹</button><button class="ck-nav next" data-nav="1" title="${Tx('次の子（→）')}">›</button>` : ''}
+    <div class="ck-plate" style="--c:${col}">
+      <div class="ck-tags"><span class="ck-path">${Tx('役割：{0}', PATHS[c.path].name)}</span><span class="ck-eid">${Tx('武器：{0}', weaponName(wid))}</span></div>
+      <div class="ck-name"><h2>${c.name}</h2><span class="ck-title">${c.title}</span></div>
+      <div class="ck-lv"><b>Lv.${o.lv}</b><span>/80</span><div class="bar exp"><i style="width:${max ? 100 : o.exp / expToNext(o.lv) * 100}%"></i></div>
+        <small>${max ? Tx('レベル最大') : Tx('次のレベルまで あと {0}', fmt(expToNext(o.lv) - o.exp))}</small></div>
+    </div>
     <div class="ck-info" style="--c:${col}">
-      <div class="ck-head"><h2>${c.name}</h2><div class="ck-title">${c.title}</div>
-        <div class="ck-tags"><span class="ck-path">${Tx('役割：{0}', PATHS[c.path].name)}</span><span class="ck-eid">${Tx('武器：{0}', weaponName(wid))}</span></div></div>
-      <div class="ck-lv"><div class="ck-lv-n"><b>Lv.${o.lv}</b><span>/80</span><small>${max ? Tx('レベル最大') : Tx('次のレベルまで あと {0}', fmt(expToNext(o.lv) - o.exp))}</small></div>
-        <div class="bar exp"><i style="width:${max ? 100 : o.exp / expToNext(o.lv) * 100}%"></i></div></div>
-      <div class="ck-tabs"><button data-tab="stat">${Tx('ステータス・武器')}</button><button data-tab="abs">${Tx('わざ')}</button></div>
-      <div class="ck-pane" data-pane="stat">
-        <div class="ck-stats">
-          <div><span>HP</span><b>${fmt(st.maxHp)}</b></div><div><span>${Tx('攻撃力')}</span><b>${fmt(st.atk)}</b></div>
-          <div><span>${Tx('防御力')}</span><b>${fmt(st.def)}</b></div><div><span>${Tx('速度')}</span><b>${st.spd}</b></div>
-          <div><span>${Tx('会心率')}</span><b>${Math.round(st.crit * 100)}%</b></div><div><span>${Tx('会心ダメージ')}</span><b>${Math.round(st.critDmg * 100)}%</b></div>
-        </div>
-        ${weaponList(sel)}
-      </div>
+      <div class="ck-stats">${stats.map(([n, v]) => `<div><span>${n}</span><b>${v}</b></div>`).join('')}</div>
+      <div class="ck-tabs"><button data-tab="abs">${Tx('わざ')}</button><button data-tab="wp">${Tx('武器')}</button></div>
       <div class="ck-pane ck-abs" data-pane="abs">
         ${ab(Tx('通常攻撃'), c.basic)}${ab(Tx('戦闘スキル'), c.skill)}${ab(Tx('必殺技'), c.ult)}
         ${ab(Tx('とくせい'), c.talent)}${ab(Tx('初手技'), c.technique)}
         ${combos.map(x => ab(x.pair[1] === '*' ? Tx('コンボ（みんなと・友情Lv3）') : Tx('コンボ（{0}と・友情Lv3）', CHARS[x.pair.find(p => p !== sel)].name), x)).join('')}
       </div>
+      <div class="ck-pane" data-pane="wp">${weaponList(sel)}</div>
     </div></div>`);
   const showTab = t => {
     charTab = t;
     s.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     s.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== t));
   };
-  showTab(charTab);
+  showTab(charTab === 'wp' ? 'wp' : 'abs');
   wireBack(s);
   on(s, '[data-tab]', 'click', el => showTab(el.dataset.tab));
-  on(s, '.ck-list .chip', 'click', el => App.go(CharScreen, el.dataset.key));
-  on(s, '[data-nav]', 'click', el => App.go(CharScreen, keys[(keys.indexOf(sel) + +el.dataset.nav + keys.length) % keys.length]));
+  on(s, '.ck-face', 'click', el => { if (el.dataset.key !== sel) App.go(CharScreen, el.dataset.key); });
   on(s, '.wp-row[data-wp]', 'click', el => {
     if (el.dataset.wp === wid) return;
     equipWeapon(sel, el.dataset.wp); Sfx.select();
@@ -287,9 +285,11 @@ function CharScreen(sel) {
   return s;
 }
 document.addEventListener('keydown', e => {
-  if (e.repeat || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
-  const b = App.el && App.el.querySelector(`.screen.chars [data-nav="${e.key === 'ArrowLeft' ? -1 : 1}"]`);
-  if (b) b.click();
+  const d = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[e.key];
+  if (e.repeat || !d || !App.el) return;
+  const fs = [...App.el.querySelectorAll('.screen.chars .ck-face')]; if (fs.length < 2) return;
+  e.preventDefault();
+  fs[(fs.findIndex(f => f.classList.contains('on')) + d + fs.length) % fs.length].click();
 });
 
 // ------------------------------------------------------------
