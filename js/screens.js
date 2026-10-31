@@ -25,7 +25,12 @@ function topBar(title, back = true) {
       <span class="c-item" title="${Tx('にぼし（お金）')}"><i class="ic-jade"></i>${fmt(d.niboshi)}</span>
     </div></div>`;
 }
-function wireBack(node, fn = () => App.go(FieldScreen)) { const b = node.querySelector('[data-back]'); if (b) b.onclick = () => { Sfx.click(); fn(); }; }
+function wireBack(node, fn = () => App.go(FieldScreen)) {
+  const b = node.querySelector('[data-back]'); if (!b) return;
+  b.onclick = () => { Sfx.click(); fn(); };
+  // タッチのときは、となりの題（「なかま」など）を押しても戻る
+  const t = node.querySelector('.topbar .tb-title'); if (t) t.onclick = () => { if (document.body.classList.contains('touch')) b.onclick(); };
+}
 
 function charChip(key, extra = '') {
   const c = CHARS[key], o = Save.data.owned[key];
