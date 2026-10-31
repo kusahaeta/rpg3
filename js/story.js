@@ -430,6 +430,14 @@ const Debug = {
     Save.save();
     return ids.length;
   },
+  // すべての子の組み合わせの友情を最大（Lv5）にする（まだ仲間でない子との組も）。レベルアップの知らせは出さない。上げた組の数を返す
+  maxBonds() {
+    const d = Save.data.bond || (Save.data.bond = {}), top = BOND_LV[BOND_LV.length - 1], ks = Object.keys(CHARS);
+    let n = 0;
+    for (let i = 0; i < ks.length; i++) for (let j = i + 1; j < ks.length; j++) { const k = bondKey(ks[i], ks[j]); if ((d[k] || 0) < top) { d[k] = top; n++; } }
+    Save.save();
+    return n;
+  },
   restore() {
     try { const b = localStorage.getItem(this.BACKUP); if (!b) return false; localStorage.setItem(SAVE_KEY, b); localStorage.removeItem(this.BACKUP); } catch (e) { return false; }
     Save.load();
@@ -444,7 +452,7 @@ const Debug = {
       <div class="dbg-list">${STORY.map((ch, ci) => `<section><h3>${ch.title}<small>推奨 Lv.${this.levelAt(ci, 0)}</small></h3>
         ${ch.steps.map((st, si) => btn(ci, si, `<span>${icon[st.t]}</span>${st.g}`, cur && cur.chIdx === ci && Story.state.step === si)).join('')}</section>`).join('')}
         <section><h3>クリア後</h3>${btn(STORY.length, 0, '<span>★</span>すべてのお話を見終えた状態', !cur)}</section></div>
-      <div class="dbg-foot"><button class="btn small" data-weapons>全ての武器を入手</button>${this.hasBackup ? '<button class="btn small" data-restore>ジャンプ前のセーブに戻す</button>' : ''}<button class="btn gold" data-close>閉じる</button></div></div>`;
+      <div class="dbg-foot"><button class="btn small" data-weapons>全ての武器を入手</button><button class="btn small" data-bonds>友情レベルを最大にする</button>${this.hasBackup ? '<button class="btn small" data-restore>ジャンプ前のセーブに戻す</button>' : ''}<button class="btn gold" data-close>閉じる</button></div></div>`;
     o.classList.remove('hidden');
     const now = o.querySelector('.dbg-step.now'); if (now) now.scrollIntoView({ block: 'center' });
     o.querySelector('[data-close]').onclick = () => { Sfx.click(); onClose(); };
@@ -452,6 +460,10 @@ const Debug = {
     o.querySelector('[data-weapons]').onclick = e => {
       const n = this.giveAllWeapons(), b = e.currentTarget;
       Sfx.win(); b.disabled = true; b.textContent = n ? `武器を${n}本 手に入れた` : 'すべて持っている';
+    };
+    o.querySelector('[data-bonds]').onclick = e => {
+      const n = this.maxBonds(), b = e.currentTarget;
+      Sfx.win(); b.disabled = true; b.textContent = n ? `友情を${n}組 Lv5にした` : 'すべて Lv5';
     };
     const r = o.querySelector('[data-restore]');
     if (r) r.onclick = () => { Sfx.click(); if (this.restore()) onDone(); };

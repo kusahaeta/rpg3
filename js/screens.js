@@ -29,15 +29,6 @@ function wireBack(node, fn = () => App.go(FieldScreen)) {
   const t = node.querySelector('.tb-title'); if (t) t.onclick = () => { if (document.body.classList.contains('touch')) b.onclick(); };
 }
 
-function charChip(key, extra = '') {
-  const c = CHARS[key], o = Save.data.owned[key];
-  return `<div class="chip r${c.rarity} ${extra}" data-key="${key}" style="--c:${c.color}">
-    <div class="chip-face">${avatarSVG(key)}</div>
-    <div class="chip-name">${c.name}</div>
-    ${o ? `<div class="chip-lv">Lv.${o.lv}</div>` : `<div class="chip-lv">${Tx('？？？')}</div>`}
-  </div>`;
-}
-
 // ------------------------------------------------------------
 //  タイトル
 // ------------------------------------------------------------
@@ -137,57 +128,95 @@ function startStage(ci, st, techs, after) {
 
 // ------------------------------------------------------------
 //  へんせい
+//  へんせい専用の景色（TEAM_BG）に、一行が横一列に並んで立つ（TeamView。左が先頭）。足もとに名札、下に「ひかえ」の子の顔。
+//  子を選んでから相手を選ぶと入れかわる（ならびの子どうしなら場所を、ひかえの子ならメンバーを）。ひかえの子は、あきがあればそのまま入る。
+//  選んだ子の名札の下に「先頭にする」「ひかえへ」。右上には、この編成で使えるコンボ（友情Lv3）の技名（ないときは出さない）。
+//  3D が使えないときは、景色の一枚絵を CSS で敷き、名札の上に顔の絵を出す
 // ------------------------------------------------------------
 function TeamScreen() {
-  let slot = 0;
-  const v3 = GFX.show('scene:team', () => new SceneryView('meadow'));
-  if (v3) v3.setEnemies([]);
-  const s = h(`<div class="screen team">${topBar(Tx('へんせい'))}
-    <div class="tm-slots"></div>
-    <div class="tm-hint">${Tx('枠を選んでから、下のにゃんこを<span class="pc-only">クリック</span><span class="touch-only">タップ</span>。先頭の子が、冒険でみんなを連れて歩きます。')}</div>
-    <div class="tm-roster"></div></div>`);
+  const d = Save.data;
+  const v3 = GFX.show('team', () => new TeamView());
+  const s = h(`<div class="screen team">
+    ${GFX.ok ? '' : `<div class="tm-bg" style="background-image:url(${TEAM_BG.url})"></div>`}<div class="ck-top"><button class="back" data-back>‹</button><div class="tb-title">${Tx('へんせい')}</div></div>
+    <div class="tm-say"></div><div class="tm-combo"></div><div class="tm-row"></div><div class="tm-bench"></div></div>`);
   wireBack(s);
-  // 物語の都合で一行を離れている子（awayNow）は、枠をとったまま動かせない
-  const away = awayNow(), isAway = k => away.includes(k);
-  const free = i => !isAway(Save.data.team[i]);
-  if (!free(slot)) slot = [0, 1, 2, 3].find(free);
-  // 探索で戦闘不能の子（宿・焼き魚で回復するまで）。全員が戦闘不能になる編成はできない
-  const isDown = k => (Save.data.hp || {})[k] <= 0;
-  const canForm = team => team.some(k => k && !isAway(k) && !isDown(k));
-  const hint = s.querySelector('.tm-hint'), hintText = hint.innerHTML;
-  const refuse = () => { hint.textContent = Tx('みんな戦闘不能になってしまう。元気な子を一匹は入れておこう。'); hint.classList.add('warn'); };
-  const unrefuse = () => { hint.innerHTML = hintText; hint.classList.remove('warn'); };
-  const render = () => {
-    const t = Save.data.team, lead = t.findIndex(k => !isAway(k));
-    s.querySelector('.tm-slots').innerHTML = [0, 1, 2, 3].map(i => isAway(t[i]) ? `
-      <div class="tm-slot away">
-        ${charChip(t[i], 'big')}
-        <div class="tm-path">${Tx('いまは一行を離れている')}</div>
-      </div>` : `
-      <div class="tm-slot ${i === slot ? 'on' : ''}" data-slot="${i}">
-        <div class="tm-no">${i === lead ? Tx('先頭') : i + 1}</div>
-        ${t[i] ? charChip(t[i], 'big' + (isDown(t[i]) ? ' down' : '')) + `<button class="tm-x" data-x="${i}">×</button>
-          <div class="tm-path">${PATHS[CHARS[t[i]].path].name}</div>` : `<div class="tm-empty">${Tx('あき')}</div>`}
-      </div>`).join('');
-    s.querySelector('.tm-roster').innerHTML = Object.keys(CHARS).filter(k => Save.data.owned[k]).map(k => charChip(k, isAway(k) ? 'away' : (t.includes(k) ? 'inteam' : '') + (isDown(k) ? ' down' : ''))).join('');
-    on(s, '[data-slot]', 'click', (el, e) => {
-      if (e.target.closest('[data-x]')) {
-        const i = +e.target.closest('[data-x]').dataset.x, next = Save.data.team.filter((k, j) => j !== i);
-        if (!canForm(next)) refuse();
-        else if (Save.data.team.filter(k => k && !isAway(k)).length > 1) { Save.data.team = next; Save.save(); unrefuse(); }
-        slot = Math.min(slot, Save.data.team.length); if (!free(slot)) slot = [0, 1, 2, 3].find(free); render(); return; }
-      slot = +el.dataset.slot; render();
-    });
-    on(s, '.tm-roster .chip', 'click', el => {
-      const k = el.dataset.key; if (isAway(k)) return;
-      const team = [...Save.data.team], at = team.indexOf(k), target = Math.min(slot, team.length);
-      if (at >= 0) { if (team[target]) { team[at] = team[target]; team[target] = k; } } else team[target] = k;
-      if (!canForm(team)) { refuse(); return; }
-      unrefuse();
-      Save.data.team = team.filter(Boolean); Save.save(); Sfx.meow(k);
-      slot = Math.min(3, Math.min(target + 1, Save.data.team.length)); if (!free(slot)) slot = [0, 1, 2, 3].find(free); render();
-    });
+  // 物語の都合で一行を離れている子（awayNow）は、枠をとったまま動かせない。探索で戦闘不能の子（宿・焼き魚で回復するまで）もいる
+  const away = awayNow(), isAway = k => away.includes(k), isDown = k => (d.hp || {})[k] <= 0;
+  const canForm = team => team.some(k => k && !isAway(k) && !isDown(k));   // 全員が戦闘不能になる編成はできない
+  const owned = Object.keys(CHARS).filter(k => d.owned[k]);
+  let sel = null, warn = '', first = true;   // sel：{ slot: 枠 } か { bench: 子 }
+  const apply = (team, k) => {
+    team = team.filter(Boolean);
+    if (!canForm(team)) { warn = Tx('みんな戦闘不能になってしまう。元気な子を一匹は入れておこう。'); render(); return; }
+    d.team = team; Save.save(); sel = null; warn = ''; if (k) Sfx.meow(k); render();
   };
+  const leadAt = () => d.team.findIndex(k => !isAway(k));
+  const pickSlot = i => {
+    const t = [...d.team];
+    if (t[i] && isAway(t[i])) return;
+    if (sel && sel.bench) { t[Math.min(i, t.length)] = sel.bench; return apply(t, sel.bench); }   // ひかえの子を、この枠へ
+    if (sel && sel.slot != null && sel.slot !== i) { const j = sel.slot; [t[i], t[j]] = [t[j], t[i]]; return apply(t, t[j] || t[i]); }   // ならびの子どうし（あきの枠へは、いちばん後ろへ）
+    sel = sel && sel.slot === i ? null : { slot: i }; warn = ''; render();
+  };
+  const pickBench = k => {
+    if (isAway(k)) return;
+    const t = [...d.team];
+    if (sel && sel.slot != null) { t[Math.min(sel.slot, t.length)] = k; return apply(t, k); }
+    if (t.length < 4) { t.push(k); return apply(t, k); }
+    sel = sel && sel.bench === k ? null : { bench: k }; warn = ''; render();
+  };
+  const render = () => {
+    const t = d.team, lead = leadAt(), here = t.filter(k => !isAway(k));
+    s.querySelector('.tm-row').innerHTML = [0, 1, 2, 3].map(i => {
+      const k = t[i], on = sel && sel.slot === i ? ' on' : '', col = `left:${TEAM_SLOT_X[i]}px`;
+      if (!k) return `<div class="tm-col" style="${col}"><button class="tm-hit" data-slot="${i}"></button>
+        <button class="tm-plate empty${on}" data-slot="${i}"><span class="tm-no">${i + 1}</span><span class="tm-empty">${Tx('あき')}</span></button></div>`;
+      const c = charKit(k), o = d.owned[k], art = GFX.ok ? '' : avatarSVG(k);
+      if (isAway(k)) return `<div class="tm-col away" style="${col};--c:${c.color}"><div class="tm-hit">${art}</div>
+        <div class="tm-plate"><span class="tm-name"><b>${c.name}</b><small>Lv.${o.lv}</small></span><span class="tm-away">${Tx('いまは一行を離れている')}</span></div></div>`;
+      const els = [...new Set([c.basic, c.skill, c.ult].flatMap(abElems))], hp = Math.max(0, Math.min(1, (d.hp || {})[k] ?? 1));
+      return `<div class="tm-col" style="${col};--c:${c.color}">
+        <button class="tm-hit" data-slot="${i}">${art}</button>
+        <button class="tm-plate${on}${isDown(k) ? ' down' : ''}" data-slot="${i}">
+          <span class="tm-no${i === lead ? ' lead' : ''}">${i === lead ? Tx('先頭') : i + 1}</span>
+          <span class="tm-name"><b>${c.name}</b><small>Lv.${o.lv}</small></span>
+          <span class="tm-role"><span class="tm-path">${PATHS[c.path].name}</span>${els.map(e => elemIcon(e)).join('')}</span>
+          ${isDown(k) ? `<span class="tm-ko">${Tx('戦闘不能')}</span>` : `<span class="bar"><i style="width:${hp * 100}%"></i></span>`}
+        </button>
+        ${on ? `<div class="tm-acts">${i !== lead ? `<button data-lead="${i}">${Tx('先頭にする')}</button>` : ''}${here.length > 1 ? `<button data-out="${i}">${Tx('ひかえへ')}</button>` : ''}</div>` : ''}
+      </div>`;
+    }).join('');
+    // ひかえ：編成にいない子。出番の少ない子は、ふきだしで すねてみせる
+    const bench = owned.filter(k => !t.includes(k)), pout = sulkyCat();
+    s.querySelector('.tm-bench').innerHTML = `<span class="tm-bench-h">${Tx('ひかえ')}</span>` + (bench.length
+      ? bench.map(k => `<button class="tm-bf${sel && sel.bench === k ? ' on' : ''}${isDown(k) ? ' down' : ''}${isAway(k) ? ' away' : ''}" data-bench="${k}" style="--c:${CHARS[k].color}">
+          <span class="tm-bf-img">${avatarSVG(k)}</span><span class="tm-bf-name"><b>${CHARS[k].name}</b><small>Lv.${d.owned[k].lv}</small></span></button>`).join('')
+        + (pout && bench.includes(pout.k) ? `<div class="tm-pout" style="--c:${CHARS[pout.k].color}"><b>${CHARS[pout.k].name}</b>${pout.line}</div>` : '')
+      : `<span class="tm-bench-none">${Tx('ひかえの子はいない')}</span>`);
+    // この編成で使えるコンボ（戦闘と同じ決まり。いま戦闘不能の子も、回復すれば使えるので数える）
+    const combos = teamCombos(here);
+    //   使えるコンボがなければ、板ごと出さない
+    s.querySelector('.tm-combo').innerHTML = combos.length ? `<div class="tm-combo-h">${Tx('この編成のコンボ')}</div>`
+      + combos.map(c => `<div class="tm-cb"><span class="tm-cb-faces">${(c.pair[1] === '*' ? [c.pair[0]] : c.pair).map(k => `<i>${avatarSVG(k)}</i>`).join('')}</span><b>${c.name}</b></div>`).join('') : '';
+    // 上の一行：いま何をすればよいか
+    const say = s.querySelector('.tm-say'), selKey = sel && (sel.bench || t[sel.slot]);
+    say.classList.toggle('warn', !!warn);
+    say.textContent = warn || (sel && sel.bench ? Tx('{0}と入れかわる子を選んでね', CHARS[sel.bench].name)
+      : selKey ? Tx('{0}と入れかえる子を選んでね（ならび・ひかえ）', CHARS[selKey].name)
+      : sel ? Tx('ひかえの子を選ぶと、ここに入る')
+      : Tx('にゃんこをえらんでから相手をえらぶと、入れかわる'));
+    on(s, '[data-slot]', 'click', el => pickSlot(+el.dataset.slot));
+    on(s, '[data-bench]', 'click', el => pickBench(el.dataset.bench));
+    on(s, '[data-lead]', 'click', el => { const i = +el.dataset.lead, t = [...d.team], [k] = t.splice(i, 1); t.splice(leadAt(), 0, k); apply(t, k); });
+    on(s, '[data-out]', 'click', el => { const t = [...d.team], [k] = t.splice(+el.dataset.out, 1); apply(t, k); });
+    if (v3) {
+      v3.setTeam(t.map((k, i) => ({ key: k, slot: i, down: isDown(k) })).filter(m => !isAway(m.key)), first);
+      v3.select(selKey && !sel.bench ? selKey : null);
+    }
+    first = false;
+  };
+  // 何もないところを押すと、選ぶのをやめる
+  s.addEventListener('click', e => { if (sel && !e.target.closest('button')) { sel = null; warn = ''; render(); } });
   render();
   return s;
 }

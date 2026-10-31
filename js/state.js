@@ -180,6 +180,15 @@ function teamMembers() {
   return Save.data.team.filter(k => !away.includes(k)).map(k => ({ key: k, lv: Save.data.owned[k].lv, eid: Save.data.owned[k].eid }));
 }
 
+// keys の子たちで使えるコンボ（友情Lv3の組み合わせ。「みんなと」は、ほかの子が2匹以上いて、みんなと友情Lv3）。戦闘とへんせいの画面で使う
+function teamCombos(keys) {
+  return COMBOS.filter(({ pair: [a, b] }) => {
+    if (!keys.includes(a)) return false;
+    if (b === '*') { const others = keys.filter(k => k !== a); return others.length >= 2 && others.every(k => bondLv(a, k) >= 3); }
+    return keys.includes(b) && bondLv(a, b) >= 3;
+  });
+}
+
 // 仲間になる（編成に空きがあれば編成にも加わる）
 function joinParty(k, lv) {
   const d = Save.data;

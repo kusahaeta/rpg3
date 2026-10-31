@@ -1,21 +1,24 @@
 // なかま画面の背景（子ごとの一枚絵）を、ヘッドレス Chrome で区画を組み立てて撮る（Node 22 以降：WebSocket が組みこみ）。
 //   node tools/shoot-chars-bg.mjs                      … 全員を css/chars-bg/<子>.jpg に書き出す（場所は js/gfx/views.js の SHOWCASE_BG の spot）
 //   node tools/shoot-chars-bg.mjs mike kuro            … その子だけ
+//   node tools/shoot-chars-bg.mjs team                 … へんせい画面の背景（js/gfx/views.js の TEAM_BG）を css/team-bg.jpg に
 //   node tools/shoot-chars-bg.mjs mike pokapoka 0 16 0 [night] [out.jpg]   … 場所を試す（区画 x z 向き [空] [出力]）
 //   空を 'stars' にすると、夜にして空だけをぜいたくな星空に（区画の景色はそのまま）。
 //   区画を '@stars' にすると、ゲームにはない、星空を映す水面（この絵だけのぜいたくな星空）
-// 先に `PORT=8937 node .claude/serve.js` を動かしておく。
+//   区画を '@camp' にすると、ゲームにはない、旅の一行の野営地（へんせい画面だけの景色。teamCamp）
+// 先に `PORT=8937 node .claude/serve.js` を動かしておく（ほかのポートのサーバーを使うときは SERVE_PORT=ポート番号）。
 //
 // カメラは、なかま画面（ShowcaseView）と同じ SHOWCASE_CAM：子が立つ点の 4.4m うしろ・高さ 0.6m から、水平に子の 0.6m の高さを見る。
 // fov 32、子は画面の 360px（左よせ）。だから、ゲームでは子がその景色の地面にそのまま立って見え、影も景色の地面に落ちる。
 // 撮るときはトーンマッピングと周辺減光を切る（ゲームで背景に貼ったあと、子といっしょにもう一度かかるので、二重にしない）。
 // 右は一覧の板でほぼかくれるので、左の 704px（55%。SHOWCASE_BG_W）だけを 1.5 倍で書き出す
+// へんせい（team）は TEAM_CAM（画面のまん中から少し見下ろす）で、画面いっぱい（1280px）を書き出す
 import { spawn } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const W = 704, H = 720, SCALE = 1.5;
+const H = 720, SCALE = 1.5;
 
 const args = process.argv.slice(2);
 const tryJob = args.length >= 5 ? (([key, zone, x, z, yaw, ...rest]) => {
@@ -76,8 +79,32 @@ const STARRY = `window.starrySky = (v, P, F, water = true) => {
       }\` });
 };`;
 
+// '@camp'：へんせい画面だけの景色。夕暮れの原っぱの野営地（ゲームの区画にはない、この絵のためだけの景色）。
+//   一行は原点に横一列に立つ（TEAM_CAM で撮る）。子のあいだのすきまから、まん中のたき火が見える。
+//   左にテントと荷物、右に大きな木とランタン。奥の森はまん中をあけて、夕焼けと丘を見せる。小物は ZoneKit の部品
+const CAMP = `window.teamCamp = v => {
+  let sd = 7; const rand = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  const pv = Object.assign(Object.create(v), { zone: {}, rand, T: null, colliders: [], emitters: [], zoneTicks: [], reserved: [] });
+  const K = new ZoneKit(pv);
+  K.tent(-6.4, -6.6, 0.6, 'clothYellow');
+  K.pack(-4.4, -5.2, 0.4);
+  K.campfire(0, -5.6);
+  K.lantern(6.4, -6.4);
+  K.roundTree(9.5, -10, 1.5, 'leaf', { lush: true }); K.roundTree(-11, -9, 1.3);
+  for (let i = 0; i < 30; i++) {
+    const x = -34 + i * 2.35 + (rand() - 0.5) * 1.4; if (Math.abs(x) < 7 + rand() * 3) continue;
+    const z = -24 - rand() * 6, s = 1 + rand() * 0.5 + Math.min(Math.abs(x), 30) * 0.015;
+    if (rand() < 0.5) K.pine(x, z, s * 1.1); else K.roundTree(x, z, s, rand() < 0.5 ? 'leaf' : 'leaf2');
+  }
+  K.bush(-8.5, -4.5, 1.1); K.bush(8.2, -5.5, 1, 'leaf2', '#ffb8d8'); K.bush(4, -12, 1.2); K.bush(-3.5, -13, 1.1);
+  K.flowers(-5.2, 0.6, 12, 1.6, ['#ffe07a', '#ffb8d8']); K.flowers(5.4, 0.8, 12, 1.6, ['#ffe07a', '#ffb8d8']);
+  K.flush();
+  // たき火の火の粉（emitters）を、毎コマ動かす
+  const up = v.update.bind(v); v.update = (dt, t, rdt) => { up(dt, t, rdt); for (const f of pv.emitters) f(rdt); };
+};`;
+
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const PORT = 9335, URL = 'http://127.0.0.1:8937/index.html';
+const PORT = 9335, URL = `http://127.0.0.1:${process.env.SERVE_PORT || 8937}/index.html`;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const profile = mkdtempSync(join(tmpdir(), 'nyanko-bg-'));
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${PORT}`, '--use-angle=metal', `--user-data-dir=${profile}`, '--hide-scrollbars', 'about:blank'], { stdio: 'ignore' });
@@ -101,21 +128,22 @@ try {
   await send('Page.navigate', { url: URL });
   for (let i = 0; i < 100; i++) { await sleep(300); if (await ev(`typeof GFX !== 'undefined' && !!(GFX.view && document.querySelector('.screen.title'))`)) break; }
   await ev(`GFX.watchFps = () => {}; GFX.setTier(0); GFX.Q.prMax = ${SCALE}; GFX.resize(GFX.appScale); true`);
-  await ev(STARRY);
-  const jobs = tryJob ? [tryJob] : (await ev(`JSON.stringify(Object.entries(SHOWCASE_BG).map(([k, b]) => [k, b.spot]))`).then(JSON.parse))
-    .filter(([k]) => !args.length || args.includes(k)).map(([key, spot]) => ({ key, spot, out: `css/chars-bg/${key}.jpg` }));
+  await ev(STARRY); await ev(CAMP);
+  const jobs = tryJob ? [tryJob] : (await ev(`JSON.stringify([...Object.entries(SHOWCASE_BG).map(([k, b]) => [k, b.spot]), ['team', TEAM_BG.spot]])`).then(JSON.parse))
+    .filter(([k]) => args.length ? args.includes(k) : k !== 'team').map(([key, spot]) => ({ key, spot, out: key === 'team' ? 'css/team-bg.jpg' : `css/chars-bg/${key}.jpg` }));
 
   for (const j of jobs) {
     // 人のいない会話の舞台として区画をまるごと組み立て、カメラをなかま画面と同じ位置に固定する
     await ev(`(() => {
       App.mount(document.createElement('div'));
-      let [zone, x, z, yaw, bg] = ${JSON.stringify(j.spot)}, K = SHOWCASE_CAM;
+      let [zone, x, z, yaw, bg] = ${JSON.stringify(j.spot)}, K = ${j.key === 'team' ? 'TEAM_CAM' : 'SHOWCASE_CAM'};
       let v, P, F;
       if (zone[0] === '@') {
         // 区画のない景色。子は (x, z) に立つ。'@stars'：星空を映す水面
         v = new SceneryView(bg || 'night'); v.update = BaseView.prototype.update;
         P = V3(x, 0, z); const th = yaw * Math.PI / 180; F = V3(Math.sin(th), 0, -Math.cos(th));
         if (zone === '@stars') starrySky(v, P, F);
+        if (zone === '@camp') teamCamp(v);
       } else {
         const bg0 = bg; if (bg === 'stars') bg = 'night';   // 'stars'：夜にして、空だけぜいたくな星空に
         SCENE_STAGES.__bg = { zone, at: [x, z], face: yaw, party: [], cast: {}, ...(bg ? { bg } : {}) };
@@ -128,12 +156,12 @@ try {
       const C = P.clone().addScaledVector(F, -K.dist); C.y = P.y + K.eye;
       const L = P.clone(); L.y = P.y + K.look;
       const up = v.update.bind(v);
-      v.update = (dt, t, rdt) => { up(dt, t, rdt); const c = v.camera; c.fov = K.fov; c.setViewOffset(1280, 720, 640 - K.screenX, 0, 1280, 720); c.position.copy(C); c.lookAt(L); c.updateProjectionMatrix(); };
+      v.update = (dt, t, rdt) => { up(dt, t, rdt); const c = v.camera; c.fov = K.fov; if (K.screenX != null) c.setViewOffset(1280, 720, 640 - K.screenX, 0, 1280, 720); else c.clearViewOffset(); c.position.copy(C); c.lookAt(L); c.updateProjectionMatrix(); };
       GFX.renderer.toneMapping = THREE.NoToneMapping; GFX.grade.uniforms.vignette.value = 0;
       return true;
     })()`);
     await sleep(3000);
-    const shot = await send('Page.captureScreenshot', { format: 'jpeg', quality: 86, clip: { x: 0, y: 0, width: W, height: H, scale: 1 } });
+    const shot = await send('Page.captureScreenshot', { format: 'jpeg', quality: 86, clip: { x: 0, y: 0, width: j.key === 'team' ? 1280 : 704, height: H, scale: 1 } });
     writeFileSync(j.out, Buffer.from(shot.result.data, 'base64'));
     console.log(`${j.key}: ${j.spot.join(' ')} → ${j.out}（${Math.round(Buffer.from(shot.result.data, 'base64').length / 1024)}KB）`);
   }
