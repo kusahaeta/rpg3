@@ -36,40 +36,97 @@ class BaseView {
   }
 }
 
-// ふかふかの座布団に立つにゃんこ（なかまの画面）。ドラッグで回せる
+// なかまの画面：その子に合う場所（仲間になった所など）の景色を背景に、にゃんこが立つ。ドラッグで回せる
+//   区画をその場で組み立てると重いので、景色は tools/shoot-chars-bg.mjs で一枚絵（css/chars-bg/<子>.jpg）に書き出しておき、
+//   画面いっぱいの板に貼る。一枚絵はこの画面と同じカメラ（SHOWCASE_CAM）で撮るので、子はその景色の地面にそのまま立ち、
+//   影も景色の地面に落ちる。子の光（空・地面・日の色）も、その区画の光にそろえる。子を替えると景色がなめらかに入れかわる
+//   spot：[区画, x, z, カメラの向き（度。0 で北 -Z）, 空（省くと区画のまま。'night' で夜に、'stars' で夜のぜいたくな星空に）]（x, z は会話シーンの stage.at と同じ座標）。
+//   区画を '@stars' にすると、ゲームにはない、星空を映す水面の景色（tools/shoot-chars-bg.mjs が一枚絵のためだけに組む）
+//   pane：右の一覧の板と名札の色のもと（景色に合う暗めの色）
+// 目の高さ eye を見る高さ look と同じにして水平に見る（地平線が画面のまん中に来て、上半分が空になる）
+const SHOWCASE_CAM = { screenX: 360, dist: 4.4, eye: 0.6, look: 0.6, fov: 32 };
+const SHOWCASE_BG = {
+  mike:  { spot: ['pokapoka', -17, 1, -40],    pane: '#4a3626' },   // ぽかぽか村・ミケの家の前
+  kuro:  { spot: ['road1_hill', -2, -10, 150, 'stars'], pane: '#20263e' },   // 星空の下の、ミャオ街道・丘の上（木の少ない南東向き）
+  shiro: { spot: ['castle_archive', -12, 0, -90], pane: '#3e2c22' },   // ニャハハ城・王家の書庫の、光る魔法陣の石板の前
+  tama:  { spot: ['woods_deep', 1, -19, 0],    pane: '#2e4430' },   // まどろみの林・大樹のうろ
+  maou:  { spot: ['demon_throne', 0, -12, 0],  pane: '#2c1a3e' },   // 魔王城・玉座の間
+};
+const SHOWCASE_BG_W = 0.55;   // 一枚絵は画面の左 55%（右は一覧の板でかくれる）
+const showcaseBgUrl = key => `css/chars-bg/${key}.jpg`;
+// その子の場所の光（StageView と同じ：区画の bg の空の色と、明るさ）
+function showcaseLight(key) {
+  const [zone, , , , sky] = SHOWCASE_BG[key].spot, Z = FIELD_ZONES[zone] || {}, bg = (sky === 'stars' ? 'night' : sky) || Z.bg || CHAPTERS[Z.ci].bg;
+  return { th: { ...(THEMES[bg] || THEMES.meadow), ...(Z.th || {}) }, exposure: { meadow: 0.95, road: 0.95, dream: 0.9 }[bg] || 1 };
+}
+const ShowcaseBgShader = {
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = position.xy * 0.5 + 0.5; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+  fragmentShader: `uniform sampler2D tA, tB; uniform float mixv, w; varying vec2 vUv;
+    void main(){
+      vec2 uv = vec2(min(vUv.x / w, 1.0), vUv.y);
+      gl_FragColor = vec4(mix(texture2D(tA, uv).rgb, texture2D(tB, uv).rgb, mixv), 1.0);
+    }`,
+};
 class ShowcaseView extends BaseView {
-  constructor(key, { screenX = 640, dist = 3.1, height = 0.62, theme = 'meadow' } = {}) {
-    super(theme, 32, { skyTree: true });
+  constructor(key) {
+    const C = SHOWCASE_CAM;
+    super('studio', C.fov, { skyTree: false });
     this.bloomStrength = 0.3; this.exposure = 1.0;
     this.rotY = -0.35; this.targetRot = -0.35; this.spin = 0;
-    this.dist = dist; this.lookH = height;
+    this.scene.fog = null;
     this.env.floor.visible = false;
-    const plat = new THREE.Group(); this.scene.add(plat); this.plat = plat;
-    // 丸い敷物と座布団
-    const rug = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.3, 0.05, 48), toon('#f4e2c8')); rug.position.y = -0.02; rug.receiveShadow = true; plat.add(rug);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(1.27, 0.035, 8, 64), toon('#e0453a')); rim.rotation.x = Math.PI / 2; rim.position.y = 0.01; plat.add(rim);
-    const cushion = new THREE.Mesh(new THREEX.RoundedBoxGeometry(0.95, 0.12, 0.95, 4, 0.06), toon('#ff9ab8')); cushion.position.y = 0.05; cushion.receiveShadow = true; plat.add(cushion);
-    for (const [x, z] of [[-0.44, -0.44], [0.44, -0.44], [-0.44, 0.44], [0.44, 0.44]]) { const t = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), toon('#ffd76a')); t.position.set(x, 0.1, z); plat.add(t); }
-    // 草原と花
-    const grass = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshStandardMaterial({ color: '#8ac468', roughness: 1 })); grass.rotation.x = -Math.PI / 2; grass.position.y = -0.05; grass.receiveShadow = true; this.scene.add(grass);
-    const fcols = ['#ffffff', '#ffe07a', '#ffb8d8', '#b8d8ff'];
-    for (let i = 0; i < 120; i++) { const a = Math.random() * Math.PI * 2, r = 1.6 + Math.random() * 10; const f = new THREE.Mesh(new THREE.SphereGeometry(0.04 + Math.random() * 0.03, 6, 4), toon(fcols[i % 4])); f.position.set(Math.cos(a) * r, 0.02, Math.sin(a) * r); this.scene.add(f); }
-    this.cushion = cushion;
-    this.frame(screenX);
-    this.setCam(V3(0, 1.0, dist), V3(0, height, 0), { snap: true });
+    const dirs = [];
+    this.env.root.traverse(o => { if (o.userData.sky) o.visible = false; if (o.isHemisphereLight) this.hemi = o; if (o.isDirectionalLight && o !== this.env.key) dirs.push(o); });
+    [this.rim, this.fill] = dirs;
+    // 景色の一枚絵：読みこんだものから使う。入れかえは tA（いま）→ tB（次）へ混ぜてから、tB を tA へ
+    this.tex = {};
+    const blank = new THREE.DataTexture(new Uint8Array([40, 32, 30, 255]), 1, 1); blank.needsUpdate = true;
+    const bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+      uniforms: { tA: { value: blank }, tB: { value: blank }, mixv: { value: 0 }, w: { value: SHOWCASE_BG_W } },
+      ...ShowcaseBgShader, depthTest: false, depthWrite: false }));
+    bg.renderOrder = -100; bg.frustumCulled = false; this.scene.add(bg); this.bg = bg;
+    this.onDispose = () => { this.disposed = true; for (const t of Object.values(this.tex)) t.dispose(); blank.dispose(); };
+    // 地面：見えない板に、子の影だけを落とす（一枚絵の地面と同じ高さ）
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.ShadowMaterial({ opacity: 0.28 }));
+    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; this.scene.add(ground);
+    this.camera.setViewOffset(1280, 720, 640 - C.screenX, 0, 1280, 720);
+    this.setCam(V3(0, C.eye, C.dist), V3(0, C.look, 0), { snap: true });
     if (key) this.setChar(key, false);
   }
-  frame(screenX) { this.camera.setViewOffset(1280, 720, 640 - screenX, 0, 1280, 720); }
+  // 景色の一枚絵を読む（読み終えたら cb）。読めなかったら何もしない（板の色のまま）
+  loadBg(key, cb) {
+    if (this.tex[key]) return cb(this.tex[key]);
+    new THREE.TextureLoader().load(showcaseBgUrl(key), t => {
+      t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;
+      if (this.disposed) return t.dispose();
+      this.tex[key] = t; cb(t);
+    });
+  }
+  setBg(key) {
+    this.bgKey = key;
+    this.loadBg(key, t => {
+      if (this.bgKey !== key) return;
+      const U = this.bg.material.uniforms;
+      if (U.mixv.value > 0) { U.tA.value = U.tB.value; }
+      U.tB.value = t; U.mixv.value = U.tA.value === t ? 1 : 0.001;
+    });
+    // 子の光を、その場所の光にそろえる
+    const { th, exposure } = showcaseLight(key), k = th.light || 1;
+    this.hemi.color.set(th.sky); this.hemi.groundColor.set(th.ground); this.hemi.intensity = 0.85 * k;
+    this.env.key.color.set(th.key); this.env.key.intensity = 1.8 * Math.min(k, 1.2);
+    if (this.rim) this.rim.color.set(th.rim); if (this.fill) this.fill.color.set(th.rim);
+    this.exposure = exposure; if (GFX.view === this) GFX.renderer.toneMappingExposure = exposure;
+  }
   setChar(key, burst = true) {
     if (this.model) { this.scene.remove(this.model.group); disposeTree(this.model.group); }
     this.model = null;
     if (!key) return;
+    if (SHOWCASE_BG[key]) this.setBg(key);
     const m = buildCharacter(key); this.model = m; this.scene.add(m.group);
-    m.group.position.y = 0.11;
     m.setPose(POSES.idle); m.group.rotation.y = this.rotY; m.face.set('smile');
     if (burst) {
       const col = CHARS[key].color;
-      this.fx.ring(V3(0, 0.12, 0), col, { r: 2, life: 0.7 });
+      this.fx.ring(V3(0, 0.02, 0), col, { r: 1.8, life: 0.7 });
       this.p.burst(V3(0, 0.7, 0), col, 50, { speed: 3, life: 1, size: 0.07, up: 0.6 });
       m.flash('#ffffff', 1.2);
       Sfx.meow && Sfx.meow(key);
@@ -83,6 +140,9 @@ class ShowcaseView extends BaseView {
   }
   update(dt, t, rdt) {
     super.update(rdt, t);
+    // 景色の入れかえ（0.4 秒ほど）。混ぜ終えたら次の絵を「いま」にする
+    const U = this.bg.material.uniforms;
+    if (U.mixv.value > 0) { U.mixv.value = Math.min(1, U.mixv.value + rdt * 2.5); if (U.mixv.value >= 1) { U.tA.value = U.tB.value; U.mixv.value = 0; } }
     this.rotY += (this.targetRot - this.rotY) * (1 - Math.exp(-6 * rdt));
     if (this.model) {
       this.model.group.rotation.y = this.rotY + this.spin;
