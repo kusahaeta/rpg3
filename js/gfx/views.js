@@ -54,9 +54,9 @@ const SHOWCASE_BG = {
 };
 const SHOWCASE_BG_W = 0.55;   // 一枚絵は画面の左 55%（右は一覧の板でかくれる）
 const showcaseBgUrl = key => `css/chars-bg/${key}.jpg`;
-// その子の場所の光（StageView と同じ：区画の bg の空の色と、明るさ）
-function showcaseLight(key) {
-  const [zone, , , , sky] = SHOWCASE_BG[key].spot, Z = FIELD_ZONES[zone] || {}, bg = (sky === 'stars' ? 'night' : sky) || Z.bg || CHAPTERS[Z.ci].bg;
+// 一枚絵の場所の光（StageView と同じ：区画の bg の空の色と、明るさ）。spot は SHOWCASE_BG・TEAM_BG の spot
+function spotLight(spot) {
+  const [zone, , , , sky] = spot, Z = FIELD_ZONES[zone] || {}, bg = (sky === 'stars' ? 'night' : sky) || Z.bg || CHAPTERS[Z.ci].bg;
   return { th: { ...(THEMES[bg] || THEMES.meadow), ...(Z.th || {}) }, exposure: { meadow: 0.95, road: 0.95, dream: 0.9 }[bg] || 1 };
 }
 const ShowcaseBgShader = {
@@ -67,12 +67,12 @@ const ShowcaseBgShader = {
       gl_FragColor = vec4(mix(texture2D(tA, uv).rgb, texture2D(tB, uv).rgb, mixv), 1.0);
     }`,
 };
-class ShowcaseView extends BaseView {
-  constructor(key) {
-    const C = SHOWCASE_CAM;
+// 一枚絵の景色の上に 3D の子を立たせる画面の土台（なかま・へんせい）。cam：{ dist, eye, look, fov, screenX }。w：一枚絵が画面のはばのどれだけか
+//   景色は tools/shoot-chars-bg.mjs が同じカメラで撮っておく。子の影だけを、見えない地面の板に落とす
+class PhotoView extends BaseView {
+  constructor(C, w) {
     super('studio', C.fov, { skyTree: false });
     this.bloomStrength = 0.3; this.exposure = 1.0;
-    this.rotY = -0.35; this.targetRot = -0.35; this.spin = 0;
     this.scene.fog = null;
     this.env.floor.visible = false;
     const dirs = [];
@@ -82,46 +82,58 @@ class ShowcaseView extends BaseView {
     this.tex = {};
     const blank = new THREE.DataTexture(new Uint8Array([40, 32, 30, 255]), 1, 1); blank.needsUpdate = true;
     const bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
-      uniforms: { tA: { value: blank }, tB: { value: blank }, mixv: { value: 0 }, w: { value: SHOWCASE_BG_W } },
+      uniforms: { tA: { value: blank }, tB: { value: blank }, mixv: { value: 0 }, w: { value: w } },
       ...ShowcaseBgShader, depthTest: false, depthWrite: false }));
     bg.renderOrder = -100; bg.frustumCulled = false; this.scene.add(bg); this.bg = bg;
     this.onDispose = () => { this.disposed = true; for (const t of Object.values(this.tex)) t.dispose(); blank.dispose(); };
     // 地面：見えない板に、子の影だけを落とす（一枚絵の地面と同じ高さ）
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.ShadowMaterial({ opacity: 0.28 }));
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; this.scene.add(ground);
-    this.camera.setViewOffset(1280, 720, 640 - C.screenX, 0, 1280, 720);
+    if (C.screenX != null && C.screenX !== 640) this.camera.setViewOffset(1280, 720, 640 - C.screenX, 0, 1280, 720);
     this.setCam(V3(0, C.eye, C.dist), V3(0, C.look, 0), { snap: true });
-    if (key) this.setChar(key, false);
   }
   // 景色の一枚絵を読む（読み終えたら cb）。読めなかったら何もしない（板の色のまま）
-  loadBg(key, cb) {
-    if (this.tex[key]) return cb(this.tex[key]);
-    new THREE.TextureLoader().load(showcaseBgUrl(key), t => {
+  loadBg(url, cb) {
+    if (this.tex[url]) return cb(this.tex[url]);
+    new THREE.TextureLoader().load(url, t => {
       t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;
       if (this.disposed) return t.dispose();
-      this.tex[key] = t; cb(t);
+      this.tex[url] = t; cb(t);
     });
   }
-  setBg(key) {
-    this.bgKey = key;
-    this.loadBg(key, t => {
-      if (this.bgKey !== key) return;
+  setBg(url, spot) {
+    this.bgUrl = url;
+    this.loadBg(url, t => {
+      if (this.bgUrl !== url) return;
       const U = this.bg.material.uniforms;
       if (U.mixv.value > 0) { U.tA.value = U.tB.value; }
       U.tB.value = t; U.mixv.value = U.tA.value === t ? 1 : 0.001;
     });
     // 子の光を、その場所の光にそろえる
-    const { th, exposure } = showcaseLight(key), k = th.light || 1;
+    const { th, exposure } = spotLight(spot), k = th.light || 1;
     this.hemi.color.set(th.sky); this.hemi.groundColor.set(th.ground); this.hemi.intensity = 0.85 * k;
     this.env.key.color.set(th.key); this.env.key.intensity = 1.8 * Math.min(k, 1.2);
     if (this.rim) this.rim.color.set(th.rim); if (this.fill) this.fill.color.set(th.rim);
     this.exposure = exposure; if (GFX.view === this) GFX.renderer.toneMappingExposure = exposure;
   }
+  update(dt, t, rdt) {
+    super.update(rdt, t);
+    // 景色の入れかえ（0.4 秒ほど）。混ぜ終えたら次の絵を「いま」にする
+    const U = this.bg.material.uniforms;
+    if (U.mixv.value > 0) { U.mixv.value = Math.min(1, U.mixv.value + rdt * 2.5); if (U.mixv.value >= 1) { U.tA.value = U.tB.value; U.mixv.value = 0; } }
+  }
+}
+class ShowcaseView extends PhotoView {
+  constructor(key) {
+    super(SHOWCASE_CAM, SHOWCASE_BG_W);
+    this.rotY = -0.35; this.targetRot = -0.35; this.spin = 0;
+    if (key) this.setChar(key, false);
+  }
   setChar(key, burst = true) {
     if (this.model) { this.scene.remove(this.model.group); disposeTree(this.model.group); }
     this.model = null;
     if (!key) return;
-    if (SHOWCASE_BG[key]) this.setBg(key);
+    if (SHOWCASE_BG[key]) this.setBg(showcaseBgUrl(key), SHOWCASE_BG[key].spot);
     const m = buildCharacter(key); this.model = m; this.scene.add(m.group);
     m.setPose(POSES.idle); m.group.rotation.y = this.rotY; m.face.set('smile');
     if (burst) {
@@ -139,10 +151,7 @@ class ShowcaseView extends BaseView {
     el.addEventListener('pointerup', () => { down = false; });
   }
   update(dt, t, rdt) {
-    super.update(rdt, t);
-    // 景色の入れかえ（0.4 秒ほど）。混ぜ終えたら次の絵を「いま」にする
-    const U = this.bg.material.uniforms;
-    if (U.mixv.value > 0) { U.mixv.value = Math.min(1, U.mixv.value + rdt * 2.5); if (U.mixv.value >= 1) { U.tA.value = U.tB.value; U.mixv.value = 0; } }
+    super.update(dt, t, rdt);
     this.rotY += (this.targetRot - this.rotY) * (1 - Math.exp(-6 * rdt));
     if (this.model) {
       this.model.group.rotation.y = this.rotY + this.spin;
@@ -156,6 +165,71 @@ class ShowcaseView extends BaseView {
       if (ph === 1 && this.model.face) this.model.face.set('joy'); else if (this.model.face && this.model.face.expr === 'joy') this.model.face.set('smile');
     }
     this.camera.position.x += Math.sin(t * 0.25) * 0.001;
+  }
+}
+
+// へんせいの画面：へんせい専用の景色（TEAM_BG。どこで開いても同じ）に、一行が横一列に並んで立つ（左が先頭）。
+//   景色は、ゲームの区画ではなく、へんせい画面のためだけの野営地。なかまの画面と同じく一枚絵（tools/shoot-chars-bg.mjs team で css/team-bg.jpg に書き出す）。カメラは TEAM_CAM（画面のまん中から、少し見下ろす）
+//   立ち位置は、画面の下の名札のまん中（TEAM_SLOT_X）の上。名札の上の画面の点（TEAM_FOOT_Y）から地面へ線をのばして決める。
+//   ならびを替えると、その子がはねながら新しい場所へ動く。選んだ子は身がまえ、戦闘不能の子はぐったりする
+const TEAM_SLOT_X = [250, 510, 770, 1030], TEAM_FOOT_Y = 478;
+const TEAM_CAM = { dist: 7.6, eye: 1.45, look: 0.62, fov: 30 };
+const TEAM_BG = { spot: ['@camp', 0, 0, 0, 'dusk'], url: 'css/team-bg.jpg' };   // 夕暮れの原っぱの野営地（へんせい画面だけの景色。tools/shoot-chars-bg.mjs の teamCamp）
+// 戦闘不能の子：ひざを折って、ぐったり（POSES.down だと丸まって名札にかくれる）
+const TEAM_DOWN_POSE = { ...POSES.hurt, hipsY: -0.25, lean: -0.1, headX: 0.25, kneeL: 0.9, kneeR: 0.9, legLx: -0.6, legRx: -0.6, armLz: 0.3, armRz: -0.3, armLx: 0.1, armRx: 0.1 };
+class TeamView extends PhotoView {
+  constructor() {
+    super(TEAM_CAM, 1);
+    this.models = {}; this.sel = null;
+    this.camera.lookAt(this.camLook); this.camera.updateMatrixWorld();
+    const rc = new THREE.Raycaster(), ground = new THREE.Plane(V3(0, 1, 0), 0);
+    this.spots = TEAM_SLOT_X.map(x => { rc.setFromCamera(new THREE.Vector2(x / 640 - 1, 1 - TEAM_FOOT_Y / 360), this.camera); return rc.ray.intersectPlane(ground, V3()); });
+    this.setBg(TEAM_BG.url, TEAM_BG.spot);
+  }
+  // list：[{ key, slot, down }]。いない子は消し、来た子は土けむりと一緒に出す（first：画面を開いたときは、そのまま立たせる）
+  setTeam(list, first = false) {
+    const keep = new Set(list.map(m => m.key));
+    for (const [k, M] of Object.entries(this.models)) if (!keep.has(k)) {
+      this.p.burst(M.group.position.clone().add(V3(0, 0.4, 0)), '#f4ead8', 24, { speed: 1.6, life: 0.6, size: 0.06, up: 0.3 });
+      this.scene.remove(M.group); disposeTree(M.group); delete this.models[k];
+    }
+    list.forEach((m, i) => {
+      let M = this.models[m.key];
+      const at = this.spots[m.slot];
+      if (!M) {
+        M = this.models[m.key] = buildCharacter(m.key); this.scene.add(M.group);
+        M.group.position.copy(at); M.setPose(POSES.idle); M.face.set('smile'); M.from = at.clone(); M.hop = 1;
+        M.phase = i * 1.7;
+        if (!first) { this.p.burst(at.clone().add(V3(0, 0.3, 0)), '#f4ead8', 30, { speed: 1.8, life: 0.7, size: 0.07, up: 0.4 }); M.flash('#ffffff', 1); M.hop = 0; M.from = at.clone().add(V3(0, 0, 0)); }
+      } else if (!M.to || !M.to.equals(at)) { M.from = M.group.position.clone(); M.hop = 0; }
+      M.to = at.clone(); M.down = m.down;
+    });
+  }
+  select(key) { this.sel = key; }
+  update(dt, t, rdt) {
+    super.update(dt, t, rdt);   // カメラは動かさない（景色は一枚絵なので、動かすと子が地面からずれる）
+    const cam = this.camera.position;
+    for (const [k, M] of Object.entries(this.models)) {
+      // 動く：はねながら（ジャンプ 2 回ぶん）新しい場所へ
+      const g = M.group, moving = M.hop < 1;
+      if (moving) {
+        M.hop = Math.min(1, M.hop + rdt * (M.from.distanceTo(M.to) > 0.01 ? 1.6 : 3));
+        const e = M.hop * M.hop * (3 - 2 * M.hop);
+        g.position.lerpVectors(M.from, M.to, e);
+        // あいだに立つ子を通りぬけないよう、右へ行く子は手前を、左へ行く子は奥を回る
+        g.position.z += Math.sign(M.to.x - M.from.x) * Math.sin(e * Math.PI) * 0.9;
+        g.position.y =Math.abs(Math.sin(M.hop * Math.PI * (M.from.distanceTo(M.to) > 0.01 ? 2 : 1))) * 0.28;
+      } else g.position.copy(M.to);
+      // 向き：動くときは進む方へ、止まっているときはカメラのほうへ（少しだけ内向き）
+      const dx = M.to.x - M.from.x, want = moving && Math.abs(dx) > 0.01 ? Math.sign(dx) * 1.2 : Math.atan2(cam.x - g.position.x, cam.z - g.position.z) * 0.7;
+      g.rotation.y += (want - g.rotation.y) * (1 - Math.exp(-8 * rdt));
+      // ポーズと表情
+      const sel = this.sel === k, ph = Math.floor((t + M.phase) / 4.5) % 5;
+      const pose = M.down ? TEAM_DOWN_POSE : moving ? POSES.jump : sel ? POSES.ready : ph === 2 ? POSES.cheer : POSES.idle;
+      for (const p of POSE_KEYS) M.pose[p] += ((pose[p] || 0) - M.pose[p]) * (1 - Math.exp(-(moving ? 12 : 6) * rdt));
+      M.face.set(M.down ? 'pained' : sel || moving ? 'joy' : 'smile');
+      M.update(rdt, t);
+    }
   }
 }
 

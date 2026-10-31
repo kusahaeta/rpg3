@@ -607,14 +607,8 @@ class Battle {
   bondOn() { return this.allies.length >= 2; }
   // 使えるコンボ（友情Lv3の組み合わせ。最終決戦では「にゃんこオールスターズ」）
   combos() {
-    const al = this.aliveAllies(), has = k => al.find(a => a.key === k);
     if (this.opts.final && this.allstars) return [ALLSTARS];
-    return COMBOS.filter(c => {
-      const [a, b] = c.pair;
-      if (!has(a)) return false;
-      if (b === '*') { const others = al.filter(x => x.key !== a); return others.length >= 2 && others.every(x => bondLv(a, x.key) >= 3); }
-      return has(b) && bondLv(a, b) >= 3;
-    });
+    return teamCombos(this.aliveAllies().map(a => a.key));
   }
   renderBond() {
     const el = this.$('.bond'); if (!el) return;

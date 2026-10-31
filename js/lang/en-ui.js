@@ -355,7 +355,6 @@ Object.assign(EN, {
   // ── main.js floaties
   'スマホを横にしてね': 'Please turn your phone sideways',
   'このゲームは横画面で遊べます': 'This game is played in landscape',
-  // ── screens.js topBar
   // ── screens.js TitleScreen
   'にゃんこ|ファンタジー': 'Nyanko|Fantasy',
   '〜 流れ星のおちた丘から 〜': '~ From the Hill Where the Star Fell ~',
@@ -369,11 +368,19 @@ Object.assign(EN, {
   // ── screens.js startStage
   'へんせいやレベルを見直してみよう。': 'Try changing your team or leveling up.',
   // ── screens.js TeamScreen
-  '枠を選んでから、下のにゃんこを<span class="pc-only">クリック</span><span class="touch-only">タップ</span>。先頭の子が、冒険でみんなを連れて歩きます。': 'Pick a slot, then <span class="pc-only">click</span><span class="touch-only">tap</span> a cat below. The cat in front leads the party on the adventure.',
   'みんな戦闘不能になってしまう。元気な子を一匹は入れておこう。': 'Everyone would be knocked out. Keep at least one healthy cat on the team.',
+  'あき': 'Empty',
   'いまは一行を離れている': 'Away from the party for now',
   '先頭': 'Lead',
-  'あき': 'Empty',
+  '先頭にする': 'Make Lead',
+  'ひかえへ': 'To Reserve',
+  'ひかえ': 'Reserve',
+  'ひかえの子はいない': 'No cats in reserve',
+  'この編成のコンボ': 'Combos for This Team',
+  '{0}と入れかわる子を選んでね': 'Pick a cat to swap with {0}',
+  '{0}と入れかえる子を選んでね（ならび・ひかえ）': 'Pick a cat to swap with {0} (team or reserve)',
+  'ひかえの子を選ぶと、ここに入る': 'Pick a reserve cat to fill this spot',
+  'にゃんこをえらんでから相手をえらぶと、入れかわる': 'Pick a cat, then another, to swap them.',
   // ── screens.js weaponHint
   '武器屋で売っている': 'Sold at the weapon shop',
   '{0}の宝箱に眠っている': 'Waiting in a treasure chest in {0}',
@@ -485,4 +492,5 @@ Object.assign(EN, {
   'ひそ…': 'psst...',
   // ── gfx/monsters.js buildEnemy
   '総長': 'BOSS',
+  // ── ソースに見当たらない文（直したか、消したもの）
 });
