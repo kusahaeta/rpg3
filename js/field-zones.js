@@ -109,8 +109,8 @@ const FIELD_ZONES = {
       { at: [24, -23.5], mark: [0, 1.5, 2.55], reach: 3.2, title: '猫神社', text: '世界を作った猫の神さまの社。お賽銭箱の上の絵の神さまは、大きなあくびをしている。' }],
     map2d: [470, 380],
     // 第八章「村を守る」：c8_01 を見てから c8_02 を見るまで、影の獣が広場を囲む（c8_01 の舞台と同じ場所に、一行のほうを向いて立つ）。
-    //   子猫たちと村人は家に隠れている。店の主人と村長は、いつもの場所でふんばっている
-    siege: { when: 'c8_01', until: 'c8_02', scene: 'c8_01', foe: 'kagejuu', face: [0, 13], hide: ['koneko_a', 'koneko_b', 'murabito_a', 'murabito_b'] } },
+    //   子猫たち・アン・村人は家に隠れている。店の主人と村長は、いつもの場所でふんばっている
+    siege: { when: 'c8_01', until: 'c8_02', scene: 'c8_01', foe: 'kagejuu', face: [0, 13], hide: ['koneko_a', 'koneko_b', 'ann', 'murabito_a', 'murabito_b'] } },
 
   hill: { ci: 0, name: '村はずれの丘', bgm: 'hill', w: 52, d: 48, stage: '1-1', arenas: [[0, 10, 0]], build: 'hill', calm: true, groups: 0, chests: 2, crystals: 2,
     world: true, arch: 'woods', chestAt: [[21, -17], [21, 1]],
