@@ -1609,15 +1609,22 @@ class Battle {
       const news = (Save.data.bondNews || []).splice(before); Save.save();
       if (news.length) info += news.map(n => { const [a, b] = n.k.split('|'); return `<div class="rw bondup">${Tx('♥ {0}と{1}の友情が Lv.{2} になった！', CHARS[a].name, CHARS[b].name, n.lv)}<small>${BOND_INFO[n.lv - 1]}</small></div>`; }).join('');
     }
+    // 結果は上の題字の帯と下の帯に分けて、まん中は 3D の勝ちポーズ（負けのときは倒れた景色）を見せる。戦闘の HUD は消す
+    const tmp = document.createElement('div'); tmp.innerHTML = info || '';
+    const team = tmp.querySelector('.rw-team'); if (team) team.remove();
+    this.root.classList.add('ended');
     const o = this.$('.overlay');
-    o.innerHTML = `<div class="ov-box result ${win ? 'win' : 'lose'}">
-      <div class="res-title">${win ? Tx('しょうり！') : Tx('まけちゃった……')}</div>
-      ${LANG === 'ja' ? `<div class="res-sub">${win ? 'VICTORY' : 'DEFEAT'}</div>` : ''}
-      <div class="res-info">${info || ''}</div>
-      <div class="res-btns">
-        ${!win && this.opts.canRetry ? `<button class="btn" data-r="retry">${Tx('再挑戦')}</button>` : ''}
-        <button class="btn gold" data-r="next">${win ? Tx('続ける') : Tx('戻る')}</button>
-      </div></div>`;
+    o.className = `overlay bres ${win ? 'win' : 'lose'}`;
+    o.innerHTML = `
+      <div class="bres-head"><div class="bres-title">${win ? Tx('しょうり！') : Tx('まけちゃった……')}</div>
+        ${LANG === 'ja' ? `<div class="bres-sub">${win ? 'VICTORY' : 'DEFEAT'}</div>` : ''}</div>
+      <div class="bres-band">
+        <div class="bres-info">${tmp.innerHTML}</div>
+        ${team ? `<div class="bres-team">${team.innerHTML}</div>` : ''}
+        <div class="bres-btns">
+          ${!win && this.opts.canRetry ? `<button class="btn" data-r="retry">${Tx('再挑戦')}</button>` : ''}
+          <button class="btn gold" data-r="next">${win ? Tx('続ける') : Tx('戻る')}</button>
+        </div></div>`;
     o.classList.remove('hidden');
     // 再挑戦のボタンのほかは、どこをクリックしても「続ける／戻る」（出た直後の連打では閉じない）
     const shown = performance.now(); let done = false;
