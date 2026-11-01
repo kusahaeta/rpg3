@@ -1523,8 +1523,9 @@ class BattleView extends BaseView {
   victory() {
     this.unfocus();
     const al = [...this.ents.values()].filter(e => e.ally && e.u.alive);
-    al.forEach((e, i) => { e.model.group.rotation.y = 0; if (e.model.face) e.model.face.set('joy'); GFX.delay(i * 0.1).then(() => this.tweenPose(e.model, i % 2 ? POSES.victory : POSES.ult, 0.5)); });
-    this.setCam(V3(0.5, 1.15, -0.4), V3(0, 0.72, 2.6), { speed: 1.6 });
+    // 敵のいた側から、こちらを向いた一行を撮る（勝利画面の上下の帯にかからないよう、少し引いて）
+    al.forEach((e, i) => { e.model.group.rotation.y = Math.PI; if (e.model.face) e.model.face.set('joy'); GFX.delay(i * 0.1).then(() => this.tweenPose(e.model, i % 2 ? POSES.victory : POSES.ult, 0.5)); });
+    this.setCam(V3(0.5, 1.15, -2.2), V3(0, 0.75, 2.6), { speed: 1.6 });
     for (const e of al) this.p.burst(this.hitPoint(e.u), '#ffd66b', 40, { speed: 3, up: 1, life: 1.5 });
   }
 
