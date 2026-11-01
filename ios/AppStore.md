@@ -124,7 +124,7 @@ Open the way with comedy routines on stage, and solve puzzles of light and shado
 rpg,cat,cats,kitten,turn-based,3d,adventure,offline,cute,story,party,jrpg,friendship,meow,quest
 ```
 
-スクリーンショットは、英語の画面のものを `ios/screenshots/en/` に用意した（日本語版と同じ 8 枚・同じサイズ。下の「スクリーンショット」）。English (U.S.) のローカリゼーションにはこちらを入れる。プレビュー動画は日本語の画面のものだけで、英語のローカリゼーションには主な言語の分が出る。
+スクリーンショットは、英語の画面のものを `ios/screenshots/en/` に用意した（日本語版と同じ 6 枚・同じサイズ。下の「スクリーンショット」）。English (U.S.) のローカリゼーションにはこちらを入れる。プレビュー動画は日本語の画面のものだけで、英語のローカリゼーションには主な言語の分が出る。
 
 ## 年齢レーティングの答え
 
@@ -181,46 +181,33 @@ Not applicable. The app is a game and is not in a regulated industry. The charac
 
 ## スクリーンショット
 
-iPhone 6.9 インチ（横 2868×1320）を 3〜10 枚。`ios/screenshots/` の 8 枚（タイトル・コンボ技・街道・宿場の夜の会話・戦闘・シロの登場・ミケの「すっごくおいしかったよ！」・くろねこ谷のさまよう鎧との戦闘）を使う。ネタバレをさけて、第一章のはじめ・第二章〜第三章・第四章の道中の場面から選んだ。
+iPhone 6.9 インチ（横 2868×1320）を 3〜10 枚。`ios/screenshots/` の 6 枚を、ファイル名の番号の順に入れる。最初の 1〜3 枚でゲームの中身（戦闘・冒険）が伝わるよう、戦闘と探索を先に、タイトル（5 匹の後ろ姿）は最後にした（2026-11-01）。
 
-- 6.1／6.3 インチの枠は `6.3inch/`（2622×1206）、6.5 インチの枠は `6.5inch/`（2778×1284）。それぞれ 874×402・926×428 の 3 倍の画面で撮る。6.9 インチの分があれば、ほかのサイズは要らない
+| ファイル | 中身 | 見出し |
+| --- | --- | --- |
+| 01-combo | 古代遺跡・外庭で、ミケとクロのコンボ技「にゃんこブレイク」の二つの斬撃が、石のねこ像の前で X に重なったところ | 仲間とのコンボ技 |
+| 02-field | ミャオ街道・丘のふもとから、頂上の風車（羽まで）と小麦畑へ向かって道を歩いていくところ | かわいいにゃんこと不思議な世界を大冒険 |
+| 03-yoroi | くろねこ谷で、ミケの番に「勇者のつるぎ」でさまよう鎧を狙うコマンド選択（下の仲間・技のボタンを切らないよう、上を切る） | ターン制のコマンドバトル／弱点を狙って有利に導こう（2 行） |
+| 04-fit | おしゃれの 4 匹を縦に 4 つ並べる（ミケ：むぎわら帽子・はっぴ、クロ：シルクハット・タキシード、シロ：ベレー帽・まるメガネ、タマ：ピエロ） | 帽子にマントに服 おしゃれも楽しい |
+| 05-friends | 会話の 4 匹を 2×2 で 1 枚に。上の段はシロの名のり（第二章「自称・天才魔法使い」）とクロの「……もらう。」（第一章「空から来た黒猫」で魚をもう一匹すすめたとき。照れ顔）、下の段はミケの「すっごくおいしかったよ！」（第一章「魚どろぼう」）とタマの「……すぴー……。」（第二章「綿毛の上の子猫」、綿毛のてっぺんで寝ているところを、寄って下から見上げる）。上の段の 2 匹は見出しが重なるので、画面の下寄りに写す | ゆかいでくせの強い仲間たち |
+| 06-title | タイトル（「タップして はじめる」と言語ボタンなし） | なし |
+
+見出しはゲームの画面の上に重ねる（ゲームと同じ丸ゴシック。英語版は英語の見出し）。ゲームの画面は枠の横はばいっぱいに広げ（左右に星の帯を残さない）、はみ出す上下を切る。
+
+- 6.1／6.3 インチの枠は `6.3inch/`（2622×1206）、6.5 インチの枠は `6.5inch/`（2778×1284）。6.9 インチの分があれば、ほかのサイズは要らない
 - 英語版は `en/` に同じ並び（`en/` のすぐ下が 6.9 インチ、`en/6.3inch/`・`en/6.5inch/`・`en/header.png`）。English (U.S.) のローカリゼーションに入れる
 - ヘッダの画像・検索結果の画像は `header.png`（5244×2950。JPEG は受け付けない）。タイトル画面を「タップして はじめる」と右上の言語ボタンなしで撮った
 
-撮りなおすときは、Chrome を `--headless=new --remote-debugging-port` で開き、DevTools プロトコルで画面を 956×440・3 倍・タッチありにして `?debug` のゲームを開く。`Debug.jump` で場面を作り、`#diag` を隠して `GFX.watchFps = () => {}; GFX.setTier(0)` で画質を「なめらか」に固定してから `Page.captureScreenshot` で撮る（ヘッドレスはコマ数が少なく見え、そのままだと軽量の画質に落とされる）。タイトル画面（`01-title.jpg` の 3 サイズと `header.png`）は `tools/shoot-title.mjs` で撮る。2026-10-27 に、作りなおしたにゃんだーの樹のタイトルで撮りなおした：
+作りなおすときは、ゲームの画面（16:9）だけを 3840×2160 で撮ってから、`tools/store-compose.mjs` で切り抜き・並べ・見出しを入れる。撮るのは `tools/shoot-store.mjs`（紹介動画の録画と同じ仮の時計でコマ送りするので、毎回同じ画になる。いくつも同時に動かすと読みこみの速さで 1〜2 コマずれるので、1 つずつ撮る）と、タイトルの `tools/shoot-title.mjs`。ヘッドレスの Chrome で `?debug` のゲームを開き、画質は「なめらか」に固定して撮る。場面の中身・切り方・見出しの文は、それぞれのスクリプトの SHOTS・SLIDES に書いてある：
 
 ```
 PORT=8937 node .claude/serve.js
-node tools/shoot-title.mjs 01-title.png 3 start 956x440           # 6.9 インチ 2868×1320
-node tools/shoot-title.mjs 01-title.png 3 start 874x402           # 6.3 インチ 2622×1206
-node tools/shoot-title.mjs 01-title.png 3 start 926x428           # 6.5 インチ 2778×1284
-node tools/shoot-title.mjs header.png 4.096875 nostart 1280x720   # ヘッダ 5244×2950
+for n in combo field yoroi fit-mike fit-kuro fit-shiro fit-tama shiro kuro oishii tama; do node tools/shoot-store.mjs $n <撮るフォルダ>/ja/$n.png; done
+node tools/shoot-title.mjs <撮るフォルダ>/ja/title.png 3 nostart
+node tools/store-compose.mjs <撮るフォルダ>/ja ja     # ios/screenshots/ の 3 サイズと android/store/screenshots/
 ```
 
-タイトル画面のほかの 7 枚は `tools/shoot-store.mjs` で撮る。紹介動画の録画と同じ仮の時計でコマ送りして撮るので、毎回同じ画になる（ただし、いくつも同時に動かすと読みこみの速さで 1〜2 コマずれるので、1 つずつ撮る）。場面の名前と中身は：
-
-| 場面 | ファイル | 中身 |
-| --- | --- | --- |
-| `combo` | 02-combo | 笑顔の塔・下層で、ミケとクロのコンボ技「にゃんこブレイク」がゴーストに当たったところ |
-| `field` | 03-field | ミャオ街道・丘を、風車と小麦畑のそばの道にそって歩いていくところ |
-| `talk` | 04-talk | 第二章「宿場の夜」で、ミケが「あるある！ 毎日ある！…」と言うところ |
-| `battle` | 05-battle | ごろごろ切り通しで、シロの番に「マジックアロー」でのら犬を狙うコマンド選択 |
-| `shiro` | 06-shiro | 第二章「自称・天才魔法使い」で、シロが名のるところ |
-| `oishii` | 07-oishii | 第一章「魚どろぼう」で「でも、すっごくおいしかったよ！」を選び、ミケが両手を挙げたところ |
-| `yoroi` | 08-yoroi | くろねこ谷で、ミケの番に「勇者のつるぎ」でさまよう鎧を狙うコマンド選択 |
-
-```
-node tools/shoot-store.mjs oishii 07-oishii.png 956x440 3   # 6.9 インチ（6.3 インチは 874x402、6.5 インチは 926x428）
-```
-
-英語版（`ios/screenshots/en/`）は、`SHOT_LANG=en` を付けて同じ手順で撮る（`shoot-title.mjs` も同じ）。2026-10-27 に 8 枚・3 サイズとヘッダを撮った。日本語版の 02〜06 は 2026-10-24 にその場の手作業で撮ったもので、`shoot-store.mjs` で撮りなおすと英語版と同じ画になる：
-
-```
-SHOT_LANG=en node tools/shoot-title.mjs 01-title.png 3 start 956x440
-SHOT_LANG=en node tools/shoot-store.mjs combo 02-combo.png 956x440 3
-```
-
-App Store には JPEG（品質 92。`sips -s format jpeg -s formatOptions 92`）にして入れる（ヘッダだけ PNG）。
+英語版は `SHOT_LANG=en` を付けて `<撮るフォルダ>/en/` に撮り、`node tools/store-compose.mjs <撮るフォルダ>/en en`（`ios/screenshots/en/` に書く）。ヘッダは `node tools/shoot-title.mjs header.png 4.096875 nostart 1280x720`（5244×2950）。
 
 ## プレビュー動画
 
