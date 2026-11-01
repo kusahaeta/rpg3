@@ -1476,19 +1476,35 @@ class BattleView extends BaseView {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TexCache.zzz, transparent: true, depthWrite: false })); sp.scale.setScalar(0.3); sp.renderOrder = OVER_PAINT; return sp;
   }
   // コンボ：ふたり（みんな）が並んで光る
+  //   技を使う子がとなりどうしでないと、あいだの子が手前に映って、使う子が画面の外に出る。
+  //   そこで、使う子だけを残してとなりどうしに寄せ、全員が入る近さにカメラを置く（おわったら元の場所へ戻して切りかえる）
   async comboIntro(mem, c) {
     const es = mem.map(u => this.ent(u)).filter(Boolean); if (!es.length) return;
-    this.unfocus(); this.sway = 0;
-    const cx = es.reduce((a, e) => a + e.home.x, 0) / es.length;
-    this.setCam(V3(cx + 0.4, 1.0, 5.4), V3(cx, 0.7, 2.6), { snap: true });
-    this.setCam(V3(cx + 0.9, 0.9, 4.6), V3(cx, 0.75, 2.6), { speed: 1.5 });
-    es.forEach((e, i) => { e.model.group.rotation.y = 0; if (e.model.face) e.model.face.set('joy'); GFX.delay(i * 0.08).then(() => this.tweenPose(e.model, POSES.ult, 0.35)); e.model.flash(e.u.color, 0.5); this.fx.pillar(e.home, e.u.color, { h: 6, r: 0.55, life: 1.1, k: 0.45 }); });
-    if (es.length > 1) for (let i = 0; i < es.length - 1; i++) this.fx.beam(this.hitPoint(es[i].u), this.hitPoint(es[i + 1].u), '#ffcf4a', { life: 1.0, r: 0.03 });
-    this.p.burst(V3(cx, 0.8, 2.6), '#ffcf4a', 80, { speed: 4, life: 1.2, size: 0.08, up: 0.8 });
+    const mine = new Set(es);
+    for (const x of this.ents.values()) if (x.ally) x.model.group.visible = mine.has(x);
+    this.sway = 0; this.roll = 0; this.setFov(38);
+    const cx = es.reduce((a, e) => a + e.home.x, 0) / es.length, z = es[0].home.z, gap = 1.25;
+    const row = [...es].sort((a, b) => a.home.x - b.home.x);
+    let moved = false;
+    row.forEach((e, i) => {
+      const x = cx + (i - (row.length - 1) / 2) * gap;
+      if (Math.abs(x - e.home.x) > 1e-3) moved = true;
+      e.model.group.position.set(x, 0, z);
+    });
+    // 横幅に合わせて引く（ふたりなら元の近さのまま。縦長の画面や大人数では、はみ出さないところまで）
+    const half = (row.length - 1) / 2 * gap + 0.65, tanH = Math.tan(this.camera.fov * Math.PI / 360) * this.camera.aspect;
+    const near = Math.max(2.0, half / tanH), far = near + 0.8;
+    this.setCam(V3(cx + 0.4, 1.0, z + far), V3(cx, 0.7, z), { snap: true });
+    this.setCam(V3(cx + 0.9, 0.9, z + near), V3(cx, 0.75, z), { speed: 1.5 });
+    es.forEach((e, i) => { e.model.group.rotation.y = 0; if (e.model.face) e.model.face.set('joy'); GFX.delay(i * 0.08).then(() => this.tweenPose(e.model, POSES.ult, 0.35)); e.model.flash(e.u.color, 0.5); this.fx.pillar(e.model.group.position.clone(), e.u.color, { h: 6, r: 0.55, life: 1.1, k: 0.45 }); });
+    for (let i = 0; i < row.length - 1; i++) this.fx.beam(this.hitPoint(row[i].u), this.hitPoint(row[i + 1].u), '#ffcf4a', { life: 1.0, r: 0.03 });
+    this.p.burst(V3(cx, 0.8, z), '#ffcf4a', 80, { speed: 4, life: 1.2, size: 0.08, up: 0.8 });
     GFX.flash('#fff4c8', 0.2, 0.4);
     await GFX.delay(1.2);
-    es.forEach(e => { e.model.group.rotation.y = Math.PI; this.tweenPose(e.model, POSES.ready, 0.2); });
+    es.forEach(e => { e.model.group.position.copy(e.home); e.model.group.rotation.y = Math.PI; this.tweenPose(e.model, POSES.ready, 0.2); });
     this.wide();
+    // 寄せた子が元の場所へ飛ぶのを見せないよう、引きの画へ切りかえる
+    if (moved) { this.camera.position.copy(this.camPos); this.curLook.copy(this.camLook); }
   }
   // にゃんこオールスターズ：台詞のあいだ、みんなで顔を見合わせ（allStarsLine）、
   // 「ずっと仲間だ！」で手をあげる。世界中の猫の光がみんなの手もとへ集まり、虹の光になって敵を貫く
