@@ -2559,6 +2559,7 @@ class FieldView extends BaseView {
     // 戦闘中に止まった昇降機は行き先に着いたことにする
     if (this.T) this.T.lifts.forEach(L => { if (L.moving) { L.moving = false; L.y = L.to; } });
     this.placePlayer(1);
+    this.releaseTouch();
     App.mount(this.root);
     GFX.setView(this);
     Game.activeField = this;
@@ -2683,6 +2684,9 @@ class FieldView extends BaseView {
     };
     r.addEventListener('pointerup', up);
     r.addEventListener('pointercancel', up);
+    // 押していた指をすべて離したことにする。戦闘など別の画面に切りかわったあとで指を離すと、
+    // この画面には pointerup が来ないので、スティックが倒れたまま・指が残ったままになる
+    this.releaseTouch = () => { pts.clear(); this.pinch = 0; this.stick = null; stick.classList.add('hidden'); };
     r.querySelectorAll('[data-pad]').forEach(b => b.addEventListener('pointerdown', e => {
       e.preventDefault(); e.stopPropagation();
       const a = b.dataset.pad;
