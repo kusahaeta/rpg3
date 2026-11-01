@@ -30,6 +30,8 @@ async function faceCam(api, key, d, r, y, lift = 0) {
     v.cut(pos, look, { fov: 38 }); } true`);
   await step(api, 6);
 }
+// 冒険の 3 枚（縦に並べる）は、地名・お知らせ・目的・仲間の顔のアイコンを隠す（見出しと重なり、3 列に同じアイコンが並ぶため）
+const hideFieldUi = api => api.ev(`document.querySelectorAll('.fd-zone, .fd-title, .fd-toasts, .fd-quest, .fd-team').forEach(e => e.style.visibility = 'hidden'); true`);
 // 会話を始める（左上の場面名と、右上の AUTO・スキップのボタンは隠す。3 枚を並べて切り抜くと、場面名が半分だけ残るため）
 const scene = (api, id) => api.ev(`App.go(DialogueScreen, '${id}', () => {}); document.querySelectorAll('.dl-title, .dl-ctrl').forEach(e => e.style.visibility = 'hidden'); true`);
 
@@ -69,16 +71,38 @@ const SHOTS = {
     await step(api, 70);
   },
 
-  // 02：ミャオ街道・丘のふもとから、頂上の風車（羽まで）と小麦畑へ向かって道を歩いていくところ（目的は「宿場の北、ごろごろ切り通しへ」）。
+  // 02：冒険。ミャオ街道・丘のふもとから、頂上の風車（羽まで）と小麦畑へ向かって道を歩いていくところ（目的は「宿場の北、ごろごろ切り通しへ」）。
   // 立ち止まると仲間がこちらを向くので、歩きながら撮る。カメラはふだんより低く・遠く
   async field(api) {
     const [x0, z0, x1, z1] = [-2, 16, -2, -21];
     await api.ev(`P.prep(1, 11, 17); P.field('road1_hill', ${x0}, ${z0}, ${Math.atan2(-(x1 - x0), -(z1 - z0))}); true`);
     await api.run(1.5);
-    // 左上の地名は見出しと重なるので隠す（目的の枠は残す）
-    await api.ev(`document.querySelectorAll('.fd-zone, .fd-title').forEach(e => e.style.visibility = 'hidden'); true`);
+    await hideFieldUi(api);
     await api.ev(`P.noFoes(); Game.activeField.camPitch = 0.12; Game.activeField.camDist = 7; Game.activeField.camYaw = ${Math.atan2(-(x1 - x0), -(z1 - z0))}; true`);
     for (let i = 0; i < 60; i++) { await api.ev(`P.steer(${x1}, ${z1}, false)`); await step(api, 1); }
+  },
+
+  // 02：冒険（風車の街道・まどろみの林・笑顔の塔を縦に 3 つ並べる）。まどろみの林の綿毛の丘で、みんなで綿毛につかまって、ねむり川を越えるところ
+  async woods(api) {
+    await api.ev(`P.prep(1, 4); P.field('woods', -19, -6, 0)`);
+    await api.run(1.5);
+    await api.ev(`P.noFoes(); { const v = Game.activeField; v.camPitch = 0.3; v.camDist = 6; } true`);
+    await hideFieldUi(api);
+    for (let i = 0; i < 6 * FPS; i++) {
+      const d = await api.ev(`P.steer(-19, -11, false, 0.2)`);
+      if (d < 1.2) { await api.ev(`P.halt(); Game.activeField.interact(); true`); break; }
+      await step(api, 1);
+    }
+    await step(api, 25);   // 川の上にさしかかったところ
+  },
+
+  // 02：冒険。笑顔の塔 1F の入口の広間から、玉と幕の舞台のある大ロビーへ歩いていくところ
+  async tower(api) {
+    await api.ev(`P.prep(2, 3, 20); P.field('tower', 0, 34, 0); true`);
+    await api.run(1.5);
+    await api.ev(`P.noFoes(); { const v = Game.activeField; v.camPitch = 0.2; v.camDist = 7; v.camYaw = 0; } true`);
+    await hideFieldUi(api);
+    for (let i = 0; i < 60; i++) { await api.ev(`P.steer(0, 0, false)`); await step(api, 1); }
   },
 
   // 05：会話（4 匹を 2×2 で 1 枚に並べる）。第二章「綿毛の上の子猫」で、大きなたんぽぽの綿毛のてっぺんで、タマが丸くなって眠っているところ（「……すぴー……。」）

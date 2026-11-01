@@ -1,7 +1,7 @@
 // ストアのスクショを組み立てる：tools/shoot-store.mjs・shoot-title.mjs で撮ったゲームの画面（16:9・3840×2160）を、
 // iPhone の横長の枠いっぱいに広げ（左右の帯なし。はみ出す上下を切る）、おしゃれ（4 匹）・会話（3 枚）は 1 枚に並べ、見出しを上に重ねる。
 //   node tools/store-compose.mjs <撮ったフォルダ> <ja|en> [出力の根=.]
-// 撮ったフォルダには combo.png field.png yoroi.png fit-mike.png fit-kuro.png fit-shiro.png fit-tama.png shiro.png kuro.png oishii.png tama.png title.png。
+// 撮ったフォルダには combo.png field.png woods.png tower.png yoroi.png fit-mike.png fit-kuro.png fit-shiro.png fit-tama.png shiro.png kuro.png oishii.png tama.png title.png。
 // 書き出すもの（ja は ios/screenshots/、en は ios/screenshots/en/ の下）：6.9 インチ（すぐ下）・6.3inch/・6.5inch/。
 // ja は Google Play（android/store/screenshots/、1920×1080）も。見出しはゲームと同じ丸ゴシックで、Chrome に描かせる。
 import { spawn } from 'node:child_process';
@@ -27,7 +27,7 @@ const CAP = {
 }[lang];
 const SLIDES = [
   ['01-combo', { one: 'combo', y: 0.8 }, CAP.combo],
-  ['02-field', { one: 'field', y: 0 }, CAP.field],
+  ['02-field', { cols: [['field', 0.53, 0.5], ['woods', 0.48, 0.5], ['tower', 0.5, 0.5]], zoom: 1 }, CAP.field],   // 風車の街道・まどろみの林・笑顔の塔
   ['03-yoroi', { one: 'yoroi', y: 1 }, CAP.yoroi],   // 下（仲間・技のボタン）を切らない。上の鎧の弱点の印は見出しと重なってよい
   ['04-fit', { cols: [['fit-mike', 0.285, 0.5], ['fit-kuro', 0.3, 0.5], ['fit-shiro', 0.28, 0.5], ['fit-tama', 0.29, 0.5]], zoom: 1.05 }, CAP.fit],
   ['05-friends', { grid: [['shiro', 0.5, 0.53], ['kuro', 0.5, 0.5], ['oishii', 0.5, 0.5], ['tama', 0.6, 0.5]] }, CAP.friends],
