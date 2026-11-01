@@ -30,8 +30,11 @@ async function faceCam(api, key, d, r, y, lift = 0) {
     v.cut(pos, look, { fov: 38 }); } true`);
   await step(api, 6);
 }
-// 冒険の 3 枚（縦に並べる）は、地名・お知らせ・目的・仲間の顔のアイコンを隠す（見出しと重なり、3 列に同じアイコンが並ぶため）
-const hideFieldUi = api => api.ev(`document.querySelectorAll('.fd-zone, .fd-title, .fd-toasts, .fd-quest, .fd-team').forEach(e => e.style.visibility = 'hidden'); true`);
+// 冒険の 3 枚（縦に並べる）は、地名・お知らせ・目的・仲間の顔のアイコンを隠す（見出しと重なり、3 列に同じアイコンが並ぶため）。
+// 目的地の光の柱と距離の札（.fd-qmark）も隠す（笑顔の塔では、舞台のむすっと顔の幕の前に立ってしまう）
+const hideFieldUi = api => api.ev(`{ document.querySelectorAll('.fd-zone, .fd-title, .fd-toasts, .fd-quest, .fd-team').forEach(e => e.style.visibility = 'hidden');
+  const st = document.createElement('style'); st.textContent = '.fd-qmark { visibility: hidden !important; }'; document.head.appendChild(st);
+  const q = Game.activeField.quest; if (q && q.g) q.g.visible = false; } true`);
 // 会話を始める（左上の場面名と、右上の AUTO・スキップのボタンは隠す。3 枚を並べて切り抜くと、場面名が半分だけ残るため）
 const scene = (api, id) => api.ev(`App.go(DialogueScreen, '${id}', () => {}); document.querySelectorAll('.dl-title, .dl-ctrl').forEach(e => e.style.visibility = 'hidden'); true`);
 
@@ -96,13 +99,13 @@ const SHOTS = {
     await step(api, 25);   // 川の上にさしかかったところ
   },
 
-  // 02：冒険。笑顔の塔 1F の入口の広間から、玉と幕の舞台のある大ロビーへ歩いていくところ
+  // 02：冒険。笑顔の塔 1F の大ロビーで、玉のりの玉のあいだを、むすっと幕の舞台へ歩いていくところ
   async tower(api) {
-    await api.ev(`P.prep(2, 3, 20); P.field('tower', 0, 34, 0); true`);
+    await api.ev(`P.prep(2, 3, 20); P.field('tower', 0, 8, 0); true`);   // むすっと幕が大きく写る近さから
     await api.run(1.5);
     await api.ev(`P.noFoes(); { const v = Game.activeField; v.camPitch = 0.2; v.camDist = 7; v.camYaw = 0; } true`);
     await hideFieldUi(api);
-    for (let i = 0; i < 60; i++) { await api.ev(`P.steer(0, 0, false)`); await step(api, 1); }
+    for (let i = 0; i < 60; i++) { await api.ev(`P.steer(0, -14, false)`); await step(api, 1); }
   },
 
   // 05：会話（4 匹を 2×2 で 1 枚に並べる）。第二章「綿毛の上の子猫」で、大きなたんぽぽの綿毛のてっぺんで、タマが丸くなって眠っているところ（「……すぴー……。」）
