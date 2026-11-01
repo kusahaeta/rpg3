@@ -1145,7 +1145,8 @@ class Battle {
   // しるしをつけていって、決めでまとめて当てる連撃（黒白連撃・にゃんこブレイク）：srcs[i] が i 発目を撃つ。一撃ごとに的を決めて動きだけ見せ、
   //   決めの動き（view の finishMarks）で、しるしがはじける順にダメージを入れる（合計は一撃ずつ当てるのと同じ）。
   //   的は pickT(まだ倒れていない見込みの敵) で選ぶ（見込みはクリティカルなしで数える）。null なら、そこで決めへ進む
-  async markHits(srcs, mult, tough, kind, optOf, pickT = pick) {
+  //   all：倒れる見込みでも、全員が撃つ（にゃんこブレイクは十字がそろって決めになるので、ミケの一撃で倒れる見込みでもクロが斬る）
+  async markHits(srcs, mult, tough, kind, optOf, pickT = pick, { all = false } = {}) {
     if (!this.v) {
       let all = [];
       for (let i = 0; i < srcs.length; i++) {
@@ -1157,7 +1158,7 @@ class Battle {
     }
     const left = new Map(), marks = [];
     for (let i = 0; i < srcs.length; i++) {
-      const en = this.aliveEnemies().filter(e => (left.has(e) ? left.get(e) : e.hp) > 0); if (!en.length) break;
+      const en = all ? this.aliveEnemies() : this.aliveEnemies().filter(e => (left.has(e) ? left.get(e) : e.hp) > 0); if (!en.length) break;
       const src = srcs[i], t = pickT(en), opt = optOf(i);
       if (!t) break;
       left.set(t, (left.has(t) ? left.get(t) : t.hp) - this.calcDamage(src, t, mult, kind, { ...opt, noCrit: true }).value);

@@ -1804,7 +1804,7 @@ const MOVES = {
     async finish(n, land) {
       const bx = this.breakX; this.breakX = null;
       if (!bx || !bx.line2) {
-        // クロが斬らなかった（ミケの一撃で倒れる見込み）：ミケの線だけがはじける
+        // クロが斬らなかった（クロがいないときなど。ふつうはない）：ミケの線だけがはじける
         if (bx) { bx.line.end(); this.fx.shards(bx.p, bx.col, 8, 4); this.squash(bx.te, 0.25); }
         for (let j = 0; j < n; j++) await land(j);
         if (bx) await this.breakWide();
