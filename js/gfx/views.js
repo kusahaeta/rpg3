@@ -789,6 +789,8 @@ class BattleView extends BaseView {
   // ---------- 壁の切り取り ----------
   // 戦場の区画の壁・柱・天井は、カメラと味方・敵のあいだに入ると、視線に垂直な面で手前を切り落とす
   // （床・水面は切らない。切らないときは面をカメラの位置に置く）
+  //   かがり火の光の玉（Sprite）・粒（Points）も切る。残すと、封印の間の 4 匹目の肩越しのように、
+  //   切り落とした小物の光だけがカメラの目の前に浮いて画面をおおう
   //   材質には、探索フィールドと使い回すもの（魔王城の重い扉の HEAVY_DOOR_M など）がある。
   //   付けた切り取り面は、戦闘のあと dispose で元に戻す（戻さないと、フィールドの扉が切り落とされて消える）
   initCutaway() {
@@ -799,7 +801,7 @@ class BattleView extends BaseView {
     S.root.updateMatrixWorld(true);
     this.toSet = S.root.matrixWorld.clone().invert();
     S.root.traverse(o => {
-      if (!o.isMesh || !o.material) return;
+      if (!(o.isMesh || o.isSprite || o.isPoints) || !o.material) return;
       const na = o.geometry.getAttribute('normal');
       if (na) {
         nm.getNormalMatrix(o.matrixWorld);
