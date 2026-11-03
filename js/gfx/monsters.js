@@ -91,16 +91,114 @@ function buildEnemy(key) {
       update = (dt, t) => { const b = Math.abs(Math.sin(t * 3 + root.userData.ph)); inner.position.y = b * 0.12; inner.scale.set(1 + (1 - b) * 0.08, 1 - (1 - b) * 0.12, 1 + (1 - b) * 0.08); };
       height = 0.9; radius = 0.55; break;
     }
-    case 'mushroom': {   // ねこまたきのこ：猫耳の傘、しっぽが二本
-      const stemM = tm('#f6ead2'), capM = tm(col);
-      add(P(new THREE.CylinderGeometry(0.2, 0.26, 0.55, 16), stemM), 0, 0.3, 0);
-      const cap = add(P(new THREE.SphereGeometry(0.46, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), capM), 0, 0.52, 0); cap.scale.y = 0.75;
-      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2, sp = add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), tm('#ffffff')), Math.cos(a) * 0.3, 0.72, Math.sin(a) * 0.3); sp.scale.y = 0.4; }
-      catEars(0.26, 0.82, 0, 1, capM);
-      eyes(0.09, 0.36, 0.245, 0.06, inner, { angry: false });
-      const tails = [-1, 1].map(s => { const g = new THREE.Group(); g.position.set(s * 0.08, 0.15, -0.2); inner.add(g); let par = g; for (let i = 0; i < 4; i++) { const q = new THREE.Group(); if (i) q.position.y = 0.09; par.add(q); const m = P(new THREE.CapsuleGeometry(0.035, 0.06, 3, 8), capM); m.position.y = 0.045; q.add(m); par = q; } return g; });
-      update = (dt, t) => { inner.position.y = Math.abs(Math.sin(t * 4 + root.userData.ph)) * 0.08; tails.forEach((g, i) => { g.rotation.set(-0.9, 0, (i ? 1 : -1) * 0.4 + Math.sin(t * 3 + i) * 0.3); let q = g.children[0]; while (q) { q.rotation.x = -0.15; q = q.children.find(c => c.isGroup); } }); };
-      height = 1.1; radius = 0.5; break;
+    case 'mushroom': {   // ねこまたきのこ：ねこまた（しっぽが二股の猫の妖怪）になったきのこ。猫耳と猫の目のある水玉の傘、二股のしっぽ
+      const stemM = tm('#f6ead2'), capM = tm(col), earIn = tm('#ffc8d6'), dotM = tm('#fff6f2'), tipM = tm('#fff6f2');
+      const lineM = new THREE.MeshBasicMaterial({ color: '#3a2228' });
+      // 動かない小さな部品は、一つの形にまとめて描く回数をへらす
+      const bake = (list, mat, parent) => {
+        const geos = list.map(m => { m.updateMatrix(); const g = m.geometry.clone().applyMatrix4(m.matrix); m.parent.remove(m); return g; });
+        return add(new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(geos), mat), 0, 0, 0, parent);
+      };
+      // 軸：下ぶくれ。傘は body に入れて、着地でいっしょにつぶれる
+      const body = new THREE.Group(); inner.add(body);
+      const SP = [[0.001, 0], [0.2, 0], [0.26, 0.04], [0.285, 0.12], [0.28, 0.22], [0.262, 0.34], [0.232, 0.46], [0.2, 0.58], [0.001, 0.6]];
+      add(P(lathe(SP, 24), stemM), 0, 0, 0, body);
+      // 傘：ふちが内へまるまった、ふっくらした丸い傘
+      const cap = new THREE.Group(); cap.position.y = 0.55; body.add(cap);
+      const capPt = f => [0.5 * Math.pow(Math.max(0, Math.cos(f)), 0.55), 0.4 * Math.pow(Math.max(0, Math.sin(f)), 0.9)];
+      const CP = [[0.43, -0.045], [0.475, -0.035], [0.497, -0.012]];
+      for (let i = 0; i <= 18; i++) CP.push(capPt(i / 18 * Math.PI / 2));
+      CP[CP.length - 1][0] = 0.001;
+      add(P(lathe(CP, 32), capM), 0, 0, 0, cap);
+      // 傘の裏のひだ
+      add(new THREE.Mesh(lathe([[0.17, 0.03], [0.3, 0.0], [0.44, -0.04]], 32), tm('#f2d8c8', { side: THREE.DoubleSide })), 0, 0, 0, cap);
+      const gills = [];
+      for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2, g = add(new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.006, 0.24)), Math.sin(a) * 0.3, -0.012, Math.cos(a) * 0.3, cap); g.rotation.set(0, a, 0); g.rotateX(-0.25); gills.push(g); }
+      bake(gills, tm('#d8b4a4'), cap);
+      // 傘の上の点：φ（ふちから上へ）・θ（正面から横へ）で、表の位置と外向き
+      const capAt = (f, th) => {
+        const [r, y] = capPt(f), [r2, y2] = capPt(f + 0.01), n = V3(y2 - y, -(r2 - r), 0).normalize();
+        return { p: V3(Math.sin(th) * r, y, Math.cos(th) * r), n: V3(Math.sin(th) * n.x, n.y, Math.cos(th) * n.x) };
+      };
+      // 白い水玉（傘の表にぴったり）
+      const dots = [];
+      for (const [f, th, s] of [[1.25, 0, 0.1], [0.8, 0.68, 0.075], [0.76, -0.72, 0.07], [0.25, 1.05, 0.07], [0.3, -1.15, 0.065], [0.3, 1.85, 0.07], [0.85, 2.4, 0.09], [0.55, -2.5, 0.08], [0.3, 3.1, 0.07], [1.2, -3.0, 0.07]]) {
+        const { p, n } = capAt(f, th), dot = add(new THREE.Mesh(new THREE.SphereGeometry(s, 16, 10), dotM), p.x, p.y, p.z, cap);
+        dot.quaternion.setFromUnitVectors(V3(0, 0, 1), n); dot.scale.set(1, 0.85, 0.28); dots.push(dot);
+      }
+      bake(dots, dotM, cap);
+      // 猫耳：傘から生える。内がわは淡い桃色
+      const ears = [-1, 1].map(s => {
+        const { p, n } = capAt(0.92, s * 1.12), g = new THREE.Group(); g.position.copy(p).addScaledVector(n, -0.02); cap.add(g);
+        g.quaternion.setFromUnitVectors(V3(0, 1, 0), n.clone().multiplyScalar(0.55).add(V3(0, 0.45, 0)).normalize());
+        const tw = new THREE.Group(); g.add(tw);
+        const eg = new THREE.ConeGeometry(0.13, 0.26, 14); eg.translate(0, 0.13, 0);
+        add(P(eg, capM), 0, 0, 0, tw).scale.z = 0.5;
+        const ig = new THREE.ConeGeometry(0.085, 0.18, 12); ig.translate(0, 0.09, 0);
+        const ei = add(new THREE.Mesh(ig, earIn), 0, 0.02, 0.035, tw); ei.scale.z = 0.3;
+        tw.rotation.y = -s * 0.5;
+        return tw;
+      });
+      // 目：傘の正面に、いたずらっぽい半目の猫の目（金の瞳に縦長の黒目）。上まぶたは傘の色
+      const eyeG = [-1, 1].map(s => {
+        const { p, n } = capAt(0.42, s * 0.3), g = new THREE.Group(); g.position.copy(p).addScaledVector(n, -0.016); cap.add(g);
+        g.quaternion.setFromUnitVectors(V3(0, 0, 1), n);
+        const w = add(new THREE.Mesh(new THREE.SphereGeometry(0.085, 18, 12), tm('#ffffff')), 0, 0, 0, g); w.scale.set(1, 1.08, 0.45);
+        const iris = add(new THREE.Mesh(new THREE.SphereGeometry(0.067, 16, 12), new THREE.MeshBasicMaterial({ color: '#f2b83a' })), s * -0.008, -0.008, 0.018, g); iris.scale.set(1, 1.08, 0.42);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.059, 12, 10), new THREE.MeshBasicMaterial({ color: '#1a1420' })), s * -0.008, -0.008, 0.028, g).scale.set(0.3, 1, 0.4);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffffff' })), -0.023, 0.028, 0.05, g);
+        // 上まぶた：傘の色で目の上をおおい、ふちに黒い線。目じりが少し上がる
+        const lid = new THREE.Group(); lid.rotation.z = s * 0.22; g.add(lid);
+        const lg = add(new THREE.Mesh(new THREE.SphereGeometry(0.093, 18, 8, 0, Math.PI * 2, 0, Math.PI * 0.36), capM), 0, -0.008, 0, lid); lg.scale.set(1.05, 1.15, 0.5);
+        const ln = add(new THREE.Mesh(new THREE.TorusGeometry(0.087, 0.01, 6, 20, Math.PI * 0.8), lineM), 0, 0.028, 0.016, lid); ln.rotation.z = Math.PI * 0.1; ln.scale.set(1.05, 0.55, 1);
+        return g;
+      });
+      // 前足：根もとに、ちょこんと
+      for (const s of [-1, 1]) add(P(new THREE.SphereGeometry(0.075, 14, 10), stemM), s * 0.12, 0.03, 0.22).scale.set(1, 0.6, 1.2);
+      // 二本のしっぽ：軸のうしろから出て、傘のうしろで左右へ分かれて立つ。先は白い
+      // 根もとは寝かせてうしろへのび、傘のうしろで立ちあがって（TC：上へ反る）、左右へ開き（TX）、先は外へくるり
+      const TB = 1.25, TY = 1.15, TL = 0.154, TC = [0, 0.175, 0.335, 0.375, 0.225, 0.085, -0.08, -0.3], TX = [0, 0.2, 0.335, 0.3, 0.115, -0.045, -0.125, -0.035];
+      const tails = [-1, 1].map(s => {
+        const base = new THREE.Group(); base.position.set(s * 0.12, 0.14, -0.19); base.rotation.set(0, s * TY, -s * TB, 'YXZ'); inner.add(base);
+        const segs = []; let par = base;
+        for (let i = 0; i < TC.length; i++) {
+          const q = new THREE.Group(); if (i) q.position.y = TL; par.add(q);
+          const m = P(new THREE.CapsuleGeometry(0.078 - i * 0.005, TL * 0.72, 4, 10), i === TC.length - 1 ? tipM : capM); m.position.y = TL / 2; q.add(m);
+          segs.push(q); par = q;
+        }
+        const tip = new THREE.Object3D(); tip.position.y = TL; par.add(tip);
+        return { s, segs, tip };
+      });
+      // root.userData.puff（0〜1）：ねむりの胞子をためて、傘をふくらませる。0 にもどすと、ぶるっとふるえて吐きだす
+      let pf = 0, shiver = 0;
+      const tipW = V3();
+      update = (dt, t) => {
+        const ph = root.userData.ph, U = root.userData, want = U.puff || 0;
+        if (want < pf - 0.3) shiver = 1;
+        pf += (want - pf) * (1 - Math.exp(-(want > pf ? 11 : 14) * dt)); shiver = Math.max(0, shiver - dt * 2.5);
+        // ぴょこぴょこ跳ねて、着地で軸と傘がつぶれる（ためているあいだは、じっと）
+        const b = Math.abs(Math.sin(t * 3.2 + ph)), sq = Math.pow(1 - b, 6) * (1 - pf);
+        inner.position.y = b * 0.07 * (1 - pf);
+        body.scale.set(1 + sq * 0.07, 1 - sq * 0.1 - pf * 0.04, 1 + sq * 0.07);
+        const sh = Math.sin(t * 60) * shiver * 0.05;
+        cap.scale.set(1 + sq * 0.05 + pf * 0.14 + sh, 1 - sq * 0.08 + pf * 0.16 - sh, 1 + sq * 0.05 + pf * 0.14 + sh);
+        cap.rotation.z = Math.sin(t * 1.6 + ph) * 0.05; cap.rotation.x = -pf * 0.12;
+        // 耳：ときどきぴくっ。ためるときは伏せる
+        ears.forEach((g, i) => { const tw = (t * 0.5 + ph + i * 2.3) % 5 > 4.82 ? 0.35 : 0; g.rotation.x = -tw - pf * 0.5; });
+        // まばたき（ためるときは目をつむる）
+        const bl = (t * 0.37 + ph) % 4 > 3.88 ? 0.12 : 1; eyeG.forEach(g => { g.scale.y = Math.min(bl, 1 - pf * 0.85); });
+        // しっぽ：二本をずらして、根もとから先へ波がつたわる
+        for (const { s, segs } of tails) {
+          segs.forEach((q, i) => { q.rotation.z = s * TC[i] + Math.sin(t * 2.3 - i * 0.75 + ph + s) * 0.09 * (1 + i * 0.12); q.rotation.x = TX[i] + Math.sin(t * 1.7 - i * 0.55 + ph + s * 2) * 0.065; });
+          segs[0].rotation.z += Math.sin(t * 1.15 + ph + s * 0.6) * 0.08;
+        }
+      };
+      emitFn = (p, pos) => {
+        // 傘のふちから、桃色の胞子がこぼれる。しっぽの先から、ねこまたの青紫の火の粉が立つ
+        if (Math.random() < 0.06) { const a = Math.random() * Math.PI * 2; p.emit(V3(pos.x + Math.sin(a) * 0.45 * root.scale.x, pos.y + 0.48 * root.scale.y, pos.z + Math.cos(a) * 0.45 * root.scale.x), V3(Math.sin(a) * 0.1, -0.15, Math.cos(a) * 0.1), hdr('#ffb0d8', 1.3), { life: 1.4, size: 0.06, drag: 0.6 }); }
+        for (const { tip } of tails) if (Math.random() < 0.04) { tip.getWorldPosition(tipW); p.emit(tipW.clone(), V3((Math.random() - 0.5) * 0.1, 0.35, (Math.random() - 0.5) * 0.1), hdr('#c9a0ff', 1.4), { life: 0.6, size: 0.05, drag: 0.5 }); }
+      };
+      height = 1.15; radius = 0.55; break;
     }
     case 'squirrel': {   // おこりリス：大きなしっぽ、どんぐり
       const fm = tm(col), bm = tm('#fff0dc');
