@@ -1429,7 +1429,9 @@ function buildArchitecture(view, T) {
         return;
       }
       const yA = hAt(i, ...pull(pa)), yB = hAt(i, ...pull(pb)), top = wallTop(j);
-      const base = Math.min(yA, yB);
+      let base = Math.min(yA, yB);
+      // くぼんだ床（川・池）：辺のまん中のほうが低いことがあるので、壁は辺のいちばん低いところから立てる（床より下は地面にかくれる）
+      if (nk <= K.WINDOW && T.hasDents && dented(c, r)) for (let s = 1; s < 8; s++) base = Math.min(base, hAt(i, ...pull([lerp(pa[0], pb[0], s / 8), lerp(pa[1], pb[1], s / 8)])));
       if (nk <= K.WINDOW) {
         // 出入口の外側（隔壁扉）とエレベーターの籠の内壁は別に作る
         if (k === K.EXIT && !T.exits[T.ch[i]].cabin && T.exits[T.ch[i]].nx === dc * -1 && T.exits[T.ch[i]].nz === dr * -1) return;

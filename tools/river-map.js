@@ -33,7 +33,23 @@ const isBridge = (r, c) => bridgeSet.has(byRow ? r : c);
 const dep = (x, z) => Math.max(...Ls.map(L => { const [s, r] = lineNear(L, x, z); if (s >= r) return 0; const u = 1 - (s / r) ** 2; return depth * u * u; }));
 
 const out = rows.map(r => r.slice());
+// 旧の川（~）のひとつながりのうち、くぼみがまったくかからないもの（別の水：段の上の水場など）は、そのまま残す
+const keepWater = new Set();
+{
+  const touched = (r, c) => { for (let a = 0; a <= 8; a++) for (let b = 0; b <= 8; b++) if (dep(c * C - hw + a / 4, r * C - hd + b / 4) > 0) return true; return false; };
+  const seen = new Set();
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+    if (rows[r][c] !== '~' || seen.has(r * W + c)) continue;
+    const region = [], q = [[r, c]]; seen.add(r * W + c); let hit = false;
+    while (q.length) {
+      const [y, x] = q.pop(); region.push(y * W + x); if (!hit && touched(y, x)) hit = true;
+      for (const [dy, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const yy = y + dy, xx = x + dx; if (rows[yy] && rows[yy][xx] === '~' && !seen.has(yy * W + xx)) { seen.add(yy * W + xx); q.push([yy, xx]); } }
+    }
+    if (!hit) region.forEach(k => keepWater.add(k));
+  }
+}
 for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+  if (keepWater.has(r * W + c)) continue;
   const x0 = c * C - hw, z0 = r * C - hd;
   let edge = 0;   // マスのふちでの、いちばん深いくぼみ（--walls では、マスの中も）
   for (let a = 0; a <= 8; a++) for (let b = 0; b <= 8; b++) if (walls || a === 0 || b === 0 || a === 8 || b === 8) edge = Math.max(edge, dep(x0 + a / 4, z0 + b / 4));
