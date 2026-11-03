@@ -225,7 +225,6 @@ Object.assign(EN, {
   '影は、すうっと{0}のそばへただよって、足もとに、とけるようにもどった。': 'The shadow drifted over to {0} and melted back into their feet.',
   '出口をふさいでいた影のいばらが、ほどけて消えた！': 'The shadow thorns blocking the exit unraveled and vanished!',
   'かすかに光る水晶。……今は、ふれても何も起きない。': 'A faintly glowing crystal. ...Nothing happens when you touch it right now.',
-  '三つの光が、大水晶に集まった！　{0}の魔法で、鏡の台に光の鏡を出そう': 'The three lights gathered in the great crystal! Use {0}\'s magic to make light mirrors appear on the mirror stands.',
   '三つの光が、大水晶に集まった！　光の鏡で、光の筋を影の壁まで導こう': 'The three lights gathered in the great crystal! Use the light mirrors to guide the beam to the shadow wall',
   '光の水晶が灯った（1/{0}）　……この光は、{1}びょうで消えてしまう！': 'A Light Crystal lit up (1/{0}) ...This light fades in {1} seconds!',
   '{0}（{1}/{2}）': '{0} ({1}/{2})',

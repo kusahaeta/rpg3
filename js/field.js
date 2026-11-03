@@ -1182,12 +1182,7 @@ class FieldView extends BaseView {
     }
     // 昔の猫たち（昔のあいだだけ見える）
     if (to && to.past) for (const g of to.talkers || []) if (Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 1.9 && Math.abs(g.pos.y - p.y) < 1.5) return { type: 'ghost', g, text: Tx('昔の猫と話す') };
-    for (const o of this.sealObjs || []) if (o.beam && !o.open) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) {
-      // 鏡を出す前は、鏡の台（call.who の子が先頭なら、魔法で鏡を出せる）
-      const C = o.beam.B.call;
-      if (!o.beam.called) return { type: 'mirrorCall', o, text: this.team[this.leader].key === C.who ? Tx('{0}（{1}）', C.verb, speakerName(C.who)) : Tx('調べる：{0}', C.name) };
-      return { type: 'mirror', o, m, text: Tx('{0}の光の鏡の向きを変える（{0}の鏡はみんな回る）', MIRROR_COLS[m.g][0]) };
-    }
+    for (const o of this.sealObjs || []) if (o.beam && !o.open && o.beam.called) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) return { type: 'mirror', o, m, text: Tx('{0}の光の鏡の向きを変える（{0}の鏡はみんな回る）', MIRROR_COLS[m.g][0]) };
     for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || Tx('光の水晶'); for (const lp of o.lamps) if (!lp.lit && lp.pos.distanceTo(p) < (o.S.reach || 2.0)) return { type: 'lamp', o, L: lp, text: !o.ready() ? Tx('調べる：{0}', name) : o.S.verb ? Tx('{0}（{1}）', o.S.verb, speakerName(o.S.who)) : o.S.look === 'laugh' ? Tx('{0}を押す', name) : o.S.labels ? Tx('{0}（{1}）にふれる', name, o.S.labels[lp.i]) : Tx('{0}に触れる', name) }; }
     // 内門の踏み板：乗っていれば「ここで待ってて」、仲間が待っていれば「よびもどす」
     for (const o of this.plateObjs || []) {
@@ -1261,8 +1256,6 @@ class FieldView extends BaseView {
       this.touchTime(it.o, it.q);
     } else if (it.type === 'mirror') {
       this.turnMirror(it.o, it.m);
-    } else if (it.type === 'mirrorCall') {
-      this.callMirrors(it.o);
     } else if (it.type === 'hold') {
       this.holdPad(it.o, it.pad, it.f);
     } else if (it.type === 'unhold') {
@@ -1869,7 +1862,7 @@ class FieldView extends BaseView {
       o.beam.active = true; o.beam.update(); o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
       this.fx.pillar(V3(o.beam.B.from[0], this.gy(...o.beam.B.from), o.beam.B.from[1]), '#cfefff', { h: 8, r: 1, life: 1 });
       if (o.beam.hit) this.openSeal(o);
-      else setTimeout(() => { Sfx.heal(); this.toast(!o.beam.called ? Tx('三つの光が、大水晶に集まった！　{0}の魔法で、鏡の台に光の鏡を出そう', speakerName(o.beam.B.call.who)) : S.beamToast || Tx('三つの光が、大水晶に集まった！　光の鏡で、光の筋を影の壁まで導こう')); }, 500);
+      else setTimeout(() => { Sfx.heal(); this.toast(!o.beam.called ? o.beam.B.call.toast : S.beamToast || Tx('三つの光が、大水晶に集まった！　光の鏡で、光の筋を影の壁まで導こう')); }, 500);
     } else if (all) {
       o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
       this.openSeal(o);
@@ -1893,25 +1886,40 @@ class FieldView extends BaseView {
     if (!b.active) { this.toast('光の鏡の向きが変わった。……今は、光が来ていない'); return; }
     if (b.hit && !o.open) this.openSeal(o);
   }
-  // 鏡の台に、魔法で光の鏡を出す（beam.call。who の子が先頭のときだけ）。近い台から順に、すべての鏡があらわれる
-  callMirrors(o) {
-    const b = o.beam, C = b.B.call;
-    if (!this.featReady(C)) return;
-    (Save.data.flags || (Save.data.flags = {}))[o.S.id + '_mir'] = true; b.called = true; Save.save();
+  // 光の鏡を出すできごと（beam.call）：光の水晶をすべて灯して、大水晶のそば（call.r）へ来ると、call.who の子が魔法で台ごと鏡を出す。
+  //   鏡は近い順にあらわれ、そろうと光の筋を引きなおす（向きはばらばらで、壁へは届かない）。その子が一行にいなければ、近づくたびに away を出す
+  updateMirrorCall() {
     const p = this.player.pos;
-    Sfx.heal(); this.p.burst(p.clone().add(V3(0, 1.4, 0)), '#cfefff', 40, { speed: 3, up: 2, life: 0.9 });
-    let last = 0;
-    for (const m of b.mirrors) {
-      const ms = 250 + Math.hypot(m.pos.x - p.x, m.pos.z - p.z) * 30; last = Math.max(last, ms);
-      setTimeout(() => {
-        m.show(); this.fx.pillar(m.pos, MIRROR_COLS[m.g][1], { h: 3.5, r: 0.5, life: 0.7 });
-        this.p.burst(m.pos.clone().add(V3(0, 1.2, 0)), '#cfefff', 24, { speed: 2.5, up: 1, life: 0.7, size: 0.08 });
-        if (m.pos.distanceTo(this.player.pos) < 14) Sfx.tone(990 + m.g * 110, 0.16, 'sine', 0.04, 0);
-      }, ms);
+    for (const o of this.sealObjs || []) {
+      const b = o.beam; if (!b || !b.B.call || b.called || o.open || !b.active) continue;
+      const C = b.B.call, [fx, fz] = b.B.from, d = Math.hypot(p.x - fx, p.z - fz);
+      if (d > C.r + 2) b.warned = false;
+      if (d > C.r || b.warned) continue;
+      if (!this.team.some(m => m.key === C.who)) { b.warned = true; this.startTalk('', [['n', C.away]]); continue; }
+      this.callMirrors(o);
     }
-    // 鏡がそろってから、光の筋を引きなおす（大水晶がもう光っていれば、鏡で曲がる）
-    setTimeout(() => { b.update(); if (b.hit && !o.open) this.openSeal(o); }, last + 150);
-    this.startTalk('', C.lines.filter(([k]) => k === 'n' || this.team.some(m => m.key === k)));
+  }
+  callMirrors(o) {
+    const b = o.beam, C = b.B.call, has = ([k]) => k === 'n' || this.team.some(m => m.key === k);
+    (Save.data.flags || (Save.data.flags = {}))[o.S.id + '_mir'] = true; b.called = true; Save.save();
+    this.startTalk('', C.lines.filter(has));
+    this.talk.after = () => {
+      this.busy = true;
+      const p = this.player.pos;
+      Sfx.heal(); this.p.burst(p.clone().add(V3(0, 1.4, 0)), '#cfefff', 40, { speed: 3, up: 2, life: 0.9 });
+      let last = 0;
+      for (const m of b.mirrors) {
+        const ms = 250 + Math.hypot(m.pos.x - p.x, m.pos.z - p.z) * 30; last = Math.max(last, ms);
+        setTimeout(() => {
+          m.show(); this.fx.pillar(m.pos, MIRROR_COLS[m.g][1], { h: 3.5, r: 0.5, life: 0.7 });
+          this.p.burst(m.pos.clone().add(V3(0, 1.2, 0)), '#cfefff', 24, { speed: 2.5, up: 1, life: 0.7, size: 0.08 });
+          if (m.pos.distanceTo(this.player.pos) < 14) Sfx.tone(990 + m.g * 110, 0.16, 'sine', 0.04, 0);
+        }, ms);
+      }
+      // 鏡がそろったら光の筋を引きなおして、少し見せてから「届かない」の掛け合い
+      setTimeout(() => { b.update(); if (b.hit && !o.open) this.openSeal(o); }, last + 150);
+      setTimeout(() => { this.busy = false; if (!o.open) this.startTalk('', C.after.filter(has)); }, last + 1400);
+    };
   }
   // 記憶のかけらを、ちがう順にさわった：灯した光がみんな消えて、遠くへ押しもどされる
   wrongOrder(o) {
@@ -3198,7 +3206,7 @@ class FieldView extends BaseView {
     (this.strokeObjs || []).forEach(o => { if (!o.solved) o.tiles.forEach(q => { if (q.isS) dot(q.x, q.y, q.z, '#8affe0', 3, true); }); });
     if (this.timeObj) this.timeObj.crystals.forEach(q => dot(q.pos.x, q.pos.y, q.pos.z, this.timeObj.can(q) ? q.col : '#5a5a5a', 3.5));
     (this.fluffObjs || []).forEach(o => dot(o.pos.x, o.pos.y, o.pos.z, '#ffffff', 2.5));
-    (this.sealObjs || []).forEach(o => { if (o.beam && !o.open) o.beam.mirrors.forEach(m => dot(m.pos.x, m.pos.y, m.pos.z, '#9ad8ff', 2.5, true)); });
+    (this.sealObjs || []).forEach(o => { if (o.beam && !o.open && o.beam.called) o.beam.mirrors.forEach(m => dot(m.pos.x, m.pos.y, m.pos.z, '#9ad8ff', 2.5, true)); });
     (this.plateObjs || []).forEach(o => { if (!o.open && o.ready()) o.pads.forEach(pad => dot(pad.pos.x, pad.pos.y, pad.pos.z, '#8ad8ff', 3.5, true)); });
     (this.guards || []).forEach(g => dot(g.pos.x, g.pos.y, g.pos.z, g.asleep ? '#8a8a96' : '#ffb04a', 3.5));
     (this.rollers || []).filter(o => o.m.group.visible).forEach(o => dot(o.pos.x, o.pos.y, o.pos.z, '#c8b89a', 3.5));
@@ -3254,7 +3262,7 @@ class FieldView extends BaseView {
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
     this.updateRoots(d, t); this.updateShadows(d, t); this.updateNap(d, t);
     this.updateNemuri(t);
-    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); this.updateSizeReset(); this.updateLoop(); }
+    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateMirrorCall(); this.updateStroke(); this.updateSizeReset(); this.updateLoop(); }
     this.updateGuards(d, t); this.updateRollers(d, t);
     if (this.followers && !this.flight) this.updateFollowers(d, t);
     this.updateEnemies(d, t);
