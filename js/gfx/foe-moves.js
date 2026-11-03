@@ -280,7 +280,7 @@ const FOE_MOVES = {
     await GFX.delay(0.1);
   },
   // おしくらまんじゅう・大突進：みんなのあいだを駆けぬけて、またもどる
-  //   大突進（boar）は、うしろへさがって前足で地面をかき、駆けぬけたらふりかえって、もう一度つっこんでくる
+  //   大突進（boar）は、うしろへさがって前足で地面をかき、駆けぬけたらふりかえって、もう一度つっこんでくる（駆ける脚は、体の動きからモデルが自分で出す）
   async stampede(e, ts, c) {
     const g = e.model.group, from = g.position.clone(), boar = c.mv.glyph === 'boar';
     this.lastEnemy = { src: e.u, from };
@@ -303,13 +303,15 @@ const FOE_MOVES = {
     if (boar) {
       const back = from.clone().add(V3(0, 0, -1.4));
       await GFX.tween(0.3, k => { g.position.lerpVectors(from, back, Ease.out(k)); });
-      // 鼻息あらく、前足で三回地面をかく
+      // 鼻息あらく、前足で三回地面をかく（userData.paw：前足をふり上げる）
+      const U = g.userData;
       for (let i = 0; i < 3; i++) {
-        await GFX.tween(0.13, k => { g.rotation.x = -Math.sin(k * Math.PI) * 0.18; });
+        await GFX.tween(0.13, k => { g.rotation.x = -Math.sin(k * Math.PI) * 0.18; U.paw = Math.sin(k * Math.PI); });
         this.dustFx(g.position.clone().add(V3(0, 0, 0.6)), 6);
         this.dustCloud(g.position.clone().add(V3((Math.random() - 0.5) * rad, 0, rad * 0.5)), rad * (0.7 + i * 0.2));
         this.p.burst(this.foeMouth(e), '#ffffff', 6, { speed: 2, life: 0.4, size: 0.12 });
       }
+      U.paw = 0;
       e.model.flash('#ff3040', 1.6);
       await run(back, V3(from.x * 0.3 - 1.0, 0, z1), 0.42);
       GFX.shake(0.25);
