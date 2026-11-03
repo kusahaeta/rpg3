@@ -400,7 +400,7 @@ class StageView extends BaseView {
       const list = Array.isArray(spec) ? spec : [spec];
       list.forEach((o, i) => {
         const foe = key.startsWith('e:'), id = i ? `${key}#${i}` : key;
-        const m = foe ? buildEnemy(key.slice(2)) : buildCharacter(key);
+        const m = foe ? buildEnemy(key.slice(2), o.look) : buildCharacter(key);   // look：その場面だけの敵の見た目（魚をつかむカラスなど）
         if (o.scale) m.group.scale.multiplyScalar(o.scale);   // scale：その場面だけ大きく（探索で見る大きさにそろえる）
         this.scene.add(m.group);
         const a = new Actor(this, id, m, { foe, stance: o.stance, y: o.y, lie: o.lie, still: o.still });

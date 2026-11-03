@@ -421,6 +421,7 @@ class Battle {
     this.enemies = w.map(e => {
       const u = this.foeScale(new Unit('enemy', e.key, e.lv));
       this.applyModStats(u, 'enemyStats');
+      u.look = (this.opts.foeLook || {})[e.key] || null;   // その戦いだけの見た目（魚の降ったイベントのあとのカラスは、魚をつかむ）
       return u;
     });
     this.$('.bf-wave').textContent = `WAVE ${this.waveIdx + 1} / ${this.opts.waves.length}`;

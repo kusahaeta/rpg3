@@ -47,7 +47,8 @@ function bossFlagTex(text) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   return (FLAG_TEX[text] = t);
 }
-function buildEnemy(key) {
+// look：その場面だけの見た目（カラスの fish：魚の降ったイベントで、盗んだ魚をつかむ）
+function buildEnemy(key, look = {}) {
   const d = ENEMIES[key], col = d.color;
   const C = CRITTER_LOOKS[d.shape];
   if (C) return critterEnemy(key, d, C);
@@ -214,16 +215,122 @@ function buildEnemy(key) {
       update = (dt, t) => { tailG.rotation.x = Math.sin(t * 5 + root.userData.ph) * 0.12; inner.position.y = Math.abs(Math.sin(t * 5)) * 0.03; };
       height = 1.2; radius = 0.45; break;
     }
-    case 'crow': {   // いたずらカラス：宙に浮いて羽ばたく
-      const fm = tm(col), bk = tm('#ffcf4a');
-      const body = add(P(new THREE.SphereGeometry(0.3, 18, 14), fm), 0, 1.0, 0); body.scale.set(1, 0.9, 1.3);
-      const head = add(P(new THREE.SphereGeometry(0.22, 16, 12), fm), 0, 1.3, 0.25);
-      const beak = add(P(new THREE.ConeGeometry(0.07, 0.2, 8), bk), 0, 1.27, 0.5); beak.rotation.x = Math.PI / 2;
-      eyes(0.1, 1.35, 0.42, 0.055, inner, { angry: true });
-      const wings = [-1, 1].map(s => { const g = new THREE.Group(); g.position.set(s * 0.25, 1.05, 0); inner.add(g); const w = add(P(new THREE.SphereGeometry(0.3, 12, 8), fm), s * 0.25, 0, 0, g); w.scale.set(1.1, 0.15, 0.6); return g; });
-      const tail = add(P(new THREE.ConeGeometry(0.15, 0.35, 6), fm), 0, 0.95, -0.42); tail.rotation.x = -Math.PI / 2.4; tail.scale.x = 1.6;
-      update = (dt, t) => wings.forEach((g, i) => { g.rotation.z = (i ? -1 : 1) * Math.sin(t * 12 + root.userData.ph) * 0.6; });
-      float = 0.18; height = 1.6; radius = 0.55; break;
+    case 'crow': {   // いたずらカラス：大きな頭にアホ毛、ニヤリと細めた目。風切り羽を広げて羽ばたく。魚の降ったイベントでは、足に盗んだ魚
+      const fm = tm(col), deep = tm('#' + new THREE.Color(col).multiplyScalar(0.7).getHexString());
+      const belly = tm('#' + new THREE.Color(col).lerp(new THREE.Color('#c8c8e8'), 0.16).getHexString());
+      const beakM = tm('#3e3c4a'), legM = tm('#3a3842');
+      const fishM = tm('#a8c4d8'), finM = tm('#6a8aa8', { side: THREE.DoubleSide });
+      const lineM = new THREE.MeshBasicMaterial({ color: '#1a1420' });
+      // 動かない部品は一つの形にまとめる（輪郭つき）
+      const bake = (geos, mat, parent, x = 0, y = 0, z = 0) => add(P(THREEX.BufferGeometryUtils.mergeGeometries(geos), mat), x, y, z, parent);
+      // 羽一枚：+X へのびる、平たい丸い先の羽（長さ len・幅 w）
+      const featherGeo = (len, w) => { const g = new THREE.CapsuleGeometry(w, Math.max(0.01, len - w * 2), 4, 10); g.rotateZ(-Math.PI / 2); g.translate(len / 2, 0, 0); g.scale(1, 0.24, 1); return g; };
+      // 向き：+X の羽を、外がわ（s）から後ろへ th だけ回す
+      const yawOf = (s, th) => s > 0 ? th : Math.PI - th;
+      const bird = new THREE.Group(); bird.position.y = 0.95; inner.add(bird);
+      // 胴：少し前のめりの卵形。胸は明るい羽毛
+      const body = add(P(new THREE.SphereGeometry(0.29, 22, 16), fm), 0, 0, 0, bird); body.scale.set(0.92, 0.9, 1.12); body.rotation.x = 0.25;
+      add(P(new THREE.SphereGeometry(0.22, 18, 12), belly), 0, -0.07, 0.11, bird).scale.set(0.95, 1, 0.75);
+      // しっぽ：丸く広がる 5 枚の羽を一つにまとめる
+      const tail = new THREE.Group(); tail.position.set(0, -0.04, -0.28); bird.add(tail);
+      bake([-2, -1, 0, 1, 2].map(i => { const g = featherGeo(0.36 - Math.abs(i) * 0.03, 0.06); g.rotateY(Math.PI / 2 + i * 0.2); g.translate(0, Math.abs(i) * 0.006, 0); return g; }), deep, tail);
+      // 頭：大きくて丸い（2頭身）
+      const head = new THREE.Group(); head.position.set(0, 0.29, 0.12); bird.add(head);
+      add(P(new THREE.SphereGeometry(0.25, 24, 18), fm), 0, 0, 0, head).scale.set(1, 0.94, 0.97);
+      const onHead = (az, el, r = 0.25) => V3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)).multiplyScalar(r);
+      // アホ毛：頭のてっぺんから立つ 3 本の羽（ばねのように遅れてゆれる）
+      const crest = new THREE.Group(); crest.position.set(0, 0.2, 0.03); head.add(crest);
+      bake([[0.17, -0.25, 0], [0.13, 0.3, 0.45], [0.12, 0.25, -0.5]].map(([len, tx, tz]) => { const g = featherGeo(len, 0.032); g.rotateZ(Math.PI / 2 - 0.35); g.rotateX(tx); g.rotateZ(tz); return g; }), fm, crest);
+      // くちばし：上と下に分かれ、下が開く（userData.jaw）。上の先は少し下へ曲がる
+      const beak = new THREE.Group(); beak.position.set(0, -0.065, 0.2); head.add(beak);
+      const ub = new THREE.ConeGeometry(0.085, 0.2, 14); ub.translate(0, 0.1, 0); ub.rotateX(Math.PI / 2); ub.scale(0.72, 0.95, 1);
+      add(P(ub, beakM), 0, 0.016, 0, beak).rotation.x = 0.2;
+      const jaw = new THREE.Group(); jaw.position.set(0, -0.02, 0); beak.add(jaw);
+      const lb = new THREE.ConeGeometry(0.06, 0.15, 12); lb.translate(0, 0.075, 0); lb.rotateX(Math.PI / 2); lb.scale(0.7, 0.6, 1);
+      add(P(lb, beakM), 0, 0, 0, jaw).rotation.x = -0.05;
+      // 目：白目に大きな黒目。上まぶたは目じりを上げて、下まぶたも少し上げる（ニヤリと細めた目）
+      const eyeG = [-1, 1].map(s => {
+        const n = onHead(s * 0.42, 0.1).normalize(), g = new THREE.Group(); g.position.copy(n).multiplyScalar(0.226); head.add(g);
+        g.quaternion.setFromUnitVectors(V3(0, 0, 1), n);
+        const w = add(new THREE.Mesh(new THREE.SphereGeometry(0.075, 18, 12), tm('#ffffff')), 0, 0, 0, g); w.scale.set(0.9, 1.1, 0.45);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.05, 14, 10), new THREE.MeshBasicMaterial({ color: '#1a1420' })), -s * 0.012, -0.006, 0.02, g).scale.set(0.9, 1.1, 0.45);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffffff' })), -s * 0.02 - 0.008, 0.02, 0.042, g);
+        const lid = new THREE.Group(); lid.rotation.z = s * 0.3; g.add(lid);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.082, 18, 8, 0, Math.PI * 2, 0, Math.PI * 0.4), fm), 0, -0.006, 0, lid).scale.set(1.05, 1.1, 0.5);
+        const ln = add(new THREE.Mesh(new THREE.TorusGeometry(0.078, 0.011, 6, 20, Math.PI * 0.8), lineM), 0, 0.022, 0.016, lid); ln.rotation.z = Math.PI * 0.1; ln.scale.set(1.05, 0.55, 1);
+        const low = add(new THREE.Mesh(new THREE.SphereGeometry(0.082, 18, 6, 0, Math.PI * 2, Math.PI * 0.76, Math.PI * 0.24), fm), 0, 0.004, 0, g); low.scale.set(1.02, 1.1, 0.5); low.rotation.z = -s * 0.12;
+        return g;
+      });
+      // 翼：腕（雨覆いと次列風切りをまとめた形）と、先の手（指のように広がる 5 枚の初列風切り）
+      const wings = [-1, 1].map(s => {
+        const arm = new THREE.Group(); arm.position.set(s * 0.22, 0.07, -0.02); bird.add(arm);
+        const cov = new THREE.SphereGeometry(0.19, 16, 10); cov.scale(1.05, 0.26, 0.62); cov.translate(s * 0.15, 0, 0);
+        const sec = [0, 1, 2, 3].map(i => { const g = featherGeo(0.2 - i * 0.012, 0.05); g.rotateY(yawOf(s, 1.42 - i * 0.12)); g.translate(s * (0.05 + i * 0.075), -0.008, -0.04); return g; });
+        bake([cov, ...sec], fm, arm);
+        const hand = new THREE.Group(); hand.position.set(s * 0.3, 0, -0.01); arm.add(hand);
+        add(P(new THREE.SphereGeometry(0.075, 12, 8), fm), s * 0.02, 0, -0.01, hand).scale.set(1.2, 0.3, 1);
+        const prim = [0, 1, 2, 3, 4].map(i => {
+          const q = new THREE.Group(); q.position.set(s * (0.06 - i * 0.018), 0.012 - i * 0.004, -0.02 * i); hand.add(q);
+          q.add(P(featherGeo(0.3 - i * 0.025, 0.048), deep));
+          return { q, th: 0.08 + i * 0.26 };
+        });
+        return { s, arm, hand, prim };
+      });
+      // 足：ふだんは短くたたんで、指を軽くまるめる。魚の降ったイベント（look.fish）では、のばした指で盗んだ魚を横向きにかかえる
+      const legs = [], fishY = -0.42, legL = look.fish ? 0.16 : 0.1, toeY = look.fish ? fishY + 0.075 : -0.2 - legL;
+      for (const s of [-1, 1]) {
+        const lg = new THREE.CylinderGeometry(0.02, 0.018, legL, 8); lg.translate(0, -legL / 2, 0); lg.rotateZ(s * 0.1); lg.translate(s * 0.08, -0.2, 0.05); legs.push(lg);
+        for (const [a, b] of look.fish ? [[-0.4, 0.5], [0, 0.4], [0.4, 0.5], [Math.PI, 0.7]] : [[-0.35, 1.1], [0, 1.0], [0.35, 1.1], [Math.PI, 1.2]]) { const t = new THREE.CapsuleGeometry(0.014, 0.05, 3, 6); t.translate(0, -0.032, 0); t.rotateX(-Math.PI / 2 + b); t.rotateY(a); t.translate(s * (0.08 + legL * 0.1), toeY, 0.05); legs.push(t); }
+      }
+      bake(legs, legM, bird);
+      let fish = null, ftail = null;
+      if (look.fish) {
+        fish = new THREE.Group(); fish.position.set(0, fishY, 0.05); bird.add(fish);
+        const fb = lathe([[0.001, -0.2], [0.03, -0.17], [0.065, -0.1], [0.085, -0.02], [0.082, 0.06], [0.064, 0.12], [0.034, 0.16], [0.001, 0.185]], 18);
+        fb.rotateZ(-Math.PI / 2); fb.scale(1, 1, 0.5);   // 頭が +X、体の横の面がこちらを向く
+        add(P(fb, fishM), 0, 0, 0, fish);
+        const fin = (pts) => { const sh = new THREE.Shape(); sh.moveTo(pts[0][0], pts[0][1]); for (const [x, y] of pts.slice(1)) sh.lineTo(x, y); return new THREE.ShapeGeometry(sh); };
+        add(new THREE.Mesh(fin([[-0.07, 0.07], [0.04, 0.075], [-0.11, 0.13]]), finM), 0, 0, 0, fish);   // 背びれ
+        ftail = new THREE.Group(); ftail.position.set(-0.19, 0, 0); fish.add(ftail);
+        add(P(fin([[0.02, 0], [-0.11, 0.09], [-0.075, 0], [-0.11, -0.09]]), finM, { outline: false }), 0, 0, 0, ftail);
+        add(new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 6), lineM), 0.12, 0.015, 0.027, fish);
+      }
+      // root.userData.jaw（0〜1）：くちばしをあける（つっつき）。flap（0〜1）：力いっぱい羽ばたく（ねばねば）
+      let jw = 0, fl = 0, fp = 0;
+      update = (dt, t) => {
+        const ph = root.userData.ph, U = root.userData;
+        jw += ((U.jaw || 0) - jw) * (1 - Math.exp(-40 * dt)); fl += ((U.flap || 0) - fl) * (1 - Math.exp(-8 * dt));
+        // ときどき「カカカ」と笑うように、くちばしをかちかち鳴らす
+        const lc = (t * 0.17 + ph * 0.3) % 1, laugh = lc > 0.9 ? Math.abs(Math.sin((lc - 0.9) * 10 * Math.PI * 3)) : 0;
+        jaw.rotation.x = Math.max(jw * 0.9, laugh * 0.5);
+        // 羽ばたき：振りおろしは速く、風切り羽を広げる。振りあげでたたむ。手先は腕より遅れてしなる
+        fp += dt * (8.5 + fl * 5); const p = fp + ph, sn = Math.sin(p), cs = Math.cos(p);
+        const amp = 0.62 + fl * 0.3, spread = 0.5 - 0.5 * cs;
+        for (const { s, arm, hand, prim } of wings) {
+          arm.rotation.z = s * (0.18 + sn * amp); arm.rotation.y = s * (0.1 - cs * 0.12);
+          hand.rotation.z = s * Math.sin(p - 0.9) * 0.45;
+          prim.forEach(({ q, th }) => { q.rotation.y = yawOf(s, th * (0.5 + 0.5 * spread)); });
+        }
+        // 振りおろしで体が持ちあがる。頭は少しおくれて、上下を打ち消す
+        bird.position.y = 0.95 - Math.cos(p - 0.5) * 0.035;
+        bird.rotation.x = Math.sin(p - 1) * 0.04 - fl * 0.12;
+        head.position.y = 0.29 + Math.cos(p - 0.5) * 0.015;
+        // きょろきょろ見回し、ときどき首をかしげる
+        const tilt = (t * 0.21 + ph) % 1 > 0.82 ? 1 : 0;
+        head.userData.tz = (head.userData.tz || 0) + (tilt * 0.32 - (head.userData.tz || 0)) * (1 - Math.exp(-10 * dt));
+        head.rotation.set(Math.sin(t * 0.9 + ph) * 0.06 - 0.05, Math.sin(t * 0.55 + ph * 2) * 0.35, head.userData.tz);
+        crest.rotation.set(Math.sin(p - 1.8) * 0.12, 0, -head.userData.tz * 0.5 + Math.sin(p - 2.2) * 0.06);
+        tail.rotation.x = -0.5 + Math.sin(p - 1.2) * 0.08; tail.rotation.y = Math.sin(t * 1.3 + ph) * 0.1;
+        // まばたき
+        const bl = (t * 0.33 + ph) % 4 > 3.88 ? 0.12 : 1; eyeG.forEach(g => { g.scale.y = bl; });
+        // 魚：羽ばたきにゆられ、ときどきぴちぴち跳ねる
+        if (fish) {
+          const fc = (t * 0.29 + ph * 0.7) % 1, flop = fc > 0.86 ? Math.sin((fc - 0.86) * 7.1 * Math.PI) : 0;
+          fish.rotation.set(Math.sin(p + 0.6) * 0.06, Math.sin(t * 40) * flop * 0.22, Math.sin(p) * 0.05 + flop * 0.12);
+          ftail.rotation.y = Math.sin(t * 3 + ph) * 0.25 + Math.sin(t * 40) * flop * 0.7;
+        }
+      };
+      float = 0.12; height = 1.6; radius = 0.55; break;
     }
     case 'rock': {   // ごろごろ岩：ごろごろ団（暴走族のような岩の一団）の団員。ころがる岩に顔、苔のリーゼントと白いハチマキ
       const rm = new THREE.MeshStandardMaterial({ color: col, roughness: 0.95, flatShading: true }); rm.userData.e0 = new THREE.Color(0); rm.userData.ei0 = 0; mats.push(rm);

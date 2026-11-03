@@ -717,7 +717,7 @@ class BattleView extends BaseView {
     const fresh = [];
     for (const u of list) {
       if (this.ents.has(u.uid)) continue;
-      const m = buildEnemy(u.key);
+      const m = buildEnemy(u.key, u.look || {});
       m.group.rotation.y = 0;
       this.scene.add(m.group);
       const e = { u, model: m, ally: false, home: V3() };

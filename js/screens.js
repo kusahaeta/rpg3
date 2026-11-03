@@ -102,7 +102,7 @@ function battleTeam(st) {
 function startStage(ci, st, techs, after) {
   const first = !Save.data.cleared[st.id];
   const b = new Battle({
-    team: battleTeam(st).map(carried), techs, bg: CHAPTERS[ci].bg, canRetry: true, loc: st.id, final: st.final || null,
+    team: battleTeam(st).map(carried), techs, bg: CHAPTERS[ci].bg, canRetry: true, loc: st.id, final: st.final || null, foeLook: st.foeLook || null,
     title: `${st.name}`,
     waves: st.waves.map(w => w.map(k => ({ key: k, lv: st.lv }))),
     onResult: res => {
