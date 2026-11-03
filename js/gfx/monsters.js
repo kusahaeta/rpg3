@@ -502,26 +502,270 @@ function buildEnemy(key, look = {}) {
       };
       height = 1.25; radius = 0.6; scale = 1.1; break;
     }
-    case 'boar': {   // ばくそうイノシシ（ごろごろ団の総長）：大きな体、牙、毛のたてがみ。黒いリーゼント、白いハチマキ、背中に「総長」ののぼり
-      const fm = tm(col), sn = tm('#e8a888'), tusk = tm('#fff6e0');
-      const body = add(P(new THREE.SphereGeometry(0.7, 24, 16), fm), 0, 0.75, -0.1); body.scale.set(0.95, 0.8, 1.3);
-      const head = add(P(new THREE.SphereGeometry(0.45, 20, 14), fm), 0, 0.85, 0.75);
-      const snout = add(P(new THREE.CylinderGeometry(0.2, 0.24, 0.2, 16), sn), 0, 0.72, 1.18); snout.rotation.x = Math.PI / 2;
-      for (const s of [-1, 1]) { add(new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshBasicMaterial({ color: '#4a2020' })), s * 0.07, 0.74, 1.29); const tk = add(P(new THREE.ConeGeometry(0.05, 0.28, 8), tusk), s * 0.24, 0.72, 1.05); tk.rotation.set(-0.6, 0, -s * 0.4); }
-      for (const s of [-1, 1]) { const e = add(P(new THREE.ConeGeometry(0.12, 0.22, 6), fm), s * 0.3, 1.25, 0.6); e.rotation.z = -s * 0.5; }
-      eyes(0.18, 0.98, 1.08, 0.075, inner, { angry: true });
-      for (let i = 0; i < 6; i++) add(P(new THREE.ConeGeometry(0.08, 0.3, 5), tm('#5a3a2a')), 0, 1.3 - i * 0.03, 0.4 - i * 0.2).rotation.x = -0.4;
-      for (const [x, z] of [[-0.35, 0.4], [0.35, 0.4], [-0.35, -0.6], [0.35, -0.6]]) add(P(new THREE.CylinderGeometry(0.12, 0.1, 0.4, 10), fm), x, 0.2, z);
-      // 黒いリーゼントと、白いハチマキ（赤い丸、うしろで結んだ端）
-      const pomp = add(P(new THREE.CapsuleGeometry(0.2, 0.7, 6, 12), tm('#241a1e')), 0, 1.36, 0.98); pomp.rotation.x = Math.PI / 2 - 0.15; pomp.scale.set(1.5, 1, 0.9);
-      const band = add(new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.045, 6, 28), tm('#ffffff')), 0, 1.15, 0.75); band.rotation.x = Math.PI / 2;
-      add(new THREE.Mesh(new THREE.CircleGeometry(0.07, 14), tm('#e8304a')), 0, 1.15, 1.146);
-      const tails = [-1, 1].map(sd => { const tl = new THREE.Group(); tl.position.set(sd * 0.06, 1.15, 0.42); tl.rotation.y = sd * 0.35; inner.add(tl); add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.4), tm('#ffffff')), 0, 0, -0.2, tl); return tl; });
-      // 背中ののぼり：竿と、「総長」と書いた紫の旗（なびく）
-      add(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 1.6, 6), tm('#c8a060')), 0.28, 1.65, -0.7);
-      const flag = new THREE.Group(); flag.position.set(0.28, 1.98, -0.7); inner.add(flag);
-      const fl = add(new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.86), new THREE.MeshStandardMaterial({ map: bossFlagTex(Tx('総長')), side: THREE.DoubleSide, roughness: 0.9 })), -0.23, 0, 0, flag);
-      update = (dt, t) => { head.rotation.x = Math.sin(t * 2) * 0.05; flag.rotation.y = Math.sin(t * 5) * 0.25; fl.rotation.y = Math.sin(t * 7 + 1) * 0.12; tails.forEach((tl, i) => { tl.rotation.x = Math.sin(t * 11 + i * 1.7) * 0.3 - 0.15; }); };
+    case 'boar': {   // ばくそうイノシシ（ごろごろ団の総長）：前へ大きくせり出す黒いリーゼントに白いハチマキ、肩にはおった紫の特攻服（からの袖がなびく）、腹にさらし。反り上がる牙、傷のある三白眼、くわえた草。背中に「総長」ののぼり
+      const BU = THREEX.BufferGeometryUtils;
+      // 描く回数をへらすため、いっしょに動く部品は頂点の色をつけて一つの形にまとめる
+      //   vcM：陰のつく色つき（輪郭あり）、flatM：陰のない色つき（顔の線・傷など）
+      const vcM = tm('#ffffff', { vertexColors: true }), flatM = new THREE.MeshBasicMaterial({ vertexColors: true });
+      const tint = (g, c) => { if (c != null) { const k = new THREE.Color(c), a = new Float32Array(g.attributes.position.count * 3); for (let i = 0; i < a.length; i += 3) k.toArray(a, i); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); } g.deleteAttribute('uv'); return g; };
+      const merged = (list, parent, oc, mat = vcM) => add(oc ? P(BU.mergeGeometries(list), mat, { oc }) : new THREE.Mesh(BU.mergeGeometries(list), mat), 0, 0, 0, parent);
+      // 先ほど細くなる管（牙・くわえ草・しっぽ）
+      const taper = (pts, r0, r1, seg = 12, rs = 8) => {
+        const cv = new THREE.CatmullRomCurve3(pts), g = new THREE.TubeGeometry(cv, seg, 1, rs, false), q = g.attributes.position, c = V3(), v = V3();
+        for (let k = 0; k < q.count; k++) { const u = Math.floor(k / (rs + 1)) / seg; cv.getPointAt(u, c); v.fromBufferAttribute(q, k).sub(c).multiplyScalar(r0 + (r1 - r0) * u); q.setXYZ(k, c.x + v.x, c.y + v.y, c.z + v.z); }
+        g.computeVertexNormals(); g.deleteAttribute('uv'); return g;
+      };
+      const tube = (pts, r, closed = false, seg = 24) => { const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, closed), seg, r, 5, closed); g.deleteAttribute('uv'); return g; };
+      const fur = new THREE.Color(col), furDark = fur.clone().multiplyScalar(0.62), furLight = new THREE.Color('#c8946a'), hairC = '#241a1e', goldC = '#ffcf4a', coatC = '#4a2a78';
+      const ocFur = dark(col);
+      // 全体を少しうしろへ（鼻先とリーゼントが前へ長いぶん、足もとの中心をそろえる）
+      const rig = new THREE.Group(); rig.position.z = -0.2; inner.add(rig);
+      const bodyL = [], bodyFlat = [];
+      // ---- 胴：肩が高く盛りあがり、尻へ細くなる樽の形。背は濃く、腹は明るい
+      const BY = 0.8;
+      const bf = z => clamp((z + 0.95) / 1.85, 0, 1);
+      const sec = z => { const zn = (z + 0.02) / 0.93, tp = Math.pow(Math.max(0, 1 - Math.abs(zn) ** 2.4), 0.5); return { w: (0.5 + 0.12 * bf(z)) * tp, t: (0.5 + 0.15 * Math.exp(-(((bf(z) - 0.68) / 0.3) ** 2))) * tp, b: 0.4 * tp }; };
+      const bodyPt = (z, a, off = 1) => { const s = sec(z), c = Math.cos(a); return V3(Math.sin(a) * s.w * off, BY + c * (c > 0 ? s.t : s.b) * off, z); };
+      {
+        const bg = new THREE.SphereGeometry(1, 40, 26); bg.rotateX(Math.PI / 2);
+        const q = bg.attributes.position, n = V3(), vc = new Float32Array(q.count * 3), cc = new THREE.Color();
+        for (let k = 0; k < q.count; k++) {
+          n.fromBufferAttribute(q, k);
+          const z = n.z * 0.93 - 0.02, a = Math.atan2(n.x, n.y), p = bodyPt(z, a);
+          q.setXYZ(k, p.x, p.y, p.z);
+          const c = Math.cos(a), h = Math.sin(k * 12.9898) * 43758.5453;
+          cc.copy(fur);
+          if (c > 0.2) cc.lerp(furDark, Math.min(1, (c - 0.2) / 0.8) * 0.75);
+          if (c < -0.35) cc.lerp(furLight, Math.min(1, (-c - 0.35) / 0.5) * 0.8);
+          cc.multiplyScalar(0.94 + (h - Math.floor(h)) * 0.1).toArray(vc, k * 3);
+        }
+        bg.setAttribute('color', new THREE.BufferAttribute(vc, 3)); bg.computeVertexNormals();
+        bodyL.push(tint(bg));
+      }
+      // 背中のうしろ半分の、逆立った剛毛（特攻服のうしろからのぞく）
+      for (let i = 0; i < 7; i++) {
+        const z = -0.42 - i * 0.075, p = bodyPt(z, 0), g = new THREE.ConeGeometry(0.07 - i * 0.004, 0.24 - i * 0.015, 5);
+        g.translate(0, 0.08, 0); g.rotateX(-0.55 - i * 0.05); g.rotateZ((i % 2 - 0.5) * 0.3); g.translate(p.x, p.y - 0.03, p.z); bodyL.push(tint(g, hairC));
+      }
+      // しっぽ：細く、先にふさ
+      const tail = new THREE.Group(); tail.position.copy(bodyPt(-0.9, 0.5)); rig.add(tail);
+      merged([tint(taper([V3(0, 0, 0), V3(0, -0.08, -0.1), V3(0, -0.24, -0.12)], 0.032, 0.022, 8, 6), furDark), tint(new THREE.SphereGeometry(0.055, 8, 6).scale(1, 1.6, 1).translate(0, -0.29, -0.12), hairC)], tail, ocFur);
+      // さらし：腹に巻いた白い布（巻いた重なりの線を二本）
+      {
+        const Z0 = -0.58, Z1 = -0.1, NZ = 6, NA = 36, pos = [], idx = [];
+        for (let i = 0; i <= NZ; i++) for (let j = 0; j <= NA; j++) { const p = bodyPt(Z0 + (Z1 - Z0) * i / NZ, j / NA * Math.PI * 2, 1.03); pos.push(p.x, p.y, p.z); }
+        for (let i = 0; i < NZ; i++) for (let j = 0; j < NA; j++) { const a = i * (NA + 1) + j, b = a + NA + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+        bodyL.push(tint(g, '#f4efe4'));
+        for (const z of [-0.42, -0.26]) bodyFlat.push(tint(tube(Array.from({ length: 32 }, (_, j) => bodyPt(z + Math.sin(j / 32 * Math.PI * 2) * 0.012, j / 32 * Math.PI * 2, 1.045)), 0.008, true, 48), '#b8b0a0'));
+      }
+      // ---- 特攻服：肩にはおる。紫の地に金の縁どり、裏は赤。背中に金の牡丹。両わきのすそと、からの袖がなびく
+      const liningM = tm('#a8283a', { side: THREE.BackSide });
+      const CZ0 = -0.36, CZ1 = 0.56;
+      // 格子の面（u：前後、v：まわり）
+      const sheet = (fn, nu, nv) => {
+        const pos = [], idx = [];
+        for (let i = 0; i <= nu; i++) for (let j = 0; j <= nv; j++) { const p = fn(i / nu, j / nv); pos.push(p.x, p.y, p.z); }
+        for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) { const a = i * (nv + 1) + j, b = a + nv + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+      };
+      // 外の生地（縁どりなど extra といっしょに）と裏地の二枚。外の面が、内がわの点 ref（体の芯）から外を向くように、面の向きをそろえる
+      const cloth = (fn, nu, nv, parent, extra = [], ref = p => V3(0, BY, p.z)) => {
+        const mk = d => {
+          const g = sheet((u, v) => fn(u, v, d), nu, nv), q = g.attributes.position, nn = g.attributes.normal, k = Math.floor(q.count / 2), p = V3().fromBufferAttribute(q, k);
+          if (V3().fromBufferAttribute(nn, k).dot(p.clone().sub(ref(p))) < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const a = ix[i]; ix[i] = ix[i + 1]; ix[i + 1] = a; } g.computeVertexNormals(); }
+          return g;
+        };
+        merged([tint(mk(0), coatC), ...extra], parent, '#1e1030');
+        add(new THREE.Mesh(mk(-0.012), liningM), 0, 0, 0, parent);
+      };
+      const coat = new THREE.Group(); rig.add(coat);
+      // 肩の上をおおう身ごろ（背の線から両わきまで）。前後の縁は金、背中に金の牡丹（花びら六枚・葉二枚、まん中に赤い玉）
+      {
+        const zc = -0.02, onBack = (dx, dz, r, lift, c) => { const z = zc + dz, a = dx / sec(z).t, p = bodyPt(z, a, 1.075 + lift), nn = V3(Math.sin(a) / sec(z).w, Math.cos(a) / sec(z).t, 0).normalize(); const g = new THREE.CircleGeometry(r, 12); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, 0, 1), nn)); g.translate(p.x, p.y, p.z); return tint(g, c); };
+        const extra = [
+          ...[CZ0, CZ1].map(z => tint(tube(Array.from({ length: 17 }, (_, j) => bodyPt(z, (j / 16 - 0.5) * Math.PI, 1.085)), 0.016), goldC)),
+          ...Array.from({ length: 6 }, (_, i) => { const a = i / 6 * Math.PI * 2; return onBack(Math.cos(a) * 0.075, Math.sin(a) * 0.075, 0.06, 0.004, goldC); }),
+          ...[-1, 1].map(s => onBack(s * 0.15, 0.1, 0.045, 0.002, goldC)),
+          onBack(0, 0, 0.035, 0.008, '#d8303c'),
+        ];
+        cloth((u, v, d) => bodyPt(CZ0 + (CZ1 - CZ0) * u, (v - 0.5) * Math.PI, 1.07 + d * 2), 10, 20, coat, extra);
+      }
+      // 両わきのすそ：わきの線を軸に、外へひるがえる（skirts）。すそと前後の縁は金
+      const hemY = 0.36;
+      const skirts = [-1, 1].map(s => {
+        const zc = (CZ0 + CZ1) / 2, hx = s * sec(zc).w * 1.07;
+        const g = new THREE.Group(); g.position.set(hx, BY, 0); coat.add(g);
+        const at = (u, v, d) => { const z = CZ0 + (CZ1 - CZ0) * u, top = bodyPt(z, s * Math.PI / 2, 1.07 + d * 2); return V3(top.x - hx + s * (v * v * 0.1 - d), (BY - hemY) * -v, z + v * (u - 0.5) * 0.12); };
+        const edges = [Array.from({ length: 11 }, (_, i) => at(i / 10, 1, 0.01)), Array.from({ length: 6 }, (_, i) => at(1, i / 5, 0.01)), Array.from({ length: 6 }, (_, i) => at(0, i / 5, 0.01))];
+        cloth(at, 10, 5, g, edges.map(p => tint(tube(p, 0.016, false, 16), goldC)), p => V3(-s, p.y, p.z));
+        return g;
+      });
+      // からの袖：肩から垂れて、走るとうしろへなびく（sleeves）。そで口は金で、中は暗い
+      const sleeves = [-1, 1].map(s => {
+        const g = new THREE.Group(); g.position.copy(bodyPt(0.36, s * Math.PI / 2, 1.08)).add(V3(s * 0.02, 0.06, 0)); coat.add(g);
+        merged([
+          tint(new THREE.CylinderGeometry(0.075, 0.1, 0.5, 12, 1, true).translate(0, -0.25, 0), coatC),
+          tint(new THREE.CylinderGeometry(0.104, 0.104, 0.05, 12, 1, true).translate(0, -0.48, 0), goldC),
+          tint(new THREE.CircleGeometry(0.1, 12).rotateX(Math.PI / 2).translate(0, -0.47, 0), '#2a1020'),
+        ], g, '#1e1030');
+        return g;
+      });
+      // ---- 脚：太く短い。下は黒っぽく、二つに割れたひづめ。走ると駆け、前足で地面をかく
+      const shinC = furDark.clone().multiplyScalar(0.8);
+      const legs = [[-1, 0.42], [1, 0.42], [-1, -0.58], [1, -0.58]].map(([s, z], i) => {
+        const hip = new THREE.Group(); hip.position.set(s * 0.3, 0.6, z); rig.add(hip);
+        merged([tint(taper([V3(0, 0.12, 0), V3(0, -0.12, 0), V3(0, -0.32, 0)], 0.16, 0.11, 6, 12), fur)], hip, ocFur);
+        const knee = new THREE.Group(); knee.position.y = -0.3; hip.add(knee);
+        merged([tint(taper([V3(0, 0.04, 0), V3(0, -0.2, 0)], 0.1, 0.085, 4, 10), shinC), ...[-1, 1].map(t => tint(new THREE.CylinderGeometry(0.048, 0.058, 0.09, 8).scale(1, 1, 1.2).translate(t * 0.045, -0.245, 0.012), '#2e2422'))], knee, ocFur);
+        return { hip, knee, front: i < 2, s };
+      });
+      // ---- 頭：大きく、鼻先は平たい円盤
+      const H = new THREE.Group(); H.position.set(0, 1.02, 0.86); rig.add(H);
+      const headL = [], headFlat = [];
+      const HR = 0.48, HS = V3(1.08, 0.94, 0.96);
+      const dirOf = (az, el) => V3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+      const onHead = (az, el, r = HR) => dirOf(az, el).multiplyScalar(r).multiply(HS);
+      const frameH = (az, el, r = HR, rz = 0) => new THREE.Matrix4().compose(onHead(az, el, r), new THREE.Quaternion().setFromUnitVectors(V3(0, 0, 1), dirOf(az, el)).multiply(new THREE.Quaternion().setFromAxisAngle(V3(0, 0, 1), rz)), V3(1, 1, 1));
+      {
+        const hg = new THREE.SphereGeometry(HR, 32, 20), q = hg.attributes.position, vc = new Float32Array(q.count * 3), cc = new THREE.Color();
+        for (let k = 0; k < q.count; k++) { const y = q.getY(k) / HR, z = q.getZ(k) / HR; cc.copy(fur); if (y < -0.1 && z > 0) cc.lerp(furLight, Math.min(1, (-y - 0.1) * 2) * 0.6); cc.toArray(vc, k * 3); }
+        hg.setAttribute('color', new THREE.BufferAttribute(vc, 3)); hg.scale(HS.x, HS.y, HS.z);
+        headL.push(tint(hg));
+      }
+      // 鼻：前へつき出した筒と、桃色の円盤。鼻の穴（nostrils：鼻息を吹く所）
+      const SY = -0.17, SZ0 = 0.28, SZ1 = 0.66;
+      headL.push(tint(new THREE.CylinderGeometry(0.235, 0.2, SZ1 - SZ0, 24, 1, true).rotateX(Math.PI / 2).scale(1, 0.78, 1).translate(0, SY, (SZ0 + SZ1) / 2), fur));
+      headL.push(tint(new THREE.CylinderGeometry(0.235, 0.235, 0.05, 24).rotateX(Math.PI / 2).scale(1, 0.78, 1).translate(0, SY, SZ1), '#e8a08a'));
+      for (const s of [-1, 1]) headFlat.push(tint(new THREE.CircleGeometry(0.05, 12).scale(0.75, 1.15, 1).rotateZ(s * 0.25).translate(s * 0.075, SY - 0.005, SZ1 + 0.027), '#4a1a20'));
+      const nostrils = [-1, 1].map(s => { const o = new THREE.Object3D(); o.position.set(s * 0.075, SY - 0.01, SZ1 + 0.06); H.add(o); return o; });
+      // 下あご・ニヤリ口・反り上がる牙
+      headL.push(tint(new THREE.SphereGeometry(0.2, 16, 10).scale(1.2, 0.5, 1.05).translate(0, -0.34, 0.42), furLight.clone().lerp(fur, 0.4)));
+      headFlat.push(tint(taper([V3(-0.19, -0.31, 0.47), V3(-0.08, -0.345, 0.57), V3(0.06, -0.335, 0.585), V3(0.2, -0.27, 0.49)], 0.012, 0.012, 16, 5), '#1a1420'));
+      for (const s of [-1, 1]) headL.push(tint(taper([V3(s * 0.17, -0.32, 0.46), V3(s * 0.26, -0.24, 0.55), V3(s * 0.28, -0.08, 0.6), V3(s * 0.24, 0.04, 0.59)], 0.048, 0.006, 14, 8), '#fff4dc'));
+      // くわえた草：口の端で、ゆらゆら
+      const grass = new THREE.Group(); grass.position.set(0.12, -0.33, 0.56); H.add(grass);
+      merged([tint(taper([V3(0, 0, 0), V3(0.12, -0.03, 0.12), V3(0.26, 0.0, 0.26)], 0.01, 0.007, 8, 5), '#8aa84a'), ...[0, 1, 2, 3].map(i => tint(new THREE.SphereGeometry(0.022, 6, 4).scale(0.8, 0.8, 1.6).translate(0.26 + i * 0.022, 0.01 + i * 0.012, 0.27 + i * 0.022), '#d8c060'))], grass);
+      // 耳：とがって外へ。片耳に金の輪
+      for (const s of [-1, 1]) {
+        const ear = (g, c) => { g.rotateX(-0.35); g.rotateZ(-s * 0.75); g.translate(...onHead(s * 0.9, 0.5, HR * 0.92).toArray()); headL.push(tint(g, c)); };
+        ear(new THREE.ConeGeometry(0.12, 0.28, 6).scale(1, 1, 0.42).translate(0, 0.12, 0), furDark);
+        ear(new THREE.ConeGeometry(0.075, 0.19, 6).scale(1, 1, 0.3).translate(0, 0.1, 0.035), '#d89a8a');
+      }
+      { const g = new THREE.TorusGeometry(0.045, 0.011, 6, 16); g.rotateY(Math.PI / 2 - 0.4); g.translate(...onHead(-1.05, 0.5, HR * 1.0).add(V3(-0.07, 0.02, 0.02)).toArray()); headFlat.push(tint(g, '#e8b838')); }
+      // 黒いリーゼント：頭をおおう髪から、前へ大きくせり出す。前ほど太く、先は丸いかたまり。くしの筋は上の面だけ（先まで回すと、正面から兜の格子に見える）
+      const cap = new THREE.SphereGeometry(HR * 1.035, 28, 10, 0, Math.PI * 2, 0, 0.98); cap.scale(HS.x, HS.y, HS.z);
+      const path = new THREE.CatmullRomCurve3([V3(0, 0.3, -0.34), V3(0, 0.49, -0.12), V3(0, 0.57, 0.16), V3(0, 0.58, 0.42), V3(0, 0.52, 0.66)]);
+      const TS = 30, RS = 14, R0 = 0.15, thick = u => 0.75 + 0.65 * Math.sin(Math.min(1, u / 0.85) * Math.PI / 2);
+      const pg = new THREE.TubeGeometry(path, TS, R0, RS, false), pp = pg.attributes.position, pc = V3(), pv = V3();
+      for (let k = 0; k < pp.count; k++) { const u = Math.floor(k / (RS + 1)) / TS; path.getPointAt(u, pc); pv.fromBufferAttribute(pp, k).sub(pc).multiplyScalar(thick(u)); pv.x *= 1.5; pp.setXYZ(k, pc.x + pv.x, pc.y + pv.y, pc.z + pv.z); }
+      pg.computeVertexNormals();
+      headL.push(tint(cap, '#1c1418'), tint(pg, hairC), ...[0, 1].map(u => { const g = new THREE.SphereGeometry(R0 * thick(u), 14, 10); g.scale(1.5, 1, 1); g.translate(...path.getPointAt(u).toArray()); return tint(g, hairC); }));
+      for (const s of [-0.12, 0, 0.12]) {
+        const pts = [], w = s / 0.31;
+        for (let i = 0; i <= 8; i++) { const u = 0.12 + i / 8 * 0.8, c = path.getPointAt(u), tg = path.getTangentAt(u), up = V3(0, tg.z, -tg.y).normalize(), r = R0 * thick(u); pts.push(c.addScaledVector(up, r * Math.sqrt(1 - w * w) * 1.02).add(V3(w * r * 1.5, 0, 0))); }
+        headFlat.push(tint(tube(pts, 0.011, false, 16), '#4a4862'));
+      }
+      // ハチマキ：白い帯に赤い丸。うしろの結び目から、端が二本なびく
+      const bandEl = 0.6, bandY = Math.sin(bandEl) * HR * HS.y, bandR = Math.cos(bandEl) * HR, white = tm('#ffffff');
+      {
+        const band = new THREE.TorusGeometry(bandR * 1.02, 0.034, 8, 40); band.rotateX(Math.PI / 2); band.scale(HS.x, 1.7, HS.z); band.translate(0, bandY, 0);
+        const knot = new THREE.SphereGeometry(0.055, 10, 8); knot.scale(1.2, 1, 0.8); knot.translate(0, bandY, -bandR * HS.z - 0.04);
+        headL.push(tint(band, '#ffffff'), tint(knot, '#ffffff'));
+        headFlat.push(tint(new THREE.CircleGeometry(0.048, 18).translate(0, bandY, bandR * 1.02 * HS.z + 0.036), '#e8304a'));
+      }
+      const tails = [-1, 1].map(s => {
+        const g1 = new THREE.Group(); g1.position.set(s * 0.04, bandY - 0.01, -bandR * HS.z - 0.06); g1.rotation.y = s * 0.4; H.add(g1);
+        add(new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.016, 0.2).translate(0, 0, -0.1), white), 0, 0, 0, g1);
+        const g2 = new THREE.Group(); g2.position.z = -0.19; g1.add(g2);
+        add(new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.016, 0.18).translate(0, 0, -0.09), white), 0, 0, 0, g2);
+        return [g1, g2];
+      });
+      // 顔：太い眉、メンチを切る三白眼（eyesG はまばたきで縦につぶす）。左目に刀傷
+      const eyeEl = 0.2, eyeY = Math.sin(eyeEl) * HR * HS.y;
+      const eyesG = new THREE.Group(); eyesG.position.y = eyeY; H.add(eyesG);
+      const whites = [], darks = [], hls = [];
+      for (const s of [-1, 1]) {
+        const M = frameH(s * 0.36, eyeEl, HR + 0.004).premultiply(new THREE.Matrix4().makeTranslation(0, -eyeY, 0));
+        const put = (g, list) => { g.applyMatrix4(M); list.push(g); };
+        put(new THREE.SphereGeometry(0.085, 16, 10).scale(1.15, 0.78, 0.45), whites);
+        put(new THREE.SphereGeometry(0.032, 10, 8).scale(1, 1.1, 0.4).translate(-s * 0.016, 0.006, 0.028), darks);
+        put(new THREE.BoxGeometry(0.22, 0.038, 0.03).rotateZ(s * 0.32).translate(-s * 0.004, 0.052, 0.022), darks);
+        put(new THREE.BoxGeometry(0.16, 0.014, 0.02).rotateZ(-s * 0.1).translate(0, -0.056, 0.024), darks);
+        put(new THREE.SphereGeometry(0.012, 6, 4).translate(-s * 0.028 + 0.008, 0.017, 0.042), hls);
+      }
+      add(new THREE.Mesh(BU.mergeGeometries(whites), tm('#ffffff')), 0, 0, 0, eyesG);
+      add(new THREE.Mesh(BU.mergeGeometries(darks), new THREE.MeshBasicMaterial({ color: '#1a1420' })), 0, 0, 0, eyesG);
+      add(new THREE.Mesh(BU.mergeGeometries(hls), new THREE.MeshBasicMaterial({ color: '#ffffff' })), 0, 0, 0, eyesG);
+      // 眉：目がしらがわが太く、外へ細くなる
+      const brow = s => { const g = new THREE.BoxGeometry(0.21, 0.07, 0.07, 3, 1, 1), q = g.attributes.position; for (let k = 0; k < q.count; k++) { const f = 1 - 0.55 * (s * q.getX(k) / 0.105 + 1) / 2; q.setY(k, q.getY(k) * f); q.setZ(k, q.getZ(k) * (0.6 + 0.4 * f)); } g.computeVertexNormals(); return g; };
+      for (const s of [-1, 1]) headL.push(tint(brow(s).applyMatrix4(frameH(s * 0.34, 0.39, HR - 0.005, s * 0.4)), hairC));
+      // 刀傷：左目（見て右）の上から下へ、ななめに。ぬい目つき
+      for (let i = 0; i < 5; i++) {
+        const el = 0.4 - i * 0.075, az = -0.27 - i * 0.035;
+        headFlat.push(tint(new THREE.BoxGeometry(0.05, 0.016, 0.012).rotateZ(1.15).applyMatrix4(frameH(az, el, HR + 0.012)), '#e0ae98'));
+        if (i % 2) headFlat.push(tint(new THREE.BoxGeometry(0.045, 0.008, 0.01).rotateZ(-0.35).applyMatrix4(frameH(az, el, HR + 0.016)), '#1a1420'));
+      }
+      merged(headL, H, ocFur);
+      merged(headFlat, H, null, flatM);
+      // ---- 背中の「総長」ののぼり：竿の先に金の玉。旗は竿の外がわへ（正面から見てリーゼントにかくれない）。風になびき、走るとうしろへ流れる
+      const poleX = 0.3, poleZ = -0.66, poleY0 = 0.95, poleY1 = 2.45;
+      bodyL.push(tint(new THREE.CylinderGeometry(0.026, 0.032, poleY1 - poleY0, 8).translate(poleX, (poleY0 + poleY1) / 2, poleZ), '#c8a060'),
+        tint(new THREE.SphereGeometry(0.06, 12, 8).translate(poleX, poleY1 + 0.04, poleZ), goldC),
+        tint(new THREE.TorusGeometry(0.06, 0.018, 6, 14).rotateX(Math.PI / 2).translate(poleX, 1.18, poleZ), '#5a3a2a'));
+      merged(bodyL, rig, ocFur);
+      merged(bodyFlat, rig, null, flatM);
+      const flag = new THREE.Group(); flag.position.set(poleX, poleY1 - 0.48, poleZ); rig.add(flag);
+      const FW = 0.44, fg = new THREE.PlaneGeometry(FW, 0.86, 8, 1).translate(FW / 2 + 0.03, 0, 0), fq = fg.attributes.position, fx0 = Float32Array.from({ length: fq.count }, (_, k) => fq.getX(k));
+      add(new THREE.Mesh(fg, new THREE.MeshStandardMaterial({ map: bossFlagTex(Tx('総長')), side: THREE.DoubleSide, roughness: 0.9 })), 0, 0, 0, flag);
+      // ---- 動き
+      // 走る速さは、体が動いた道のりから（戦闘の突進・舞台で走ってくるとき）。root.userData.run（0〜1）で走らせ、paw（0〜1）で前足が地面をかく
+      let gp = 0, spd = 0, lx = null, lz = 0, snort = 0;
+      update = (dt, t) => {
+        const U = root.userData, ph = U.ph;
+        if (dt > 0) {
+          const px = root.position.x, pz = root.position.z, d = lx == null ? 0 : Math.hypot(px - lx, pz - lz);
+          const v = d > 2 ? 0 : d / dt / (root.scale.x || 1);
+          spd += (Math.min(v, 8) - spd) * (1 - Math.exp(-8 * dt)); lx = px; lz = pz;
+        }
+        const run = clamp(Math.max(spd / 2.5, U.run || 0), 0, 1), paw = U.paw || 0;
+        gp += dt * (2.2 + run * 13);
+        // 脚：走ると前後の脚が交互に大きく駆ける（左右は少しずらす）。止まっているときは重心をゆっくり移す
+        const amp = 0.05 + run * 0.65;
+        for (const L of legs) {
+          const p = gp + (L.front ? 0 : Math.PI) + (L.s > 0 ? 0.55 : 0), sw = Math.sin(p);
+          L.hip.rotation.x = -sw * amp; L.knee.rotation.x = (L.front ? 1 : -1) * Math.max(0, Math.cos(p)) * run * 0.9;
+          if (L.front && L.s > 0 && paw > 0) { L.hip.rotation.x = -paw * 0.75; L.knee.rotation.x = paw * 1.1; }
+        }
+        rig.position.y = Math.abs(Math.sin(gp)) * 0.07 * run + Math.sin(t * 1.6 + ph) * 0.008;
+        rig.rotation.x = Math.sin(gp + 0.6) * 0.06 * run - paw * 0.05;
+        // 鼻息：ときどき頭をふり上げて、ブフッと吹く
+        const sc = (t * 0.23 + ph * 0.41) % 1; snort = sc > 0.9 ? Math.sin((sc - 0.9) / 0.1 * Math.PI) : 0;
+        H.rotation.x = Math.sin(t * 2 + ph) * 0.035 + run * 0.18 - snort * 0.12;
+        H.rotation.y = Math.sin(t * 0.7 + ph) * 0.06 * (1 - run);
+        grass.rotation.y = Math.sin(t * 3.1 + ph) * 0.18; grass.rotation.z = Math.sin(t * 2.3) * 0.12 - run * 0.2;
+        tail.rotation.z = Math.sin(t * 6 + ph) * 0.35 * (1 - run * 0.5); tail.rotation.x = -run * 0.9;
+        // 特攻服：すそと袖がひるがえる。走ると大きく
+        skirts.forEach((g, i) => { const s = i ? 1 : -1; g.rotation.z = s * (0.04 + Math.sin(t * 2.6 + i * 1.3 + ph) * 0.03 + run * (0.3 + Math.sin(t * 17 + i) * 0.1)); });
+        sleeves.forEach((g, i) => { const s = i ? 1 : -1; g.rotation.x = Math.sin(t * 2.2 + i * 2 + ph) * 0.12 + run * (0.9 + Math.sin(t * 15 + i * 1.7) * 0.25); g.rotation.z = s * (0.06 + run * 0.25); });
+        tails.forEach(([g1, g2], i) => { g1.rotation.x = Math.sin(t * 9 + i * 1.7) * 0.22 - 0.25 - run * 0.6; g2.rotation.x = Math.sin(t * 9 + i * 1.7 - 1.2) * 0.35; });
+        // 旗：竿を軸に、ふだんは前へ少し開き、走るとうしろへ流れる。布は波打つ
+        flag.rotation.y = 0.3 + run * 1.0 + Math.sin(t * 1.9 + ph) * 0.15;
+        const wv = 0.035 + run * 0.05;
+        for (let k = 0; k < fq.count; k++) { const x = fx0[k], f = x / FW; fq.setZ(k, Math.sin(t * (6 + run * 8) + x * 11) * wv * f); }
+        fq.needsUpdate = true;
+        const bl = (t * 0.29 + ph) % 4 > 3.86 ? 0.12 : 1 - snort * 0.3; eyesG.scale.y = bl;
+      };
+      const nw = V3();
+      emitFn = (p) => {
+        const run = clamp(Math.max(spd / 2.5, root.userData.run || 0), 0, 1);
+        for (const o of nostrils) {
+          if (Math.random() > 0.02 + snort * 0.5 + run * 0.15) continue;
+          o.getWorldPosition(nw);
+          const f = V3(Math.sin(root.rotation.y), 0, Math.cos(root.rotation.y));
+          p.emit(nw.clone(), f.multiplyScalar(0.8 + snort * 1.2).add(V3((Math.random() - 0.5) * 0.3, -0.1 + Math.random() * 0.3, (Math.random() - 0.5) * 0.3)), hdr('#f4f0ea', 0.7), { life: 0.6, size: 0.12 + snort * 0.1, drag: 1.4 });
+        }
+      };
       height = 2.0; radius = 1.0; scale = 1.5; break;
     }
     case 'ghost': {   // ゲラゲラゴースト：白い布おばけ。目を細めて大笑い
