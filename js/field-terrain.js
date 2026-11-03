@@ -40,10 +40,18 @@ class Terrain {
     // 池（zone.pond）：床をなだらかにへこませて水をはる。blobs：[x, z, r] のくぼみ（重なると深さが足されて、岸が丸くつながる）。
     //   depth：一つのくぼみのまん中の深さ、lv：水面の床からの深さ、h：まわりの床の高さ、shore：水ぎわの色 [乾いた所, ぬれた所]（なければ砂）。
     //   水ぎわ（水面から STOP 以内の地面）からは、水に入れない
-    if (zone.pond) {
-      const P = zone.pond, lv = P.lv || 0.45;
-      this.pond = { blobs: P.blobs.map(([x, z, r]) => [...zonePoint(zone, [x, z]), r]), depth: P.depth || 1.5, lv, y: (P.h || 0) - lv, shore: P.shore };
+    // 川（zone.river）：池と同じ作りで、折れ線にそってくぼませる。path：[x, z, r] の点（r：くぼみの半幅。水の幅はその約 0.67 倍）。
+    //   点は、なめらかな曲線でつなぐ。流れは path の向き。橋（=）の床は、くぼまずに元の高さのまま渡れる。lv・depth・h・shore は池と同じ（池と川が両方あれば、池のほうを使う）
+    if (zone.pond || zone.river) {
+      const P = zone.pond || zone.river, lv = P.lv || 0.45;
+      this.pond = { blobs: (zone.pond ? zone.pond.blobs : []).map(([x, z, r]) => [...zonePoint(zone, [x, z]), r]), lines: [], depth: P.depth || 1.5, lv, y: (P.h || 0) - lv, shore: P.shore };
       for (const [x, z, r] of this.pond.blobs) this.dents.push({ x, z, r, depth: this.pond.depth, rim: 0, w: 1, top: 0 });
+      if (zone.river) this.pond.lines.push(riverLine(zone.river.path.map(([x, z, r]) => [...zonePoint(zone, [x, z]), r ?? zone.river.r ?? 3])));
+      // 水のある範囲（くぼみの外接矩形）
+      const B = this.pond.box = [Infinity, Infinity, -Infinity, -Infinity];
+      const grow = (x, z, r) => { B[0] = Math.min(B[0], x - r); B[1] = Math.min(B[1], z - r); B[2] = Math.max(B[2], x + r); B[3] = Math.max(B[3], z + r); };
+      for (const [x, z, r] of this.pond.blobs) grow(x, z, r);
+      for (const L of this.pond.lines) for (const [x, z, r] of L.pts) grow(x, z, r);
     }
     for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) {
       const i = r * this.cols + c, ch = rows[r][c] ?? '#';
@@ -286,9 +294,9 @@ class Terrain {
 
   // ---------------- 高さ・通行 ----------------
   groundAt(x, z) { const i = this.at(x, z); return i < 0 ? NaN : this.groundOf(i, x, z); }
-  // くぼみの分の高さ：半径 r の内側はすり鉢状に depth まで下がり、縁（幅 w）は rim だけ盛り上がる。top の内側は平ら（丘の頂上）
+  // くぼみの分の高さ：半径 r の内側はすり鉢状に depth まで下がり、縁（幅 w）は rim だけ盛り上がる。top の内側は平ら（丘の頂上）。川のくぼみも足す
   dentAt(x, z) {
-    let y = 0;
+    let y = -this.riverDepth(x, z);
     for (const d of this.dents) {
       const s = Math.hypot(x - d.x, z - d.z);
       if (s < d.r) { const u = 1 - (Math.max(0, s - d.top) / (d.r - d.top)) ** 2; y -= d.depth * u * u; }
@@ -302,21 +310,35 @@ class Terrain {
     const P = this.pond; if (!P) return 0;
     let y = 0;
     for (const [bx, bz, r] of P.blobs) { const s = Math.hypot(x - bx, z - bz); if (s < r) { const u = 1 - (s / r) ** 2; y += P.depth * u * u; } }
+    return y + this.riverDepth(x, z);
+  }
+  // 川のくぼみの深さ（池のくぼみと同じ断面を、折れ線にそってのばす）
+  riverDepth(x, z) {
+    const P = this.pond; if (!P || !P.lines.length) return 0;
+    let y = 0;
+    for (const L of P.lines) { const [s, r] = lineNear(L, x, z); if (s < r) { const u = 1 - (s / r) ** 2; y += P.depth * u * u; } }
     return y;
   }
+  // 川のくぼみが (x, z) から pad m 以内にかかるか
+  riverNear(x, z, pad) { return !!this.pond && this.pond.lines.some(L => { const [s, r] = lineNear(L, x, z, pad); return s < r + pad; }); }
   // 池の水ぎわより内側か（m：水面から上へ、どこまでを水ぎわとするか）
   inPond(x, z, m = 0) { return !!this.pond && this.pondDepth(x, z) > this.pond.lv - m; }
   // そのマスにくぼみがかかるか
   dentTouches(c, r) {
     const x0 = this.cx(c) - CELL / 2, z0 = this.cz(r) - CELL / 2;
-    return this.dents.some(d => Math.hypot(clamp(d.x, x0, x0 + CELL) - d.x, clamp(d.z, z0, z0 + CELL) - d.z) < d.r + d.w);
+    return this.dents.some(d => Math.hypot(clamp(d.x, x0, x0 + CELL) - d.x, clamp(d.z, z0, z0 + CELL) - d.z) < d.r + d.w) || this.riverNear(x0 + CELL / 2, z0 + CELL / 2, CELL * 0.71);
   }
+  // くぼみ（池・川を含む）のある区画か
+  get hasDents() { return this.dents.length > 0 || !!(this.pond && this.pond.lines.length); }
+  // 地面（橋の床は、その下のくぼんだ地面。橋のはしの浅いところも、板の厚み 0.22m より下にして、板と重ならないようにする）
+  soilOf(i, x, z) { return this.bridge[i] && this.hasDents ? this.h[i] + Math.min(this.dentAt(x, z), -0.22) : this.groundOf(i, x, z); }
+  soilAt(x, z) { const i = this.at(x, z); return i < 0 ? NaN : this.soilOf(i, x, z); }
   groundOf(i, x, z) {
     switch (this.kind[i]) {
       case TK.STAIR: { const s = this.stairs.get(i), t = clamp(((s.axis === 'x' ? x : z) - s.start) * s.up / s.len, 0, 1); return s.h0 + (s.h1 - s.h0) * t; }
       case TK.LIFT: return this.lifts[this.liftOf[i]].y;
       case TK.SOLID: case TK.WINDOW: return NaN;
-      case TK.FLOOR: return this.dents.length && !this.bridge[i] ? this.h[i] + this.dentAt(x, z) : this.h[i];
+      case TK.FLOOR: return !this.bridge[i] && this.hasDents ? this.h[i] + this.dentAt(x, z) : this.h[i];
       default: return this.h[i];
     }
   }
@@ -347,7 +369,7 @@ class Terrain {
     let bad = 0;
     for (const [dx, dz] of RING) {
       const px = x + dx * r, pz = z + dz * r, i = this.at(px, pz);
-      if (!this.walkable(i, o) || !this.stepOk(this.groundOf(i, px, pz) - h0, o) || (this.pond && this.inPond(px, pz, POND_STOP))) bad++;
+      if (!this.walkable(i, o) || !this.stepOk(this.groundOf(i, px, pz) - h0, o) || (this.pond && !this.bridge[i] && this.inPond(px, pz, POND_STOP))) bad++;
     }
     return bad;
   }
@@ -1259,11 +1281,11 @@ function buildArchitecture(view, T) {
   // マス i の、辺の端点での高さ（階段は傾き、昇降機はいちばん低い階）
   const hAt = (i, x, z) => kind[i] === K.LIFT ? T.lifts[T.liftOf[i]].levels[0] : kind[i] === K.VOID ? ABYSS : T.groundOf(i, x, z);
   // くぼみにかかる床：細かく分けて、くぼみの曲面に沿わせる
-  const dented = (c, r) => T.dents.length > 0 && T.dentTouches(c, r);
+  const dented = (c, r) => T.hasDents && T.dentTouches(c, r);
   // くぼみの面：マスを n × n に割る（小さなくぼみは細かく。大きな丘は 4 × 4 で十分）
-  const dentN = (x0, z0) => T.dents.some(d => d.r - d.top < 10 && Math.hypot(clamp(d.x, x0, x0 + CELL) - d.x, clamp(d.z, z0, z0 + CELL) - d.z) < d.r + d.w) ? 8 : 4;
+  const dentN = (x0, z0) => T.dents.some(d => d.r - d.top < 10 && Math.hypot(clamp(d.x, x0, x0 + CELL) - d.x, clamp(d.z, z0, z0 + CELL) - d.z) < d.r + d.w) || T.riverNear(x0 + CELL / 2, z0 + CELL / 2, CELL * 0.71) ? 8 : 4;
   const dentSurf = (G, i, x0, z0, x1, z1, lift = 0, uvf) => {
-    const n = dentN(Math.min(x0, x1), Math.min(z0, z1)), P = (a, b) => { const x = x0 + (x1 - x0) * a / n, z = z0 + (z1 - z0) * b / n; return [x, T.groundOf(i, x, z) + lift, z]; };
+    const n = dentN(Math.min(x0, x1), Math.min(z0, z1)), P = (a, b) => { const x = x0 + (x1 - x0) * a / n, z = z0 + (z1 - z0) * b / n; return [x, T.soilOf(i, x, z) + lift, z]; };
     for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) {
       const q = [P(a, b + 1), P(a + 1, b + 1), P(a + 1, b), P(a, b)];
       G.quad(...q, uvf && q.map(p => uvf(p[0], p[2])));
@@ -1307,7 +1329,9 @@ function buildArchitecture(view, T) {
     if (T.bridge[i]) {
       const y = T.h[i];
       acc('wood', 4).box(x0, y - 0.22, z0, x1, y, z1, 'b');
-      flat('water', y - 0.45, x0, z0, x1, z1, 8); flat('bed', y - 1.25, x0, z0, x1, z1, 8);
+      // 川（zone.river）の橋：下は、くぼんだ地面（水面は川の水面）
+      if (T.pond && dented(c, r)) dentSurf(acc('floor', 16), i, x0, z0, x1, z1);
+      else { flat('water', y - 0.45, x0, z0, x1, z1, 8); flat('bed', y - 1.25, x0, z0, x1, z1, 8); }
     } else if (k === K.FLOOR && dented(c, r)) dentSurf(acc('floor', lots ? 5 : 16), i, x0, z0, x1, z1);
     else if (k === K.FLOOR || k === K.DOOR || k === K.EXIT) acc('floor', lots ? 5 : 16).quad([x0, T.h[i], z1], [x1, T.h[i], z1], [x1, T.h[i], z0], [x0, T.h[i], z0]);
     if (k === K.LIFT) { const y = T.lifts[T.liftOf[i]].levels[0] - 0.45; acc('pit').quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]); }
@@ -1409,6 +1433,16 @@ function buildArchitecture(view, T) {
           else rockFace('rock', ex, ez, dc, dr, CELL, [T.cap[j] - 0.8, yB], [T.cap[j] - 0.8, yA], 0.15);
           return;
         }
+        // 地図の端までくぼんだ床（川の流れ出るところ）：くぼみの断面を土の面でふさぐ
+        if (j < 0 && open && T.hasDents && dented(c, r)) {
+          const N = 8, w = CELL / N;
+          for (let s = 0; s < N; s++) {
+            const fa = s / N - 0.5, fb = fa + 1 / N, mx = ex + rx * (fa + fb) / 2 * CELL, mz = ez + rz * (fa + fb) / 2 * CELL;
+            const ya = hAt(i, ...pull([ex + rx * fa * CELL, ez + rz * fa * CELL])), yb = hAt(i, ...pull([ex + rx * fb * CELL, ez + rz * fb * CELL]));
+            if (Math.min(ya, yb) < T.h[i] - 0.02) rockFace('rock', mx, mz, nx, nz, w, [EDGE - 1, ya], [EDGE - 1, yb], 0);
+          }
+          return;
+        }
         if (flora || lots) return;   // 木立の側（崖）は木立のマスで、町の敷地の側は建物で作る
         if (nk === K.WINDOW) wallWindow(ex, ez, nx, nz, base, top, c, r, dc, dr);
         else wallFace(ex, ez, nx, nz, base, top, c, r, dc, dr, k, yA, yB);
@@ -1416,6 +1450,14 @@ function buildArchitecture(view, T) {
       }
       if (nk === K.DOOR || k === K.DOOR) return;
       let yA2 = hAt(j, pa[0] - nx * 0.02, pa[1] - nz * 0.02), yB2 = hAt(j, pb[0] - nx * 0.02, pb[1] - nz * 0.02);
+      // 川（zone.river）の橋のわき：下は川なので壁を作らず、くぼんだ側に木の欄干と、川底に立てた杭（辺のまん中に一本）
+      if (T.bridge[i] && !T.bridge[j] && T.pond && T.pond.lines.length) {
+        if (Math.min(yA2, yB2) >= Math.min(yA, yB) - 0.3) return;
+        railing(pa, pb, yA, yB, nx, nz, 'wood');
+        const px = ex + nx * 0.16, pz = ez + nz * 0.16, bed = T.soilAt(px, pz);
+        if (bed < T.h[i] - 0.3) acc('wood', 4).box(px - 0.11, bed - 0.3, pz - 0.11, px + 0.11, T.h[i] - 0.2, pz + 0.11);
+        return;
+      }
       if (nk === K.VOID && floats(i)) { yA2 = yA - FLOAT_D; yB2 = yB - FLOAT_D; }   // 浮かぶ岩盤の側面は、板の厚みだけ
       // 部屋の境目（天井の高さが違う）：高い部屋の側に下がり壁
       if (hasRoof(i) || hasRoof(j)) {
@@ -1745,20 +1787,70 @@ function interiorLighting(view, zone) {
 }
 
 // ------------------------------------------------------------
+//  川（zone.river）の折れ線：点をなめらかな曲線（Catmull-Rom）でつなぎ、0.5m ごとの点にする。s：始めからの長さ
+// ------------------------------------------------------------
+function riverLine(ctrl) {
+  const cr = (a, b, c, d, t) => 0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (3 * b - a - 3 * c + d) * t * t * t), pts = [];
+  for (let k = 0; k < ctrl.length - 1; k++) {
+    const p0 = ctrl[Math.max(0, k - 1)], p1 = ctrl[k], p2 = ctrl[k + 1], p3 = ctrl[Math.min(ctrl.length - 1, k + 2)];
+    const n = Math.max(1, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 0.5));
+    for (let s = 0; s < n; s++) pts.push([0, 1, 2].map(d => cr(p0[d], p1[d], p2[d], p3[d], s / n)));
+  }
+  pts.push(ctrl[ctrl.length - 1].slice());
+  let s = 0; pts.forEach((p, k) => { if (k) s += Math.hypot(p[0] - pts[k - 1][0], p[1] - pts[k - 1][1]); p[3] = s; });
+  const rMax = Math.max(...pts.map(p => p[2]));
+  // 2m 四方の升目ごとに、半幅 + 2m 以内にかかる線分の番号を覚えておく（近さを調べるときに、遠い線分を見ない）
+  const grid = new Map(), G = 2, reach = rMax + 2, key = (i, j) => i * 100003 + j;
+  for (let k = 0; k < pts.length - 1; k++) {
+    const a = pts[k], b = pts[k + 1];
+    for (let i = Math.floor((Math.min(a[0], b[0]) - reach) / G); i <= Math.floor((Math.max(a[0], b[0]) + reach) / G); i++)
+      for (let j = Math.floor((Math.min(a[1], b[1]) - reach) / G); j <= Math.floor((Math.max(a[1], b[1]) + reach) / G); j++) {
+        const q = key(i, j); (grid.get(q) || grid.set(q, []).get(q)).push(k);
+      }
+  }
+  return { pts, len: s, rMax, grid, G, gridPad: 2, key };
+}
+// 折れ線にいちばん近い点：[距離, その点の半幅, 始めからの長さ, 線分の番号, 線分の中の位置]。pad：これより遠い線分は細かく調べない
+function lineNear(L, x, z, pad = 0) {
+  const P = L.pts, lim = L.rMax + pad, list = pad <= L.gridPad ? L.grid.get(L.key(Math.floor(x / L.G), Math.floor(z / L.G))) : null;
+  let best = Infinity, br = 0, bs = 0, bk = 0, bt = 0;
+  if (pad <= L.gridPad && !list) return [best, br, bs, bk, bt];   // 近くに線分がない
+  for (let n = 0, N = list ? list.length : P.length - 1; n < N; n++) {
+    const k = list ? list[n] : n, a = P[k], b = P[k + 1];
+    if (Math.min(a[0], b[0]) - lim > x || Math.max(a[0], b[0]) + lim < x || Math.min(a[1], b[1]) - lim > z || Math.max(a[1], b[1]) + lim < z) continue;
+    const dx = b[0] - a[0], dz = b[1] - a[1], t = clamp(((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz || 1), 0, 1), d = Math.hypot(x - a[0] - dx * t, z - a[1] - dz * t);
+    if (d < best) { best = d; br = a[2] + (b[2] - a[2]) * t; bs = a[3] + (b[3] - a[3]) * t; bk = k; bt = t; }
+  }
+  return [best, br, bs, bk, bt];
+}
+// 折れ線の、始めから s m の点と向き：[x, z, 半幅, 向きの x, 向きの z]
+function linePoint(L, s) {
+  const P = L.pts; s = clamp(s, 0, L.len);
+  let lo = 0, hi = P.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (P[m][3] <= s) lo = m; else hi = m; }
+  const a = P[lo], b = P[hi], t = (s - a[3]) / (b[3] - a[3] || 1), dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1;
+  return [a[0] + dx * t, a[1] + dz * t, a[2] + (b[2] - a[2]) * t, dx / l, dz / l];
+}
+
+// ------------------------------------------------------------
 //  池（zone.pond）の水面と水ぎわ。水面はくぼみより少し広く張り、はみ出したところは、まわりの地面にかくれる
 //   水面：深いところほど濃い青で透けにくく、浅い岸ぎわは底が透ける。水ぎわ：水の中から岸の少し上まで、ぬれた砂の帯
 // ------------------------------------------------------------
 function buildPond(view, T) {
   const P = T.pond, S = CELL / 8;   // くぼみの床（dentSurf）と同じ細かさ・同じ格子点にそろえる
-  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
-  for (const [x, z, r] of P.blobs) { x0 = Math.min(x0, x - r); x1 = Math.max(x1, x + r); z0 = Math.min(z0, z - r); z1 = Math.max(z1, z + r); }
+  let [x0, z0, x1, z1] = P.box;
+  // 川は地図の外までのびる。水面は地図の端から 3m 先まで張って、外の木立の下へ流れこませる（水ぎわの砂は地図の中だけ）
+  x0 = Math.max(x0, -T.hw - 3); z0 = Math.max(z0, -T.hd - 3); x1 = Math.min(x1, T.hw + 3); z1 = Math.min(z1, T.hd + 3);
   x0 = Math.floor((x0 + T.hw) / S) * S - T.hw; z0 = Math.floor((z0 + T.hd) / S) * S - T.hd;
   const nx = Math.ceil((x1 - x0) / S), nz = Math.ceil((z1 - z0) / S);
   const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-  // vert(x, z) → [y, r, g, b, a] か null。四隅のどれかの a が 0 より大きいマスだけ作る
+  // 格子点ごとの池の深さ（水面と水ぎわで同じものを使う）
+  const PD = new Float32Array((nx + 1) * (nz + 1));
+  for (let j = 0, k = 0; j <= nz; j++) for (let i = 0; i <= nx; i++, k++) PD[k] = T.pondDepth(x0 + i * S, z0 + j * S);
+  // vert(x, z, 池の深さ) → [y, r, g, b, a] か null。四隅のどれかの a が 0 より大きいマスだけ作る
   const sheet = (vert, mat) => {
     const V = [];
-    for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) V.push(vert(x0 + i * S, z0 + j * S));
+    for (let j = 0, k = 0; j <= nz; j++) for (let i = 0; i <= nx; i++, k++) V.push(vert(x0 + i * S, z0 + j * S, PD[k]));
     const pos = [], col = [], idx = [], at = new Int32Array(V.length).fill(-1);
     const use = k => { if (at[k] < 0) { const v = V[k], i = k % (nx + 1), j = (k / (nx + 1)) | 0; at[k] = pos.length / 3; pos.push(x0 + i * S, v[0], z0 + j * S); col.push(v[1], v[2], v[3], v[4]); } return at[k]; };
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
@@ -1774,9 +1866,9 @@ function buildPond(view, T) {
   const C = h => new THREE.Color(h), lerpC = (a, b, t) => a.clone().lerp(b, t);
   // 水ぎわの砂（zone.pond.shore で色を変えられる）：岸の上（水面から 0.28m）から水の中（0.6m）まで。水ぎわはぬれて濃く、上は乾いて白っぽい
   const dry = C(P.shore ? P.shore[0] : '#d8c79c'), wet = C(P.shore ? P.shore[1] : '#a8916a'), under = C('#8a8a62');
-  const sand = sheet((x, z) => {
-    const y = T.groundAt(x, z); if (!Number.isFinite(y)) return null;
-    const hgt = P.lv - T.pondDepth(x, z), a = hgt > 0 ? 1 - smooth(0.06, 0.3, hgt) : 1 - smooth(-0.35, -0.65, hgt) * 0.6;
+  const sand = sheet((x, z, pd) => {
+    const y = T.soilAt(x, z); if (!Number.isFinite(y)) return null;
+    const hgt = P.lv - pd, a = hgt > 0 ? 1 - smooth(0.06, 0.3, hgt) : 1 - smooth(-0.35, -0.65, hgt) * 0.6;
     const c = hgt > 0 ? lerpC(wet, dry, smooth(0, 0.2, hgt)) : lerpC(wet, under, smooth(0, -0.4, hgt));
     return [y + 0.012, c.r, c.g, c.b, a];
   }, new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, depthWrite: false, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
@@ -1784,8 +1876,8 @@ function buildPond(view, T) {
   // 水面：岸ぎわは明るい浅葱色で底が透け、深いところは濃い青
   const shallow = C('#a6ecdc'), mid = C('#5cc0e4'), deep = C('#2c74bc');
   const waterM = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, depthWrite: false, roughness: 0.3, metalness: 0.08, emissive: '#2a78b8', emissiveIntensity: 0.2 });
-  const water = sheet((x, z) => {
-    const w = T.pondDepth(x, z) - P.lv; if (w < -0.3) return [P.y, 0, 0, 0, 0];
+  const water = sheet((x, z, pd) => {
+    const w = pd - P.lv; if (w < -0.3) return [P.y, 0, 0, 0, 0];
     const t = clamp(w / 1.0, 0, 1), c = t < 0.35 ? lerpC(shallow, mid, t / 0.35) : lerpC(mid, deep, (t - 0.35) / 0.65);
     return [P.y, c.r, c.g, c.b, 0.42 + 0.48 * smooth(0, 0.8, w)];
   }, waterM);

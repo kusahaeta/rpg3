@@ -169,11 +169,11 @@ const FIELD_ZONES = {
       '###########0000000000#####,,##',
       '############000000000#####,,##',
       '############00000000######,,##',
-      '############,,,,,,,#######,,##',
-      '##############,,,#########,,##',
-      '~~~~~~~~~~~~~~==~~~~~~~~~~==~~',
-      '~~~~~~~~~~~~~~==~~~~~~~~~~==~~',
-      '##############,,##########,,##',
+      '#0000#######,,,,,,,#0000##,,##',
+      '00000000000000,,,#00000000==#0',
+      '00000000000000==0000000000==00',
+      '00000000000000==0000000000==00',
+      '#####000000000==00000###00==00',
       '#0000#########,,##########,,##',
       '#000000#######,,##00000###,,##',
       '#000000#######,,,,0000000,,,##',
@@ -191,6 +191,9 @@ const FIELD_ZONES = {
       '##########,,##################',
       '##########cc##################',
     ],
+    // 小川：西から東へ、森をうねって流れる。二つの橋の下では細く、あいだの曲がりでは少し広い（地図の 15〜19 行めは、この川に合わせて作った岸。
+    //   西の小さな広場（20 行めから南）に岸がつながらないよう、西では北へ寄せる）
+    river: { path: [[-36, 0, 3], [-24, -1.8, 3], [-14, 0.4, 3.6], [-6, -0.2, 3.2], [0, 1.4, 2.6], [7, 0.4, 3], [14, -1.8, 3.6], [24, 0.6, 2.6], [36, -0.8, 3]] },
     anchor: [16, -26], spawn: [2, -30], exits: [{ key: 'b', to: 'pokapoka' }, { key: 'c', to: 'forest_deep' }],
     notes: [{ at: [14, 7], face: 0, post: ['ほしふる森', '星をひろった者は、友を得る'], title: '古い立て札', text: '「ほしふる森——夜になると、空から小さな星が降る。星をひろった者は、友を得るという」' }],
     map2d: [470, 450] },
@@ -5599,6 +5602,80 @@ class ZoneKit {
       for (const R of rings) { R.t += dt; const k = Math.min(1, R.t / 1.6); R.m.scale.setScalar(0.15 + k * 0.75); R.m.material.opacity = 0.45 * (1 - k); }
     });
   }
+  // ---------------- 川（zone.river。地形が、くぼみと水面を作る）のほとり ----------------
+  // 川の、始めから s m の点から、side（1：流れの左、-1：右）へ進んで水ぎわに出たところ。out：水ぎわから外へずらす m（負なら水の中へ）
+  riverEdge(s, side, out = 0, L = this.T.pond.lines[0]) {
+    const [cx, cz, , dx, dz] = linePoint(L, s), nx = dz * side, nz = -dx * side, T = this.T;
+    let d = 0; while (d < 30 && T.inPond(cx + nx * d, cz + nz * d)) d += 0.05;
+    return [cx + nx * (d + out), cz + nz * (d + out)];
+  }
+  // 川の、地図の中にある長さの範囲 [始め, 終わり]
+  riverSpan(L = this.T.pond.lines[0]) {
+    const T = this.T, inside = p => Math.abs(p[0]) < T.hw - 0.3 && Math.abs(p[1]) < T.hd - 0.3, P = L.pts.filter(inside);
+    return P.length ? [P[0][3], P[P.length - 1][3]] : [0, L.len];
+  }
+  // 川が地図の外へ出るところ：外側に木立としげみを置いて、川が森の奥へ消えていくように見せる（o：flora と同じ木の色など）
+  riverMouths(o = {}, L = this.T.pond.lines[0]) {
+    const [s0, s1] = this.riverSpan(L), y = this.T.pond.y + this.T.pond.lv, r = this.r;
+    for (const [s, out] of [[s0, -1], [s1, 1]]) {
+      const [px, pz, rad, dx, dz] = linePoint(L, s), ox = dx * out, oz = dz * out, at = (f, u) => [px + ox * f + dz * u, pz + oz * f - dx * u], half = rad * 0.67;
+      for (const u of [-half * 0.7, 0, half * 0.7]) { const [x, z] = at(1.4 + r() * 0.6, u); this.shrub(x, y, z, 1.3 + r() * 0.3, o); }
+      for (const [f, u, sz] of [[3.4, -0.6, 1.3], [1.2, half + 1.6, 1.15], [1.2, -half - 1.6, 1.2], [4.2, half + 1.2, 1.1], [4.4, -half - 1.4, 1.25]]) {
+        const [x, z] = at(f + r() * 0.6, u + (r() - 0.5) * 0.6); this.plant(r() < 0.75 ? 'round' : 'pine', x, y, z, sz * (0.9 + r() * 0.2), o);
+      }
+    }
+  }
+  // 水ぎわの小石：川の両岸に、水の中から岸の上まで（橋の下はよける）
+  riverPebbles(n = 120, L = this.T.pond.lines[0]) {
+    const [s0, s1] = this.riverSpan(L), T = this.T;
+    for (let i = 0; i < n; i++) {
+      const [x, z] = this.riverEdge(s0 + this.r() * (s1 - s0), this.r() < 0.5 ? 1 : -1, -0.3 + this.r() * 0.8, L), k = T.at(x, z), s = 0.1 + this.r() ** 2 * 0.22;
+      if (k < 0 || T.bridge[k] || T.kind[k] !== TK.FLOOR) continue;
+      this.put('rock', x, T.soilAt(x, z) + s * 0.15, z, [s, s * 0.5, s * 0.8], [0, this.r() * 3, 0], this.tint(this.r() < 0.5 ? '#b4ae9e' : '#9a968a', 0.12));
+    }
+  }
+  // 川の流れ（zone.river）：水の上に、曲がりにそって流れの筋とさざなみを重ねて流し、葉っぱや花びらを流す。o.speed：流れの速さ（m/秒。path の向きへ）、o.leaves：葉の数
+  riverStream(o = {}, L = this.T.pond.lines[0]) {
+    const T = this.T, Y = T.pond.y, sp = o.speed ?? 0.9, tex = this.flowTextures(), [s0, s1] = this.riverSpan(L);
+    // 帯：川の中心線にそって 0.5m ごと、水の幅の 85% に。両はしは透かす（u：流れにそった長さ、v：横の位置。どちらも m）
+    const pos = [], uv = [], col = [], idx = [], V = [-1, -0.55, 0, 0.55, 1], A = [0, 1, 1, 1, 0], n = Math.ceil((s1 - s0) / 0.5);
+    for (let k = 0; k <= n; k++) {
+      const s = s0 + (s1 - s0) * k / n, [x, z, r, dx, dz] = linePoint(L, s), half = r * 0.67 * 0.85;
+      V.forEach((v, j) => { pos.push(x + dz * v * half, Y, z - dx * v * half); uv.push(s, v * half); col.push(1, 1, 1, A[j]); });
+      if (k) for (let j = 0; j < 4; j++) { const a = (k - 1) * 5 + j, b = k * 5 + j; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4)); g.setIndex(idx);
+    const layers = [[tex.ripple, 5.5, 0.55, 0.012], [tex.streak, 3.2, 0.7, 0.02], [tex.streak, 4.6, 0.45, 0.028]].map(([base, tile, op, dy], k) => {
+      const t = base.clone(); t.repeat.set(1 / tile, 2 / tile); t.offset.y = k * 0.37; t.needsUpdate = true;
+      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: t, color: '#eaf8ff', transparent: true, opacity: op, depthWrite: false, vertexColors: true }));
+      m.position.y = dy; m.renderOrder = 3; this.scene.add(m);
+      return { t, v: -sp / tile * (k === 2 ? 1.25 : k === 0 ? 0.7 : 1) };
+    });
+    // 浮かんで流れる葉っぱと花びら：川の中ほどを、曲がりにそって
+    const lane = s => (Math.random() - 0.5) * linePoint(L, s)[2] * 0.67 * 1.1;
+    const leaves = [...Array(o.leaves ?? 8)].map((_, i) => {
+      const m = this.mesh(new THREE.SphereGeometry(0.12, 8, 4), ['#6ab850', '#8ac862', '#ffc8dc', '#e8b050'][i % 4], 0, Y + 0.03, 0, { abs: true, noShadow: true });
+      m.scale.set(1, 0.18, 0.6);
+      const s = s0 + Math.random() * (s1 - s0);
+      return { m, s, off: lane(s), k: 0.8 + Math.random() * 0.4, ph: Math.random() * 6, spin: (Math.random() - 0.5) * 1.2 };
+    });
+    this.tick((dt, t) => {
+      for (const Ly of layers) Ly.t.offset.x += Ly.v * dt;
+      for (const F of leaves) {
+        F.s += sp * F.k * dt;
+        if (sp > 0 ? F.s > s1 : F.s < s0) { F.s = sp > 0 ? s0 : s1; F.off = lane(F.s); }
+        const [x, z, , dx, dz] = linePoint(L, F.s);
+        F.m.position.set(x + dz * F.off, Y + 0.03 + Math.sin(t * 2 + F.ph) * 0.015, z - dx * F.off); F.m.rotation.y += F.spin * dt;
+      }
+    });
+    // 水面のきらめき
+    this.v.emitters.push(dt => {
+      if (Math.random() >= dt * 8) return;
+      const s = s0 + Math.random() * (s1 - s0), [x, z, r, dx, dz] = linePoint(L, s), off = (Math.random() - 0.5) * r * 0.67 * 1.4;
+      this.v.p.emit(V3(x + dz * off, Y + 0.04, z - dx * off), V3(dx * sp, 0.02, dz * sp), hdr('#ffffff', 1.4), { life: 1.0, size: 0.05, drag: 0 });
+    });
+  }
   bridge(x, z, len, ry = 0, w = 2.4) {
     const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry; this.scene.add(g);
     for (let i = 0; i < Math.ceil(len / 0.5); i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, 0.44), this.mat(i % 2 ? 'wood' : 'wood2')); p.position.set(0, 0.25 + Math.sin(i / (len / 0.5) * Math.PI) * 0.35, -len / 2 + i * 0.5); p.castShadow = true; p.receiveShadow = true; g.add(p); }
@@ -5937,22 +6014,7 @@ class ZoneKit {
   // 川の流れ：水面の上に、流れの筋とゆるいさざなみの模様を重ねて流し、浮かんだ葉っぱや花びらを流す（流れは X の向き）。
   //   x0〜x1, z0〜z1：川の範囲、y：水面の高さ（絶対）、o.speed：流れの速さ（m/秒。負で -X へ）、o.leaves：浮かべる葉の数、o.avoid：葉を流さない [z0, z1]（水車のあたりなど）
   riverFlow(x0, z0, x1, z1, y, o = {}) {
-    const W = x1 - x0, D = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, sp = o.speed ?? -1;
-    const tex = this.flowTexs || (this.flowTexs = (() => {
-      const canvas = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'));
-        const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
-      // 流れの筋：流れの向きにのびた、細い白い線（少し波打つ）
-      const streak = canvas(256, 128, g => { g.lineCap = 'round';
-        for (let i = 0; i < 70; i++) { const x = Math.random() * 256, yy = Math.random() * 128, l = 18 + Math.random() * 60, a = 0.18 + Math.random() * 0.45;
-          g.strokeStyle = `rgba(255,255,255,${a})`; g.lineWidth = 1 + Math.random() * 1.6; g.beginPath(); g.moveTo(x, yy);
-          for (let k = 1; k <= 6; k++) g.lineTo(x + l * k / 6, yy + Math.sin(k * 1.3 + x) * 1.6);
-          g.stroke(); if (x + l > 256) { g.beginPath(); g.moveTo(x - 256, yy); g.lineTo(x + l - 256, yy); g.stroke(); } } });
-      // さざなみ：ぼんやりした明るい斑
-      const ripple = canvas(256, 128, g => {
-        for (let i = 0; i < 40; i++) { const x = Math.random() * 256, yy = Math.random() * 128, r = 8 + Math.random() * 20;
-          for (const dx of [0, -256, 256]) { const gr = g.createRadialGradient(x + dx, yy, 0, x + dx, yy, r); gr.addColorStop(0, 'rgba(220,245,255,0.35)'); gr.addColorStop(1, 'rgba(220,245,255,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(x + dx, yy, r * 1.8, r * 0.6, 0, 0, Math.PI * 2); g.fill(); } } });
-      return { streak, ripple };
-    })());
+    const W = x1 - x0, D = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, sp = o.speed ?? -1, tex = this.flowTextures();
     const layers = [[tex.ripple, 5.5, 0.55, 0.012], [tex.streak, 3.2, 0.7, 0.02], [tex.streak, 4.6, 0.45, 0.028]].map(([base, tile, op, dy], k) => {
       const t = base.clone(); t.repeat.set(W / tile, Math.max(1, D / tile * 2)); t.offset.y = k * 0.37; t.needsUpdate = true;
       const m = this.mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshBasicMaterial({ map: t, color: '#eaf8ff', transparent: true, opacity: op, depthWrite: false }), cx, y + dy, cz, { abs: true, rx: -Math.PI / 2, noShadow: true });
@@ -5975,6 +6037,24 @@ class ZoneKit {
     });
     // 水面のきらめき
     this.v.emitters.push(dt => { if (Math.random() < dt * 8) this.v.p.emit(V3(x0 + Math.random() * W, y + 0.04, z0 + 0.3 + Math.random() * (D - 0.6)), V3(sp, 0.02, 0), hdr('#ffffff', 1.4), { life: 1.0, size: 0.05, drag: 0 }); });
+  }
+  // 流れの模様のテクスチャ（流れの筋・さざなみ。横＝流れの向き）
+  flowTextures() {
+    return this.flowTexs || (this.flowTexs = (() => {
+      const canvas = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'));
+        const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; };
+      // 流れの筋：流れの向きにのびた、細い白い線（少し波打つ）
+      const streak = canvas(256, 128, g => { g.lineCap = 'round';
+        for (let i = 0; i < 70; i++) { const x = Math.random() * 256, yy = Math.random() * 128, l = 18 + Math.random() * 60, a = 0.18 + Math.random() * 0.45;
+          g.strokeStyle = `rgba(255,255,255,${a})`; g.lineWidth = 1 + Math.random() * 1.6; g.beginPath(); g.moveTo(x, yy);
+          for (let k = 1; k <= 6; k++) g.lineTo(x + l * k / 6, yy + Math.sin(k * 1.3 + x) * 1.6);
+          g.stroke(); if (x + l > 256) { g.beginPath(); g.moveTo(x - 256, yy); g.lineTo(x + l - 256, yy); g.stroke(); } } });
+      // さざなみ：ぼんやりした明るい斑
+      const ripple = canvas(256, 128, g => {
+        for (let i = 0; i < 40; i++) { const x = Math.random() * 256, yy = Math.random() * 128, r = 8 + Math.random() * 20;
+          for (const dx of [0, -256, 256]) { const gr = g.createRadialGradient(x + dx, yy, 0, x + dx, yy, r); gr.addColorStop(0, 'rgba(220,245,255,0.35)'); gr.addColorStop(1, 'rgba(220,245,255,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(x + dx, yy, r * 1.8, r * 0.6, 0, 0, Math.PI * 2); g.fill(); } } });
+      return { streak, ripple };
+    })());
   }
   // 宿場の木戸：二本の柱に冠木と貫、小さな切妻屋根、宿場の名の札（ry = 札の正面。0 で南向き）。w：柱の間
   kido(x, z, ry = 0, w = 10, text = '', sub) {
@@ -8244,7 +8324,8 @@ const ZONE_BUILD = {
   },
   // ほしふる森・入口：小川と二本の橋、光るきのこの輪、北の広場の倒木
   forest(K) {
-    K.flora({ trees: [['round', 4], ['pine', 1.2], ['mush', 0.3]], leaf: ['#5ab04a', '#4a9a3e', '#62b44e', '#3f8a3a'], bush: 0.8, flower: ['#fff4a8', '#ffffff', '#ffb8d8'] });
+    const fo = { trees: [['round', 4], ['pine', 1.2], ['mush', 0.3]], leaf: ['#5ab04a', '#4a9a3e', '#62b44e', '#3f8a3a'], bush: 0.8, flower: ['#fff4a8', '#ffffff', '#ffb8d8'] };
+    K.flora(fo);
     // 目印の大きな木（星の実がなる）
     K.bigTree(-18, -4, 1.2, 'leaf2', '#fff4a8'); K.bigTree(19, 4, 1.1, 'leaf', '#b8ffd8');
     // 西の小さな広場：光るきのこの輪
@@ -8253,8 +8334,10 @@ const ZONE_BUILD = {
     // 北の広場：倒木と花畑、北西の茂みの赤いきのこ
     K.log(12, -12, 3, 0.6); K.flowers(10, -20, 14, 2, ['#fff4a8', '#ffffff']); K.flowers(-16, -16, 10, 1.6);
     for (const [x, z] of [[-26, -28], [-22, -26], [-20, -30]]) K.mushroom(x, z, 0.9, '#e05a6a');
+    // 小川：流れと、水ぎわの小石
+    K.riverStream({ speed: 0.9, leaves: 10 }); K.riverPebbles(140); K.riverMouths(fo);
     // 立て札の広場と、橋のたもと
-    K.flowers(16, 12, 12, 2, ['#ffe07a', '#ffffff']); K.stoneLantern(-3.2, 3); K.stoneLantern(3.2, 3);
+    K.flowers(16, 12, 12, 2, ['#ffe07a', '#ffffff']); K.stoneLantern(-2.8, 4.8); K.stoneLantern(2.8, 4.8);
     // 南東の高台：切り株と花
     K.cyl(20, 20, 0.7, 0.5, 'bark', { seg: 10 }); K.flowers(22, 28, 12, 2, ['#ffb8d8', '#ffffff']);
   },
