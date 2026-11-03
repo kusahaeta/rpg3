@@ -7010,6 +7010,147 @@ class ZoneKit {
     if (glowFruit) for (let i = 0; i < 8; i++) { const a = this.r() * 6; this.mesh(new THREE.SphereGeometry(0.2 * s, 8, 6), this.glow(glowFruit, 1.8), x + Math.cos(a) * 3 * s, (6.5 + this.r() * 2) * s, z + Math.sin(a) * 3 * s, { noShadow: true }); }
     this.col(x, z, 1.6 * s, 7 * s);
   }
+  // どんぐりの大樹（まどろみの林のいちばん奥。うろはリスたちのどんぐり倉）：
+  //   すそが板根で広がり、縦の筋がうねる苔むした幹。正面に、ふちのめくれた大きなうろが本当にへこんであいていて、奥にどんぐりの山。
+  //   幹は低めで五つの太い枝に分かれ、横へ張り出した枝先に葉のかたまり。幹の上のほうに、リスの出入りする小さな穴と、さるのこしかけ。
+  //   o.face：うろの向き（0 で +z）。うろはまん中の高さ 1.95、幹の面は中心から 2.35 ほど
+  oakTree(x, z, o = {}) {
+    const y0 = this.gy(x, z), r = () => this.r(), face = o.face || 0;
+    const sm = (a, b, t) => { t = Math.min(1, Math.max(0, (t - a) / (b - a))); return t * t * (3 - 2 * t); };
+    const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+    // 幹の向き phi（0 がうろの正面）・中心からの距離・高さ → 世界の座標
+    const W = (phi, rr, y) => V3(x + Math.sin(phi + face) * rr, y0 + y, z + Math.cos(phi + face) * rr);
+    // 樹皮の色：筋のくぼみは暗く、上を向いた面と根もとは苔で緑に
+    const barkC = new THREE.Color('#8e5f36'), barkD = new THREE.Color('#5c3a20'), mossC = new THREE.Color('#6a9a40'), mossD = new THREE.Color('#4a7a30');
+    const holeD = new THREE.Color('#0c0603'), holeC = new THREE.Color('#2a180c'), lipC = new THREE.Color('#a87a4c');
+    const bark = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+    const barkCol = (c, px, y, pz, ny, groove) => {
+      const n = 0.5 + 0.5 * Math.sin(px * 1.7 + y * 0.9) * Math.sin(pz * 1.3 - y * 0.7);
+      c.copy(barkC).lerp(barkD, Math.min(1, Math.max(0, groove)));
+      c.lerp(n > 0.45 ? mossC : mossD, 0.8 * Math.min(1, Math.max(0, (ny * 0.9 - 0.15 + Math.max(0, 1 - y / 1.1) * 0.5) * (0.3 + n * 0.9))));
+    };
+    const paint = (geo, fn) => {
+      const pos = geo.attributes.position, nor = geo.attributes.normal, col = new Float32Array(pos.count * 3), c = new THREE.Color();
+      for (let i = 0; i < pos.count; i++) { fn(c, pos.getX(i), pos.getY(i) - y0, pos.getZ(i), nor.getY(i), i); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    };
+    // ---- 幹 ----
+    const HY = 1.95, HB = 1.45, HA = 1.0;   // うろのまん中の高さ・半分の高さ・半幅
+    const lobes = [0.95, 1.85, 2.75, 3.55, 4.45, 5.33].map(a => a + (r() - 0.5) * 0.2);   // 板根の向き（正面のうろの下はあける）
+    const base = y => {
+      const yy = Math.max(y, 0);
+      let b = 2.25 + 0.6 * Math.exp(-yy / 0.7) + 0.32 * Math.exp(-(((y - 6.1) / 0.8) ** 2));   // すその広がりと、枝分かれの手前のふくらみ
+      if (y > 6.7) b *= Math.sqrt(Math.max(1e-4, 1 - ((y - 6.7) / 1.9) ** 2));                 // 枝のまたで閉じる
+      return y < 0 ? b - y * 0.5 : b;
+    };
+    const ridge = (phi, y) => { const t = phi + y * 0.05; return 0.05 * Math.sin(11 * t + y * 0.35) + 0.025 * Math.sin(26 * t - y * 0.6); };
+    const lobe = (phi, y) => { let s = 0; for (const a of lobes) s += Math.exp(-((wrap(phi - a) / 0.27) ** 2)); return s * 1.55 * Math.exp(-Math.max(y, 0) / 0.8); };
+    // うろの形：0 がまん中、1 がふち（上はややすぼまる）
+    const hole = (phi, y) => { const v = (y - HY) / HB, a = HA * (1 - 0.3 * Math.max(0, v)) * (1 + 0.08 * Math.max(0, -v)); return Math.hypot(wrap(phi) * 2.35 / a, v); };
+    const surf = (phi, y) => base(y) * (1 + ridge(phi, y)) + lobe(phi, y);   // うろのない幹の面
+    const radius = (phi, y) => {
+      const e = hole(phi, y), rr = base(y) * (1 + ridge(phi, y) * sm(0.75, 1, e)) + lobe(phi, y);   // うろの中は筋なし
+      if (e < 1) return rr - 1.45 * sm(1, 0.8, e) - 0.3 * (1 - e);                                                        // うろの中
+      if (e < 1.34) return rr + (0.17 + 0.1 * sm(0, -1, (y - HY) / HB)) * Math.sin(Math.PI * (e - 1) / 0.34);           // めくれたふち（下ほど厚い）
+      return rr;
+    };
+    const ys = [], ps = [];
+    for (let y = -1; y < 0.3; y += 0.25) ys.push(y);
+    for (let y = 0.3; y < 3.9; y += 0.075) ys.push(y);
+    for (let y = 3.9; y < 8.6; y += 0.22) ys.push(y);
+    ys.push(8.6);
+    for (let p = -Math.PI; p < -0.75; p += 0.07) ps.push(p);
+    for (let p = -0.75; p < 0.75; p += 0.035) ps.push(p);
+    for (let p = 0.75; p < Math.PI; p += 0.07) ps.push(p);
+    ps.push(Math.PI);
+    const NP = ps.length, tpos = [], tidx = [], tinfo = [];
+    for (const y of ys) for (const p of ps) { const q = W(p, radius(p, y), y); tpos.push(q.x, q.y, q.z); tinfo.push([hole(p, y), 0.35 - ridge(p, y) / 0.07]); }
+    for (let j = 0; j < ys.length - 1; j++) for (let i = 0; i < NP - 1; i++) { const a = j * NP + i, b = a + 1, c = a + NP, d = c + 1; tidx.push(a, b, c, b, d, c); }
+    const tg = new THREE.BufferGeometry();
+    tg.setAttribute('position', new THREE.Float32BufferAttribute(tpos, 3)); tg.setIndex(tidx); tg.computeVertexNormals();
+    paint(tg, (c, px, y, pz, ny, i) => {
+      const [e, groove] = tinfo[i];
+      if (e < 1) { c.copy(holeD).lerp(holeC, sm(0.8, 1, e)); return; }
+      barkCol(c, px, y, pz, ny, groove);
+      if (e < 1.34) c.lerp(lipC, 0.75 * Math.sin(Math.PI * (e - 1) / 0.34));
+    });
+    this.add(new THREE.Mesh(tg, bark));
+    this.col(x, z, 2.75, 9);
+    // ---- 根と枝（先ほど細くなる管。まとめて一つに描く） ----
+    const tubes = [];
+    const tube = (pts, r0, r1, seg = 18, rs = 9) => {
+      const curve = new THREE.CatmullRomCurve3(pts), geo = new THREE.TubeGeometry(curve, seg, 1, rs, false), pp = geo.attributes.position, P = V3(), Q = V3();
+      for (let i = 0; i <= seg; i++) {
+        const t = i / seg, rr = r0 + (r1 - r0) * Math.pow(t, 0.7); curve.getPointAt(t, P);
+        for (let j = 0; j <= rs; j++) { const n = i * (rs + 1) + j; Q.fromBufferAttribute(pp, n).sub(P).multiplyScalar(rr).add(P); pp.setXYZ(n, Q.x, Q.y, Q.z); }
+      }
+      geo.computeVertexNormals();
+      paint(geo, (c, px, y, pz, ny) => barkCol(c, px, y, pz, ny, 0.45 + 0.45 * Math.sin(px * 5 + pz * 4 + y * 3)));
+      tubes.push(geo); return curve;
+    };
+    // 根：板根の先から、地面をはって外へ（太いところには当たり）
+    for (const a of lobes) {
+      const s = (r() - 0.5) * 0.5, L = 5.6 + r() * 1.8, P = (t, h) => W(a + s * t * t, 2.6 + (L - 2.6) * t, h);
+      tube([P(-0.1, 1.1), P(0.25, 0.5), P(0.6, 0.2), P(1, -0.25)], 0.6, 0.1, 16, 8);
+      for (const t of [0.15, 0.42]) { const q = P(t, 0); this.col(q.x, q.z, 0.55 - t * 0.5, 0.6); }
+    }
+    // 枝：幹の上で五つに分かれて、横へ大きく張り出す。枝先と、枝のとちゅうから出る小枝の先に、葉のかたまり
+    const leafM = ['#4a9a3e', '#5aa84a', '#3f8a3a', '#68b852'].map(c => this.mc['oak' + c] || (this.mc['oak' + c] = new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0 })));
+    const blob = (p, s, k) => this.mg(leafM[k % 4], new THREE.IcosahedronGeometry(1, 1), p.x, p.y, p.z, [0, r() * 3, 0], [s * (1 + r() * 0.15), s * 0.78, s * (1 + r() * 0.15)]);
+    [0.3, 1.5, 2.6, 3.75, 5.0].forEach((a0, k) => {
+      const a = a0 + (r() - 0.5) * 0.3, L = 6.2 + r() * 1.6, yE = 10.4 + r() * 1.4, tw = (r() - 0.5) * 0.5, E = W(a + tw, L, yE);
+      const c = tube([W(a, 0.3, 5.0), W(a + tw * 0.2, 1.7, 7.4), W(a + tw * 0.5, L * 0.55, 9.0 + r() * 0.6), E], 1.15, 0.28, 22, 10);
+      blob(E.clone().add(V3(0, 0.8, 0)), 3.0 + r() * 0.5, k);
+      for (const sd of [-1, 1]) {
+        const B = c.getPointAt(0.55 + r() * 0.1), F = W(a + tw * 0.4 + sd * (0.5 + r() * 0.25), L * 0.8 + r(), yE + 0.5 + r() * 1.5);
+        tube([B, B.clone().lerp(F, 0.5).add(V3(0, 0.8, 0)), F], 0.42, 0.1, 10, 7);
+        blob(F.clone().add(V3(0, 0.6, 0)), 2.3 + r() * 0.5, k + (sd > 0 ? 2 : 1));
+      }
+    });
+    const tm = new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(tubes), bark);
+    this.add(tm);
+    // 樹冠：てっぺんの丸屋根と、枝のあいだをうめる外まわりのかたまり
+    blob(W(0, 0, 15.2), 4.0, 1);
+    for (let i = 0; i < 7; i++) blob(W(i / 7 * Math.PI * 2 + r() * 0.4, 3.6 + r(), 13.2 + r()), 3.2 + r() * 0.5, i);
+    for (let i = 0; i < 12; i++) blob(W(i / 12 * Math.PI * 2 + r() * 0.3, 6.5 + r() * 2, 10.8 + r() * 1.5), 2.2 + r() * 0.6, i + 2);
+    // ---- うろの奥のどんぐりの山（奥ほど高く積もる） ----
+    const nutM = ['#b8803e', '#a46e34', '#c08a48'].map(c => this.stdM(c, 0.55)), capM = this.stdM('#6e5034', 0.95);
+    const nut = (p, s, rot) => {
+      const b = new THREE.SphereGeometry(0.16 * s, 8, 6); b.scale(1, 1.22, 1); b.translate(0, -0.03 * s, 0);
+      const cp = new THREE.SphereGeometry(0.175 * s, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2); cp.scale(1, 0.62, 1); cp.translate(0, 0.07 * s, 0);
+      const st = new THREE.CylinderGeometry(0.02 * s, 0.03 * s, 0.09 * s, 5); st.translate(0, 0.22 * s, 0);
+      this.mg(nutM[(r() * 3) | 0], b, p.x, p.y, p.z, rot); this.mg(capM, cp, p.x, p.y, p.z, rot); this.mg(capM, st, p.x, p.y, p.z, rot);
+    };
+    const floorAt = (ph, rr) => { for (let y = 0.3; y < 2; y += 0.02) if (radius(ph, y) < rr - 0.12) return y; return null; };
+    for (let n = 0, tries = 0; n < 42 && tries < 600; tries++) {
+      const rr = 0.85 + r() * 1.45, ph = (r() - 0.5) * 0.8, fy = floorAt(ph, rr);
+      if (fy == null) continue;
+      const y = fy + 0.15 + r() * 0.62 * sm(2.3, 0.9, rr);
+      if (hole(ph, y + 0.12) > 0.88 || radius(ph, y) > rr - 0.1) continue;
+      nut(W(ph, rr, y), 0.9 + r() * 0.25, [(r() - 0.5) * 1.6, r() * 6, (r() - 0.5) * 1.6]); n++;
+    }
+    // ---- リスの出入りする小さな穴（一つには、小さな板の止まり木） ----
+    const holeM = this.stdM('#140b05', 1);   // 穴・ふち・止まり木も、材質ごとにまとめて描く
+    [[-0.62, 5.0, 1, true], [0.85, 6.0, 0.8], [2.9, 4.4, 0.9]].forEach(([ph, y, s, perch]) => {
+      const rr = surf(ph, y), ry = ph + face, p = W(ph, rr + 0.04, y);
+      this.mg(holeM, new THREE.CircleGeometry(0.26 * s, 16), p.x, p.y, p.z, [0, ry, 0], [1, 1.25, 1]);
+      const q = W(ph, rr + 0.02, y); this.mg('#9c7a52', new THREE.TorusGeometry(0.29 * s, 0.08 * s, 6, 18), q.x, q.y, q.z, [0, ry, 0], [1, 1.25, 1]);
+      if (perch) { const b = W(ph, rr + 0.12, y - 0.42 * s); this.mg('wood', new THREE.BoxGeometry(0.55, 0.05, 0.3), b.x, b.y, b.z, [0, ry, 0]); }
+    });
+    // ---- さるのこしかけ（幹の横に、半月のきのこ） ----
+    //   上は丸くふくらんだ橙、ふちと裏は白っぽいクリーム
+    for (const [ph, y, s] of [[1.25, 2.6, 1], [1.38, 3.1, 0.7], [-1.35, 2.2, 0.9], [-1.22, 1.7, 0.6], [3.4, 3.2, 1]]) {
+      const p = W(ph, surf(ph, y) - 0.12, y), ry = ph + face;
+      const top = new THREE.SphereGeometry(0.46 * s, 14, 5, 0, Math.PI, 0, Math.PI / 2); top.scale(1, 0.42, 1);
+      this.mg('#d8904a', top, p.x, p.y, p.z, [0, ry, 0]);
+      this.mg('#f2dcae', new THREE.CylinderGeometry(0.5 * s, 0.5 * s, 0.05 * s, 14, 1, false, -Math.PI / 2, Math.PI), p.x, p.y - 0.01, p.z, [0, ry, 0]);
+    }
+    // ---- 根もとの苔の小山（正面はあける） ----
+    for (let i = 0; i < 7; i++) {
+      const ph = 1.3 + i / 6 * (Math.PI * 2 - 2.6) + (r() - 0.5) * 0.3, p = W(ph, 3.3 + r() * 1.2, -0.15), s = 0.6 + r() * 0.35;
+      this.mg(i % 2 ? '#5f8f3c' : '#4f8034', new THREE.IcosahedronGeometry(1, 1), p.x, p.y, p.z, [0, r() * 3, 0], [s * 1.3, s * 0.45, s]);
+    }
+  }
   // 小さなネズミの家（どんぐり型）
   ratHouse(x, z, s = 1, ry = 0) {
     const b = this.mesh(new THREE.SphereGeometry(0.8 * s, 14, 10), 'wood', x, 0.7 * s, z); b.scale.y = 1.1;
@@ -8153,10 +8294,7 @@ const ZONE_BUILD = {
     K.flora({ trees: [['round', 3], ['pine', 2], ['mush', 0.5]], leaf: ['#4a9a3e', '#5aa84a', '#3f8a3a'], caps: ['#ffb84a', '#e05a6a'], bush: 0.85, flower: ['#fff4a8', '#ffffff'] });
     K.fluffs(); K.nemuri();
     // 大樹と、ぽっかり開いたうろ（中はどんぐりの山）
-    K.bigTree(1, -29.5, 1.7, 'leaf', '#fff0a8');
-    const hol = K.mesh(new THREE.CircleGeometry(1.2, 20), '#2a1a10', 1, 1.9, -27.2, { noShadow: true }); hol.scale.y = 1.35;
-    for (let i = 0; i < 10; i++) K.mesh(new THREE.SphereGeometry(0.2, 8, 6), 'wood', 1 + (K.r() - 0.5) * 1.6, 1.2 + K.r() * 0.3, -27.4 - K.r() * 0.3, { noShadow: true }).scale.y = 1.2;
-    K.acorns(1, -25.8, 10); K.acorns(-2.2, -26.2, 6); K.acorns(4.2, -26.3, 6);
+    K.oakTree(1, -29.5);
     for (let i = 0; i < 24; i++) K.mesh(new THREE.SphereGeometry(0.12, 6, 4), pick(['#e8a040', '#d8783a', '#f0c060']), 1 + (K.r() - 0.5) * 12, 0.05, -22 + (K.r() - 0.5) * 6, { noShadow: true }).scale.y = 0.3;
     // リスの村：どんぐり型の家と、どんぐりのかご
     for (const [x, z, s] of [[-24, -15, 0.8], [-20, -17, 0.7], [-26, -9, 0.75]]) K.ratHouse(x, z, s, Math.atan2(-15 - x, -10 - z));
