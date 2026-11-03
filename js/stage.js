@@ -404,7 +404,9 @@ class StageView extends BaseView {
         if (o.scale) m.group.scale.multiplyScalar(o.scale);   // scale：その場面だけ大きく（探索で見る大きさにそろえる）
         this.scene.add(m.group);
         const a = new Actor(this, id, m, { foe, stance: o.stance, y: o.y, lie: o.lie, still: o.still });
+        if (o.scale) a.headH *= o.scale;   // 視線・カメラの注視点も、大きさに合わせる
         if (o.carry === 'hammer') a.hammer = pikoHammer(m);
+        if (o.ud) Object.assign(m.group.userData, o.ud);   // ud：敵の模型へ渡す状態（リスの表情 mood・calm など。monsters.js の各形が読む）
         if (o.juggle === false && m.extras) m.extras.off = true;   // juggle: false：ピエロのお手玉の球を出さない（戦いのあとの会話など）   // carry：手のない敵の姿に持たせる物（ピコピコハンマー。演出 piko で振る）
         a.place(this.W(o.at[0], o.at[1]));
         a.faceT = face(o.face) ?? (foe ? this.O.clone() : this.W(0, 3));
@@ -606,7 +608,11 @@ class StageView extends BaseView {
         if (!(d.look && (d.look[sp] || d.look.all))) A.look = to && this.actors[to] ? to : null;
         // 話しかける相手の方へ体を向ける（向きの指定がある行は除く）
         if (to && this.actors[to] && !this.actors[to].comm && !(d.face && (d.face[sp] || d.face.all))) A.faceT = to;
-      } else { this.actors[sp].roar(); Object.values(this.actors).filter(a => a.foe && a.base === sp).forEach(a => a !== A && a.roar()); }
+      } else {
+        // 敵がしゃべると吠えて光る。calm（戦わない場面）のときは光らず、口だけ動かす（userData.talk）
+        A.m.group.userData.talk = 1;
+        if (!A.m.group.userData.calm) { A.roar(); Object.values(this.actors).filter(a => a.foe && a.base === sp).forEach(a => a !== A && a.roar()); }
+      }
       // 聞き手は話し手を見る
       for (const a of this.party) if (a !== A && !(d.look && (d.look[a.key] || d.look.all))) a.look = sp;
       if (A.comm) for (const a of this.party) if (!(d.look && d.look[a.key])) a.look = sp;
@@ -623,7 +629,7 @@ class StageView extends BaseView {
   lineDone() { this.stopTalk(); }
   // 歩いている人物がいるか（台本の waitMove で、着くまで次の行を待つ）。空中ブランコで跳んだり落ちたりしているあいだも
   walking() { return Object.values(this.actors).some(a => a.path && a.path.length) || !!(this.tz && this.tz.moving()); }
-  stopTalk() { for (const a of Object.values(this.actors)) if (!a.foe) a.talk(false); }
+  stopTalk() { for (const a of Object.values(this.actors)) if (!a.foe) a.talk(false); else a.m.group.userData.talk = 0; }
   // カメラの選び方
   camFor(sp, A, d) {
     // keep：前の行のカメラのまま（切りかえは later の cam で）
@@ -674,6 +680,7 @@ class StageView extends BaseView {
     each(d.stance, (a, v) => { a.setStance(v === 'ready' ? (CHAR_ACT[a.base] || {}).ready || 'ready' : v); if (v === 'ready' && !a.foe) a.showWeapon(true); });
     each(d.move, (a, v) => { const pts = (Array.isArray(v[0]) ? v : [v]).map(p => this.W(p[0], p[1])); a.walkTo(pts, d.speed || 1.6); });
     each(d.hold, (a, v) => a.hold(v));
+    each(d.ud, (a, v) => Object.assign(a.m.group.userData, v));
     each(d.weapon, (a, v) => { a.showWeapon(v); if (v) { this.fx.sprite(a.m.handPos(), (CHARS[a.key] || NPCS[a.key] || {}).color || ELEMENTS.physical.color, 1.0, 0.5); Sfx.zap(); } });
     each(d.meow, a => Sfx.meow(a.base));
     each(d.lift, (a, v) => { const y0 = a.lift; GFX.tween(0.5, e => { a.lift = lerp(y0, v, e); }); });

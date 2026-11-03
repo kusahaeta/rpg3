@@ -201,19 +201,261 @@ function buildEnemy(key, look = {}) {
       };
       height = 1.15; radius = 0.55; break;
     }
-    case 'squirrel': {   // おこりリス：大きなしっぽ、どんぐり
-      const fm = tm(col), bm = tm('#fff0dc');
-      const body = add(P(new THREE.SphereGeometry(0.28, 20, 14), fm), 0, 0.38, 0); body.scale.set(1, 1.15, 0.95);
-      add(P(new THREE.SphereGeometry(0.17, 14, 10), bm), 0, 0.34, 0.16).scale.set(1, 1.3, 0.6);
-      const head = add(P(new THREE.SphereGeometry(0.26, 20, 14), fm), 0, 0.82, 0.03);
-      add(P(new THREE.SphereGeometry(0.12, 12, 8), bm), 0, 0.74, 0.2).scale.set(1.2, 0.8, 0.8);
-      for (const s of [-1, 1]) { const e = add(P(new THREE.ConeGeometry(0.07, 0.18, 6), fm), s * 0.14, 1.08, 0); e.rotation.z = -s * 0.2; }
-      eyes(0.09, 0.86, 0.22, 0.06, inner, { angry: true });
-      const tailG = new THREE.Group(); tailG.position.set(0, 0.25, -0.25); inner.add(tailG);
-      for (let i = 0; i < 7; i++) { const a = i / 6; add(P(new THREE.SphereGeometry(0.16 + Math.sin(a * Math.PI) * 0.08, 12, 10), fm), 0, a * 0.8, -Math.sin(a * Math.PI) * 0.35 + a * 0.15, tailG); }
-      const acorn = add(new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), tm('#a0602a')), 0.2, 0.5, 0.2); acorn.scale.y = 1.2;
-      update = (dt, t) => { tailG.rotation.x = Math.sin(t * 5 + root.userData.ph) * 0.12; inner.position.y = Math.abs(Math.sin(t * 5)) * 0.03; };
-      height = 1.2; radius = 0.45; break;
+    case 'squirrel': {   // おこりリス：どんぐりを守る森の子リス。どんぐりの帽子に、ふさ毛の耳。ほお袋ぱんぱんで、むっとした大きな黒目と出っ歯。両手で大きなどんぐりを抱え、頭より高く立つ S 字のしっぽ。ときどき足を踏み鳴らして、しっぽをぼわっとふくらませる
+      const BU = THREEX.BufferGeometryUtils;
+      // 描く回数をへらすため、いっしょに動く部品は頂点の色をつけて一つの形にまとめる（boar と同じ）
+      const vcM = tm('#ffffff', { vertexColors: true }), flatM = new THREE.MeshBasicMaterial({ vertexColors: true });
+      const tint = (g, c) => { if (c != null) { const k = new THREE.Color(c), a = new Float32Array(g.attributes.position.count * 3); for (let i = 0; i < a.length; i += 3) k.toArray(a, i); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); } g.deleteAttribute('uv'); return g; };
+      // 面の向き（n）で色を決める。形を変える前に塗る
+      const paint = (g, fn) => { const q = g.attributes.normal, n = V3(), c = new THREE.Color(), a = new Float32Array(q.count * 3); for (let k = 0; k < q.count; k++) { fn(n.fromBufferAttribute(q, k), c); c.toArray(a, k * 3); } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); g.deleteAttribute('uv'); return g; };
+      const merged = (list, parent, oc, mat = vcM) => add(oc ? P(BU.mergeGeometries(list), mat, { oc }) : new THREE.Mesh(BU.mergeGeometries(list), mat), 0, 0, 0, parent);
+      const ss = (x, a, b) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
+      const fur = new THREE.Color(col), furDark = new THREE.Color('#b8703a'), cream = new THREE.Color('#fff0dc');
+      const tailC = new THREE.Color('#c97a3e'), tailLight = new THREE.Color('#f6cf98'), browC = '#6a3a1e', ocFur = dark(col);
+      // どんぐりの殻斗（帽子）：うろこが互いちがいに並んで、ぽこぽこ盛りあがる半球
+      const cupule = (r, c0, c1) => {
+        const g = new THREE.SphereGeometry(r, 56, 16, 0, Math.PI * 2, 0, Math.PI / 2), q = g.attributes.position, v = V3(), a = new Float32Array(q.count * 3), c = new THREE.Color(), A = new THREE.Color(c0), B = new THREE.Color(c1);
+        for (let k = 0; k < q.count; k++) {
+          v.fromBufferAttribute(q, k); const ph = Math.acos(clamp(v.y / r, -1, 1)), az = Math.atan2(v.x, v.z);
+          const row = ph / (Math.PI / 2) * 5, u = az / (Math.PI * 2) * 14 + (Math.floor(row) % 2) * 0.5;
+          const bump = Math.sin(Math.PI * (u - Math.floor(u))) * Math.sin(Math.PI * (row - Math.floor(row))) * Math.min(1, ph * 3);
+          v.multiplyScalar(1 + bump * 0.07); q.setXYZ(k, v.x, v.y, v.z);
+          c.copy(B).lerp(A, bump).toArray(a, k * 3);
+        }
+        g.setAttribute('color', new THREE.BufferAttribute(a, 3)); g.deleteAttribute('uv'); g.computeVertexNormals();
+        const rim = tint(new THREE.TorusGeometry(r * 1.02, r * 0.1, 6, 32).rotateX(Math.PI / 2), c1);
+        return [g, rim];
+      };
+      // 全体を少し前へ（しっぽがうしろへ大きいぶん、足もとの中心をそろえる）
+      const rig = new THREE.Group(); rig.position.z = 0.12; inner.add(rig);
+      // ---- 胴：洋なしの形で、すわった太もも。おなかはクリーム色、背は濃い
+      {
+        const tg = paint(new THREE.SphereGeometry(0.25, 26, 18), (n, c) => {
+          c.copy(fur).lerp(furDark, ss(-n.z, 0.2, 0.9) * 0.55).lerp(cream, ss(n.z, 0.15, 0.5) * (1 - ss(n.y, 0.55, 0.85)));
+        });
+        tg.scale(1, 1.12, 0.95); tg.translate(0, 0.36, 0);
+        const thighs = [-1, 1].map(s => paint(new THREE.SphereGeometry(0.14, 16, 12), (n, c) => c.copy(fur).lerp(furDark, ss(-n.z, 0.3, 1) * 0.4)).scale(0.85, 1, 1.15).translate(s * 0.16, 0.16, -0.01));
+        merged([tg, ...thighs], rig, ocFur);
+      }
+      // 足：長い後ろ足。右足を踏み鳴らす
+      const feet = [-1, 1].map(s => {
+        const g = new THREE.Group(); g.position.set(s * 0.13, 0.03, 0.02); rig.add(g);
+        const fg = tint(new THREE.CapsuleGeometry(0.05, 0.13, 4, 10), furDark);
+        fg.rotateX(Math.PI / 2); fg.scale(1.1, 0.7, 1); fg.translate(0, 0.01, 0.09);
+        merged([fg], g, ocFur);
+        return g;
+      });
+      // ---- 腕と、抱えたどんぐり。どんぐり投げでは、両手で頭の上へふりかぶる（userData.flap）
+      const arms = new THREE.Group(); arms.position.set(0, 0.55, 0.06); rig.add(arms);
+      const acorn = new THREE.Group(); acorn.position.set(0, -0.1, 0.26); arms.add(acorn);
+      {
+        const list = [];
+        for (const s of [-1, 1]) {
+          const a = V3(s * 0.17, 0, -0.02), b = V3(s * 0.085, -0.09, 0.2), d = b.clone().sub(a), L = d.length();
+          const g = tint(new THREE.CapsuleGeometry(0.048, L, 4, 10), fur);
+          g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), d.normalize())); g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+          list.push(g, tint(new THREE.SphereGeometry(0.055, 12, 10).scale(0.9, 1, 1).translate(b.x, b.y, b.z), '#f6dcbc'));
+        }
+        merged(list, arms, ocFur);
+        // どんぐり：つやのある実（先が少し明るい）と、うろこの帽子、ちょこんと軸
+        const nut = paint(new THREE.SphereGeometry(0.085, 16, 12), (n, c) => c.set('#b06a2a').lerp(new THREE.Color('#d89a50'), ss(-n.y, 0.3, 1) * 0.6));
+        nut.scale(1, 1.22, 1);
+        const [cg, rim] = cupule(0.09, '#8a5a30', '#5e3a1c');
+        cg.scale(1, 0.75, 1); cg.translate(0, 0.035, 0); rim.translate(0, 0.035, 0);
+        const stem = tint(new THREE.CylinderGeometry(0.012, 0.016, 0.05, 6).translate(0, 0.12, 0), '#5e3a1c');
+        merged([nut, cg, rim, stem], acorn, '#2a1a10');
+        acorn.rotation.z = 0.25;
+      }
+      // ---- 頭：大きな丸い頭に、ぱんぱんのほお袋と鼻づら
+      const H = new THREE.Group(); H.position.set(0, 0.8, 0.03); rig.add(H);
+      const HS = V3(0.27 * 1.06, 0.27 * 0.96, 0.27 * 0.98);
+      const onHead = (az, el, k = 1) => V3(Math.sin(az) * Math.cos(el) * HS.x * k, Math.sin(el) * HS.y * k, Math.cos(az) * Math.cos(el) * HS.z * k);
+      const nHead = (az, el) => V3(Math.sin(az) * Math.cos(el) / HS.x, Math.sin(el) / HS.y, Math.cos(az) * Math.cos(el) / HS.z).normalize();
+      {
+        const hg = paint(new THREE.SphereGeometry(0.27, 30, 22), (n, c) => {
+          c.copy(fur).lerp(furDark, ss(n.y, 0.5, 1) * 0.35 + ss(-n.z, 0.4, 1) * 0.3).lerp(cream, ss(n.z, 0.55, 0.85) * (1 - ss(n.y, 0.05, 0.3)) + ss(-n.y, 0.6, 0.9) * ss(n.z, -0.1, 0.4));
+        });
+        hg.scale(1.06, 0.96, 0.98);
+        const cheeks = [-1, 1].map(s => paint(new THREE.SphereGeometry(0.118, 18, 14), (n, c) => c.copy(cream).lerp(fur, ss(n.y, 0.35, 0.8) * 0.7 + ss(-n.z, 0.3, 0.9) * 0.6)).scale(1, 0.88, 0.9).translate(s * 0.15, -0.085, 0.15));
+        const snout = tint(new THREE.SphereGeometry(0.075, 16, 12).scale(1.15, 0.85, 1).translate(0, -0.06, 0.232), cream);
+        merged([hg, ...cheeks, snout], H, ocFur);
+      }
+      // 顔の線：鼻、ω の口、出っ歯（陰をつけない）
+      {
+        const nose = tint(new THREE.SphereGeometry(0.03, 12, 8).scale(1.35, 0.9, 0.8).translate(0, -0.03, 0.305), '#d85a6a');
+        const nhl = tint(new THREE.SphereGeometry(0.009, 6, 4).translate(-0.01, -0.02, 0.326), '#ffd8dc');
+        const ml = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-0.046, -0.086, 0.264), V3(-0.036, -0.099, 0.278), V3(-0.018, -0.101, 0.288), V3(0, -0.088, 0.293), V3(0.018, -0.101, 0.288), V3(0.036, -0.099, 0.278), V3(0.046, -0.086, 0.264)]), 16, 0.0055, 4);
+        const nl = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0, -0.05, 0.3), V3(0, -0.07, 0.297), V3(0, -0.088, 0.292)]), 4, 0.005, 4);
+        const teeth = [-1, 1].map(s => tint(new THREE.BoxGeometry(0.026, 0.048, 0.012).translate(s * 0.0145, -0.112, 0.282), '#ffffff'));
+        const gap = tint(new THREE.BoxGeometry(0.003, 0.046, 0.013).translate(0, -0.112, 0.283), '#c8b8a8');
+        merged([nose, nhl, tint(ml, '#3a1a14'), tint(nl, '#3a1a14'), ...teeth, gap], H, null, flatM);
+      }
+      // 口の中：かみつき（userData.jaw）や、怒って歯をカチカチ鳴らすときに、出っ歯の下にあく
+      const jaw = new THREE.Group(); jaw.position.set(0, -0.098, 0.268); H.add(jaw);
+      const mouth = add(new THREE.Mesh(new THREE.SphereGeometry(0.042, 14, 10).translate(0, -0.04, 0), new THREE.MeshBasicMaterial({ color: '#5a1a24' })), 0, 0, 0, jaw);
+      mouth.scale.set(1, 0.05, 0.45);
+      // 目：白目のない、つやつやの大きな黒目（下ほど茶色）に、大小のハイライト。上まぶたと眉は、表情（userData.mood）で動く
+      const eyesG = new THREE.Group(); H.add(eyesG);
+      const lidM = tm(col), browM = new THREE.MeshBasicMaterial({ color: '#74401f' }), eyeL = [], browL = [];
+      {
+        const blush = [], eyeTop = new THREE.Color('#1c100c'), eyeLow = new THREE.Color('#8a5230');
+        for (const s of [-1, 1]) {
+          const az = s * 0.37, el = 0.15, n = nHead(az, el);
+          const g = new THREE.Group(); g.position.copy(onHead(az, el, 0.97)); g.quaternion.setFromUnitVectors(V3(0, 0, 1), n); eyesG.add(g);
+          merged([
+            paint(new THREE.SphereGeometry(0.084, 22, 16), (v, c) => c.copy(eyeTop).lerp(eyeLow, ss(-v.y, 0.15, 0.85) * 0.85)).scale(0.86, 1.06, 0.42),
+            tint(new THREE.SphereGeometry(0.02, 12, 8).scale(1, 1.15, 0.4).translate(-s * 0.004 - 0.026, 0.034, 0.036), '#ffffff'),
+            tint(new THREE.SphereGeometry(0.01, 8, 6).scale(1, 1, 0.4).translate(-s * 0.004 + 0.024, -0.028, 0.035), '#ffffff'),
+          ], g, null, flatM);
+          // 上まぶた（毛の色）：目の上はしから下へのびる（lp.scale.y でかぶさる深さ、lr で傾き）
+          const lr = new THREE.Group(); g.add(lr);
+          const lp = new THREE.Group(); lp.position.y = 0.094; lr.add(lp);
+          add(new THREE.Mesh(new THREE.SphereGeometry(0.09, 20, 8, 0, Math.PI * 2, 0, Math.PI * 0.55).scale(1, 1.04, 0.47).translate(0, -0.094, 0), lidM), 0, 0, 0, lp);
+          eyeL.push({ s, lr, lp });
+          // 眉：短い太まゆ。傾き（br.rotation.z）で、怒り（目がしらが下がる）・こまり（目がしらが上がる）
+          const ba = s * 0.23, be = 0.42, bn = nHead(ba, be);
+          const bg = new THREE.Group(); bg.position.copy(onHead(ba, be, 1.03)); bg.quaternion.setFromUnitVectors(V3(0, 0, 1), bn); H.add(bg);
+          const br = new THREE.Group(); bg.add(br);
+          add(new THREE.Mesh(new THREE.CapsuleGeometry(0.014, 0.04, 4, 8).rotateZ(Math.PI / 2).scale(1, 1, 0.5), browM), 0, 0, 0, br);
+          browL.push({ s, br });
+          // ほっぺの赤み：ほお袋の前に
+          const bd = V3(s * 0.55, 0.15, 0.82).normalize(), bp = V3(s * 0.15, -0.085, 0.15).add(V3(bd.x * 0.118, bd.y * 0.104, bd.z * 0.106));
+          blush.push(new THREE.SphereGeometry(0.042, 14, 8).scale(1.35, 0.75, 0.25).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, 0, 1), bd)).translate(bp.x, bp.y, bp.z));
+        }
+        add(new THREE.Mesh(BU.mergeGeometries(blush), new THREE.MeshBasicMaterial({ color: '#ff8a9a', transparent: true, opacity: 0.5, depthWrite: false })), 0, 0, 0, H);
+      }
+      // 耳：先にふさ毛。ときどきぴくっ
+      const ears = [-1, 1].map(s => {
+        const az = s * 1.22, el = 0.6, g = new THREE.Group(); g.position.copy(onHead(az, el, 0.9)); H.add(g);
+        g.rotation.set(-0.15, s * 0.25, -s * 0.38, 'YXZ');
+        const tw = new THREE.Group(); g.add(tw);
+        const outer = tint(new THREE.ConeGeometry(0.075, 0.2, 14).translate(0, 0.1, 0).scale(1, 1, 0.55), fur);
+        const inn = tint(new THREE.ConeGeometry(0.048, 0.13, 12).translate(0, 0.075, 0).scale(1, 1, 0.3).translate(0, 0, 0.022), '#ffb8c0');
+        const tufts = [[-0.2, 0.026, 0.12], [-0.6, 0.016, 0.07]].map(([r, w, h]) => tint(new THREE.ConeGeometry(w, h, 8).translate(0, h * 0.42, 0).rotateZ(r * s).translate(0, 0.17, 0).scale(1, 1, 0.6), '#9a5a30'));
+        merged([outer, inn, ...tufts], tw, ocFur);
+        return tw;
+      });
+      // どんぐりの帽子：頭のてっぺんに、少しななめに
+      {
+        const capG = new THREE.Group(); capG.position.set(0.015, 0.205, -0.01); capG.rotation.set(-0.12, 0, -0.16); H.add(capG);
+        const [cg, rim] = cupule(0.165, '#9a6838', '#62401f');
+        cg.scale(1, 0.78, 1);
+        const stem = tint(new THREE.CylinderGeometry(0.016, 0.022, 0.07, 7).rotateZ(0.35).translate(-0.012, 0.15, 0), '#5a3a1c');
+        merged([cg, rim, stem], capG, '#2a1a10');
+      }
+      // ---- しっぽ：うしろへ寝かせてから背中にそって立ちあがり、頭より高いところで先がうしろへくるり（S 字）。ふさふさの毛のかたまりを、ふしごとに
+      const TA = [-1.5, -0.95, -0.25, 0.12, 0.2, 0.0, -0.6, -1.35], TL = 0.165, TR = [0.1, 0.13, 0.155, 0.17, 0.18, 0.18, 0.165, 0.135];
+      const tailBase = new THREE.Group(); tailBase.position.set(0, 0.14, -0.2); rig.add(tailBase);
+      const segs = [], blobs = []; {
+        let par = tailBase;
+        TA.forEach((a, i) => {
+          const q = new THREE.Group(); if (i) q.position.y = TL; q.rotation.x = a - (i ? TA[i - 1] : 0); par.add(q);
+          const r = TR[i], g = new THREE.SphereGeometry(r, 18, 14), qq = g.attributes.position, v = V3(), ca = new Float32Array(qq.count * 3), c = new THREE.Color();
+          for (let k = 0; k < qq.count; k++) {
+            v.fromBufferAttribute(qq, k).normalize(); const az = Math.atan2(v.x, v.z), ph = Math.acos(clamp(v.y, -1, 1));
+            const cl = Math.max(0, Math.sin(az * 5 + i * 1.7) * Math.sin(ph * 4 + i)), tip = i / (TA.length - 1);
+            v.multiplyScalar(r * (1 + cl * 0.09)); qq.setXYZ(k, v.x, v.y, v.z);
+            c.copy(tailC).lerp(tailLight, cl * 0.55 + tip * 0.2).toArray(ca, k * 3);
+          }
+          g.setAttribute('color', new THREE.BufferAttribute(ca, 3)); g.deleteAttribute('uv'); g.computeVertexNormals(); g.scale(1, 1.2, 0.9);
+          const b = add(P(g, vcM, { oc: ocFur }), 0, TL * 0.5, 0, q);
+          segs.push(q); blobs.push(b); par = q;
+        });
+      }
+      // ---- 動き
+      // 走る速さは、体が動いた道のりから（戦闘のとびかかり・舞台で走ってくるとき）。走るとぴょんぴょん跳ねて、しっぽがうしろへ流れる
+      // 会話の場面では userData で：mood（表情。なし／'angry' は怒り顔）・talk（しゃべる口）・push（両手で押す）・bow（おじぎ）・drop（抱えたどんぐりを足もとに置く）・swish（しっぽでなでる）
+      // look.acorn === false：どんぐりを持たない（手ぶらで押す場面）
+      const MOODS = {
+        angry:    { brow: 0.42, by: 0, lidA: 0.22, lid: 0.34, ear: 0, puff: 0, shiver: 0, mouth: 0, head: 0, droop: 0 },
+        happy:    { brow: -0.12, by: 0.01, lidA: 0, lid: 0.02, ear: -0.1, puff: 0, shiver: 0, mouth: 0, head: -0.05, droop: 0 },
+        surprise: { brow: -0.2, by: 0.02, lidA: 0, lid: 0.001, ear: -0.2, puff: 0.35, shiver: 0, mouth: 0.4, head: -0.08, droop: 0 },
+        scared:   { brow: -0.55, by: 0.014, lidA: -0.06, lid: 0.001, ear: 0.85, puff: 1, shiver: 1, mouth: 0.22, head: 0.08, droop: 0 },
+        sorry:    { brow: -0.5, by: 0.008, lidA: -0.22, lid: 0.48, ear: 0.6, puff: 0, shiver: 0, mouth: 0, head: 0.22, droop: 0.45 },
+      };
+      const mc = { ...MOODS.angry };
+      if (look.acorn === false) acorn.visible = false;
+      let gp = 0, spd = 0, lx = null, lz = 0, armA = 0, prevFlap = 0, throwT = 0, regrow = 1, jawS = 0, puff = 0, lastLift = 0, look2 = 0, stompHit = false;
+      let pushS = 0, bowS = 0, swishS = 0, dropped = false, dropT = 0;
+      const dropFrom = V3(), dropTo = V3();
+      update = (dt, t) => {
+        const U = root.userData, ph = U.ph, k8 = 1 - Math.exp(-8 * dt);
+        if (dt > 0) {
+          const px = root.position.x, pz = root.position.z, d = lx == null ? 0 : Math.hypot(px - lx, pz - lz);
+          const v = d > 2 ? 0 : d / dt / (root.scale.x || 1);
+          spd += (Math.min(v, 8) - spd) * (1 - Math.exp(-8 * dt)); lx = px; lz = pz;
+        }
+        const run = clamp(Math.max(spd / 2.2, U.run || 0), 0, 1);
+        gp += dt * (2.5 + run * 11);
+        const M = MOODS[U.mood] || MOODS.angry;
+        for (const k in mc) mc[k] += (M[k] - mc[k]) * k8;
+        pushS += ((U.push || 0) - pushS) * k8; bowS += ((U.bow || 0) - bowS) * (1 - Math.exp(-6 * dt)); swishS += ((U.swish || 0) - swishS) * (1 - Math.exp(-4 * dt));
+        // 怒り：ときどき右足をダンダンと二回踏み鳴らし、しっぽをぼわっとふくらませて、歯をカチカチ（怒り顔のときだけ）
+        const angry = !U.mood || U.mood === 'angry';
+        const ac = (t * 0.19 + ph * 0.37) % 1, ak = angry && ac > 0.84 ? (ac - 0.84) / 0.16 : 0, ang = ak ? Math.sin(ak * Math.PI) : 0;
+        const lift = ak && run < 0.3 ? Math.max(0, Math.sin(ak * Math.PI * 4)) : 0;
+        if (lastLift > 0.05 && lift <= 0.05 && ak > 0.1) stompHit = true;
+        lastLift = lift;
+        // 跳ねる：前のめりになって、弧をえがいて跳ぶ。押しているときは跳ばずに、前かがみで小またに
+        const hopA = run * (1 - pushS), hop = Math.abs(Math.sin(gp));
+        rig.position.set(Math.sin(t * 55) * 0.008 * mc.shiver, hop * (0.2 * hopA + 0.025 * run * pushS) + Math.sin(t * 2.2 + ph) * 0.006, 0.12 + Math.sin(t * 5 + ph) * 0.02 * pushS);
+        rig.rotation.x = hopA * 0.5 + Math.cos(gp * 2) * 0.12 * hopA + pushS * 0.22 + bowS * 0.3;
+        rig.rotation.z = Math.sin(t * 1.3 + ph) * 0.025 * (1 - run);
+        const fr = -Math.cos(gp * 2) * 0.5 * run;
+        feet[0].rotation.x = fr; feet[1].rotation.x = (pushS > 0.3 ? -fr : fr) - lift * 0.35; feet[1].position.y = 0.03 + lift * 0.07;
+        // 腕：ふだんはどんぐりを抱きしめる。flap で頭の上へ持ちあげてふりかぶり、0 にもどると前へ投げる（そのあと、ほお袋から次のどんぐりを出す）
+        const fl = U.flap || 0;
+        if (prevFlap > 0 && fl === 0) { throwT = 0.28; regrow = 0; }
+        prevFlap = fl;
+        let aT = Math.sin(t * 2 + ph) * 0.04 * (1 - pushS) - pushS * 1.0, rate = 6;
+        if (fl) { aT = -2.4; rate = 9; } else if (throwT > 0) { aT = 0.55; rate = 30; throwT -= dt; }
+        armA += (aT - armA) * (1 - Math.exp(-rate * dt));
+        arms.rotation.x = armA;
+        const wind = clamp(-armA / 2.4, 0, 1) * (1 - pushS), fling = clamp(armA / 0.55, 0, 1);
+        arms.position.set(0, 0.55 + wind * 0.42, 0.06 - wind * 0.05 + pushS * 0.08);
+        if (throwT <= 0 && regrow < 1) regrow = Math.min(1, regrow + dt * 2.2);
+        // どんぐりを置く：抱えたどんぐりを舞台へ移して、足もとの前へそっと下ろす（リスが去っても残る）
+        if (U.drop && !dropped && root.parent && acorn.visible) {
+          dropped = true; dropT = 0;
+          root.parent.attach(acorn); dropFrom.copy(acorn.position);
+          dropTo.copy(root.localToWorld(V3(0, 0.105, 0.36))); root.parent.worldToLocal(dropTo);
+        }
+        if (dropped) {
+          if (dropT < 1) { dropT = Math.min(1, dropT + dt * 2.2); const e = Ease.out(dropT); acorn.position.lerpVectors(dropFrom, dropTo, e); acorn.position.y += Math.sin(dropT * Math.PI) * 0.06; acorn.rotation.z *= 1 - e * 0.2; }
+        } else acorn.scale.setScalar(Math.max(0.001, (regrow < 1 ? Ease.back(regrow) : 1) * (1 - pushS)));
+        rig.rotation.x += -wind * 0.15 + fling * 0.15;
+        // 頭：リスらしく、ぴっぴっと向きを変える。かみつくときは前へ。押すときは前を見て、しょんぼり・おじぎで下を向く
+        const lt = ((Math.floor(t * 0.9 + ph) * 7) % 3 - 1) * 0.18 * clamp(1 - run - bowS - pushS - mc.droop * 1.5, 0, 1);
+        look2 += (lt - look2) * (1 - Math.exp(-14 * dt));
+        const chat = ang > 0.2 && Math.sin(t * 42) > 0 ? 0.3 : 0, talk = U.talk ? (Math.sin(t * 15 + ph) > 0 ? 0.32 : 0.06) : 0;
+        jawS += (Math.max(U.jaw || 0, chat, talk, mc.mouth) - jawS) * (1 - Math.exp(-30 * dt));
+        H.rotation.set(Math.sin(t * 1.7 + ph) * 0.04 - run * 0.35 * (1 - pushS) - pushS * 0.3 + jawS * 0.18 - wind * 0.14 + fling * 0.12 + mc.head + bowS * 0.5, look2, Math.sin(t * 38) * ang * 0.035);
+        mouth.scale.set(1 + jawS * 0.2, 0.05 + jawS * 1.4, 0.45);
+        // 顔：眉の傾き・高さ、まぶたの深さ・傾き
+        for (const { s, br } of browL) { br.rotation.z = s * mc.brow; br.position.y = mc.by - ang * 0.012; }
+        const bl = (t * 0.33 + ph) % 4 > 3.88 ? 0.12 : 1; eyesG.scale.y = bl;
+        for (const { s, lr, lp } of eyeL) { lr.rotation.z = s * mc.lidA; lp.scale.y = Math.max(0.001, mc.lid); }
+        ears.forEach((g, i) => { const tw = (t * 0.45 + ph + i * 2.1) % 4.5 > 4.3 ? 0.4 : 0; g.rotation.x = -tw - run * 0.4 - ang * 0.2 - mc.ear * 0.9; });
+        // しっぽ：根もとから先へ波がつたわる。怒る・おびえるとぼわっとふくらんで小きざみにふるえ、走るとうしろへ流れる。しょんぼりすると垂れ、swish でうしろの相手を先でなでる
+        puff += (Math.max(ang, run * 0.35, mc.puff) - puff) * (1 - Math.exp(-10 * dt));
+        const quiver = Math.max(ang, mc.shiver * 0.6);
+        segs.forEach((q, i) => {
+          const rel = TA[i] - (i ? TA[i - 1] : 0);
+          q.rotation.x = rel * (i ? 1 - run * 0.65 - mc.droop * 0.35 : 1) + Math.sin(t * 2.6 - i * 0.6 + ph) * 0.06 * (1 + i * 0.12) + Math.sin(t * 22 - i * 0.9) * 0.05 * quiver + Math.sin(gp * 2 - i * 0.7) * 0.12 * run
+            - (i >= 4 ? swishS * 0.2 : 0);
+          q.rotation.z = Math.sin(t * 1.4 - i * 0.5 + ph) * 0.03 + Math.sin(t * 3.2 - i * 0.45) * 0.2 * swishS;
+        });
+        segs[0].rotation.x += run * 0.35;
+        blobs.forEach((b, i) => b.scale.setScalar(1 + puff * (0.22 + i * 0.02)));
+      };
+      const fw = V3();
+      emitFn = (p) => {
+        if (!stompHit) return;
+        stompHit = false;
+        feet[1].getWorldPosition(fw);
+        for (let i = 0; i < 6; i++) { const a = Math.random() * Math.PI * 2; p.emit(fw.clone().add(V3(0, 0.02, 0.08)), V3(Math.cos(a) * 0.6, 0.25 + Math.random() * 0.3, Math.sin(a) * 0.6), hdr('#d8c0a0', 0.6), { life: 0.45, size: 0.08, drag: 2.5 }); }
+      };
+      height = 1.3; radius = 0.45; break;
     }
     case 'crow': {   // いたずらカラス：大きな頭にアホ毛、ニヤリと細めた目。風切り羽を広げて羽ばたく。魚の降ったイベントでは、足に盗んだ魚
       const fm = tm(col), deep = tm('#' + new THREE.Color(col).multiplyScalar(0.7).getHexString());
