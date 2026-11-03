@@ -4054,13 +4054,21 @@ class ZoneKit {
     const Z = this.zone, hw = Z.w / 2, hd = Z.d / 2, r = this.r, band = o.band || 24;
     const walls = ['#fff4e2', '#ffe8d4', '#fde2e8', '#e8f0ff', '#fff2c8'];
     const roofs = ['#e05a4a', '#5a8ad8', '#5aa860', '#f09a4a', '#e87aa8'];
+    // 門の奥の通路（地図の外へ 9m。field.js の makeGate）：扉が開くと見えるので、家を通路に食いこませない
+    const lanes = Object.values((this.T && this.T.exits) || {}).filter(E => !E.cabin).map(E => {
+      const { x, z } = E.outer, a = E.width / 2 + 0.8, L = 10.5;
+      return E.nz ? [x - a, x + a, Math.min(z, z - E.nz * L), Math.max(z, z - E.nz * L)] : [Math.min(x, x - E.nx * L), Math.max(x, x - E.nx * L), z - a, z + a];
+    });
     for (let x = -hw - band; x <= hw + band; x += 7) for (let z = -hd - band; z <= hd + band; z += 7) {
       const px = x + (r() - 0.5) * 3, pz = z + (r() - 0.5) * 3;
       if (Math.abs(px) < hw + 5 && Math.abs(pz) < hd + 5) continue;
       if (o.skip && o.skip(px, pz)) continue;
       if (r() < 0.15) continue;
-      const w = 4 + r() * 3, d = 4 + r() * 3, h = 6 + r() * 7;
-      this.farHouse(px, pz, w, d, h, walls[Math.floor(r() * walls.length)], roofs[Math.floor(r() * roofs.length)]);
+      const w = 4 + r() * 3, d = 4 + r() * 3, h = 6 + r() * 7, wallC = walls[Math.floor(r() * walls.length)], roofC = roofs[Math.floor(r() * roofs.length)];
+      // 屋根は 0.3 張り出す。乱数は引いたあとで判定する（ほかの家の並びを変えない）
+      const ex = w / 2 + 0.3, ez = d / 2 + 0.3;
+      if (lanes.some(([x0, x1, z0, z1]) => px + ex > x0 && px - ex < x1 && pz + ez > z0 && pz - ez < z1)) continue;
+      this.farHouse(px, pz, w, d, h, wallC, roofC);
     }
   }
   // 遠景の城：城壁と、円い塔（とんがり屋根）、まん中の天守
@@ -8532,9 +8540,10 @@ const ZONE_BUILD = {
     K.mesh(new THREE.BoxGeometry(16, 0.7, 1.0), 'stone', 0, 5.6, 31.5);
     K.sign(0, 32.05, 0, 'ようこそ ニャハハ王国へ', 'わらいの都', signCol, 5.0, 6.4);
     K.sign(0, 30.95, Math.PI, 'ニャハハ王国', 'またきてね', signCol, 5.0, 5.0);
-    for (const [x, z] of [[-8.5, 18], [8.5, 20], [-8.5, 26], [8.5, 26]]) K.planterTree(x, z, 1);
+    // 西側の z 23〜27 は宿屋の街区への階段の口なので、木も旗飾りの柱も立てない
+    for (const [x, z] of [[-8.5, 18], [8.5, 20], [8.5, 26]]) K.planterTree(x, z, 1);
     for (const [x, z] of [[-8.8, 13], [-8.8, 22], [8.8, 23], [-8.8, 29], [8.8, 29]]) K.streetLamp(x, z);
-    for (const z of [16, 24]) K.bunting(-9.6, z, 9.6, z + 1, flagCols, 5.4);
+    K.bunting(-9.6, 16, 9.6, 17, flagCols, 5.4);
 
     // ---- 北の高台：城への坂と塔への小道、植え込みの木と街灯 ----
     K.signpost(-12, -21, 0, '↑ ニャハハ城', '王さまのお城', signCol);
