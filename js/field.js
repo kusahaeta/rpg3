@@ -2046,7 +2046,7 @@ class FieldView extends BaseView {
     for (let i = 0; i < 6; i++) setTimeout(() => this.p.emit(this.player.pos.clone().add(V3((Math.random() - 0.5) * 0.6, 1.2, (Math.random() - 0.5) * 0.6)), V3((g.pos.x - this.player.pos.x) * 0.5, 0.6, (g.pos.z - this.player.pos.z) * 0.5), hdr(pick(['#fff0a8', '#ffc8ec', '#c8e8ff']), 2), { life: 1.8, size: 0.12, drag: 0.2 }), i * 180);
     this.startTalk('', [['tama', '……ねんねん、ころりよ……おころりよ……。'], ['n', '番犬は、大きなあくびをひとつすると、その場で丸くなって眠ってしまった。'], ['tama', '……おやすみ。……ぼくも、ねむく……なってきた……。']]);
   }
-  // ごろごろ岩：谷を行ったり来たり爆走する（後ろに土けむりと排気のけむり、近くを通るとラッパ）。ぶつかると、はねとばされる
+  // ごろごろ岩：谷を行ったり来たり爆走する（後ろに土けむりと、マフラーから排気のけむり、近くを通るとラッパ）。ぶつかると、はねとばされる
   updateRollers(d, t) {
     const p = this.player;
     for (const o of this.rollers || []) {
@@ -2063,7 +2063,8 @@ class FieldView extends BaseView {
       o.m.group.position.set(x, y + Math.abs(Math.sin(t * 9 + (R.ph || 0) * 7)) * 0.12 * rr, z);
       o.m.update(d, t);
       if (Math.random() < d * 10) this.p.emit(V3(x + (Math.random() - 0.5), y + 0.1, z + (Math.random() - 0.5)), V3(0, 0.6, 0), hdr('#c8b89a', 0.8), { life: 0.6, size: 0.12, drag: 1 });
-      if (Math.random() < d * 14) { const bx = -fx * dirSign, bz = -fz * dirSign; this.p.emit(V3(x + bx * rr, y + 0.35, z + bz * rr), V3(bx * 1.6 + (Math.random() - 0.5) * 0.4, 0.5 + Math.random() * 0.4, bz * 1.6), hdr(pick(['#8a8a90', '#a8a8ae', '#6a6a72']), 0.5), { life: 1.1, size: 0.32, drag: 0.6 }); }
+      // 排気のけむり：背中の竹やりマフラーの先から、うしろへ
+      if (Math.random() < d * 14) { const bx = -fx * dirSign, bz = -fz * dirSign, tips = o.m.group.userData.pipes; o.m.group.updateMatrixWorld(); const at = tips[Math.random() < 0.5 ? 0 : 1].getWorldPosition(V3()); this.p.emit(at, V3(bx * 1.6 + (Math.random() - 0.5) * 0.4, 0.5 + Math.random() * 0.4, bz * 1.6), hdr(pick(['#8a8a90', '#a8a8ae', '#6a6a72']), 0.5), { life: 1.1, size: 0.32, drag: 0.6 }); }
       const near = Math.hypot(p.pos.x - x, p.pos.z - z);
       if ((o.honk -= d) <= 0) { o.honk = 5 + Math.random() * 5; if (near < 14 && !this.busy) Sfx.horn(Math.max(0.25, 1 - near / 14)); }
       if (this.busy || this.flight || this.grace > 0) continue;
