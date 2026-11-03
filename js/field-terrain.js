@@ -1357,13 +1357,19 @@ function buildArchitecture(view, T) {
         const j = T.idx(c + dc, r + dr), ex = cx + dc * CELL / 2, ez = cz + dr * CELL / 2;
         const A = [ex - dr * CELL / 2, ez + dc * CELL / 2], B = [ex + dr * CELL / 2, ez - dc * CELL / 2];
         const low = p => j < 0 ? EDGE : walk(j) ? hAt(j, p[0] + dc * 0.02, p[1] + dr * 0.02) : kind[j] === K.VOID ? ABYSS : T.cap[j];
-        let la = low(A), lb = low(B);
-        // 階段のわき：面は階段のいちばん下まで下ろす。段は箱で斜面より低いところがあり、
-        // また上の段は片方の端が崖の上と同じ高さになるので、斜面に合わせると隙間や面の抜けができる
-        if (j >= 0 && kind[j] === K.STAIR) la = lb = T.h[j] - 0.02;
-        if (Math.max(la, lb) > y - 0.05) return;
-        rockFace('rock', ex, ez, dc, dr, CELL, [la, y], [lb, y], j < 0 ? 0 : 0.3);
-        if (j >= 0 && walk(j)) snowLip(ex, ez, dc, dr, CELL, y);
+        // くぼんだ床（川・池）に向いた面は、床の面と同じ 8 つに割って、くぼみの形にそって下ろす（1 枚だと、まん中に床との隙間ができる）
+        const n = j >= 0 && kind[j] === K.FLOOR && dented(c + dc, r + dr) ? 8 : 1;
+        let drawn = false;
+        for (let s = 0; s < n; s++) {
+          const pa = [lerp(A[0], B[0], s / n), lerp(A[1], B[1], s / n)], pb = [lerp(A[0], B[0], (s + 1) / n), lerp(A[1], B[1], (s + 1) / n)];
+          let la = low(pa), lb = low(pb);
+          // 階段のわき：面は階段のいちばん下まで下ろす。段は箱で斜面より低いところがあり、
+          // また上の段は片方の端が崖の上と同じ高さになるので、斜面に合わせると隙間や面の抜けができる
+          if (j >= 0 && kind[j] === K.STAIR) la = lb = T.h[j] - 0.02;
+          if (Math.max(la, lb) > y - 0.05) continue;
+          rockFace('rock', (pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, dc, dr, CELL / n, [la, y], [lb, y], j < 0 ? 0 : 0.3); drawn = true;
+        }
+        if (drawn && j >= 0 && walk(j)) snowLip(ex, ez, dc, dr, CELL, y);
       });
       continue;
     }
@@ -1867,8 +1873,13 @@ function buildPond(view, T) {
   const C = h => new THREE.Color(h), lerpC = (a, b, t) => a.clone().lerp(b, t);
   // 水ぎわの砂（zone.pond.shore で色を変えられる）：岸の上（水面から 0.28m）から水の中（0.6m）まで。水ぎわはぬれて濃く、上は乾いて白っぽい
   const dry = C(P.shore ? P.shore[0] : '#d8c79c'), wet = C(P.shore ? P.shore[1] : '#a8916a'), under = C('#8a8a62');
+  // 水ぎわの砂の高さ：格子点のまわりの床のマスの地面（木立・壁の上には敷かない。崖のきわでは、崖の上ではなく床にそわせる）
+  const floorSoil = (x, z) => {
+    for (const [dx, dz] of [[0.01, 0.01], [-0.01, 0.01], [0.01, -0.01], [-0.01, -0.01]]) { const i = T.at(x + dx, z + dz); if (i >= 0 && T.kind[i] > TK.WINDOW) return T.soilOf(i, x + dx, z + dz); }
+    return NaN;
+  };
   const sand = sheet((x, z, pd) => {
-    const y = T.soilAt(x, z); if (!Number.isFinite(y)) return null;
+    const y = floorSoil(x, z); if (!Number.isFinite(y)) return null;
     const hgt = P.lv - pd, a = hgt > 0 ? 1 - smooth(0.06, 0.3, hgt) : 1 - smooth(-0.35, -0.65, hgt) * 0.6;
     const c = hgt > 0 ? lerpC(wet, dry, smooth(0, 0.2, hgt)) : lerpC(wet, under, smooth(0, -0.4, hgt));
     return [y + 0.012, c.r, c.g, c.b, a];
