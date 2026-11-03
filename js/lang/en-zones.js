@@ -528,7 +528,7 @@ Object.assign(EN, {
   '集落の立て看板': 'Hamlet Signboard',
   '「黒影洞窟には、近づかぬこと。——長老クロネ」……その下に、小さく「クロのばか」と落書きがある。': '"Stay away from Shadowblack Cave. —Elder Kurone" ...Below it, a tiny doodle: "Kuro is a dummy."',
   // ── field-zones.js FIELD_ZONES.cave
-  '光の筋が受けの水晶に届くと、影の壁が、光にとけて消えた！': 'When the beam reached the receiving crystal, the shadow wall melted away in the light!',
+  '光の筋が届くと、影の壁が、光にとけて消えた！': 'When the beam reached it, the shadow wall melted into the light and vanished!',
   '三つの光が、大水晶に集まった！　大空洞の南の、大水晶のところへ行ってみよう': 'The three lights gathered in the great crystal! Go to the great crystal at the south of the cavern.',
   '大水晶が、まぶしい光を放っている。……けれど光の筋は、まっすぐ北へのびて、岩壁に当たって止まっている。シロなら、何か思いつくかもしれない。（シロを編成に入れよう）': 'The great crystal is shining brightly. ...But the beam runs straight north and stops against the rock wall. Shiro might think of something. (Add Shiro to your party.)',
   '壁のひっかき傷': 'Scratches on the Wall',

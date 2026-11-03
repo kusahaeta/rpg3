@@ -1629,11 +1629,11 @@ const FIELD_ZONES = {
     ],
     anchor: [7, 41], spawn: [0, 43], chestAt: [[-51, 29], [29, -41], [53, 43], [-25, 7]], exits: [{ key: 's', to: 'valley' }, { key: 'd', to: 'cave_lake', stair: 'down' }],
     // 光の水晶を三つ灯すと、大空洞の南の大水晶が光を放つ。十五枚の光の鏡（五色。同じ色はいっしょに回る）で光の筋を曲げ、
-    // 坑道の受けの水晶まで導くと、影の壁が消える。正解は一通り（十枚の鏡を通る）。光の当たった鏡から順に直すだけでは解けない
+    // 坑道の影の壁まで導くと、壁が消える。正解は一通り（十枚の鏡を通る）。光の当たった鏡から順に直すだけでは解けない
     // はじめは鏡も台もない。三つ灯すと大水晶の前に目的地の印が出て、着くと会話シーン（c4_03m）でシロが魔法で十五枚の鏡を出す。向きはばらばらで、壁へは届かない（beam.call）
     seals: [{ id: 'caveSeal1', wall: [-2, -25.3, 6, -24.7], lamps: [[-31, -43], [51, 13], [51, -41]], after: 'c4_03b', openAfter: 'c4_03c',
-      openToast: '光の筋が受けの水晶に届くと、影の壁が、光にとけて消えた！',
-      beam: { from: [-7, 15], dir: 'n', to: [1, -19], init: [1, 0, 0, 1, 1],
+      openToast: '光の筋が届くと、影の壁が、光にとけて消えた！',
+      beam: { from: [-7, 15], dir: 'n', to: [1, -24.4], init: [1, 0, 0, 1, 1],
         mirrors: [[-7, -3, 3], [1, -3, 2], [1, 11, 2], [7, 11, 0], [7, -7, 1], [-11, -7, 4], [-11, -3, 0], [-17, -3, 2], [-17, -9, 3], [1, -9, 0], [9, -9, 1], [21, 11, 0], [-3, -5, 0], [15, 1, 1], [9, 11, 0]],
         call: { who: 'shiro', at: [-7, 11.5], scene: 'c4_03m', toast: '三つの光が、大水晶に集まった！　大空洞の南の、大水晶のところへ行ってみよう',
           away: '大水晶が、まぶしい光を放っている。……けれど光の筋は、まっすぐ北へのびて、岩壁に当たって止まっている。シロなら、何か思いつくかもしれない。（シロを編成に入れよう）' } } }],
@@ -4196,15 +4196,15 @@ class ZoneKit {
       return o;
     }));
   }
-  // 光の筋（seals の beam）：大水晶（from）・光の鏡（mirrors: [x, z, 最初の向き]）・受けの水晶（to）。鏡の向きは Save.data.flags（id_m番号）に残す
-  //   光の水晶をすべて灯すと、大水晶が光を放つ。光の鏡で曲げた光の筋が受けの水晶に届くと、影の壁が消える（FieldView.turnMirror）
+  // 光の筋（seals の beam）：大水晶（from）・光の鏡（mirrors: [x, z, 最初の向き]）・届け先（to：影の壁の面。印は置かない。壁の手前に水晶を置くと、そこへ導くのかとまちがえる）。鏡の向きは Save.data.flags（id_m番号）に残す
+  //   光の水晶をすべて灯すと、大水晶が光を放つ。光の鏡で曲げた光の筋が影の壁（to）に届くと、壁が消える（FieldView.turnMirror）
   //   call：はじめは鏡も台もなく、光の水晶をすべて灯すと大水晶の前（call.at）に目的地の印が出て、着くと会話シーン（call.scene）で、
   //   call.who の子が魔法で台ごと鏡を出す（FieldView.mirrorGoal。シーンでは fx: 'mirrors'。見終えたら id_mir に残す）。前のセーブで鏡を回したことがあれば（id_g色）、はじめから鏡がある
   beamParts(S, o, flags) {
     const B = S.beam, kit = this, T = this.T, HY = 1.15;
     const gst = (B.init || [0]).map((v, g) => flags[`${S.id}_g${g}`] ?? v);
     const called = !B.call || o.open || !!flags[S.id + '_mir'] || (B.init || [0]).some((_, g) => flags[`${S.id}_g${g}`] != null);
-    const dimM = this.glow('#6a4aa0', 0.7), litM = this.glow('#cfefff', 3.2);
+    const dimM = this.glow('#6a4aa0', 0.7);
     // 大水晶：大きな岩の台に、人の背の倍ほどの紫の大水晶と、根もとをかこむ小さな水晶。光を放つと白く輝いて、ゆっくりまわる
     //   （光の水晶は高さ 1.2m ほど。ひと目で「大」と分かるよう、高さ 4m ほどにする）
     const [fx, fz] = B.from, fy = this.gy(fx, fz);
@@ -4217,12 +4217,8 @@ class ZoneKit {
     });
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#8a6aff', 0.4), blending: THREE.AdditiveBlending, depthWrite: false }));
     halo.position.set(fx, fy + 3.0, fz); halo.scale.setScalar(3.5); this.scene.add(halo);
-    // 光ったときは、受けの水晶（litM）より少しおさえて、まぶしさで形がとばないようにする
+    // 光ったときは、明るさを少しおさえて、まぶしさで形がとばないようにする
     const bigLit = this.glow('#dff4ff', 1.5);
-    // 受けの水晶：影の壁の手前。光が届くと白く輝く
-    const [tx, tz] = B.to;
-    this.cyl(tx, tz, 0.45, 0.7, 'rockDark', { seg: 7, r2: 0.34 });
-    const rc = this.mesh(new THREE.OctahedronGeometry(0.34), dimM, tx, HY, tz, { noShadow: true }); rc.scale.y = 1.7;
     // 光の鏡：石の台に、ななめに立てた水晶の板（上から見て「/」か「＼」。F で向きが変わる）。枠と台の宝石の色が同じ鏡は、いっしょに回る
     const glass = new THREE.MeshStandardMaterial({ color: '#d8ecff', emissive: '#6a8aff', emissiveIntensity: 0.4, metalness: 0.7, roughness: 0.12 });
     const mirrors = B.mirrors.map(([x, z, g = 0], i) => {
@@ -4262,8 +4258,8 @@ class ZoneKit {
         line.visible = b.active;
         core.material = b.active ? bigLit : dimM; side.forEach(m => { m.material = core.material; });
         halo.material.color.copy(b.active ? hdr('#cfefff', 0.5) : hdr('#8a6aff', 0.4)); halo.scale.setScalar(b.active ? 6 : 3.5);
-        if (!b.active) { b.hit = false; rc.material = dimM; return; }
-        const r = b.called ? traceBeam(T, B, beamStates(B, b.gst)) : traceBeam(T, bare, []); draw(r.pts); b.hit = r.hit; rc.material = r.hit ? litM : dimM;
+        if (!b.active) { b.hit = false; return; }
+        const r = b.called ? traceBeam(T, B, beamStates(B, b.gst)) : traceBeam(T, bare, []); draw(r.pts); b.hit = r.hit;
       } };
     b.update();
     // 会話シーンの fx: 'mirrors'：大水晶に近い台から順に、台ごと鏡があらわれ、そろったら光の筋を引きなおす（this は会話シーンの画面）

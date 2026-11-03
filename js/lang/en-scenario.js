@@ -1092,7 +1092,7 @@ Object.assign(EN, {
   '……枠の色を見ろ。同じ色の鏡は、魔力でつながっているようだ。一枚回せば、同じ色の鏡がみんな回るぞ。': '...Look at the frame colors. Mirrors of the same color seem to be linked by magic. Turn one, and every mirror of that color turns.',
   'し、仕様よ、仕様！　……目の前の鏡ばかり回してたら、光が迷子になるわ。光がどこを通るか、先まで考えましょ。': 'Th-that\'s by design! By design! ...If we only turn the mirror in front of us, the light will get lost. Let\'s think ahead about where it\'ll go.',
   '……かがみ……きらきら……。': '...mirrors... sparkly...',
-  '（光の鏡の前で{ F |「調べる」}を押すと、その色の鏡がみんな回る。五色の鏡の向きを組み合わせて、光の筋を坑道の受けの水晶まで導こう）': '(Press{ F |"Check"} in front of a light mirror to turn all mirrors of that color. Combine the angles of the five colors of mirrors to guide the beam to the receiving crystal in the tunnel.)',
+  '（光の鏡の前で{ F |「調べる」}を押すと、その色の鏡がみんな回る。五色の鏡の向きを組み合わせて、光の筋を坑道の影の壁まで導こう）': '(Press{ F |"Check"} in front of a light mirror to turn all mirrors of that color. Combine the angles of the five colors of mirrors to guide the beam to the shadow wall in the tunnel.)',
   // ── scenario.js SCENES.c4_03c
   '割れた盾': 'The Broken Shield',
   '地底湖のほとり。岸の岩に、割れた盾と、色あせたリボンが引っかかっていた。': 'By the underground lake, a broken shield and a faded ribbon were caught on the rocks along the shore.',

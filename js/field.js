@@ -1880,7 +1880,7 @@ class FieldView extends BaseView {
     if (laugh) { Sfx.laugh(); this.p.burst(at, '#ff9ad8', 30, { speed: 4, up: 2, life: 1.2, size: 0.1 }); } else Sfx.heal();
     const n = o.lamps.filter(x => x.lit).length, all = n === o.lamps.length;
     if (all && o.beam) {
-      // 光の筋：大水晶が光を放つ。受けの水晶に届いていれば、そのまま壁が消える
+      // 光の筋：大水晶が光を放つ。影の壁に届いていれば、そのまま壁が消える
       o.beam.active = true; o.beam.update(); o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
       this.fx.pillar(V3(o.beam.B.from[0], this.gy(...o.beam.B.from), o.beam.B.from[1]), '#cfefff', { h: 8, r: 1, life: 1 });
       if (o.beam.hit) this.openSeal(o);
@@ -1898,7 +1898,7 @@ class FieldView extends BaseView {
     Save.data.flags[o.S.id] = true; o.dissolve(); Save.save();
     setTimeout(() => { Sfx.win(); GFX.shake(0.2); this.toast(o.S.openToast || '影の壁が、光にとけて消えた！'); }, 500);
   }
-  // 光の鏡の向きを変える（「/」⇔「＼」）。同じ色の鏡は、みんないっしょに回る。光の筋が受けの水晶に届けば、影の壁が消える
+  // 光の鏡の向きを変える（「/」⇔「＼」）。同じ色の鏡は、みんないっしょに回る。光の筋が影の壁に届けば、壁が消える
   turnMirror(o, m) {
     const b = o.beam, flags = Save.data.flags || (Save.data.flags = {}), g = m.g;
     b.gst[g] ^= 1; flags[`${o.S.id}_g${g}`] = b.gst[g]; Save.save();
