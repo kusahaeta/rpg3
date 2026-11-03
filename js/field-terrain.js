@@ -41,12 +41,13 @@ class Terrain {
     //   depth：一つのくぼみのまん中の深さ、lv：水面の床からの深さ、h：まわりの床の高さ、shore：水ぎわの色 [乾いた所, ぬれた所]（なければ砂）。
     //   水ぎわ（水面から STOP 以内の地面）からは、水に入れない
     // 川（zone.river）：池と同じ作りで、折れ線にそってくぼませる。path：[x, z, r] の点（r：くぼみの半幅。水の幅はその約 0.67 倍）。
-    //   点は、なめらかな曲線でつなぐ。流れは path の向き。橋（=）の床は、くぼまずに元の高さのまま渡れる。lv・depth・h・shore は池と同じ（池と川が両方あれば、池のほうを使う）
+    //   点は、なめらかな曲線でつなぐ。流れは path の向き。橋（=）の床は、くぼまずに元の高さのまま渡れる。lv・depth・h・shore は池と同じ（池と川が両方あれば、池のほうを使う）。
+    //   paths：path の代わりに、いくつかの線（中州のまわりで分かれる川など。重なるところは深いほうの深さ）
     if (zone.pond || zone.river) {
       const P = zone.pond || zone.river, lv = P.lv || 0.45;
       this.pond = { blobs: (zone.pond ? zone.pond.blobs : []).map(([x, z, r]) => [...zonePoint(zone, [x, z]), r]), lines: [], depth: P.depth || 1.5, lv, y: (P.h || 0) - lv, shore: P.shore };
       for (const [x, z, r] of this.pond.blobs) this.dents.push({ x, z, r, depth: this.pond.depth, rim: 0, w: 1, top: 0 });
-      if (zone.river) this.pond.lines.push(riverLine(zone.river.path.map(([x, z, r]) => [...zonePoint(zone, [x, z]), r ?? zone.river.r ?? 3])));
+      if (zone.river) for (const path of zone.river.paths || [zone.river.path]) this.pond.lines.push(riverLine(path.map(([x, z, r]) => [...zonePoint(zone, [x, z]), r ?? zone.river.r ?? 3])));
       // 水のある範囲（くぼみの外接矩形）
       const B = this.pond.box = [Infinity, Infinity, -Infinity, -Infinity];
       const grow = (x, z, r) => { B[0] = Math.min(B[0], x - r); B[1] = Math.min(B[1], z - r); B[2] = Math.max(B[2], x + r); B[3] = Math.max(B[3], z + r); };
@@ -312,11 +313,11 @@ class Terrain {
     for (const [bx, bz, r] of P.blobs) { const s = Math.hypot(x - bx, z - bz); if (s < r) { const u = 1 - (s / r) ** 2; y += P.depth * u * u; } }
     return y + this.riverDepth(x, z);
   }
-  // 川のくぼみの深さ（池のくぼみと同じ断面を、折れ線にそってのばす）
+  // 川のくぼみの深さ（池のくぼみと同じ断面を、折れ線にそってのばす。線が重なるところは、深いほう）
   riverDepth(x, z) {
     const P = this.pond; if (!P || !P.lines.length) return 0;
     let y = 0;
-    for (const L of P.lines) { const [s, r] = lineNear(L, x, z); if (s < r) { const u = 1 - (s / r) ** 2; y += P.depth * u * u; } }
+    for (const L of P.lines) { const [s, r] = lineNear(L, x, z); if (s < r) { const u = 1 - (s / r) ** 2; y = Math.max(y, P.depth * u * u); } }
     return y;
   }
   // 川のくぼみが (x, z) から pad m 以内にかかるか

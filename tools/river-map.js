@@ -1,7 +1,7 @@
 // 川（zone.river）に合わせて、区画の地図の岸を作る小さな道具
 //   node tools/river-map.js <区画> '<path の JSON>' '<橋の列の JSON>' [r] [depth] [lv]
 //   例：node tools/river-map.js forest_in '[[-36,0,3],[0,1.4,2.6],[36,-0.8,3]]' '[14,15,26,27]'
-//   南北に流れる川の橋は、橋の行で渡す：'{"rows":[9,10,11]}'
+//   南北に流れる川の橋は、橋の行で渡す：'{"rows":[9,10,11]}'。いくつかの線（zone.river.paths）は、path の JSON を線の配列にする
 // 川のくぼみが 0.16m より深くかかるマスを、木立（#）・旧の川（~）なら床（0）に、橋の列なら橋（=）にする。
 // 木立と床の境目は、くぼみが 0.16m 以下になる（それより深いと、境目に土の崖の黒い帯が出る）。
 // 変わる行を「旧の行・新しい行・水の様子（~ 水、- 水ぎわ）」で並べ、最後に新しい地図を JSON で出す。
@@ -26,9 +26,9 @@ const zi = zsrc.indexOf('\n  ' + zone + ': {'), mi = zsrc.indexOf('map: [', zi),
 if (zi < 0 || mi < 0) { console.log('区画が見つからない：' + zone); process.exit(1); }
 const rows = [...zsrc.slice(mi, me).matchAll(/'([^']*)'/g)].map(m => m[1].split(''));
 const C = 2, W = rows[0].length, H = rows.length, hw = W * C / 2, hd = H * C / 2;
-const L = riverLine(JSON.parse(pathJ).map(p => [p[0], p[1], p[2] ?? +R])), BJ = JSON.parse(bcJ), byRow = !Array.isArray(BJ), bridgeSet = new Set(byRow ? BJ.rows : BJ);
+const PJ = JSON.parse(pathJ), Ls = (Array.isArray(PJ[0][0]) ? PJ : [PJ]).map(P => riverLine(P.map(p => [p[0], p[1], p[2] ?? +R]))), BJ = JSON.parse(bcJ), byRow = !Array.isArray(BJ), bridgeSet = new Set(byRow ? BJ.rows : BJ);
 const isBridge = (r, c) => bridgeSet.has(byRow ? r : c);
-const dep = (x, z) => { const [s, r] = lineNear(L, x, z); if (s >= r) return 0; const u = 1 - (s / r) ** 2; return depth * u * u; };
+const dep = (x, z) => Math.max(...Ls.map(L => { const [s, r] = lineNear(L, x, z); if (s >= r) return 0; const u = 1 - (s / r) ** 2; return depth * u * u; }));
 
 const out = rows.map(r => r.slice());
 for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {

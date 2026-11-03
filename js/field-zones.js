@@ -586,12 +586,12 @@ const FIELD_ZONES = {
       '###222222<<,,,,,,,,,00000000##',
       '###222222<<,,,,,,,,,000000000#',
       '####2222##00000000000000000###',
-      '#####222##000000000000000#####',
-      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
-      '~~~~~~~~~~~~~~~~~~~~000000~~~~',
-      '~~~~~~~~~~~~~~~~~~~~000000~~~~',
-      '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
-      '##2222222###0000000000000#####',
+      '#####222##0000000000000000000#',
+      '000000000000000000000000000000',
+      '000000000000000000000000000000',
+      '000000000000000000000000000000',
+      '000000000000000000000000000000',
+      '##2222222###000000000000000000',
       '##2222222##000000000000000####',
       '##2222222#00000000000000000###',
       '###22222##000000000000000000##',
@@ -626,8 +626,11 @@ const FIELD_ZONES = {
     notes: [{ at: [1, -13], mark: [0, 1.2, -0.6], title: 'こわれた丸木橋', text: '川にかかっていた丸木橋。……まん中で、ぽっきり折れている。むこう岸へは、渡れそうにない。' },
       { at: [-13, 19], face: 0.3, post: ['↑ たんぽぽの原', '← 街道の宿場'], title: '道しるべ', text: '「北　たんぽぽの原／西　街道の宿場」……下のほうに、小さく「ねむり川を越えるときは、綿毛で」と書き足してある。' },
       { at: [5, 3.5], when: 'scene:c2_03', mark: [0, 3.2, -2.5], title: '綿毛の抜けた大たんぽぽ', text: '見上げるほど大きなたんぽぽ。……てっぺんの綿毛は、眠る子猫ごと、川のむこうへ飛んでいってしまった。' }],
-    // ねむり川：西の綿毛の丘（高さ 2）のそばだけ水面が高くならないよう、川じゅうを低い床にそろえる
-    waterLv: [[0, 8, 29, 11, 0]],
+    // ねむり川：東から西へ、原の北をうねって流れる。川の中の小島のまわりでは、北の流れ（本流）と南の流れに分かれる。
+    //   綿毛の丘（高さ 2）の下では、丘にくぼみをかけないよう細くする（地図の 7〜12 行めは、この川に合わせて作った岸）
+    river: { paths: [
+      [[38, -18, 4], [32, -17.4, 4.2], [27, -18.6, 3.6], [23, -21.6, 2.6], [16, -22, 2.6], [9, -21.4, 2.6], [4, -18.4, 3.8], [-3, -17.4, 4.3], [-12, -18, 3.8], [-19, -17.8, 3.7], [-26, -18.2, 3.8], [-32, -17.6, 4], [-38, -18.2, 4]],
+      [[30, -17.6, 3.6], [24, -14.6, 2.6], [16, -14.2, 2.6], [8, -14.6, 2.6], [2, -17.6, 3.6]]] },
     map2d: [610, 236] },
   woods_valley: { ci: 1, name: 'まどろみの林・ねむり花の谷', bgm: 'drowsy', floor: '谷', parent: 'woods', w: 60, d: 80, stage: '2-2', after: 'c2_03', arenas: [[0, -28, 0], [14, 16, 0]], build: 'woodsValley', bg: 'forest', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-19, 15], [-23, -11], [21, -11]], foes: ['kinoko', 'karasu', 'noraInu'],
@@ -5623,10 +5626,11 @@ class ZoneKit {
     return P.length ? [P[0][3], P[P.length - 1][3]] : [0, L.len];
   }
   // 川が地図の外へ出るところ：外側に木立としげみを置いて、川が森の奥へ消えていくように見せる（o：flora と同じ木の色など）。
-  //   o.rock：木立の代わりに、その色の岩を水の上に積む（崖のすき間から流れ出る川）
+  //   o.rock：木立の代わりに、その色の岩を水の上に積む（崖のすき間から流れ出る川）。地図の中で終わる線のはし（中州のわきの流れ）には置かない
   riverMouths(o = {}, L = this.T.pond.lines[0]) {
     const [s0, s1] = this.riverSpan(L), y = this.T.pond.y + this.T.pond.lv, r = this.r;
     for (const [s, out] of [[s0, -1], [s1, 1]]) {
+      if (s <= 0 || s >= L.len) continue;
       const [px, pz, rad, dx, dz] = linePoint(L, s), ox = dx * out, oz = dz * out, at = (f, u) => [px + ox * f + dz * u, pz + oz * f - dx * u], half = rad * 0.67;
       if (o.rock) {
         for (const [f, u, sz] of [[0.9, -half * 0.55, 1.4], [1.1, half * 0.5, 1.6], [0.5, 0, 1.0], [2.4, -half * 0.2, 2.0], [2.6, half + 0.6, 1.7], [2.5, -half - 0.6, 1.8]]) {
@@ -5654,11 +5658,13 @@ class ZoneKit {
   //   o.avoid：葉がよけて通るもの [x, z, 流れにそった半径, 横の半径]（水車など。川のまん中の側へよける）
   riverStream(o = {}, L = this.T.pond.lines[0]) {
     const T = this.T, Y = T.pond.y, sp = o.speed ?? 0.9, tex = this.flowTextures(), [s0, s1] = this.riverSpan(L);
-    // 帯：川の中心線にそって 0.5m ごと、水の幅の 85% に。両はしは透かす（u：流れにそった長さ、v：横の位置。どちらも m）
+    // 帯：川の中心線にそって 0.5m ごと、水の幅の 85% に。両はしは透かす（u：流れにそった長さ、v：横の位置。どちらも m）。
+    //   地図の中で終わる線（中州のわきの流れ）は、はしの 3m を透かして、本流に溶かす
     const pos = [], uv = [], col = [], idx = [], V = [-1, -0.55, 0, 0.55, 1], A = [0, 1, 1, 1, 0], n = Math.ceil((s1 - s0) / 0.5);
+    const fade = s => Math.min(1, s0 <= 0 ? s / 3 : 1, s1 >= L.len ? (L.len - s) / 3 : 1);
     for (let k = 0; k <= n; k++) {
-      const s = s0 + (s1 - s0) * k / n, [x, z, r, dx, dz] = linePoint(L, s), half = r * 0.67 * 0.85;
-      V.forEach((v, j) => { pos.push(x + dz * v * half, Y, z - dx * v * half); uv.push(s, v * half); col.push(1, 1, 1, A[j]); });
+      const s = s0 + (s1 - s0) * k / n, [x, z, r, dx, dz] = linePoint(L, s), half = r * 0.67 * 0.85, f = fade(s);
+      V.forEach((v, j) => { pos.push(x + dz * v * half, Y, z - dx * v * half); uv.push(s, v * half); col.push(1, 1, 1, A[j] * f); });
       if (k) for (let j = 0; j < 4; j++) { const a = (k - 1) * 5 + j, b = k * 5 + j; idx.push(a, b, a + 1, a + 1, b, b + 1); }
     }
     const g = new THREE.BufferGeometry();
@@ -8497,7 +8503,8 @@ const ZONE_BUILD = {
   },
   // まどろみの林・入口：たんぽぽの原と、見上げるほど大きなたんぽぽ（タマが綿毛のてっぺんで眠っていた）、綿毛の丘、ねむり川とこわれた丸木橋、すいれんの池
   woods(K) {
-    K.flora({ trees: [['round', 3], ['pine', 1]], leaf: ['#7ac85a', '#8ad06a', '#6abf52'], bush: 0.8, flower: ['#ffffff', '#fff8c8', '#ffe07a'] });
+    const fo = { trees: [['round', 3], ['pine', 1]], leaf: ['#7ac85a', '#8ad06a', '#6abf52'], bush: 0.8, flower: ['#ffffff', '#fff8c8', '#ffe07a'] };
+    K.flora(fo);
     K.fluffs();
     // 大たんぽぽ：物語で綿毛ごと飛んでいったあとは、茎だけ。会話シーンでは fx: 'fluff' で綿毛が抜ける（hooks.pluckBig）
     const big = K.dandelion(5, 1, 2, { bald: storyCond('scene:c2_03') });
@@ -8510,10 +8517,14 @@ const ZONE_BUILD = {
     }
     for (const [x, z] of [[-6, -4], [12, -6], [16, 6], [-2, 10], [20, -2], [0, 4], [10, 10]]) K.flowers(x, z, 14, 2.2, ['#ffd84a', '#ffe07a', '#ffffff']);
     K.flowers(-18, -10, 12, 2.5, ['#ffd84a', '#ffffff']); K.flowers(-19, -28, 10, 2.2, ['#ffd84a', '#ffffff']);
-    // こわれた丸木橋：両岸の杭と、川に落ちた丸太
-    for (const z of [-13.4, -22.6]) for (const x of [0, 2]) K.cyl(x, z, 0.14, 0.9, 'bark', { seg: 6, col: false });
-    K.mesh(new THREE.CylinderGeometry(0.3, 0.32, 4.2, 10), 'bark', 1, -0.15, -15.4, { rx: Math.PI / 2 + 0.25, rz: 0.1 });
-    K.mesh(new THREE.CylinderGeometry(0.3, 0.32, 3.6, 10), 'bark', 1.4, -0.2, -20.4, { rx: Math.PI / 2 - 0.3, rz: -0.15 });
+    // こわれた丸木橋：両岸の杭と、川に落ちた丸太（岸から水の中へ、ななめに沈む）
+    for (const z of [-12.6, -23]) for (const x of [0, 2]) K.cyl(x, z, 0.14, 0.9, 'bark', { seg: 6, col: false });
+    const wy = K.T.pond.y;
+    K.mesh(new THREE.CylinderGeometry(0.3, 0.32, 4.2, 10), 'bark', 1, wy + 0.05, -14.6, { abs: true, rx: Math.PI / 2 + 0.25, rz: 0.1 });
+    K.mesh(new THREE.CylinderGeometry(0.3, 0.32, 3.6, 10), 'bark', 1.4, wy + 0.05, -20.8, { abs: true, rx: Math.PI / 2 - 0.3, rz: -0.15 });
+    // ねむり川：本流と、小島の南の流れ。水ぎわの小石
+    for (const L of K.T.pond.lines) { K.riverStream({ speed: 0.8, leaves: L === K.T.pond.lines[0] ? 10 : 4 }, L); K.riverPebbles(L === K.T.pond.lines[0] ? 150 : 50, L); }
+    K.riverMouths(fo);
     // ねこ地蔵の広場とすいれんの池
     K.log(-10, 30, 2.4, 0.3); K.stoneLantern(-13, 22);
     const LP = [18.6, 25.2], lpEdge = (deg, out = 0) => K.pondEdge(LP[0], LP[1], deg * Math.PI / 180, out);
