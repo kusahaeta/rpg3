@@ -1182,7 +1182,12 @@ class FieldView extends BaseView {
     }
     // 昔の猫たち（昔のあいだだけ見える）
     if (to && to.past) for (const g of to.talkers || []) if (Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 1.9 && Math.abs(g.pos.y - p.y) < 1.5) return { type: 'ghost', g, text: Tx('昔の猫と話す') };
-    for (const o of this.sealObjs || []) if (o.beam && !o.open) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) return { type: 'mirror', o, m, text: Tx('{0}の光の鏡の向きを変える（{0}の鏡はみんな回る）', MIRROR_COLS[m.g][0]) };
+    for (const o of this.sealObjs || []) if (o.beam && !o.open) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) {
+      // 鏡を出す前は、鏡の台（call.who の子が先頭なら、魔法で鏡を出せる）
+      const C = o.beam.B.call;
+      if (!o.beam.called) return { type: 'mirrorCall', o, text: this.team[this.leader].key === C.who ? Tx('{0}（{1}）', C.verb, speakerName(C.who)) : Tx('調べる：{0}', C.name) };
+      return { type: 'mirror', o, m, text: Tx('{0}の光の鏡の向きを変える（{0}の鏡はみんな回る）', MIRROR_COLS[m.g][0]) };
+    }
     for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || Tx('光の水晶'); for (const lp of o.lamps) if (!lp.lit && lp.pos.distanceTo(p) < (o.S.reach || 2.0)) return { type: 'lamp', o, L: lp, text: !o.ready() ? Tx('調べる：{0}', name) : o.S.verb ? Tx('{0}（{1}）', o.S.verb, speakerName(o.S.who)) : o.S.look === 'laugh' ? Tx('{0}を押す', name) : o.S.labels ? Tx('{0}（{1}）にふれる', name, o.S.labels[lp.i]) : Tx('{0}に触れる', name) }; }
     // 内門の踏み板：乗っていれば「ここで待ってて」、仲間が待っていれば「よびもどす」
     for (const o of this.plateObjs || []) {
@@ -1256,6 +1261,8 @@ class FieldView extends BaseView {
       this.touchTime(it.o, it.q);
     } else if (it.type === 'mirror') {
       this.turnMirror(it.o, it.m);
+    } else if (it.type === 'mirrorCall') {
+      this.callMirrors(it.o);
     } else if (it.type === 'hold') {
       this.holdPad(it.o, it.pad, it.f);
     } else if (it.type === 'unhold') {
@@ -1862,7 +1869,7 @@ class FieldView extends BaseView {
       o.beam.active = true; o.beam.update(); o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
       this.fx.pillar(V3(o.beam.B.from[0], this.gy(...o.beam.B.from), o.beam.B.from[1]), '#cfefff', { h: 8, r: 1, life: 1 });
       if (o.beam.hit) this.openSeal(o);
-      else setTimeout(() => { Sfx.heal(); this.toast(S.beamToast || '三つの光が、大水晶に集まった！　光の鏡で、光の筋を影の壁まで導こう'); }, 500);
+      else setTimeout(() => { Sfx.heal(); this.toast(!o.beam.called ? Tx('三つの光が、大水晶に集まった！　{0}の魔法で、鏡の台に光の鏡を出そう', speakerName(o.beam.B.call.who)) : S.beamToast || Tx('三つの光が、大水晶に集まった！　光の鏡で、光の筋を影の壁まで導こう')); }, 500);
     } else if (all) {
       o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
       this.openSeal(o);
@@ -1885,6 +1892,26 @@ class FieldView extends BaseView {
     b.update();
     if (!b.active) { this.toast('光の鏡の向きが変わった。……今は、光が来ていない'); return; }
     if (b.hit && !o.open) this.openSeal(o);
+  }
+  // 鏡の台に、魔法で光の鏡を出す（beam.call。who の子が先頭のときだけ）。近い台から順に、すべての鏡があらわれる
+  callMirrors(o) {
+    const b = o.beam, C = b.B.call;
+    if (!this.featReady(C)) return;
+    (Save.data.flags || (Save.data.flags = {}))[o.S.id + '_mir'] = true; b.called = true; Save.save();
+    const p = this.player.pos;
+    Sfx.heal(); this.p.burst(p.clone().add(V3(0, 1.4, 0)), '#cfefff', 40, { speed: 3, up: 2, life: 0.9 });
+    let last = 0;
+    for (const m of b.mirrors) {
+      const ms = 250 + Math.hypot(m.pos.x - p.x, m.pos.z - p.z) * 30; last = Math.max(last, ms);
+      setTimeout(() => {
+        m.show(); this.fx.pillar(m.pos, MIRROR_COLS[m.g][1], { h: 3.5, r: 0.5, life: 0.7 });
+        this.p.burst(m.pos.clone().add(V3(0, 1.2, 0)), '#cfefff', 24, { speed: 2.5, up: 1, life: 0.7, size: 0.08 });
+        if (m.pos.distanceTo(this.player.pos) < 14) Sfx.tone(990 + m.g * 110, 0.16, 'sine', 0.04, 0);
+      }, ms);
+    }
+    // 鏡がそろってから、光の筋を引きなおす（大水晶がもう光っていれば、鏡で曲がる）
+    setTimeout(() => { b.update(); if (b.hit && !o.open) this.openSeal(o); }, last + 150);
+    this.startTalk('', C.lines.filter(([k]) => k === 'n' || this.team.some(m => m.key === k)));
   }
   // 記憶のかけらを、ちがう順にさわった：灯した光がみんな消えて、遠くへ押しもどされる
   wrongOrder(o) {

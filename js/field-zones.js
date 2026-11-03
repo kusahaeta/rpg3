@@ -1630,10 +1630,16 @@ const FIELD_ZONES = {
     anchor: [7, 41], spawn: [0, 43], chestAt: [[-51, 29], [29, -41], [53, 43], [-25, 7]], exits: [{ key: 's', to: 'valley' }, { key: 'd', to: 'cave_lake', stair: 'down' }],
     // 光の水晶を三つ灯すと、大空洞の南の大水晶が光を放つ。十五枚の光の鏡（五色。同じ色はいっしょに回る）で光の筋を曲げ、
     // 坑道の受けの水晶まで導くと、影の壁が消える。正解は一通り（十枚の鏡を通る）。光の当たった鏡から順に直すだけでは解けない
+    // はじめは鏡の台だけ。シロが先頭のときに台を調べると、魔法で十五枚の鏡がみんなあらわれる（beam.call）
     seals: [{ id: 'caveSeal1', wall: [-2, -25.3, 6, -24.7], lamps: [[-31, -43], [51, 13], [51, -41]], after: 'c4_03b', openAfter: 'c4_03c',
       openToast: '光の筋が受けの水晶に届くと、影の壁が、光にとけて消えた！',
       beam: { from: [-7, 15], dir: 'n', to: [1, -19], init: [1, 0, 0, 1, 1],
-        mirrors: [[-7, -3, 3], [1, -3, 2], [1, 11, 2], [7, 11, 0], [7, -7, 1], [-11, -7, 4], [-11, -3, 0], [-17, -3, 2], [-17, -9, 3], [1, -9, 0], [9, -9, 1], [21, 11, 0], [-3, -5, 0], [15, 1, 1], [9, 11, 0]] } }],
+        mirrors: [[-7, -3, 3], [1, -3, 2], [1, 11, 2], [7, 11, 0], [7, -7, 1], [-11, -7, 4], [-11, -3, 0], [-17, -3, 2], [-17, -9, 3], [1, -9, 0], [9, -9, 1], [21, 11, 0], [-3, -5, 0], [15, 1, 1], [9, 11, 0]],
+        call: { who: 'shiro', name: '鏡の台', verb: '光の鏡を出す',
+          hint: '色の宝石をはめた、石の台。……鏡を立てる台のようだ。シロの魔法なら、ここに光の鏡を出せるかもしれない。',
+          tries: { mike: 'あれ？　鏡の台なのに、鏡がないや。……ぼくの顔、うつらない！', kuro: '……あの日は、リンがここに、魔法で鏡を出した。……俺には、できない。', tama: '……かがみ……どこ……？', maou: 'ふはは、魔王の威光で……むっ。何も出ぬではないか。' },
+          lines: [['shiro', 'ふふん、見てなさい。……光よ、鏡となって、ここに立ちなさい！'], ['n', 'シロが杖をかかげると、洞窟じゅうの鏡の台に、つぎつぎと光の鏡があらわれた！'],
+            ['kuro', '……リンと、同じ魔法だ。'], ['shiro', '天才だもの。……さあ、光の筋をどう通すか、考えましょ。'], ['n', '（光の鏡の前で{ F |「調べる」}を押すと、その色の鏡がみんな回る）']] } } }],
     notes: [{ at: [-53, -11], mark: [-0.6, 2.4, 0], title: '壁のひっかき傷', text: '四本の爪あとが並んでいる。……「影の四剣、ここに参上」' },
       { at: [-50, -14], mark: 1.0, title: '焚き火のあと', text: '石を並べた、小さな焚き火のあと。四匹ぶんの足あとが、奥へと続いている。' }],
     map2d: [620, 30] },
@@ -4195,9 +4201,12 @@ class ZoneKit {
   }
   // 光の筋（seals の beam）：大水晶（from）・光の鏡（mirrors: [x, z, 最初の向き]）・受けの水晶（to）。鏡の向きは Save.data.flags（id_m番号）に残す
   //   光の水晶をすべて灯すと、大水晶が光を放つ。光の鏡で曲げた光の筋が受けの水晶に届くと、影の壁が消える（FieldView.turnMirror）
+  //   call：はじめは鏡の台だけで、call.who の子が魔法で鏡を出す（FieldView.callMirrors。出したことは id_mir に残す）。
+  //   鏡を出す前は、光の筋は台を素通りする。前のセーブで鏡を回したことがあれば（id_g色）、はじめから鏡がある
   beamParts(S, o, flags) {
     const B = S.beam, kit = this, T = this.T, HY = 1.15;
     const gst = (B.init || [0]).map((v, g) => flags[`${S.id}_g${g}`] ?? v);
+    const called = !B.call || o.open || !!flags[S.id + '_mir'] || (B.init || [0]).some((_, g) => flags[`${S.id}_g${g}`] != null);
     const dimM = this.glow('#6a4aa0', 0.7), litM = this.glow('#cfefff', 3.2);
     // 大水晶：大きな岩の台に、紫の大きな水晶。光を放つと白く輝いて、ゆっくりまわる
     const [fx, fz] = B.from;
@@ -4218,8 +4227,10 @@ class ZoneKit {
       for (const fy of [0.08, 1.32]) { const f = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 0.16), this.glow(col, 0.9)); f.position.y = fy; pivot.add(f); }
       for (const fx of [-0.72, 0.72]) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.3, 0.16), this.glow(col, 0.9)); f.position.set(fx, 0.7, 0); pivot.add(f); }
       const ry = st => st ? -Math.PI / 4 : Math.PI / 4;
-      pivot.rotation.y = ry(gst[g]);
-      return { i, g, pos: V3(x, this.gy(x, z), z), pivot, ry, target: pivot.rotation.y };
+      pivot.rotation.y = ry(gst[g]); pivot.visible = called;
+      // show：魔法で鏡があらわれる（下からふくらんで、少しはずむ）
+      const m = { i, g, pos: V3(x, this.gy(x, z), z), pivot, ry, target: pivot.rotation.y, grow: null, show() { pivot.visible = true; m.grow = 0; pivot.scale.setScalar(0.001); } };
+      return m;
     });
     const line = new THREE.Group(); this.scene.add(line);
     const beamM = new THREE.MeshBasicMaterial({ color: hdr('#cfefff', 2.2), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
@@ -4234,16 +4245,20 @@ class ZoneKit {
       }
       const [ex, ez] = pts[pts.length - 1]; tip.position.set(ex, T.groundAt(fx, fz) + HY, ez);
     };
-    const b = o.beam = { B, gst, mirrors, hit: false, active: o.open || S.lamps.every((_, i) => flags[S.id + '_' + i]),
+    const bare = { ...B, mirrors: [] };
+    const b = o.beam = { B, gst, mirrors, called, hit: false, active: o.open || S.lamps.every((_, i) => flags[S.id + '_' + i]),
       update() {
         line.visible = b.active;
         core.material = b.active ? litM : dimM;
         if (!b.active) { b.hit = false; rc.material = dimM; return; }
-        const r = traceBeam(T, B, beamStates(B, b.gst)); draw(r.pts); b.hit = r.hit; rc.material = r.hit ? litM : dimM;
+        const r = b.called ? traceBeam(T, B, beamStates(B, b.gst)) : traceBeam(T, bare, []); draw(r.pts); b.hit = r.hit; rc.material = r.hit ? litM : dimM;
       } };
     b.update();
     this.tick((dt, t) => {
-      mirrors.forEach(m => { m.pivot.rotation.y += (m.target - m.pivot.rotation.y) * (1 - Math.exp(-10 * dt)); });
+      mirrors.forEach(m => {
+        m.pivot.rotation.y += (m.target - m.pivot.rotation.y) * (1 - Math.exp(-10 * dt));
+        if (m.grow != null && m.grow < 1) { m.grow = Math.min(1, m.grow + dt * 2.2); const k = m.grow - 1; m.pivot.scale.setScalar(Math.max(0.001, 1 + 2.7 * k * k * k + 1.7 * k * k)); }
+      });
       if (!b.active) return;
       core.rotation.y += dt * 0.8; beamM.opacity = 0.7 + Math.sin(t * 9) * 0.15; tip.material.opacity = 0.6 + Math.sin(t * 13) * 0.3;
       if (kit.v.p && Math.random() < dt * 6) kit.v.p.emit(tip.position.clone(), V3((Math.random() - 0.5) * 1.5, Math.random() * 1.5, (Math.random() - 0.5) * 1.5), hdr('#cfefff', 2.4), { life: 0.6, size: 0.07, drag: 1 });
