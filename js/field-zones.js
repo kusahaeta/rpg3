@@ -5197,9 +5197,11 @@ class ZoneKit {
   // zone.nemuri：[{ at: [x, z], r, ph, back: [x, z] }]：ねむり花。閉じる → ふくらむ（あぶない合図）→ まわり r m に眠りの粉をはく
   //   粉をはいているあいだに入ると、一行は眠ってしまい back で目をさます（FieldView.updateNemuri）。粉を吸った敵も眠る
   //   zone.nemuriAfter のシーンを見るまでは、つぼみのまま眠っている
+  //   戦闘の背景（v.arena）では、戦場の中の花は作らない（背が高く、肩越しのカメラの前をふさぐ。当たり判定がないので切り取りでも切られない）
   nemuri() {
-    const awake = !this.zone.nemuriAfter || storyCond('scene:' + this.zone.nemuriAfter), kit = this;
-    return (this.v.nemuriObjs = (this.zone.nemuri || []).map((N, idx) => {
+    const awake = !this.zone.nemuriAfter || storyCond('scene:' + this.zone.nemuriAfter), kit = this, A = this.v.arena;
+    const list = (this.zone.nemuri || []).map((N, idx) => ({ N, idx })).filter(({ N }) => !(A && Math.hypot(N.at[0] - A.x, N.at[1] - A.z) < A.r));
+    return (this.v.nemuriObjs = list.map(({ N, idx }) => {
       const [x, z] = N.at, y = this.gy(x, z), r = N.r || 2.6, ph = N.ph ?? (idx * 0.37) % 1;
       const F = this.sleepFlower(x, z, 1.3);
       // 粉の雲（桃色のもやの丸屋根と、光）と、粉のとどく範囲の輪（ふくらむと点滅する）
@@ -8291,7 +8293,11 @@ const ZONE_BUILD = {
   },
   // まどろみの林・大樹のうろ：林のいちばん奥の大樹（うろはリスたちのどんぐり倉）、光るきのこの輪、丸木橋の小川、西のリスの村、東の高台
   woodsDeep(K) {
-    K.flora({ trees: [['round', 3], ['pine', 2], ['mush', 0.5]], leaf: ['#4a9a3e', '#5aa84a', '#3f8a3a'], caps: ['#ffb84a', '#e05a6a'], bush: 0.85, flower: ['#fff4a8', '#ffffff'] });
+    // 戦闘の背景（v.arena）では、戦場の南（カメラの側）9m の中の木は植えない（大樹の広場の戦場では、肩越しのカメラが南の入口の道に立ち、
+    //   壁ぎわの針葉樹がカメラの目の前をふさぐ）
+    const A = K.v.arena;
+    K.flora({ trees: [['round', 3], ['pine', 2], ['mush', 0.5]], leaf: ['#4a9a3e', '#5aa84a', '#3f8a3a'], caps: ['#ffb84a', '#e05a6a'], bush: 0.85, flower: ['#fff4a8', '#ffffff'],
+      skip: A ? (x, z) => z > A.z + 3 && Math.hypot(x - A.x, z - A.z) < A.r : null });
     K.fluffs(); K.nemuri();
     // 大樹と、ぽっかり開いたうろ（中はどんぐりの山）
     K.oakTree(1, -29.5);
