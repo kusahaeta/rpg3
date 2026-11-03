@@ -255,7 +255,7 @@ const SCENES = {
   c2_02: { title: '自称・天才魔法使い', cast: ['e:karasu', 'e:noraInu'], extra: ['tabibito_a', 'tabibito_b'],
     stage: { zone: 'road_rest', at: [0, -2], face: 0, host: 'shiro',
       cast: { shiro: { at: [0, 3], face: [0, 0], stance: 'hipHand' }, tabibito_a: { at: [-2.6, 3.4], face: 'shiro' }, tabibito_b: { at: [2.5, 3.2], face: 'shiro' },
-        'e:karasu': { at: [-3, 7], hidden: true }, 'e:noraInu': { at: [2.6, 7.4], hidden: true } } },
+        'e:karasu': { at: [-3, 7], hidden: true, look: { fish: true } }, 'e:noraInu': { at: [2.6, 7.4], hidden: true } } },
     lines: [
       ['n', '宿場の広場に、人だかりができている。その真ん中で、白い猫が胸を張っていた。', { cam: 'wide', dur: 7, look: { all: 'shiro' } }],
       ['shiro', 'さあさあ、よってらっしゃい！　世界一の天才魔法使い、シロさまの魔法をお見せするわ！', { f: 'smug', g: 'raise' }],
@@ -519,7 +519,7 @@ const SCENES = {
   c2_03e: { title: 'ひみつの特訓', cast: ['e:karasu', 'e:noraInu'], bgm: 'zone',
     stage: { zone: 'road1_hill', at: [-2, -10], face: 90,
       cast: { shiro: { at: [0.3, 4.2], face: [0.3, 12] },
-        'e:karasu': [{ at: [-2.6, 9], hidden: true }, { at: [2.4, 9.4], hidden: true }], 'e:noraInu': { at: [0, 10], hidden: true } },
+        'e:karasu': [{ at: [-2.6, 9], hidden: true, look: { fish: true } }, { at: [2.4, 9.4], hidden: true, look: { fish: true } }], 'e:noraInu': { at: [0, 10], hidden: true } },
       points: { mill: [-11.5, 5, 9] } },
     lines: [
       ['n', '風車のまわる畑のすみで、白い猫が、ひとりで杖をかまえていた。', { cam: 'look:shiro', dur: 6, look: { all: 'shiro' } }],

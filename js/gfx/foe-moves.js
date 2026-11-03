@@ -30,12 +30,13 @@ const FOE_MOVES = {
   },
   // かみつき・つっつき：とびかかって、がぶっ（つっつきは三回つつく）
   //   顎のある敵（コドクの獣）は、とびかかりながら口をあけ（userData.jaw）、当たる瞬間にがちっと閉じる
+  //   つっつき（カラス）は、ひとつつきごとにくちばしをあけて、当たるところで閉じる
   async bite(e, ts, c) {
     const t = ts[0], U = e.model.group.userData;
     if (c.mv.glyph !== 'peck') U.jaw = 1;
     await this.foeLunge(e, t, { pose: POSES.ready });
     if (c.mv.glyph === 'peck') {
-      for (let i = 0; i < 3; i++) { await this.foeNudge(e, t, 0.25, 0.07); this.fx.sprite(this.hitPoint(t.u).add(V3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, 0)), c.col, 0.7, 0.18, { k: 3 }); }
+      for (let i = 0; i < 3; i++) { U.jaw = 1; await this.foeNudge(e, t, 0.25, 0.07); U.jaw = 0; this.fx.sprite(this.hitPoint(t.u).add(V3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, 0)), c.col, 0.7, 0.18, { k: 3 }); }
       return;
     }
     await this.foeNudge(e, t, 0.35, 0.08);
@@ -121,10 +122,13 @@ const FOE_MOVES = {
     this.fx.ring(t.home.clone().add(V3(0, 0.1, 0)), c.col, { r: 2.4, life: 0.4, width: 0.2 });
     GFX.shake(0.2);
   },
-  // 投げる（どんぐり・まんじゅう・お手玉・書類）
+  // 投げる（どんぐり・まんじゅう・お手玉・書類）。翼のある敵（カラス）は、力いっぱい羽ばたいて吐きとばす（userData.flap）
   async toss(e, ts, c) {
+    const U = e.model.group.userData;
     this.foeFlash(e, c.col);
+    U.flap = 1;
     await this.foePose(e, POSES.windup, 0.18);
+    U.flap = 0;
     this.foePose(e, POSES.strike, 0.08);
     this.foeHop(e, 0.15);
     const from = this.foeMouth(e);

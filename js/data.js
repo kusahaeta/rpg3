@@ -473,6 +473,7 @@ const ENEMIES = {
 //  章とステージ（物語の戦闘）
 //  bg：戦闘・探索の空と光（js/gfx/env.js の THEMES）
 //  guests：まだ仲間になっていない、または一行を離れている（STORY の away）が、物語でいっしょに戦う子（js/screens.js の battleTeam）
+//  foeLook：その戦いだけの敵の見た目（{ 敵の key: look }。魚の降ったイベントのあとのカラスは、魚をつかむ）
 // ------------------------------------------------------------
 const CHAPTERS = [
   { id: 'c1', name: 'ぽかぽか村・ほしふる森', bg: 'meadow', desc: '流星が落ちた夜が明けて、ミケの冒険が始まる。',
@@ -483,9 +484,9 @@ const CHAPTERS = [
     ] },
   { id: 'c2', name: 'ミャオ街道', bg: 'road', desc: '世界の異変を調べる旅。街道の先で、ふしぎな仲間と出会う。',
     stages: [
-      { id: '2-1', name: '街道の丘',         lv: 8,  guests: ['shiro'], waves: [['karasu', 'noraInu'], ['noraInu', 'karasu', 'noraInu']] },
+      { id: '2-1', name: '街道の丘',         lv: 8,  guests: ['shiro'], foeLook: { karasu: { fish: true } }, waves: [['karasu', 'noraInu'], ['noraInu', 'karasu', 'noraInu']] },
       { id: '2-2', name: 'まどろみの林',     lv: 11, waves: [['noraInu', 'karasu', 'noraInu'], ['kinoko', 'noraInu', 'kinoko']] },
-      { id: '2-3', name: '風車の畑',         lv: 13, guests: ['shiro'], waves: [['karasu', 'noraInu', 'karasu'], ['noraInu', 'karasu', 'noraInu']] },
+      { id: '2-3', name: '風車の畑',         lv: 13, guests: ['shiro'], foeLook: { karasu: { fish: true } }, waves: [['karasu', 'noraInu', 'karasu'], ['noraInu', 'karasu', 'noraInu']] },
       { id: '2-4', name: 'ごろごろ切り通し', lv: 15, boss: true, waves: [['iwa', 'noraInu', 'iwa'], ['inoshishi']] },
     ] },
   { id: 'c3', name: 'ニャハハ王国', bg: 'kingdom', desc: '名前とは正反対に、誰も笑わない街。笑顔の塔に何かがいる。',
