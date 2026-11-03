@@ -154,6 +154,52 @@ export const SCENES = {
     await api.rec(40);
   },
 
+  // 必殺技を 3 つ続けて（App Store のプレビューの頭）：ミケ「炎の大車輪」（ほのおのつるぎ）→ シロ「ダイヤモンドダスト」（こおりの杖）→ マオウ「暗黒ねこ波」
+  //   戦場は battleHill と同じ古代遺跡・石畳の丘。古代ほたるは光で画面が白くかすむので、石のねこ像だけ
+  async battleUlt(api, out) {
+    await api.ev(`{ P.prep(4, 0, 72); const d = Save.data;
+      d.owned.maou = d.owned.maou || { lv: 72, exp: 0, eid: 0 }; d.owned.maou.lv = 72; d.team = ['mike', 'maou', 'shiro', 'tama'];
+      for (const [k, w] of [['mike', 'mike_flame'], ['shiro', 'shiro_ice']]) { gainWeapon(w); d.equip[k] = w; }
+      Save.save();
+      const st = CHAPTERS[4].stages.find(s => s.id === '5-1');
+      new Battle({ team: teamMembers().map(m => ({ ...m, hpRatio: 1, energy: null })), techs: [], bg: CHAPTERS[4].bg, canRetry: false,
+        loc: zoneArena('ruins_hill', { x: 0, z: 22 }), title: '古代遺跡・石畳の丘',
+        waves: [['sekizou', 'sekizou', 'sekizou'].map(k => ({ key: k, lv: st.lv }))], onResult: () => '', onExit: () => {} }).start(); } true`);
+    await api.run(0.3);
+    await api.ev(`(() => {
+      const b = Game.activeBattle; window.__b = b;
+      const plan = (window.__plan = ['ult:mike', 'ult:shiro', 'ult:maou', 'basic', 'basic', 'basic']);
+      let wait = 0;
+      setInterval(() => {
+        b.enemies.forEach(e => { if (e.hp < e.maxHp * 0.5) e.hp = e.maxHp; });
+        b.allies.forEach(u => { if (u.hp < u.maxHp * 0.5) { u.hp = u.maxHp; b.updateUnit(u); } });
+        const inp = b.input; if (!inp) { wait = 0; return; }
+        if ((wait += 1) < (window.__wait || 4)) return;
+        wait = 0;
+        if (inp.mode === 'ult') { b.confirm(); return; }
+        const a = plan.shift() || 'basic';
+        if (a.startsWith('ult:')) { const i = b.allies.findIndex(u => u.key === a.slice(4)); const u = b.allies[i]; u.energy = u.energyMax; b.updateUnit(u); b.requestUlt(i); }
+        else { b.sp = 5; b.renderSp(); if (inp.sel !== a) b.selectAbility(a); b.confirm(); }
+      }, 100);
+      return true;
+    })()`);
+    await api.start(out);
+    await api.rec(+(process.env.PROMO_SEC || 26));
+  },
+
+  // まどろみの林：大きなたんぽぽの綿毛のてっぺんで、タマが眠っている（c2_03 の 6 行目「……すぴー……。」）
+  async tamaNap(api, out) {
+    await api.ev(`P.prep(1, 3); App.go(DialogueScreen, 'c2_03', () => {}); document.querySelector('[data-auto]')?.remove(); true`);
+    await api.run(1.5);
+    // 5 行目のミケ「ほんとだ！　かわいい！」まで送る。短い行は一瞬で出しきるので、1 回ずつ送って文を見る
+    const said = t => api.ev(`document.querySelector('.screen.dialog').innerText.includes(${JSON.stringify(t)})`);
+    for (let i = 0; i < 20 && !(await said('かわいい')); i++) { await api.ev(dialogNext); await api.run(0.5); }
+    await api.run(1);
+    await api.start(out);
+    await api.ev(dialogNext);   // タマ「……すぴー……。」
+    await api.rec(4.5);
+  },
+
   // ラスボス・コドクとの戦い（世界の果て。メイキング動画用）：ボスの波だけにして、スキル → コンボ → 必殺技
   async battleFinal(api, out) {
     await api.ev(`{ P.prep(7, 0, 80); addBond('mike', 'kuro', 999); Save.save();
