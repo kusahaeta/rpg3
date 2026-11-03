@@ -332,21 +332,175 @@ function buildEnemy(key, look = {}) {
       };
       float = 0.12; height = 1.6; radius = 0.55; break;
     }
-    case 'rock': {   // ごろごろ岩：ごろごろ団（暴走族のような岩の一団）の団員。ころがる岩に顔、苔のリーゼントと白いハチマキ
-      const rm = new THREE.MeshStandardMaterial({ color: col, roughness: 0.95, flatShading: true }); rm.userData.e0 = new THREE.Color(0); rm.userData.ei0 = 0; mats.push(rm);
-      const r = add(P(new THREE.DodecahedronGeometry(0.55, 1), rm), 0, 0.55, 0);
-      // 苔のリーゼント：前へつき出す。うしろは短く刈った苔
-      const moss = tm('#3f7a2c');
-      const pomp = add(P(new THREE.CapsuleGeometry(0.19, 0.5, 6, 12), moss), 0, 1.07, 0.25); pomp.rotation.x = Math.PI / 2 - 0.2; pomp.scale.set(1.45, 1, 0.85);
-      add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2.4), moss), 0, 0.98, -0.14).scale.y = 0.55;
-      // ハチマキ：白い帯に赤い丸。うしろで結んだ端がなびく
-      const band = add(new THREE.Mesh(new THREE.TorusGeometry(0.49, 0.05, 6, 28), tm('#ffffff')), 0, 0.84, 0); band.rotation.x = Math.PI / 2;
-      add(new THREE.Mesh(new THREE.CircleGeometry(0.075, 14), tm('#e8304a')), 0, 0.84, 0.545);
-      const tails = [-1, 1].map(sd => { const tl = new THREE.Group(); tl.position.set(sd * 0.06, 0.84, -0.52); tl.rotation.y = sd * 0.35; inner.add(tl); add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.34), tm('#ffffff')), 0, 0, -0.17, tl); return tl; });
-      eyes(0.17, 0.62, 0.5, 0.08, inner, { angry: true });
-      // root.userData.spin：探索で爆走するとき、岩の本体だけを回す（顔とリーゼントは前を向いたまま）
-      update = (dt, t) => { r.rotation.x = (root.userData.spin || 0) + Math.sin(t * 2 + root.userData.ph) * 0.2; inner.position.y = Math.abs(Math.sin(t * 2)) * 0.05; tails.forEach((tl, i) => { tl.rotation.x = Math.sin(t * 13 + i * 1.7) * 0.3 - 0.15; }); };
-      height = 1.15; radius = 0.6; scale = 1.1; break;
+    case 'rock': {   // ごろごろ岩：ごろごろ団（暴走族のような岩の一団）の下っぱ。苔のリーゼントに白いハチマキ、メンチを切る目と金歯のニヤリ口、ほっぺの×ばんそうこう。背中に竹やりマフラー
+      const BU = THREEX.BufferGeometryUtils;
+      const C0 = V3(0, 0.55, 0), RX = 1.06;   // 岩の中心と、横のふくらみ
+      const lineM = new THREE.MeshBasicMaterial({ color: '#1a1420' });
+      const flatM = c => { const m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, flatShading: true }); m.userData.e0 = new THREE.Color(0); m.userData.ei0 = 0; mats.push(m); return m; };
+      const bake = (geos, mat, parent = inner, o) => add(o === false ? new THREE.Mesh(BU.mergeGeometries(geos), mat) : P(BU.mergeGeometries(geos), mat, o), 0, 0, 0, parent);
+      // 形を決める乱数（どの岩も同じ形）
+      let seed = 11; const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+      const hash = v => { const h = Math.sin(Math.round(v.x * 997) * 12.9898 + Math.round(v.y * 997) * 78.233 + Math.round(v.z * 997) * 37.719) * 43758.5453; return h - Math.floor(h); };
+      const rdir = () => V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize();
+      const bumps = Array.from({ length: 14 }, () => ({ d: rdir(), a: rnd() * 0.14 - 0.05 })), cuts = Array.from({ length: 8 }, rdir);
+      // 岩の表面までの距離：転がる帯（顔・ハチマキの下を通るところ）はすり減って丸く、横はごつごつ。ところどころ平らに欠ける
+      const rough = n => 0.25 + 0.75 * n.x ** 4;
+      const radAt = n => {
+        let d = (hash(n) - 0.5) * 0.03;
+        for (const b of bumps) d += b.a * Math.max(0, n.dot(b.d)) ** 4;
+        let r = 0.56 + d * rough(n);
+        for (const c of cuts) { const k = n.dot(c); if (k > 0.3) r = Math.min(r, (0.56 - 0.035 * rough(c)) / k); }
+        return r;
+      };
+      const surf = n => n.clone().multiplyScalar(radAt(n)).multiply(V3(RX, 1, 1));
+      const dirOf = (az, el) => V3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+      // 顔のがわ（回らない部品）の置き場所：岩の正面の丸みにそって
+      const onRock = (az, el, r) => dirOf(az, el).multiplyScalar(r).multiply(V3(RX, 1, 1)).add(C0);
+      const frameAt = (az, el, r, rz = 0) => new THREE.Matrix4().compose(onRock(az, el, r), new THREE.Quaternion().setFromUnitVectors(V3(0, 0, 1), dirOf(az, el)).multiply(new THREE.Quaternion().setFromAxisAngle(V3(0, 0, 1), rz)), V3(1, 1, 1));
+      // 平らな形を、岩の顔の丸みにそわせて貼る（x・y は表面にそった長さ）
+      const decal = (geo, az, el, r, rot = 0) => {
+        geo.rotateZ(rot); const p = geo.attributes.position;
+        for (let k = 0; k < p.count; k++) { const v = onRock(az + p.getX(k) / r, el + p.getY(k) / r, r + p.getZ(k)); p.setXYZ(k, v.x, v.y, v.z); }
+        geo.computeVertexNormals(); return geo;
+      };
+      // ---- 回る岩の本体：ころがった道のりだけ回る（root.userData.spin）。ひび・苔のかたまりも、いっしょに回る
+      const rock = new THREE.Group(); rock.position.copy(C0); inner.add(rock);
+      const bg = new THREE.IcosahedronGeometry(1, 2), bp = bg.attributes.position, n = V3();
+      for (let k = 0; k < bp.count; k++) { n.fromBufferAttribute(bp, k).normalize(); const v = surf(n); bp.setXYZ(k, v.x, v.y, v.z); }
+      // 面ごとに色をゆらす。平らに欠けた面は明るく
+      const base = new THREE.Color(col), vc = new Float32Array(bp.count * 3), cc = new THREE.Color(), cen = V3();
+      for (let f = 0; f < bp.count; f += 3) {
+        cen.set(0, 0, 0); for (let j = 0; j < 3; j++) cen.add(n.fromBufferAttribute(bp, f + j));
+        cen.divideScalar(3); const lift = cen.length() < 0.548 ? 0.1 : 0;
+        cc.copy(base).multiplyScalar(0.8 + hash(cen) * 0.3 + lift);
+        for (let j = 0; j < 3; j++) cc.toArray(vc, (f + j) * 3);
+      }
+      bg.setAttribute('color', new THREE.BufferAttribute(vc, 3)); bg.computeVertexNormals();
+      const rm = flatM('#ffffff'); rm.vertexColors = true;
+      add(new THREE.Mesh(bg, rm), 0, 0, 0, rock);
+      // 輪郭は、角をつないだなめらかな形で（面ごとの法線だと角にすき間があく）
+      const sm = new THREE.BufferGeometry(); sm.setAttribute('position', bp.clone()); const sg = BU.mergeVertices(sm); sg.computeVertexNormals();
+      const ol = new THREE.Mesh(sg, outlineMat(dark(col), 0.0024)); ol.userData.outline = true; rock.add(ol);
+      // ひび：ぶつかってできた、ぎざぎざの線
+      const seg = (a, b) => {
+        const na = dirOf(...a), nb = dirOf(...b), pa = surf(na), pb = surf(nb), x = pb.clone().sub(pa), len = x.length(); x.normalize();
+        const up = na.clone().add(nb).normalize(), z = x.clone().cross(up).normalize(), y = z.clone().cross(x);
+        const g = new THREE.BoxGeometry(len + 0.01, 0.016, 0.011); g.applyMatrix4(new THREE.Matrix4().makeBasis(x, y, z).setPosition(pa.add(pb).multiplyScalar(0.5)));
+        return g;
+      };
+      const cracks = [[[-0.62, -0.1], [-0.5, -0.26], [-0.6, -0.4], [-0.48, -0.58]], [[2.5, 0.42], [2.66, 0.22], [2.55, 0.02], [2.72, -0.2], [2.62, -0.36]], [[0.75, -0.75], [0.6, -0.9], [0.4, -0.85]]];
+      bake(cracks.flatMap(c => c.slice(1).map((b, i) => seg(c[i], b))), new THREE.MeshBasicMaterial({ color: '#2a2220' }), rock, false);
+      // 苔のかたまり（回るので、転がると前に出てくる）
+      bake([[0.95, -0.8], [-0.35, -1.0], [3.4, -0.15], [2.0, 0.55]].flatMap(([az, el], i) => [[0, 0, 0.07], [0.09, 0.05, 0.05], [-0.06, 0.08, 0.04]].map(([da, de, r]) => {
+        const d = dirOf(az + da, el + de), g = new THREE.SphereGeometry(r * (1 - i * 0.08), 8, 5); g.scale(1, 0.3, 1);
+        g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), d)); g.translate(...surf(d).toArray()); return g;
+      })), tm('#3e6e2a'), rock, false);
+      // ---- 回らない部品：顔・頭・マフラー（体ごと前のめりになる body に入れる）
+      const body = new THREE.Group(); body.position.copy(C0); inner.add(body);
+      const B = (geo) => geo.translate(-C0.x, -C0.y, -C0.z);   // inner の高さで作った形を、body の中へ
+      // 苔は一つの形にまとめて描く（刈りあげは頂点の色で少し暗く）
+      const moss = tm('#ffffff', { vertexColors: true }), shine = tm('#64a046');
+      const tint = (g, c) => { const k = new THREE.Color(c), a = new Float32Array(g.attributes.position.count * 3); for (let i = 0; i < a.length; i += 3) k.toArray(a, i); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); g.deleteAttribute('uv'); return g; };
+      // 刈りあげた苔：頭のてっぺんをおおう（すそはハチマキにかくれる）
+      const cap = new THREE.SphereGeometry(0.612, 26, 12, 0, Math.PI * 2, 0, 1.0); cap.scale(RX, 1, 1);
+      // リーゼント：うしろからなでつけて、前へ大きくせり出す。前ほど太く、先は丸いかたまり
+      const pomp = new THREE.Group(); pomp.position.set(0, 0.5, -0.1); body.add(pomp);   // つやの筋の置き場（苔の形は body の座標へずらしてまとめる）
+      const path = new THREE.CatmullRomCurve3([V3(0, 0.42, -0.36), V3(0, 0.55, -0.14), V3(0, 0.62, 0.12), V3(0, 0.64, 0.36), V3(0, 0.6, 0.56)].map(v => v.sub(V3(0, 0.5, -0.1))));
+      const TS = 30, RS = 14, R0 = 0.15, thick = u => 0.7 + 0.62 * Math.sin(Math.min(1, u / 0.85) * Math.PI / 2);
+      const pg = new THREE.TubeGeometry(path, TS, R0, RS, false), pp = pg.attributes.position, pc = V3(), pv = V3();
+      for (let k = 0; k < pp.count; k++) { const u = Math.floor(k / (RS + 1)) / TS; path.getPointAt(u, pc); pv.fromBufferAttribute(pp, k).sub(pc).multiplyScalar(thick(u)); pv.x *= 1.45; pp.setXYZ(k, pc.x + pv.x, pc.y + pv.y, pc.z + pv.z); }
+      const ends = [0, 1].map(u => { const g = new THREE.SphereGeometry(R0 * thick(u), 12, 8); g.scale(1.45, 1, 1); g.translate(...path.getPointAt(u).toArray()); return g; });
+      pg.computeVertexNormals();
+      add(P(BU.mergeGeometries([tint(cap, '#33652a'), ...[pg, ...ends].map(g => tint(g.translate(0, 0.5, -0.1), '#3f7a2c'))]), moss, { oc: dark('#3f7a2c') }), 0, 0, 0, body);
+      // くしの筋：リーゼントの上をなでつけて、先の丸みをくるりと下へ回りこむ（正面から見ても巻いているのがわかる）
+      bake([-0.12, 0, 0.12].map(s => {
+        // 断面は横 1.45 倍のだ円。上がわ（進む向きに直角な、上を向く向き）の s の位置に乗せる
+        const pts = [], w = s / 0.29;
+        for (let i = 0; i <= 8; i++) { const u = 0.2 + i / 8 * 0.8, c = path.getPointAt(u), tg = path.getTangentAt(u), up = V3(0, tg.z, -tg.y).normalize(), r = R0 * thick(u); pts.push(c.addScaledVector(up, r * Math.sqrt(1 - w * w) * 1.02).add(V3(w * r * 1.45, 0, 0))); }
+        const c1 = path.getPointAt(1), t1 = path.getTangentAt(1), u1 = V3(0, t1.z, -t1.y).normalize(), r1 = R0 * thick(1) * 1.02;
+        for (let i = 1; i <= 5; i++) { const f = i / 5 * 1.9; pts.push(c1.clone().addScaledVector(u1, Math.cos(f) * r1 * Math.sqrt(1 - w * w)).addScaledVector(t1, Math.sin(f) * r1 * Math.sqrt(1 - w * w)).add(V3(w * r1 * 1.45, 0, 0))); }
+        const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.011, 5, false); g.deleteAttribute('uv'); return g;
+      }), shine, pomp, false);
+      // ハチマキ：白い帯に赤い丸。うしろの結び目から、端が二本なびく
+      const bandY = 0.31, white = tm('#ffffff');
+      const band = new THREE.TorusGeometry(0.528, 0.036, 8, 40); band.rotateX(Math.PI / 2); band.scale(RX, 1.75, 1); band.translate(0, bandY, 0);
+      const knot = new THREE.SphereGeometry(0.06, 10, 8); knot.scale(1.2, 1, 0.8); knot.translate(0, bandY, -0.565);
+      bake([band, knot], white, body);
+      add(new THREE.Mesh(new THREE.CircleGeometry(0.05, 18), tm('#e8304a')), 0, bandY, 0.566, body);
+      const tails = [-1, 1].map(s => {
+        const g1 = new THREE.Group(); g1.position.set(s * 0.04, bandY - 0.01, -0.6); g1.rotation.y = s * 0.4; body.add(g1);
+        add(new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.016, 0.2).translate(0, 0, -0.1), white), 0, 0, 0, g1);
+        const g2 = new THREE.Group(); g2.position.z = -0.19; g1.add(g2);
+        add(new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.016, 0.18).translate(0, 0, -0.09), white), 0, 0, 0, g2);
+        return [g1, g2];
+      });
+      // 顔：岩の眉、メンチを切る三白眼（目はまとめて eyesG に入れ、まばたきで縦につぶす）
+      const eyeEl = 0.15, eyeY = Math.sin(eyeEl) * 0.565;
+      const eyesG = new THREE.Group(); eyesG.position.y = eyeY; body.add(eyesG);
+      const whites = [], darks = [], hls = [];
+      for (const s of [-1, 1]) {
+        const M = frameAt(s * 0.215, eyeEl, 0.566).premultiply(new THREE.Matrix4().makeTranslation(-C0.x, -C0.y - eyeY, -C0.z));
+        const put = (g, list) => { g.applyMatrix4(M); list.push(g); };
+        put(new THREE.SphereGeometry(0.082, 16, 10).scale(1.15, 0.78, 0.45), whites);
+        put(new THREE.SphereGeometry(0.031, 10, 8).scale(1, 1.1, 0.4).translate(-s * 0.014, 0.006, 0.027), darks);
+        put(new THREE.BoxGeometry(0.21, 0.036, 0.03).rotateZ(s * 0.32).translate(-s * 0.004, 0.05, 0.022), darks);    // 上まぶた：目がしらを下げる
+        put(new THREE.BoxGeometry(0.15, 0.013, 0.02).rotateZ(-s * 0.1).translate(0, -0.054, 0.024), darks);             // 下まぶた：少し上げて、にらむ
+        put(new THREE.SphereGeometry(0.011, 6, 4).translate(-s * 0.026 + 0.008, 0.016, 0.04), hls);
+      }
+      add(new THREE.Mesh(BU.mergeGeometries(whites), tm('#ffffff')), 0, 0, 0, eyesG);
+      add(new THREE.Mesh(BU.mergeGeometries(darks), lineM), 0, 0, 0, eyesG);
+      add(new THREE.Mesh(BU.mergeGeometries(hls), new THREE.MeshBasicMaterial({ color: '#ffffff' })), 0, 0, 0, eyesG);
+      // 眉：岩がせり出した、太い八の字（逆さ）
+      //   目がしらがわが太く、外へ細くなる、けずった石の形
+      const brow = s => { const g = new THREE.BoxGeometry(0.2, 0.065, 0.075, 3, 1, 1), q = g.attributes.position; for (let k = 0; k < q.count; k++) { const f = 1 - 0.55 * (s * q.getX(k) / 0.1 + 1) / 2; q.setY(k, q.getY(k) * f); q.setZ(k, q.getZ(k) * (0.6 + 0.4 * f)); } g.computeVertexNormals(); return g; };
+      bake([-1, 1].map(s => B(brow(s).applyMatrix4(frameAt(s * 0.205, 0.335, 0.556, s * 0.38)))), flatM('#' + base.clone().multiplyScalar(0.66).getHexString()), body, { oc: dark(col) });
+      // 口：片がわを上げたニヤリ口。歯がのぞいて、一本は金歯
+      const mEl = -0.2, mo = new THREE.Shape(); mo.moveTo(-0.12, 0); mo.quadraticCurveTo(0, 0.008, 0.13, 0.048); mo.quadraticCurveTo(0.05, -0.11, -0.12, 0);
+      add(new THREE.Mesh(B(decal(new THREE.ShapeGeometry(mo, 10), 0, mEl, 0.584)), tm('#4a2a2a')), 0, 0, 0, body);
+      const lipY = x => { const u = (x + 0.12) / 0.25; return 2 * (1 - u) * u * 0.008 + u * u * 0.048; };
+      const tooth = x => new THREE.PlaneGeometry(0.03, 0.03).translate(x, lipY(x) - 0.018, 0);
+      add(new THREE.Mesh(B(decal(BU.mergeGeometries([-0.068, -0.032, 0.044].map(tooth)), 0, mEl, 0.586)), tm('#fff8ea')), 0, 0, 0, body);
+      add(new THREE.Mesh(B(decal(tooth(0.006), 0, mEl, 0.586)), tm('#ffcf4a', { emissive: new THREE.Color('#ffcf4a'), emissiveIntensity: 0.15 })), 0, 0, 0, body);
+      // ほっぺの×ばんそうこう
+      add(new THREE.Mesh(B(decal(BU.mergeGeometries([new THREE.PlaneGeometry(0.13, 0.036).rotateZ(0.55), new THREE.PlaneGeometry(0.13, 0.036).rotateZ(-0.55).translate(0, 0, 0.003)]), -0.34, -0.06, 0.584)), tm('#f2d2a8')), 0, 0, 0, body);
+      // 竹やりマフラー：背中から二本、ななめ上へ。先からけむりを吹く（root.userData.pipes：探索で、けむりを出す所）
+      const chrome = tm('#c4cad6', { emissive: new THREE.Color('#5a6070'), emissiveIntensity: 0.15 });
+      const pipes = new THREE.Group(); body.add(pipes);
+      const pipeG = [], holeG = [], tips = [];
+      for (const s of [-1, 1]) {
+        const from = V3(s * 0.2, -0.12, -0.4), dir = V3(s * 0.42, 1, -0.6).normalize(), L = 1.08, q = new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), dir);
+        const at = (g, k) => g.applyQuaternion(q).translate(...from.clone().addScaledVector(dir, k).toArray());
+        pipeG.push(at(new THREE.CylinderGeometry(0.046, 0.05, L, 12), L / 2));
+        pipeG.push(at(new THREE.CylinderGeometry(0.06, 0.06, 0.045, 12), 0.62), at(new THREE.CylinderGeometry(0.058, 0.058, 0.035, 12), L - 0.03));
+        holeG.push(at(new THREE.CircleGeometry(0.04, 12).rotateX(-Math.PI / 2), L + 0.003));
+        const tip = new THREE.Object3D(); tip.position.copy(from).addScaledVector(dir, L + 0.05); pipes.add(tip);
+        const bse = new THREE.Object3D(); bse.position.copy(from).addScaledVector(dir, L - 0.3); pipes.add(bse);
+        tips.push({ tip, bse });
+      }
+      add(P(BU.mergeGeometries(pipeG), chrome), 0, 0, 0, pipes);
+      add(new THREE.Mesh(BU.mergeGeometries(holeG), lineM), 0, 0, 0, pipes);
+      root.userData.pipes = tips.map(o => o.tip);
+      // 空ぶかし（ときどき「ブォンブォン」）：体を前へゆすり、目をほそめ、マフラーから大きなけむり
+      let rev = 0;
+      update = (dt, t) => {
+        const U = root.userData, ph = U.ph, rc = (t * 0.2 + ph * 0.37) % 1;
+        rev = rc > 0.82 ? Math.max(0, Math.sin((rc - 0.82) / 0.18 * Math.PI * 3)) : 0;
+        rock.rotation.x = (U.spin || 0) + Math.sin(t * 2 + ph) * 0.2 + rev * 0.25;
+        inner.position.y = Math.abs(Math.sin(t * 2)) * 0.05;
+        body.rotation.x = rev * 0.1; body.position.y = C0.y + Math.sin(t * 50) * 0.004 * (1 + rev * 2);
+        pipes.position.set(Math.sin(t * 61) * 0.004 * (1 + rev * 3), 0, 0);
+        tails.forEach(([g1, g2], i) => { g1.rotation.x = Math.sin(t * 9 + i * 1.7) * 0.22 - 0.25; g2.rotation.x = Math.sin(t * 9 + i * 1.7 - 1.2) * 0.35; });
+        const bl = (t * 0.31 + ph) % 4 > 3.86 ? 0.12 : 1 - rev * 0.35; eyesG.scale.y = bl;
+      };
+      const tw = V3(), bw = V3();
+      emitFn = (p) => {
+        for (const { tip, bse } of tips) {
+          if (Math.random() > 0.05 + rev * 0.5) continue;
+          tip.getWorldPosition(tw); bw.copy(tw).sub(bse.getWorldPosition(bw)).normalize();
+          p.emit(tw.clone(), bw.multiplyScalar(0.6 + rev).add(V3((Math.random() - 0.5) * 0.3, 0.4, (Math.random() - 0.5) * 0.3)), hdr(pick(['#8a8a90', '#a8a8ae', '#6a6a72']), 0.5), { life: 1.0, size: 0.16 + rev * 0.12, drag: 0.7 });
+        }
+      };
+      height = 1.25; radius = 0.6; scale = 1.1; break;
     }
     case 'boar': {   // ばくそうイノシシ（ごろごろ団の総長）：大きな体、牙、毛のたてがみ。黒いリーゼント、白いハチマキ、背中に「総長」ののぼり
       const fm = tm(col), sn = tm('#e8a888'), tusk = tm('#fff6e0');
