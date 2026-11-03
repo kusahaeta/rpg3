@@ -727,6 +727,8 @@ function buildEnemy(key, look = {}) {
       update = (dt, t) => {
         const U = root.userData, ph = U.ph, rc = (t * 0.2 + ph * 0.37) % 1;
         rev = rc > 0.82 ? Math.max(0, Math.sin((rc - 0.82) / 0.18 * Math.PI * 3)) : 0;
+        // 探索の突っこむ岩：空ぶかし（U.revK）のあいだは、ずっとブォンブォン
+        if (U.revK) rev = Math.max(rev, U.revK * (0.6 + 0.4 * Math.abs(Math.sin(t * 14))));
         rock.rotation.x = (U.spin || 0) + Math.sin(t * 2 + ph) * 0.2 + rev * 0.25;
         inner.position.y = Math.abs(Math.sin(t * 2)) * 0.05;
         body.rotation.x = rev * 0.1; body.position.y = C0.y + Math.sin(t * 50) * 0.004 * (1 + rev * 2);

@@ -311,13 +311,17 @@ class FieldView extends BaseView {
       const yaw = Math.atan2(x1 - x, z1 - z);
       return { G, m, cone, pos: V3(x, this.gy(x, z), z), i: 1, dir: 1, wait: 0, yaw, baseYaw: yaw, alert: 0, zt: 0, asleep: !!gflags[G.id] };
     });
-    // ごろごろ岩（zone.rollers）：a と b のあいだを、行ったり来たりころがる（rollersUntil を満たすと、もう走っていない）
-    this.rollers = (Z.rollersUntil && storyCond(Z.rollersUntil) ? [] : Z.rollers || []).map(R => {
+    // ごろごろ岩（zone.rollers）：rollersUntil を満たすと、もう走っていない。走り方は R.kind（js/field-zones.js の rollers の説明）
+    //   なし：a と b のあいだを行ったり来たり。'lane'：トンネルからトンネルへ、一方通行で流れる（R.at の数だけ岩）。'charge'：見つけると突っこんでくる
+    this.rollers = [];
+    if (!(Z.rollersUntil && storyCond(Z.rollersUntil))) for (const R of Z.rollers || []) for (const off of R.kind === 'lane' ? R.at : [0]) {
       // 当たりの大きさ（R.r）に見た目をそろえる
       const m = buildEnemy('iwa'); m.group.scale.multiplyScalar((R.r || 1.1) / m.radius); this.scene.add(m.group);
-      const a = V3(R.a[0], 0, R.a[1]), b = V3(R.b[0], 0, R.b[1]);
-      return { R, m, a, b, pos: a.clone(), roll: 0, yaw: Math.atan2(b.x - a.x, b.z - a.z), honk: 2 + Math.random() * 4 };
-    });
+      const A = R.kind === 'charge' ? R.home : R.a, a = V3(A[0], 0, A[1]), b = R.b ? V3(R.b[0], 0, R.b[1]) : a.clone();
+      const o = { R, m, a, b, off, pos: a.clone(), roll: 0, yaw: R.kind === 'charge' ? Math.atan2(R.face[0], R.face[1]) : Math.atan2(b.x - a.x, b.z - a.z), honk: 2 + Math.random() * 4 };
+      if (R.kind === 'charge') this.makeCharger(o);
+      this.rollers.push(o);
+    }
     // 調べられるもの：道しるべ（post）・看板（board）を立てるか、区画の小物（mark）の上に目印の光を出す。どれでもなければ石碑
     this.notes = noteDefs.map(n => {
       const stele = !n.post && !n.board && n.mark == null;
@@ -1106,7 +1110,7 @@ class FieldView extends BaseView {
     for (const o of this.rubbleObjs || []) {
       if (o.broken) continue;
       const to = V3(o.pos.x - p.pos.x, 0, o.pos.z - p.pos.z), dist = to.length();
-      if (dist < (o.R.r || 1.6) + 1.6 && to.normalize().dot(fwd) > 0.2) { if (o.R.look === 'jackbox') this.pokeJackbox(o); else this.breakRubble(o); }
+      if (dist < (o.R.r || 1.6) + 1.6 && to.normalize().dot(fwd) > 0.2) { if (o.R.look === 'jackbox') this.pokeJackbox(o); else if (o.R.ram) { Sfx.hit(); GFX.shake(0.1); this.toast(o.R.poke || 'ガキン！　……かたすぎて、びくともしない'); } else this.breakRubble(o); }
     }
   }
   // 爪を研ぐ：先頭の子が丸太のほうを向き、前足でカリカリ。爪あとが残り、その子の初手技が準備される（次の戦闘のはじめに発動。準備ずみなら研がない）
@@ -2046,34 +2050,163 @@ class FieldView extends BaseView {
     for (let i = 0; i < 6; i++) setTimeout(() => this.p.emit(this.player.pos.clone().add(V3((Math.random() - 0.5) * 0.6, 1.2, (Math.random() - 0.5) * 0.6)), V3((g.pos.x - this.player.pos.x) * 0.5, 0.6, (g.pos.z - this.player.pos.z) * 0.5), hdr(pick(['#fff0a8', '#ffc8ec', '#c8e8ff']), 2), { life: 1.8, size: 0.12, drag: 0.2 }), i * 180);
     this.startTalk('', [['tama', '……ねんねん、ころりよ……おころりよ……。'], ['n', '番犬は、大きなあくびをひとつすると、その場で丸くなって眠ってしまった。'], ['tama', '……おやすみ。……ぼくも、ねむく……なってきた……。']]);
   }
-  // ごろごろ岩：谷を行ったり来たり爆走する（後ろに土けむりと、マフラーから排気のけむり、近くを通るとラッパ）。ぶつかると、はねとばされる
+  // ごろごろ岩：谷を爆走する（後ろに土けむりと、マフラーから排気のけむり、近くを通るとラッパ）。ぶつかると、はねとばされる
   updateRollers(d, t) {
     const p = this.player;
     for (const o of this.rollers || []) {
-      const R = o.R, len = o.a.distanceTo(o.b), per = len / (R.speed || 5);
-      const c = ((t / per + (R.ph || 0) * 2) % 2 + 2) % 2, u = c < 1 ? c : 2 - c, e = u * u * (3 - 2 * u) * 0.3 + u * 0.7;
-      const x = lerp(o.a.x, o.b.x, e), z = lerp(o.a.z, o.b.z, e), y = this.gy(x, z), dirSign = c < 1 ? 1 : -1;
-      o.roll += Math.hypot(x - o.pos.x, z - o.pos.z) / (R.r || 1.1);
-      o.pos.set(x, y, z);
+      const R = o.R, rr = R.r || 1.1, ox = o.pos.x, oz = o.pos.z;
+      let x = ox, z = oz, want = o.yaw, rolling = true;
+      if (R.kind === 'lane') {
+        // トンネルからトンネルへ：loop のうち、谷を渡る道のり（len）だけ見えて、残りはトンネルの中。出てくる少し前に、トンネルの口から土けむり
+        const len = o.a.distanceTo(o.b), s = ((o.off + t * R.speed) % R.loop + R.loop) % R.loop, along = s - rr;
+        const ux = (o.b.x - o.a.x) / len, uz = (o.b.z - o.a.z) / len;
+        if (along > len + rr) {
+          o.m.group.visible = false; o.pos.set(o.a.x - ux * rr, o.pos.y, o.a.z - uz * rr);
+          if (R.loop - s < R.speed * 0.9 && Math.random() < d * 22) this.p.emit(V3(o.a.x + ux * 0.6, this.gy(o.a.x + ux, o.a.z + uz) + 0.3 + Math.random() * rr, o.a.z + uz * 0.6 + (Math.random() - 0.5) * rr * 1.6), V3(ux * 2.2, 0.5, uz * 2.2), hdr('#c8b89a', 0.8), { life: 0.7, size: 0.2, drag: 1.2 });
+          continue;
+        }
+        o.m.group.visible = true; x = o.a.x + ux * along; z = o.a.z + uz * along;
+      } else if (R.kind === 'charge') {
+        [x, z] = this.updateCharger(o, d, t); want = o.want; rolling = o.st === 'charge' || o.st === 'back' || o.st === 'home';
+      } else {
+        const len = o.a.distanceTo(o.b), per = len / (R.speed || 5);
+        const c = ((t / per + (R.ph || 0) * 2) % 2 + 2) % 2, u = c < 1 ? c : 2 - c, e = u * u * (3 - 2 * u) * 0.3 + u * 0.7;
+        x = lerp(o.a.x, o.b.x, e); z = lerp(o.a.z, o.b.z, e);
+        want = o.yaw + (c < 1 ? 0 : Math.PI);
+      }
+      const y = this.gy(x, z), mv = Math.hypot(x - ox, z - oz);
       // 岩の本体だけがころがり、顔とリーゼントは進む向きを向いたまま（向きを変えるときは、くるっとふり返る）。前のめりに、はねながら走る
-      const rr = R.r || 1.1, fx = Math.sin(o.yaw), fz = Math.cos(o.yaw);
-      const want = o.yaw + (dirSign < 0 ? Math.PI : 0); o.face = o.face == null ? want : o.face + Math.atan2(Math.sin(want - o.face), Math.cos(want - o.face)) * (1 - Math.exp(-10 * d));
-      o.m.group.userData.spin = o.roll;
-      o.m.group.rotation.set(0.12, o.face, 0, 'YXZ');
-      o.m.group.position.set(x, y + Math.abs(Math.sin(t * 9 + (R.ph || 0) * 7)) * 0.12 * rr, z);
+      o.face = o.face == null ? want : o.face + Math.atan2(Math.sin(want - o.face), Math.cos(want - o.face)) * (1 - Math.exp(-(R.kind === 'charge' ? 14 : 10) * d));
+      const fx = Math.sin(o.face), fz = Math.cos(o.face);
+      // バックで戻るときは、逆にころがる
+      if (mv < 4) o.roll += Math.sign((x - ox) * fx + (z - oz) * fz || 1) * mv / rr;
+      o.pos.set(x, y, z);
+      const U = o.m.group.userData;
+      U.spin = o.roll;
+      o.m.group.rotation.set(0.12, o.face, o.st === 'daze' ? Math.sin(t * 7) * 0.14 : 0, 'YXZ');
+      o.m.group.position.set(x, y + (rolling ? Math.abs(Math.sin(t * 9 + (R.ph || o.off || 0) * 7)) * 0.12 * rr : 0), z);
       o.m.update(d, t);
-      if (Math.random() < d * 10) this.p.emit(V3(x + (Math.random() - 0.5), y + 0.1, z + (Math.random() - 0.5)), V3(0, 0.6, 0), hdr('#c8b89a', 0.8), { life: 0.6, size: 0.12, drag: 1 });
-      // 排気のけむり：背中の竹やりマフラーの先から、うしろへ
-      if (Math.random() < d * 14) { const bx = -fx * dirSign, bz = -fz * dirSign, tips = o.m.group.userData.pipes; o.m.group.updateMatrixWorld(); const at = tips[Math.random() < 0.5 ? 0 : 1].getWorldPosition(V3()); this.p.emit(at, V3(bx * 1.6 + (Math.random() - 0.5) * 0.4, 0.5 + Math.random() * 0.4, bz * 1.6), hdr(pick(['#8a8a90', '#a8a8ae', '#6a6a72']), 0.5), { life: 1.1, size: 0.32, drag: 0.6 }); }
+      if (rolling && mv > 1e-3 && Math.random() < d * 10) this.p.emit(V3(x + (Math.random() - 0.5), y + 0.1, z + (Math.random() - 0.5)), V3(0, 0.6, 0), hdr('#c8b89a', 0.8), { life: 0.6, size: 0.12, drag: 1 });
+      // 排気のけむり：背中の竹やりマフラーの先から、うしろへ（空ぶかしのあいだは、もくもく）
+      if (Math.random() < d * (U.revK ? 40 : 14)) { const tips = U.pipes; o.m.group.updateMatrixWorld(); const at = tips[Math.random() < 0.5 ? 0 : 1].getWorldPosition(V3()); this.p.emit(at, V3(-fx * 1.6 + (Math.random() - 0.5) * 0.4, 0.5 + Math.random() * 0.4, -fz * 1.6), hdr(pick(['#8a8a90', '#a8a8ae', '#6a6a72']), 0.5), { life: 1.1, size: U.revK ? 0.45 : 0.32, drag: 0.6 }); }
       const near = Math.hypot(p.pos.x - x, p.pos.z - z);
-      if ((o.honk -= d) <= 0) { o.honk = 5 + Math.random() * 5; if (near < 14 && !this.busy) Sfx.horn(Math.max(0.25, 1 - near / 14)); }
+      if (R.kind !== 'charge' && (o.honk -= d) <= 0) { o.honk = 5 + Math.random() * 5; if (near < 14 && !this.busy) Sfx.horn(Math.max(0.25, 1 - near / 14)); }
       if (this.busy || this.flight || this.grace > 0) continue;
-      if (near < (R.r || 1.1) + 0.45 && Math.abs(p.pos.y - y) < 1.2) this.knock(o);
+      if (near < rr + 0.45 && Math.abs(p.pos.y - y) < 1.2) {
+        // 止まっている（目を回している・見張っている）岩は、押しても動かない
+        if (R.kind === 'charge' && (o.st === 'daze' || o.st === 'idle' || o.st === 'spot' || o.st === 'rev')) { const k = (rr + 0.45) / Math.max(near, 1e-3); p.pos.x = x + (p.pos.x - x) * k; p.pos.z = z + (p.pos.z - z) * k; }
+        else this.knock(o);
+      }
     }
   }
-  // はねとばされる：弧をえがいて back へ（トランポリンと同じ飛び方）
+  // 突っこむ岩（rollers の kind: 'charge'）：地面の矢じるし（突っこむ先まで）と、目を回したときの星
+  makeCharger(o) {
+    const R = o.R, r = R.r || 1.4;
+    o.st = 'idle'; o.tm = 0; o.cool = 0; o.lost = 0; o.want = o.yaw;
+    o.dir0 = V3(R.face[0], 0, R.face[1]).normalize(); o.dir = o.dir0.clone();
+    if (!FieldView.chevron) {
+      const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+      g.fillStyle = '#ffffff'; g.beginPath(); [[6, 10], [32, 34], [58, 10], [58, 26], [32, 50], [6, 26]].forEach(([px, pz], i) => i ? g.lineTo(px, pz) : g.moveTo(px, pz)); g.fill();
+      FieldView.chevron = c;
+    }
+    const tex = new THREE.CanvasTexture(FieldView.chevron); tex.wrapT = THREE.RepeatWrapping;
+    o.mark = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex, color: hdr('#ff5a2a', 2.2), transparent: true, opacity: 0.8, depthWrite: false, toneMapped: false }));
+    o.mark.renderOrder = 2; o.mark.visible = false; this.scene.add(o.mark);
+    o.stars = new THREE.Group(); o.stars.visible = false; this.scene.add(o.stars);
+    const sm = new THREE.MeshBasicMaterial({ color: hdr('#ffe06a', 1.8), toneMapped: false });
+    for (let i = 0; i < 3; i++) o.stars.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.2 * r, 0), sm));
+  }
+  // 見つけるか：見える距離（sight）のうち、あいだに壁がないとき。lane があれば、正面の幅 lane の帯の中だけ（坂の特攻隊長）
+  chargerSees(o) {
+    const R = o.R, p = this.player;
+    if (this.busy || this.flight || this.grace > 0) return false;
+    const vx = p.pos.x - o.pos.x, vz = p.pos.z - o.pos.z;
+    if (Math.hypot(vx, vz) > R.sight || Math.abs(p.pos.y - o.pos.y) > 1.2) return false;
+    if (R.lane && (vx * o.dir0.x + vz * o.dir0.z < 0 || Math.abs(vx * o.dir0.z - vz * o.dir0.x) > R.lane)) return false;
+    return this.T.clearLine(o.pos.x, o.pos.z, p.pos.x, p.pos.z, o.pos.y);
+  }
+  // 見張る（idle）→ 見つけた！（spot）→ 空ぶかし（rev。突っこむ向きは、ここで決まる。地面に矢じるし）→ 突っこむ（charge）→ ぶつかって目を回す（daze）
+  //   → lane の岩はバックで持ち場へ戻る（back）。ねらう岩は、その場で次をねらい、しばらく見失うと持ち場へ戻る（home）
+  updateCharger(o, d, t) {
+    const R = o.R, r = R.r || 1.4, p = this.player, U = o.m.group.userData, home = o.a;
+    let { x, z } = o.pos;
+    U.revK = 0; o.stars.visible = o.st === 'daze';
+    const spot = () => {
+      o.st = 'spot'; o.tm = 0.35; Sfx.horn(1);
+      this.p.burst(o.pos.clone().add(V3(0, r * 2 + 0.4, 0)), '#ff3040', 24, { speed: 3, up: 2, life: 0.5 });
+      if (!this.chargeTip) { this.chargeTip = true; this.toast(R.spotToast || 'ブォンブォン！　ごろごろ岩に見つかった！　……地面の矢じるしの先へ、突っこんでくる！'); }
+    };
+    if (o.st === 'idle') {
+      if (R.lane) o.want = Math.atan2(o.dir0.x, o.dir0.z);
+      o.cool -= d;
+      if (o.cool <= 0 && this.chargerSees(o)) spot();
+      else if (!R.lane && Math.hypot(x - home.x, z - home.z) > 1 && (o.lost += d) > (R.lose || 4)) o.st = 'home';
+    } else if (o.st === 'home') {
+      const dx = home.x - x, dz = home.z - z, l = Math.hypot(dx, dz), st = Math.min(l, (R.ret || 3.5) * d);
+      if (l < 0.05) { o.st = 'idle'; o.lost = 0; o.want = Math.atan2(o.dir0.x, o.dir0.z); }
+      else { const q = V3(x, 0, z); this.T.move(q, dx / l * st, dz / l * st, r * 0.85); x = q.x; z = q.z; o.want = Math.atan2(dx, dz); }
+      if (this.chargerSees(o)) spot();
+    } else if (o.st === 'spot') {
+      if (!R.lane) o.want = Math.atan2(p.pos.x - x, p.pos.z - z);
+      if ((o.tm -= d) <= 0) {
+        // 向きを決めて、突っこむ先（壁・小物にぶつかるところ）まで、地面に矢じるし
+        if (R.lane) o.dir.copy(o.dir0); else o.dir.set(p.pos.x - x, 0, p.pos.z - z).normalize();
+        o.want = Math.atan2(o.dir.x, o.dir.z);
+        let L = 0; while (L < (R.range || 40) && !this.blocked(x + o.dir.x * (L + 0.25), z + o.dir.z * (L + 0.25), r * 0.85)) L += 0.25;
+        const mk = o.mark, len = Math.max(0.5, L - r * 0.6);
+        mk.scale.set(r * 1.6, len, 1); mk.material.map.repeat.set(1, len / (r * 1.6));
+        mk.position.set(x + o.dir.x * (len / 2 + r * 0.6), this.gy(x, z) + 0.06, z + o.dir.z * (len / 2 + r * 0.6));
+        mk.rotation.set(-Math.PI / 2, 0, 0); mk.rotateOnWorldAxis(V3(0, 1, 0), o.want);
+        mk.visible = true; o.st = 'rev'; o.tm = R.rev || 0.9; Sfx.vroom();
+      }
+    } else if (o.st === 'rev') {
+      U.revK = 1; o.mark.material.opacity = 0.75 + Math.sin(t * 24) * 0.2; o.mark.material.map.offset.y += d * 2.5;
+      if (Math.random() < d * 30) this.p.emit(V3(x - o.dir.x * r, this.gy(x, z) + 0.1, z - o.dir.z * r), V3(-o.dir.x * 3 + (Math.random() - 0.5), 0.8, -o.dir.z * 3 + (Math.random() - 0.5)), hdr('#c8b89a', 0.9), { life: 0.6, size: 0.18, drag: 1.2 });
+      if ((o.tm -= d) <= 0) { o.st = 'charge'; o.run = 0; o.mark.visible = false; }
+    } else if (o.st === 'charge') {
+      let left = (R.speed || 12) * d;
+      while (left > 0) {
+        const s = Math.min(0.2, left); left -= s;
+        const nx = x + o.dir.x * s, nz = z + o.dir.z * s;
+        if (this.blocked(nx, nz, r * 0.85)) { this.chargerCrash(o, x, z); break; }
+        x = nx; z = nz; o.run += s;
+        // 何にもぶつからずに走りきると、キキーッと止まる
+        if (o.run > (R.range || 40)) { o.st = 'daze'; o.tm = 0.5; break; }
+      }
+    } else if (o.st === 'daze') {
+      o.stars.children.forEach((s, i) => { const a = t * 5 + i * Math.PI * 2 / 3; s.position.set(x + Math.cos(a) * r * 0.8, this.gy(x, z) + r * 2.5 + Math.sin(t * 9 + i) * 0.1, z + Math.sin(a) * r * 0.8); s.rotation.y = t * 6; });
+      if ((o.tm -= d) <= 0) { if (R.lane) { o.st = 'back'; o.beep = 0; } else { o.st = 'idle'; o.cool = 0.3; o.lost = 0; } }
+    } else if (o.st === 'back') {
+      // 持ち場へバックで戻る（ピーッ、ピーッ）。向きは突っこんだ向きのまま
+      const dx = home.x - x, dz = home.z - z, l = Math.hypot(dx, dz), st = Math.min(l, (R.ret || 8) * d);
+      if ((o.beep -= d) <= 0) { o.beep = 0.5; if (Math.hypot(p.pos.x - x, p.pos.z - z) < 24) Sfx.beep(); }
+      if (l < 0.05) { o.st = 'idle'; o.cool = 0.4; } else { x += dx / l * st; z += dz / l * st; }
+    }
+    return [x, z];
+  }
+  // ドゴーン！：ぶつかった先が、ひび割れた大岩（rubble の ram）なら、くだける
+  chargerCrash(o, x, z) {
+    const R = o.R, r = R.r || 1.4, p = this.player, fx = x + o.dir.x * r, fz = z + o.dir.z * r, y = this.gy(x, z);
+    o.st = 'daze'; o.tm = R.daze || 2.2;
+    const far = Math.hypot(p.pos.x - x, p.pos.z - z);
+    Sfx.slam(); GFX.shake(Math.max(0.08, 0.45 - far * 0.012));
+    this.p.burst(V3(fx, y + r, fz), '#c8b89a', 50, { speed: 5, up: 2, life: 0.8, size: 0.16 });
+    this.fx.ring(V3(fx, y + 0.05, fz), '#e8d8b8', { r: r * 2, life: 0.5 });
+    const rams = (this.rubbleObjs || []).filter(b => b.R.ram && !b.broken);
+    const hit = rams.find(b => { const c = b.col, qx = clamp(fx, c.x - (c.hw || c.r), c.x + (c.hw || c.r)), qz = clamp(fz, c.z - (c.hd || c.r), c.z + (c.hd || c.r)); return Math.hypot(fx - qx, fz - qz) < 1.2; });
+    if (hit) this.breakRubble(hit);
+    else if (rams.length && !this.ramTip && far < 30) { this.ramTip = true; setTimeout(() => this.toast(R.crashToast || 'ドゴーン！　……岩壁が、ごっそり欠けた。この体当たりなら、ひび割れた大岩もくだけそうだ'), 500); }
+  }
+  // はねとばされる：弧をえがいて back へ（トランポリンと同じ飛び方）。back のない突っこむ岩は、走る向きの横へ、はじき飛ばす
   knock(o) {
-    const p = this.player, from = p.pos.clone(), to = V3(o.R.back[0], this.gy(o.R.back[0], o.R.back[1]), o.R.back[1]);
+    const p = this.player, from = p.pos.clone();
+    let bx, bz;
+    if (o.R.back) [bx, bz] = o.R.back;
+    else {
+      const side = Math.sign((p.pos.x - o.pos.x) * o.dir.z - (p.pos.z - o.pos.z) * o.dir.x) || 1, q = this.T.nearestStandable(p.pos.x + o.dir.x * 2.5 + o.dir.z * side * 3.5, p.pos.z + o.dir.z * 2.5 - o.dir.x * side * 3.5, 0.6);
+      bx = q.x; bz = q.z;
+    }
+    const to = V3(bx, this.gy(bx, bz), bz);
     this.busy = true; this.keys.clear();
     this.flight = { from, to, t: 0, dur: 0.9, h: 2.4, yaw: p.yaw, bump: true };
     (this.followers || []).forEach(f => { f.m.group.visible = false; });
@@ -2106,7 +2239,7 @@ class FieldView extends BaseView {
     Sfx.hit(); GFX.shake(0.35);
     GFX.tween(0.35, t => { o.g.scale.setScalar(1 - t); o.g.position.y = o.pos.y - t * 0.5; }, Ease.inOut);
     setTimeout(() => o.g.removeFromParent(), 400);
-    this.toast('岩山を砕いた！　石段を上れるようになった');
+    this.toast(o.R.broke || '岩山を砕いた！　石段を上れるようになった');
   }
   // 笑顔の塔の大きなびっくり箱（rubble の look: 'jackbox'）：たたいても開かない。ふたが少しだけ浮いて、しょんぼり顔がのぞいて「……ばあ」（開くのは、笑わせたあと。R.openAfter）
   pokeJackbox(o) {
@@ -3041,7 +3174,7 @@ class FieldView extends BaseView {
     (this.sealObjs || []).forEach(o => { if (o.beam && !o.open) o.beam.mirrors.forEach(m => dot(m.pos.x, m.pos.y, m.pos.z, '#9ad8ff', 2.5, true)); });
     (this.plateObjs || []).forEach(o => { if (!o.open && o.ready()) o.pads.forEach(pad => dot(pad.pos.x, pad.pos.y, pad.pos.z, '#8ad8ff', 3.5, true)); });
     (this.guards || []).forEach(g => dot(g.pos.x, g.pos.y, g.pos.z, g.asleep ? '#8a8a96' : '#ffb04a', 3.5));
-    (this.rollers || []).forEach(o => dot(o.pos.x, o.pos.y, o.pos.z, '#c8b89a', 3.5));
+    (this.rollers || []).filter(o => o.m.group.visible).forEach(o => dot(o.pos.x, o.pos.y, o.pos.z, '#c8b89a', 3.5));
     (this.nemuriObjs || []).forEach(o => { if (o.awake) dot(o.pos.x, o.pos.y, o.pos.z, '#ff9ad8', 2); });
     this.naps.forEach(n => dot(n.pos.x, n.pos.y, n.pos.z, '#fff0a8', 3.5));
     if (this.sleeper) dot(this.sleeper.pos.x, this.sleeper.pos.y, this.sleeper.pos.z, '#fff0a8', 3.5);

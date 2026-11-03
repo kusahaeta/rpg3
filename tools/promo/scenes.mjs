@@ -67,14 +67,15 @@ export const SCENES = {
     await api.rec(8, async () => { await api.ev(`P.steer(0, -6, false, 0.1)`); });
   },
 
-  // ごろごろ切り通し：坂の脇の退避所で、坂いっぱいの大岩をやりすごす
+  // ごろごろ切り通し：坂の脇の退避所で、坂いっぱいに突っこんでくる特攻隊長をやりすごす（退避所の中は見えないので、録画のはじめに見つけたことにする）
   async boulder(api, out) {
-    await api.ev(`P.prep(1, 12); P.field('road2', 4, 20, -Math.PI / 2)`);
+    await api.ev(`P.prep(1, 12); P.field('road2', 5, 23, -Math.PI / 2)`);
     await api.run(1.5);
     await api.ev(`P.noFoes(); P.cam = v => { const p = v.player.pos, y = p.y + (v.player.vis ?? 0);
       v.camera.position.set(p.x + 2.5, p.y + 2.2, p.z + 6); v.camera.lookAt(-1, p.y + 0.8, p.z - 3); }; true`);
     await api.run(0.5);
     await api.start(out);
+    await api.ev(`{ const c = Game.activeField.rollers.find(o => o.R.lane); c.st = 'spot'; c.tm = 0.35; } true`);
     await api.rec(8);
   },
 
