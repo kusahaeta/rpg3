@@ -7,6 +7,7 @@
 //  { give: 'キャラ' } 仲間になる ／ { flag: '名前', say: '知らせ' } 物語のフラグ ／ { bond: [a, b, 点] } 友情
 //  演出（js/stage.js）：f 表情 / g 身振り / to 相手 / r 周りの反応 / look 視線 / face 体の向き / stance 立ち方 /
 //    move 歩く / hold 小物 / enter 登場 / exit 退場 / defeat 撃破 / fx 効果 / cam カメラ / later [秒, 演出] / bgm 曲
+//    ud { 敵: { 状態 } } 敵の模型へ渡す状態（リスの mood・push・bow など。stage の cast にも書ける。calm: true の敵は、しゃべっても光らない）
 //  stage：どの区画のどこで演じるか（zone / at / face。at は地形マップの区画ならマス座標）。
 //    仲間はその場面までに加わった子が自動で隊列を組み、ほかの人物は向かいに立つ。cast で個別に上書き
 //    voices：{ 話し手: 点の名前 } 姿のない話し手（しゃべる幕など、区画の小物が演じる）。立たせずに、しゃべるたびにその点を映す
@@ -360,39 +361,43 @@ const SCENES = {
   c2_03h: { title: 'でっかいどんぐり', cast: ['e:risu'], bgm: 'village',
     stage: { zone: 'woods_deep', at: [1, -19], face: 0, host: 'tama',
       cast: { tama: { at: [0, 5], stance: 'sleep', f: 'sleepy', face: [0, 0] },
-        'e:risu': [{ at: [0.3, 3.9], face: [0, 5] }, { at: [-1.4, 5.7], face: [0, 5] }, { at: [1.4, 5.9], face: [0, 5] }] },
-      points: { hollow: [0, 1.9, 8.2] }, wide: { pos: [3.6, 2.2, -1.6], look: [0, 1.5, 6.5] } },
+        // リスは子猫より小さく（戦闘の大きさのままだと、子猫を「でっかいどんぐり」と思う話に合わない）。三匹で、手ぶらで子猫を押す
+        // 眠っている子猫は頭が前へ 0.8m ほど出るので、リスは 1.1m 手前から、手を高く上げて頭を押す（近いと顔がめりこむ）
+        'e:risu': [{ at: [0, 3.83], face: 'tama', scale: 0.6, look: { acorn: false }, ud: { calm: true, mood: 'happy', push: 1 } }, { at: [-0.5, 3.99], face: 'tama', scale: 0.6, look: { acorn: false }, ud: { calm: true, mood: 'happy', push: 1 } }, { at: [0.52, 4.01], face: 'tama', scale: 0.6, look: { acorn: false }, ud: { calm: true, mood: 'happy', push: 1 } }] },
+      points: { hollow: [0, 1.9, 8.2] }, wide: { pos: [2.3, 2.3, 1.9], look: [0, 0.45, 6.0] } },
     lines: [
       ['n', '林のいちばん奥。大きな木のうろの前で、リスたちが、まるいものを「よいしょ、よいしょ」と押していた。', { cam: 'wide', dur: 7, look: { all: 'tama' } }],
-      ['e:risu', 'よいしょ！　よいしょ！　こんなにでっかいどんぐり、はじめて見た！', { move: { tama: [0, 6.2], 'e:risu': [0.3, 5.1], 'e:risu#1': [-1.4, 6.9], 'e:risu#2': [1.4, 7.1] }, speed: 0.8 }],
+      ['e:risu', 'よいしょ！　よいしょ！　こんなにでっかいどんぐり、はじめて見た！', { move: { tama: [0, 6.2], 'e:risu': [0, 5.03], 'e:risu#1': [-0.5, 5.19], 'e:risu#2': [0.52, 5.21] }, speed: 0.8 }],
       ['mike', 'あーっ！　あの子だ！', { f: 'surprise', g: 'point', cam: 'mike', close: true }],
-      ['e:risu', 'しかも、ほら！　ちゃんと、ぼうしまでついてる！'],
+      ['e:risu', 'しかも、ほら！　ちゃんと、ぼうしまでついてる！', { ud: { foes: { push: 0 } }, move: { 'e:risu': [[0.6, 4.95], [1.35, 5.45]], 'e:risu#1': [-1.0, 5.85], 'e:risu#2': [1.15, 6.15] }, speed: 1.5, face: { 'e:risu': 'mike', 'e:risu#1': 'tama', 'e:risu#2': 'tama' }, cam: 'e:risu', close: true }],
       ['kuro', '……それは、ぼうしじゃない。芽だ。', { f: 'serious', to: 'e:risu' }],
-      ['shiro', 'ちょっと、あなたたち！　その子は、どんぐりじゃなくて猫よ！', { f: 'angry', g: 'point', move: { shiro: [1.2, 1.8] } }],
-      ['e:risu', 'うそだ！　こんなにまるくて、ぽかぽかあったかいどんぐり、ほかにないもん！'],
+      ['shiro', 'ちょっと、あなたたち！　その子は、どんぐりじゃなくて猫よ！', { f: 'angry', g: 'point', move: { shiro: [1.2, 1.8] }, face: { foes: 'shiro' } }],
+      ['e:risu', 'うそだ！　こんなにまるくて、ぽかぽかあったかいどんぐり、ほかにないもん！', { ud: { foes: { mood: 'angry' } }, cam: 'e:risu', close: true }],
       ['kuro', '……あったかいのは、生きているからだ。', { f: 'serious', g: 'armsCrossed' }],
-      ['e:risu', '冬のたくわえが、ぜんぜん足りないの！　これは、うちのうろにしまうんだから！', { look: { all: 'hollow' } }],
-      ['tama', '……むにゃ……ぼく……どんぐり……？', { f: 'sleepy', fx: 'zzz:tama', look: { all: 'tama' } }],
-      ['e:risu', '……え？'],
+      ['e:risu', '冬のたくわえが、ぜんぜん足りないの！　これは、うちのうろにしまうんだから！', { look: { all: 'hollow' }, cam: 'e:risu', close: true }],
+      ['tama', '……むにゃ……ぼく……どんぐり……？', { f: 'sleepy', fx: 'zzz:tama', look: { all: 'tama' }, face: { foes: 'tama' } }],
+      ['e:risu', '……え？', { ud: { foes: { mood: 'surprise' } }, cam: 'e:risu', close: true }],
       ['tama', '……どんぐりじゃ……ない……。……にゃあ……。', { f: 'sleepy', meow: { tama: 1 } }],
-      ['e:risu', 'しゃ、しゃべったーーっ！？　どんぐりが、「にゃあ」って言ったーーっ！！', { shake: 0.2 }],
-      ['n', 'リスたちは、しっぽをぼわっとふくらませて、大あわてで木の上へ逃げていった。……一匹だけ、逃げおくれて、ぷるぷるふるえている。', { exit: ['e:risu#1', 'e:risu#2'], cam: 'wide', dur: 6 }],
+      ['e:risu', 'しゃ、しゃべったーーっ！？　どんぐりが、「にゃあ」って言ったーーっ！！', { shake: 0.2, ud: { foes: { mood: 'scared' } }, cam: 'e:risu', close: true }],
+      // 二匹は木の根もとへ駆けて、幹へ跳びあがって消える。残った一匹は、その場でふるえる
+      ['n', 'リスたちは、しっぽをぼわっとふくらませて、大あわてで木の上へ逃げていった。……一匹だけ、逃げおくれて、ぷるぷるふるえている。', { move: { 'e:risu#1': [[-1.4, 6.6], [-1.9, 7.7]], 'e:risu#2': [[1.5, 6.8], [2.0, 7.8]] }, speed: 4.5, later: [0.7, { lift: { 'e:risu#1': 2.6, 'e:risu#2': 2.6 }, exit: ['e:risu#1', 'e:risu#2'] }], cam: 'wide', dur: 6 }],
       ['mike', '……寝ごとで、追い払っちゃった。', { f: 'surprise', g: 'tilt' }],
       ['shiro', 'もう！　こっちは、綿毛で飛んだり、花の粉で寝ちゃったり、林じゅう走り回ったっていうのに！', { f: 'angry', g: 'fist' }],
       ['kuro', '……で、本人は、まだ寝ている。', { f: 'serious', look: { kuro: 'tama' } }],
-      ['e:risu', '……ご、ごめんなさい。……どんぐりにしては、ぽかぽかあったかいなって、思ったの……。'],
+      ['e:risu', '……ご、ごめんなさい。……どんぐりにしては、ぽかぽかあったかいなって、思ったの……。', { ud: { 'e:risu': { mood: 'sorry' } }, face: { 'e:risu': 'mike' }, cam: 'e:risu', close: true }],
       ['mike', 'いいよ、いいよ！　ぼくも、まるいもの見ると、おまんじゅうかなって思うもん！', { f: 'joy', g: 'nod' }],
       ['kuro', '……思わないだろ。', { f: 'serious', r: { shiro: ['smile', 'laugh'] } }],
-      ['e:risu', '……冬のどんぐり、集めても集めても、足りないの。森の木が、ちっとも実をつけなくて……。'],
+      ['e:risu', '……冬のどんぐり、集めても集めても、足りないの。森の木が、ちっとも実をつけなくて……。', { cam: 'e:risu', close: true }],
       ['kuro', '……（ここでも、木の実が……）', { f: 'serious', g: 'lookDown', cam: 'kuro', close: true }],
-      ['n', '小さなリスは、おわびのしるしに、子猫の鼻先を、ふさふさのしっぽでそっとなでた。', { move: { 'e:risu': [0.5, 5.5] }, cam: 'look:tama', dur: 5 }],
+      ['n', '小さなリスは、おわびのしるしに、子猫の鼻先を、ふさふさのしっぽでそっとなでた。', { move: { 'e:risu': [0.64, 5.45] }, speed: 1.2, face: { 'e:risu': [1.4, 4.9] }, cam: 'look:tama', dur: 5, later: [0.9, { ud: { 'e:risu': { swish: 1 } } }] }],
       ['tama', '……ふ……ふぁ……', { f: 'sleepy' }],
-      ['tama', '……くしゅんっ！', { f: 'surprise', fx: 'poof:tama', stance: { tama: 'idle' }, r: { all: 'surprise' } }],
+      ['tama', '……くしゅんっ！', { f: 'surprise', fx: 'poof:tama', stance: { tama: 'idle' }, r: { all: 'surprise' }, ud: { 'e:risu': { swish: 0, mood: 'surprise' } }, face: { 'e:risu': 'tama' } }],
       ['n', '子猫は、ぱちりと目を開けた。', { cam: 'tama', close: true }],
     ] },
   c2_03i: { title: 'タマ', cast: ['e:risu'], bgm: 'village',
     stage: { zone: 'woods_deep', at: [1, -19], face: 0, host: 'tama',
-      cast: { tama: { at: [0, 4.8], face: [0, 0] }, 'e:risu': { at: [1.3, 5.6], face: 'tama' } } },
+      cast: { tama: { at: [0, 4.8], face: [0, 0] }, 'e:risu': { at: [0.9, 5.3], face: 'tama', scale: 0.6, ud: { calm: true, mood: 'sorry' } } },
+      wide: { pos: [2.9, 1.5, 3.0], look: [0.6, 0.25, 5.6] } },   // 小さなリスのおじぎと、置いたどんぐりが見える横から
     lines: [
       ['tama', '……ん……あさ……？', { f: 'sleepy', g: 'lookUp' }],
       ['tama', '……だれ……？', { f: 'sleepy', g: 'tilt', to: 'mike' }],
@@ -405,9 +410,11 @@ const SCENES = {
       ['tama', '……おそらを、ふわふわとんで……おはなのベッドで、ねて……さいごは、どんぐりになってた。', { f: 'smile', g: 'tilt' }],
       ['mike', 'それ、ぜんぶ本当にあったことだよ！', { f: 'joy', g: 'point', r: { shiro: ['smile', 'laugh'], kuro: 'smile' } }],
       ['tama', '……？', { f: 'surprise', g: 'tilt' }],
-      ['e:risu', 'ほんとだよ。……ごめんね、どんぐりにしちゃって。'],
-      ['tama', '……ううん。……しっぽ、ふかふかだった。……ありがと。', { f: 'gentle', face: { tama: 'e:risu' } }],
-      ['n', '小さなリスは、ぺこりと頭を下げると、どんぐりをひとつ置いて、木の上へ帰っていった。', { exit: 'e:risu', cam: 'wide', dur: 5 }],
+      ['e:risu', 'ほんとだよ。……ごめんね、どんぐりにしちゃって。', { cam: 'e:risu', close: true }],
+      ['tama', '……ううん。……しっぽ、ふかふかだった。……ありがと。', { f: 'gentle', face: { tama: 'e:risu' }, ud: { 'e:risu': { mood: 'happy' } } }],
+      // おじぎして、どんぐりを足もとに置き、木の根もとへ駆けて幹へ跳びあがる
+      ['n', '小さなリスは、ぺこりと頭を下げると、どんぐりをひとつ置いて、木の上へ帰っていった。', { ud: { 'e:risu': { bow: 1 } }, cam: 'wide', dur: 5,
+        later: [0.8, { ud: { 'e:risu': { drop: 1 } }, later: [0.7, { ud: { 'e:risu': { bow: 0 } }, move: { 'e:risu': [[1.7, 6.4], [2.1, 7.8]] }, speed: 3.5, later: [0.7, { lift: { 'e:risu': 2.6 }, exit: 'e:risu' }] }] }] }],
       ['tama', '……みんな、ぼくを、さがしてくれてたの……？', { f: 'neutral', face: { tama: 'mike' }, to: 'mike' }],
       ['mike', 'うん！　林の入口から、ずーっと！', { f: 'joy', g: 'nod' }],
       ['tama', '……そっか。……えへへ。……ぼく、みんなと……あそびたい。', { f: 'smile', g: 'lookUp', r: { mike: 'gentle', shiro: 'shy' } }],
