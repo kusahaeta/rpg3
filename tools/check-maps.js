@@ -35,7 +35,13 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   (Z.seals || []).forEach(S => { if (S.beam) { add(id, { k: `beam ${S.id} from`, p: S.beam.from, r: 0.6 }); add(id, { k: `beam ${S.id} to`, p: S.beam.to, r: 0.4 }); S.beam.mirrors.forEach((m, i) => add(id, { k: `mirror ${S.id}_${i}`, p: m, r: 0.6 })); } });
   (Z.plates || []).forEach(P => { P.at.forEach((p, i) => add(id, { k: `pad ${P.id}_${i}`, p, r: 0.9 })); add(id, { k: `gate ${P.id}`, p: [(P.wall[0] + P.wall[2]) / 2, (P.wall[1] + P.wall[3]) / 2], r: 0.3 }); });
   (Z.guards || []).forEach(G => { G.route.forEach((p, i) => add(id, { k: `guard ${G.id}_${i}`, p, r: 0.6 })); add(id, { k: `back ${G.id}`, p: G.back, r: 0.6 }); });
-  (Z.rollers || []).forEach((R, i) => { add(id, { k: 'rollA' + i, p: R.a, r: 0.9 }); add(id, { k: 'rollB' + i, p: R.b, r: 0.9 }); add(id, { k: 'bump' + i, p: R.back, r: 0.6 }); });
+  // ごろごろ岩：行ったり来たりの両はし（流れる車線は、トンネルの口が壁ぎわなので、口から少し入ったところ）・突っこむ岩の持ち場・はねとばされる先
+  (Z.rollers || []).forEach((R, i) => {
+    if (R.kind === 'charge') add(id, { k: 'charge' + i, p: R.home, r: (R.r || 1.4) * 0.85 });
+    else if (R.kind === 'lane') { const [ax, az] = R.a, [bx, bz] = R.b, l = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / l, uz = (bz - az) / l, k = (R.r || 1.1) + 0.2; add(id, { k: 'laneA' + i, p: [ax + ux * k, az + uz * k], r: R.r || 1.1 }); add(id, { k: 'laneB' + i, p: [bx - ux * k, bz - uz * k], r: R.r || 1.1 }); }
+    else { add(id, { k: 'rollA' + i, p: R.a, r: 0.9 }); add(id, { k: 'rollB' + i, p: R.b, r: 0.9 }); }
+    if (R.back) add(id, { k: 'bump' + i, p: R.back, r: 0.6 });
+  });
   (Z.arenas || []).forEach((a, i) => { const [x, z] = zonePoint(Z, [a[0], a[1]]); add(id, { k: 'arena' + i, p: [x, z], area: a[2] || 0 }); });
   if (Z.sizes) Z.sizes.stands.forEach((st, i) => add(id, { k: `stand ${st.kind}${i}`, p: st.at, r: 0.6 }));
   if (Z.loop) { const L = Z.loop; add(id, { k: 'loop start', p: L.start, r: 0.6 }); [['clock', L.clock], ['tama', L.tama], ['statue', L.statue], ['plush', L.plush], ['talker', L.talker], ['fake', L.fake]].forEach(([k, p]) => add(id, { k: 'loop ' + k, p, r: 0.4 })); }

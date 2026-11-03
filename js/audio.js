@@ -70,6 +70,7 @@ const Sfx = {
   fire() { this.noise(0.8, 0.14, 700); this.tone(180, 0.5, 'sawtooth', 0.04, 220); },
   // ごろごろ切り通し：ごろごろ団のラッパ（パラリラパラリラ）と、空ぶかし（ブォンブォン）
   horn(vol = 1) { [659, 784, 988, 784, 659, 784, 988, 784].forEach((f, i) => this.tone(f, 0.11, 'square', 0.035 * vol, 0, i * 0.12)); },
+  beep() { this.tone(1180, 0.16, 'square', 0.025); },   // バックで戻る（ピーッ）
   vroom() { [0, 0.35].forEach(t => { this.tone(70, 0.3, 'sawtooth', 0.09, 90, t); this.noise(0.3, 0.12, 300, t); }); },
   pop() { this.noise(0.1, 0.3, 4200); this.tone(260, 0.25, 'square', 0.06, 900); this.boing(); },
   // にゃー（キャラごとに声の高さが違う）
