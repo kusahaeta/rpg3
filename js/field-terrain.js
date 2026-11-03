@@ -38,10 +38,11 @@ class Terrain {
     // くぼみ（zone.dents）：床をすり鉢状に下げる（流れ星のクレーターなど）。depth を負にすると、なだらかな丘（top：平らな頂上の半径）
     this.dents = (zone.dents || []).map(d => { const [x, z] = zonePoint(zone, d.at); return { x, z, r: d.r, depth: d.depth || 0.8, rim: d.rim || 0, w: d.w || 1, top: d.top || 0 }; });
     // 池（zone.pond）：床をなだらかにへこませて水をはる。blobs：[x, z, r] のくぼみ（重なると深さが足されて、岸が丸くつながる）。
-    //   depth：一つのくぼみのまん中の深さ、lv：水面の床からの深さ、h：まわりの床の高さ。水ぎわ（水面から STOP 以内の地面）からは、水に入れない
+    //   depth：一つのくぼみのまん中の深さ、lv：水面の床からの深さ、h：まわりの床の高さ、shore：水ぎわの色 [乾いた所, ぬれた所]（なければ砂）。
+    //   水ぎわ（水面から STOP 以内の地面）からは、水に入れない
     if (zone.pond) {
       const P = zone.pond, lv = P.lv || 0.45;
-      this.pond = { blobs: P.blobs.map(([x, z, r]) => [...zonePoint(zone, [x, z]), r]), depth: P.depth || 1.5, lv, y: (P.h || 0) - lv };
+      this.pond = { blobs: P.blobs.map(([x, z, r]) => [...zonePoint(zone, [x, z]), r]), depth: P.depth || 1.5, lv, y: (P.h || 0) - lv, shore: P.shore };
       for (const [x, z, r] of this.pond.blobs) this.dents.push({ x, z, r, depth: this.pond.depth, rim: 0, w: 1, top: 0 });
     }
     for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) {
@@ -1771,8 +1772,8 @@ function buildPond(view, T) {
     const m = new THREE.Mesh(g, mat); view.scene.add(m); return m;
   };
   const C = h => new THREE.Color(h), lerpC = (a, b, t) => a.clone().lerp(b, t);
-  // 水ぎわの砂：岸の上（水面から 0.28m）から水の中（0.6m）まで。水ぎわはぬれて濃く、上は乾いて白っぽい
-  const dry = C('#d8c79c'), wet = C('#a8916a'), under = C('#8a8a62');
+  // 水ぎわの砂（zone.pond.shore で色を変えられる）：岸の上（水面から 0.28m）から水の中（0.6m）まで。水ぎわはぬれて濃く、上は乾いて白っぽい
+  const dry = C(P.shore ? P.shore[0] : '#d8c79c'), wet = C(P.shore ? P.shore[1] : '#a8916a'), under = C('#8a8a62');
   const sand = sheet((x, z) => {
     const y = T.groundAt(x, z); if (!Number.isFinite(y)) return null;
     const hgt = P.lv - T.pondDepth(x, z), a = hgt > 0 ? 1 - smooth(0.06, 0.3, hgt) : 1 - smooth(-0.35, -0.65, hgt) * 0.6;
