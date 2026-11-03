@@ -6324,7 +6324,10 @@ class ZoneKit {
   }
   // 木の灯り柱（高さ h、腕は ry の向きの +x）：石の根石に木目の角柱と頭の笠、腕と筋かい。腕の先の金具から、
   //   鉄の枠と屋根の灯籠を吊るす（灯りは光のにじみつき）
+  //   戦闘の背景（v.arena）では、戦場の中の柱は作らない（キャラクターのあいだに立ち、肩越しのカメラの前をふさぐ。
+  //   切り取りは手前の味方より奥を切れないので、柱だけを消すことはできない）
   lantern(x, z, col = '#ffb04a', h = 2.6, ry = 0) {
+    const A = this.v.arena; if (A && Math.hypot(x - A.x, z - A.z) < A.r) return;
     const y = this.gy(x, z), rot = [0, ry, 0], hs = posHash(x, z), F = this.benchMats().frame, B = (w, hh, d) => new THREE.BoxGeometry(w, hh, d);
     const flat = g => { g = g.toNonIndexed(); g.computeVertexNormals(); return g; };   // 四角すいの面を平らに見せる
     const plank = (len, t, k) => this.plankGeo(len, t, t, hs + k, len);
@@ -6357,7 +6360,7 @@ class ZoneKit {
     // 光のにじみ（火袋のまん中）
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 0.5), blending: THREE.AdditiveBlending, depthWrite: false }));
     sp.scale.setScalar(1.8); sp.position.set(x + Math.cos(ry) * ax, y + yc, z - Math.sin(ry) * ax); this.scene.add(sp);
-    this.col(x, z, 0.2, h);
+    this.colBox(x, z, 0.09, 0.09, h);   // 箱の当たり判定：戦闘のカメラの切り取り（blockDepth）は、小さい円の当たり判定を見ないので、箱にして柱を切らせる
   }
   stoneLantern(x, z, col = '#ffb04a') {
     this.box(x, z, 0.9, 0.3, 0.9, 'stone');
