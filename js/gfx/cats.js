@@ -275,8 +275,20 @@ function buildCat(key, opt = {}) {
   const headMat = T('#ffffff', { map: catHeadTex(L) }, 0.1);
   const head = P(headGeo, headMat, { oc: lineCol }); head.scale.set(HX, HY, HZ); headG.add(head);
   // 頬のふくらみ（猫らしい輪郭）
-  const cheekM = L.pattern === 'tuxedo' || L.pattern === 'point' ? T(L.muzzle || L.fur) : furM;
-  for (const s of [-1, 1]) { const ck = P(new THREE.SphereGeometry(0.15, 16, 12), cheekM, { oc: lineCol }); ck.scale.set(1, 0.8, 0.9); ck.position.set(s * 0.225, -0.13, 0.06); headG.add(ck); }
+  // ほっぺの面の向きを頭の面の向きに寄せ、明るさも頭（faceBoost 0.1）とそろえる。
+  // 自分の丸みのままだと、下・横向きの面が暗い段に入り、頭との境目で急に暗くなる
+  const cheekM = T(L.pattern === 'tuxedo' || L.pattern === 'point' ? L.muzzle || L.fur : L.fur, {}, 0.1);
+  for (const s of [-1, 1]) {
+    const geo = new THREE.SphereGeometry(0.15, 16, 12), CS = V3(1, 0.8, 0.9), CO = V3(s * 0.225, -0.13, 0.06);
+    const pos = geo.attributes.position, nrm = geo.attributes.normal, p = V3(), n = V3(), h = V3();
+    for (let i = 0; i < pos.count; i++) {
+      p.fromBufferAttribute(pos, i).multiply(CS).add(CO);
+      h.set(p.x / (HX * HX), p.y / (HY * HY), p.z / (HZ * HZ)).normalize();
+      n.fromBufferAttribute(nrm, i).divide(CS).normalize().lerp(h, 0.85).normalize().multiply(CS).normalize();
+      nrm.setXYZ(i, n.x, n.y, n.z);
+    }
+    const ck = P(geo, cheekM, { oc: lineCol }); ck.scale.copy(CS); ck.position.copy(CO); headG.add(ck);
+  }
   // 表情のレイヤー
   const featMat = T('#ffffff', { map: catFeatureTex(key, L, { expr: 'neutral' }), transparent: true, depthWrite: false }, 0.1);
   const feat = new THREE.Mesh(headGeo, featMat); feat.scale.setScalar(1.004); feat.renderOrder = 1; feat.userData.face = true; head.add(feat);
