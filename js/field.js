@@ -3065,7 +3065,7 @@ class FieldView extends BaseView {
       const [bx0, bz0, bx1, bz1] = T.pond.box;
       for (let z = Math.max(bz0, -T.hd); z < Math.min(bz1, T.hd); z += 0.5) for (let x = Math.max(bx0, -T.hw); x < Math.min(bx1, T.hw); x += 0.5) {
         const i = T.at(x + 0.25, z + 0.25);
-        if (i >= 0 && !T.bridge[i] && T.inPond(x + 0.25, z + 0.25)) g.fillRect((x + T.hw) * k, (z + T.hd) * k, 0.5 * k + 0.5, 0.5 * k + 0.5);
+        if (i >= 0 && !T.bridge[i] && T.kind[i] > K.WINDOW && T.inPond(x + 0.25, z + 0.25)) g.fillRect((x + T.hw) * k, (z + T.hd) * k, 0.5 * k + 0.5, 0.5 * k + 0.5);
       }
     }
     // 壁・窓・段差の輪郭

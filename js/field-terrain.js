@@ -41,12 +41,13 @@ class Terrain {
     //   depth：一つのくぼみのまん中の深さ、lv：水面の床からの深さ、h：まわりの床の高さ、shore：水ぎわの色 [乾いた所, ぬれた所]（なければ砂）。
     //   水ぎわ（水面から STOP 以内の地面）からは、水に入れない
     // 川（zone.river）：池と同じ作りで、折れ線にそってくぼませる。path：[x, z, r] の点（r：くぼみの半幅。水の幅はその約 0.67 倍）。
-    //   点は、なめらかな曲線でつなぐ。流れは path の向き。橋（=）の床は、くぼまずに元の高さのまま渡れる。lv・depth・h・shore は池と同じ（池と川が両方あれば、池のほうを使う）
+    //   点は、なめらかな曲線でつなぐ。流れは path の向き。橋（=）の床は、くぼまずに元の高さのまま渡れる。lv・depth・h・shore は池と同じ（池と川が両方あれば、池のほうを使う）。
+    //   paths：path の代わりに、いくつかの線（中州のまわりで分かれる川など。重なるところは深いほうの深さ）
     if (zone.pond || zone.river) {
       const P = zone.pond || zone.river, lv = P.lv || 0.45;
       this.pond = { blobs: (zone.pond ? zone.pond.blobs : []).map(([x, z, r]) => [...zonePoint(zone, [x, z]), r]), lines: [], depth: P.depth || 1.5, lv, y: (P.h || 0) - lv, shore: P.shore };
       for (const [x, z, r] of this.pond.blobs) this.dents.push({ x, z, r, depth: this.pond.depth, rim: 0, w: 1, top: 0 });
-      if (zone.river) this.pond.lines.push(riverLine(zone.river.path.map(([x, z, r]) => [...zonePoint(zone, [x, z]), r ?? zone.river.r ?? 3])));
+      if (zone.river) for (const path of zone.river.paths || [zone.river.path]) this.pond.lines.push(riverLine(path.map(([x, z, r]) => [...zonePoint(zone, [x, z]), r ?? zone.river.r ?? 3])));
       // 水のある範囲（くぼみの外接矩形）
       const B = this.pond.box = [Infinity, Infinity, -Infinity, -Infinity];
       const grow = (x, z, r) => { B[0] = Math.min(B[0], x - r); B[1] = Math.min(B[1], z - r); B[2] = Math.max(B[2], x + r); B[3] = Math.max(B[3], z + r); };
@@ -312,11 +313,11 @@ class Terrain {
     for (const [bx, bz, r] of P.blobs) { const s = Math.hypot(x - bx, z - bz); if (s < r) { const u = 1 - (s / r) ** 2; y += P.depth * u * u; } }
     return y + this.riverDepth(x, z);
   }
-  // 川のくぼみの深さ（池のくぼみと同じ断面を、折れ線にそってのばす）
+  // 川のくぼみの深さ（池のくぼみと同じ断面を、折れ線にそってのばす。線が重なるところは、深いほう）
   riverDepth(x, z) {
     const P = this.pond; if (!P || !P.lines.length) return 0;
     let y = 0;
-    for (const L of P.lines) { const [s, r] = lineNear(L, x, z); if (s < r) { const u = 1 - (s / r) ** 2; y += P.depth * u * u; } }
+    for (const L of P.lines) { const [s, r] = lineNear(L, x, z); if (s < r) { const u = 1 - (s / r) ** 2; y = Math.max(y, P.depth * u * u); } }
     return y;
   }
   // 川のくぼみが (x, z) から pad m 以内にかかるか
@@ -1356,13 +1357,19 @@ function buildArchitecture(view, T) {
         const j = T.idx(c + dc, r + dr), ex = cx + dc * CELL / 2, ez = cz + dr * CELL / 2;
         const A = [ex - dr * CELL / 2, ez + dc * CELL / 2], B = [ex + dr * CELL / 2, ez - dc * CELL / 2];
         const low = p => j < 0 ? EDGE : walk(j) ? hAt(j, p[0] + dc * 0.02, p[1] + dr * 0.02) : kind[j] === K.VOID ? ABYSS : T.cap[j];
-        let la = low(A), lb = low(B);
-        // 階段のわき：面は階段のいちばん下まで下ろす。段は箱で斜面より低いところがあり、
-        // また上の段は片方の端が崖の上と同じ高さになるので、斜面に合わせると隙間や面の抜けができる
-        if (j >= 0 && kind[j] === K.STAIR) la = lb = T.h[j] - 0.02;
-        if (Math.max(la, lb) > y - 0.05) return;
-        rockFace('rock', ex, ez, dc, dr, CELL, [la, y], [lb, y], j < 0 ? 0 : 0.3);
-        if (j >= 0 && walk(j)) snowLip(ex, ez, dc, dr, CELL, y);
+        // くぼんだ床（川・池）に向いた面は、床の面と同じ 8 つに割って、くぼみの形にそって下ろす（1 枚だと、まん中に床との隙間ができる）
+        const n = j >= 0 && kind[j] === K.FLOOR && dented(c + dc, r + dr) ? 8 : 1;
+        let drawn = false;
+        for (let s = 0; s < n; s++) {
+          const pa = [lerp(A[0], B[0], s / n), lerp(A[1], B[1], s / n)], pb = [lerp(A[0], B[0], (s + 1) / n), lerp(A[1], B[1], (s + 1) / n)];
+          let la = low(pa), lb = low(pb);
+          // 階段のわき：面は階段のいちばん下まで下ろす。段は箱で斜面より低いところがあり、
+          // また上の段は片方の端が崖の上と同じ高さになるので、斜面に合わせると隙間や面の抜けができる
+          if (j >= 0 && kind[j] === K.STAIR) la = lb = T.h[j] - 0.02;
+          if (Math.max(la, lb) > y - 0.05) continue;
+          rockFace('rock', (pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, dc, dr, CELL / n, [la, y], [lb, y], j < 0 ? 0 : 0.3); drawn = true;
+        }
+        if (drawn && j >= 0 && walk(j)) snowLip(ex, ez, dc, dr, CELL, y);
       });
       continue;
     }
@@ -1422,7 +1429,9 @@ function buildArchitecture(view, T) {
         return;
       }
       const yA = hAt(i, ...pull(pa)), yB = hAt(i, ...pull(pb)), top = wallTop(j);
-      const base = Math.min(yA, yB);
+      let base = Math.min(yA, yB);
+      // くぼんだ床（川・池）：辺のまん中のほうが低いことがあるので、壁は辺のいちばん低いところから立てる（床より下は地面にかくれる）
+      if (nk <= K.WINDOW && T.hasDents && dented(c, r)) for (let s = 1; s < 8; s++) base = Math.min(base, hAt(i, ...pull([lerp(pa[0], pb[0], s / 8), lerp(pa[1], pb[1], s / 8)])));
       if (nk <= K.WINDOW) {
         // 出入口の外側（隔壁扉）とエレベーターの籠の内壁は別に作る
         if (k === K.EXIT && !T.exits[T.ch[i]].cabin && T.exits[T.ch[i]].nx === dc * -1 && T.exits[T.ch[i]].nz === dr * -1) return;
@@ -1866,8 +1875,13 @@ function buildPond(view, T) {
   const C = h => new THREE.Color(h), lerpC = (a, b, t) => a.clone().lerp(b, t);
   // 水ぎわの砂（zone.pond.shore で色を変えられる）：岸の上（水面から 0.28m）から水の中（0.6m）まで。水ぎわはぬれて濃く、上は乾いて白っぽい
   const dry = C(P.shore ? P.shore[0] : '#d8c79c'), wet = C(P.shore ? P.shore[1] : '#a8916a'), under = C('#8a8a62');
+  // 水ぎわの砂の高さ：格子点のまわりの床のマスの地面（木立・壁の上には敷かない。崖のきわでは、崖の上ではなく床にそわせる）
+  const floorSoil = (x, z) => {
+    for (const [dx, dz] of [[0.01, 0.01], [-0.01, 0.01], [0.01, -0.01], [-0.01, -0.01]]) { const i = T.at(x + dx, z + dz); if (i >= 0 && T.kind[i] > TK.WINDOW) return T.soilOf(i, x + dx, z + dz); }
+    return NaN;
+  };
   const sand = sheet((x, z, pd) => {
-    const y = T.soilAt(x, z); if (!Number.isFinite(y)) return null;
+    const y = floorSoil(x, z); if (!Number.isFinite(y)) return null;
     const hgt = P.lv - pd, a = hgt > 0 ? 1 - smooth(0.06, 0.3, hgt) : 1 - smooth(-0.35, -0.65, hgt) * 0.6;
     const c = hgt > 0 ? lerpC(wet, dry, smooth(0, 0.2, hgt)) : lerpC(wet, under, smooth(0, -0.4, hgt));
     return [y + 0.012, c.r, c.g, c.b, a];
