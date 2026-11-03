@@ -4205,10 +4205,20 @@ class ZoneKit {
     const gst = (B.init || [0]).map((v, g) => flags[`${S.id}_g${g}`] ?? v);
     const called = !B.call || o.open || !!flags[S.id + '_mir'] || (B.init || [0]).some((_, g) => flags[`${S.id}_g${g}`] != null);
     const dimM = this.glow('#6a4aa0', 0.7), litM = this.glow('#cfefff', 3.2);
-    // 大水晶：大きな岩の台に、紫の大きな水晶。光を放つと白く輝いて、ゆっくりまわる
-    const [fx, fz] = B.from;
-    this.cyl(fx, fz, 1.0, 0.8, 'rockDark', { seg: 8, r2: 0.75 });
-    const core = this.mesh(new THREE.OctahedronGeometry(0.6), dimM, fx, 1.7, fz, { noShadow: true }); core.scale.y = 1.9;
+    // 大水晶：大きな岩の台に、人の背の倍ほどの紫の大水晶と、根もとをかこむ小さな水晶。光を放つと白く輝いて、ゆっくりまわる
+    //   （光の水晶は高さ 1.2m ほど。ひと目で「大」と分かるよう、高さ 4m ほどにする）
+    const [fx, fz] = B.from, fy = this.gy(fx, fz);
+    this.cyl(fx, fz, 1.5, 0.9, 'rockDark', { seg: 9, r2: 1.15 });
+    const core = this.mesh(new THREE.OctahedronGeometry(1.05), dimM, fx, 3.0, fz, { noShadow: true }); core.scale.y = 2.0;
+    const side = [0, 1, 2, 3, 4].map(k => {
+      const a = k / 5 * Math.PI * 2 + 0.4, r = 0.36 + (k % 2) * 0.14;
+      const m = this.mesh(new THREE.OctahedronGeometry(r), dimM, fx + Math.cos(a) * 0.95, 0.9 + r * 1.4, fz + Math.sin(a) * 0.95, { noShadow: true });
+      m.scale.y = 1.9; m.rotation.set(Math.sin(a) * 0.45, 0, -Math.cos(a) * 0.45); return m;
+    });
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#8a6aff', 0.4), blending: THREE.AdditiveBlending, depthWrite: false }));
+    halo.position.set(fx, fy + 3.0, fz); halo.scale.setScalar(3.5); this.scene.add(halo);
+    // 光ったときは、受けの水晶（litM）より少しおさえて、まぶしさで形がとばないようにする
+    const bigLit = this.glow('#dff4ff', 1.5);
     // 受けの水晶：影の壁の手前。光が届くと白く輝く
     const [tx, tz] = B.to;
     this.cyl(tx, tz, 0.45, 0.7, 'rockDark', { seg: 7, r2: 0.34 });
@@ -4250,7 +4260,8 @@ class ZoneKit {
     const b = o.beam = { B, gst, mirrors, called, hit: false, active: o.open || S.lamps.every((_, i) => flags[S.id + '_' + i]),
       update() {
         line.visible = b.active;
-        core.material = b.active ? litM : dimM;
+        core.material = b.active ? bigLit : dimM; side.forEach(m => { m.material = core.material; });
+        halo.material.color.copy(b.active ? hdr('#cfefff', 0.5) : hdr('#8a6aff', 0.4)); halo.scale.setScalar(b.active ? 6 : 3.5);
         if (!b.active) { b.hit = false; rc.material = dimM; return; }
         const r = b.called ? traceBeam(T, B, beamStates(B, b.gst)) : traceBeam(T, bare, []); draw(r.pts); b.hit = r.hit; rc.material = r.hit ? litM : dimM;
       } };
