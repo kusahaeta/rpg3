@@ -87,6 +87,7 @@ class FieldView extends BaseView {
     this.curLook.set(sp.x, gy + 1.4, sp.z);
     // 目的地の上から再開した場合は、一度離れるまで到着扱いにしない
     this.questHold = !!(this.quest && !this.quest.gate && Math.hypot(this.quest.pos.x - sp.x, this.quest.pos.z - sp.z) < 2.4);
+    this.mirrorGoal();
     this.rememberPos();
     this.playBgm();
   }
@@ -409,8 +410,12 @@ class FieldView extends BaseView {
       for (let a = 0; a < Math.PI * 2; a += 0.4) { const x = qx + Math.cos(a) * r, z = qz + Math.sin(a) * r; if (!this.blocked(x, z, 1.2) && (!this.T || this.T.reach[this.T.at(x, z)])) { spot = { x, z }; found = true; break; } }
       if (found) break;
     }
-    const sy = this.gy(spot.x, spot.z), bh = this.T ? Math.min(40, this.T.ceilOf(this.T.at(spot.x, spot.z)) - sy) : 40;
-    const g = new THREE.Group(); g.position.set(spot.x, sy, spot.z); this.scene.add(g);
+    this.quest = { step, ...this.questMark(spot.x, spot.z) };
+  }
+  // 目的地の印：金の光の柱と、ひし形の宝石と、床の輪（近くの敵は消す）
+  questMark(x, z) {
+    const sy = this.gy(x, z), bh = this.T ? Math.min(40, this.T.ceilOf(this.T.at(x, z)) - sy) : 40;
+    const g = new THREE.Group(); g.position.set(x, sy, z); this.scene.add(g);
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.6, bh, 16, 1, true), new THREE.MeshBasicMaterial({ color: hdr('#ffd66b', 1.4), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
     beam.position.y = bh / 2; g.add(beam);
     const dia = new THREE.Mesh(new THREE.OctahedronGeometry(0.35), glowMat('#ffd66b', 3)); dia.position.y = 2.2; dia.scale.y = 1.5; g.add(dia);
@@ -418,8 +423,25 @@ class FieldView extends BaseView {
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; g.add(ring);
     // 土の道や水たまりの塗り（renderOrder 1〜2）より後に描く。先に描くと、深度を書かない光の柱と輪が塗りで上書きされる
     beam.renderOrder = ring.renderOrder = 3;
-    this.groups.forEach(gr => { if (Math.hypot(gr.home.x - spot.x, gr.home.z - spot.z) < 7) { gr.alive = false; this.scene.remove(gr.model.group); } });
-    this.quest = { step, pos: V3(spot.x, sy, spot.z), g, dia, ring };
+    this.groups.forEach(gr => { if (Math.hypot(gr.home.x - x, gr.home.z - z) < 7) { gr.alive = false; this.scene.remove(gr.model.group); } });
+    return { pos: V3(x, sy, z), g, dia, ring };
+  }
+  // 寄り道の目的地：物語の目的地と同じ印を出し、そのあいだは物語の目的地の印・案内をかくす。着くと onArrive（clearSubGoal でもとにもどす）
+  setSubGoal(x, z, onArrive) {
+    const main = this.quest, m = this.questMark(x, z);
+    m.label = document.createElement('div'); m.label.className = 'fd-qmark'; this.root.querySelector('.fd-world').appendChild(m.label);
+    if (main) { if (main.label) main.label.style.display = 'none'; if (main.g) main.g.visible = false; }
+    const em = this.root.querySelector('.fd-quest em'); if (em) em.style.display = 'none';
+    this.quest = { ...m, step: main && main.step, main, onArrive, sub: true };
+    this.questHold = Math.hypot(x - this.player.pos.x, z - this.player.pos.z) < 2.4;
+  }
+  clearSubGoal() {
+    const q = this.quest; if (!q || !q.sub) return;
+    this.scene.remove(q.g); q.label.remove();
+    const main = this.quest = q.main;
+    if (main) { if (main.label) main.label.style.display = ''; if (main.g) main.g.visible = true; }
+    const em = this.root.querySelector('.fd-quest em'); if (em) em.style.display = '';
+    this.questHold = !!(main && !main.gate && main.pos.distanceTo(this.player.pos) < 2.4);
   }
   questArrive() {
     if (this.busy || !this.quest || this.quest.gate) return;
@@ -1182,7 +1204,7 @@ class FieldView extends BaseView {
     }
     // 昔の猫たち（昔のあいだだけ見える）
     if (to && to.past) for (const g of to.talkers || []) if (Math.hypot(g.pos.x - p.x, g.pos.z - p.z) < 1.9 && Math.abs(g.pos.y - p.y) < 1.5) return { type: 'ghost', g, text: Tx('昔の猫と話す') };
-    for (const o of this.sealObjs || []) if (o.beam && !o.open) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) return { type: 'mirror', o, m, text: Tx('{0}の光の鏡の向きを変える（{0}の鏡はみんな回る）', MIRROR_COLS[m.g][0]) };
+    for (const o of this.sealObjs || []) if (o.beam && !o.open && o.beam.called) for (const m of o.beam.mirrors) if (Math.hypot(m.pos.x - p.x, m.pos.z - p.z) < 1.8 && Math.abs(m.pos.y - p.y) < 1) return { type: 'mirror', o, m, text: Tx('{0}の光の鏡の向きを変える（{0}の鏡はみんな回る）', MIRROR_COLS[m.g][0]) };
     for (const o of this.sealObjs || []) { if (o.open) continue; const name = o.S.name || Tx('光の水晶'); for (const lp of o.lamps) if (!lp.lit && lp.pos.distanceTo(p) < (o.S.reach || 2.0)) return { type: 'lamp', o, L: lp, text: !o.ready() ? Tx('調べる：{0}', name) : o.S.verb ? Tx('{0}（{1}）', o.S.verb, speakerName(o.S.who)) : o.S.look === 'laugh' ? Tx('{0}を押す', name) : o.S.labels ? Tx('{0}（{1}）にふれる', name, o.S.labels[lp.i]) : Tx('{0}に触れる', name) }; }
     // 内門の踏み板：乗っていれば「ここで待ってて」、仲間が待っていれば「よびもどす」
     for (const o of this.plateObjs || []) {
@@ -1858,11 +1880,11 @@ class FieldView extends BaseView {
     if (laugh) { Sfx.laugh(); this.p.burst(at, '#ff9ad8', 30, { speed: 4, up: 2, life: 1.2, size: 0.1 }); } else Sfx.heal();
     const n = o.lamps.filter(x => x.lit).length, all = n === o.lamps.length;
     if (all && o.beam) {
-      // 光の筋：大水晶が光を放つ。受けの水晶に届いていれば、そのまま壁が消える
+      // 光の筋：大水晶が光を放つ。影の壁に届いていれば、そのまま壁が消える
       o.beam.active = true; o.beam.update(); o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
       this.fx.pillar(V3(o.beam.B.from[0], this.gy(...o.beam.B.from), o.beam.B.from[1]), '#cfefff', { h: 8, r: 1, life: 1 });
       if (o.beam.hit) this.openSeal(o);
-      else setTimeout(() => { Sfx.heal(); this.toast(S.beamToast || '三つの光が、大水晶に集まった！　光の鏡で、光の筋を影の壁まで導こう'); }, 500);
+      else { this.mirrorGoal(); setTimeout(() => { Sfx.heal(); this.toast(!o.beam.called ? o.beam.B.call.toast : S.beamToast || Tx('三つの光が、大水晶に集まった！　光の鏡で、光の筋を影の壁まで導こう')); }, 500); }
     } else if (all) {
       o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
       this.openSeal(o);
@@ -1876,7 +1898,7 @@ class FieldView extends BaseView {
     Save.data.flags[o.S.id] = true; o.dissolve(); Save.save();
     setTimeout(() => { Sfx.win(); GFX.shake(0.2); this.toast(o.S.openToast || '影の壁が、光にとけて消えた！'); }, 500);
   }
-  // 光の鏡の向きを変える（「/」⇔「＼」）。同じ色の鏡は、みんないっしょに回る。光の筋が受けの水晶に届けば、影の壁が消える
+  // 光の鏡の向きを変える（「/」⇔「＼」）。同じ色の鏡は、みんないっしょに回る。光の筋が影の壁に届けば、壁が消える
   turnMirror(o, m) {
     const b = o.beam, flags = Save.data.flags || (Save.data.flags = {}), g = m.g;
     b.gst[g] ^= 1; flags[`${o.S.id}_g${g}`] = b.gst[g]; Save.save();
@@ -1885,6 +1907,23 @@ class FieldView extends BaseView {
     b.update();
     if (!b.active) { this.toast('光の鏡の向きが変わった。……今は、光が来ていない'); return; }
     if (b.hit && !o.open) this.openSeal(o);
+  }
+  // 光の鏡を出すできごと（beam.call）：光の水晶をすべて灯して鏡がまだなら、大水晶の前（call.at）に目的地の光の柱を出す。
+  //   着くと、会話シーン（call.scene）で call.who の子が魔法で台ごと鏡を出す。見終えたら id_mir に残して、鏡のある区画へもどる。
+  //   その子が一行にいなければ away を出し、一度離れてまた来ると、もう一度
+  mirrorGoal() {
+    for (const o of this.sealObjs || []) {
+      const b = o.beam; if (!b || !b.B.call || b.called || o.open || !b.active || (this.quest && this.quest.sub)) continue;
+      const C = b.B.call;
+      this.setSubGoal(C.at[0], C.at[1], () => {
+        if (!this.team.some(m => m.key === C.who)) { this.startTalk('', [['n', C.away]]); return; }
+        this.busy = true; this.keys.clear();
+        this.root.querySelector('.fd-wipe').classList.add('on');
+        setTimeout(() => this.leave(() => App.go(DialogueScreen, C.scene, () => {
+          (Save.data.flags || (Save.data.flags = {}))[o.S.id + '_mir'] = true; Save.save(); App.go(FieldScreen);
+        })), 700);
+      });
+    }
   }
   // 記憶のかけらを、ちがう順にさわった：灯した光がみんな消えて、遠くへ押しもどされる
   wrongOrder(o) {
@@ -3171,7 +3210,7 @@ class FieldView extends BaseView {
     (this.strokeObjs || []).forEach(o => { if (!o.solved) o.tiles.forEach(q => { if (q.isS) dot(q.x, q.y, q.z, '#8affe0', 3, true); }); });
     if (this.timeObj) this.timeObj.crystals.forEach(q => dot(q.pos.x, q.pos.y, q.pos.z, this.timeObj.can(q) ? q.col : '#5a5a5a', 3.5));
     (this.fluffObjs || []).forEach(o => dot(o.pos.x, o.pos.y, o.pos.z, '#ffffff', 2.5));
-    (this.sealObjs || []).forEach(o => { if (o.beam && !o.open) o.beam.mirrors.forEach(m => dot(m.pos.x, m.pos.y, m.pos.z, '#9ad8ff', 2.5, true)); });
+    (this.sealObjs || []).forEach(o => { if (o.beam && !o.open && o.beam.called) o.beam.mirrors.forEach(m => dot(m.pos.x, m.pos.y, m.pos.z, '#9ad8ff', 2.5, true)); });
     (this.plateObjs || []).forEach(o => { if (!o.open && o.ready()) o.pads.forEach(pad => dot(pad.pos.x, pad.pos.y, pad.pos.z, '#8ad8ff', 3.5, true)); });
     (this.guards || []).forEach(g => dot(g.pos.x, g.pos.y, g.pos.z, g.asleep ? '#8a8a96' : '#ffb04a', 3.5));
     (this.rollers || []).filter(o => o.m.group.visible).forEach(o => dot(o.pos.x, o.pos.y, o.pos.z, '#c8b89a', 3.5));
@@ -3304,7 +3343,7 @@ class FieldView extends BaseView {
     if (this.quest) {
       const q = this.quest, dist = q.pos.distanceTo(p.pos);
       if (q.dia) { q.dia.rotation.y = t * 2; q.dia.position.y = 2.2 + Math.sin(t * 2.5) * 0.15; q.ring.scale.setScalar(1 + Math.sin(t * 3) * 0.05); }
-      this.root.querySelector('.fd-qd').textContent = `　${Math.round(dist)}m`;
+      const qd = this.root.querySelector('.fd-qd'); if (qd) qd.textContent = `　${Math.round(dist)}m`;
       v.set(q.pos.x, q.pos.y + 3, q.pos.z).project(this.camera);
       const onScreen = v.z < 1 && Math.abs(v.x) < 0.95 && Math.abs(v.y) < 0.95;
       let sx = (v.x + 1) * 640, sy = (1 - v.y) * 360;
@@ -3317,6 +3356,7 @@ class FieldView extends BaseView {
       q.label.classList.toggle('edge', !onScreen);
       q.label.textContent = onScreen ? (q.gate ? Tx('◆ {0}へ {1}m', q.via, Math.round(dist)) : `◆ ${Math.round(dist)}m`) : '◆';
       if (dist >= 2.4) this.questHold = false;
+      else if (q.onArrive && !this.questHold && !this.busy) { this.questHold = true; this.fx.pillar(q.pos, '#ffd66b', { h: 8, r: 1.2, life: 0.8 }); Sfx.select(); q.onArrive(); }
       else if (!q.gate && !this.questHold && !this.busy) this.questArrive();
     }
     const it = this.busy ? null : this.nearestInteract();
