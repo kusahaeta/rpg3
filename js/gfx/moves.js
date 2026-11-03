@@ -69,6 +69,9 @@ function shockTex() {
 }
 // にゃんだー斬りの構え：右手を横へ高くかかげ（剣は柱の部品がまっすぐ天へ向ける。柱が顔の前を通らない）、左手は前でかまえる。顔はまっすぐ前
 const NYANDER_KIME = { hipsY: -0.1, lean: -0.05, twist: -0.1, headX: 0, headY: 0, armRx: -0.3, armRz: -2.4, elbowR: -0.1, armLx: -0.7, armLz: 0.3, elbowL: -0.9, legLx: -0.5, kneeL: 0.5, legRx: 0.45, kneeR: 0.3 };
+// ぶんまわしの構え：腰を落として、剣を持つ右手を横へ（剣の向きは swordAim が外へ水平に向ける）。左手は前で力をためる
+const SWING_OUT = { hipsY: -0.16, lean: 0.12, armRx: -0.15, armRz: -1.3, elbowR: -0.05, armLx: -0.35, armLz: 0.6, elbowL: -0.7, legLx: -0.5, kneeL: 0.5, legRx: 0.5, kneeR: 0.45 };
+const SWING_BACK = { ...SWING_OUT, hipsY: -0.22, lean: 0.25, headY: 0.2 };   // 振りかぶり：もっと低く、顔は敵へ
 const MOVES = {
   // ねこパンチ：剣を持たない左の手で、ぽかっと
   punch: {
@@ -292,22 +295,88 @@ const MOVES = {
         .then(() => this.flameUp(a, c.col, 0.75))));
     },
   },
-  // ぶんまわし：大剣をぐんと大きくして、体ごとひねって横になぎ払う。ねこじゃらしの穂のわた毛が散る
+  // ぶんまわし：大剣をぐんと大きくして、体ごとぐるりと一回転。剣はうしろから回って勢いをつけ、いちばん速いところで敵の列を
+  //   なぎ払う（地面と平行な太刀すじの扇が、となりの敵までまとめて通る。切っ先が通った敵から順にはじける）。
+  //   切っ先のねこじゃらしの穂から、わた毛が舞う
   bigSwing: {
     async attack(e, ts, c) {
-      const t = ts[0], m = e.model, dest = this.meleeSpot(t, 1.0);
-      // 右前から低く：のびた大剣と、横なぎの弧が見えるように
-      this.setCam(V3(dest.x + 2.8, 1.1, dest.z + 1.6), V3(dest.x - 0.6, 0.8, dest.z - 0.9), { speed: 5 });
-      await this.dashTo(e, dest, { pose: POSES.ready, dur: 0.3, hop: 0.3 });
+      const t = ts[0], m = e.model, g = m.group, dest = this.meleeSpot(t, 0.85);
+      const gold = '#ffe07a', up = V3(0, 1, 0), TAU = Math.PI * 2;
+      const ang = v => Math.atan2(v.x, v.z), wrap = a => a - TAU * Math.round(a / TAU);
+      this.hitGlow = 0.5;
+      const f0 = V3(t.home.x - dest.x, 0, t.home.z - dest.z).normalize(), r0 = V3(-f0.z, 0, f0.x);
+      // 剣を持つ手は、体のどちらがわか（敵を向いたときの左右）
+      g.updateMatrixWorld(true);
+      const hs = Math.sign(m.handPos().sub(g.position).dot(V3(-Math.cos(g.rotation.y), 0, Math.sin(g.rotation.y)))) || 1;
+      // 回す向き：剣を持つ手が、まずうしろへ回っていく向き（勢いをつけてから敵の列へ）
+      const spin = Math.sign(wrap(ang(f0.clone().negate()) - ang(r0.clone().multiplyScalar(hs)))) || 1;
+      // いつもの引きの画のまま、敵の前へ跳びこむ
+      await this.dashTo(e, dest, { pose: POSES.ready, dur: 0.28, hop: 0.3 });
       this.face(e, t.home);
-      await Promise.all([this.tweenPose(m, POSES.strike2, 0.25), this.weaponGrow(m, 2.8, 0.25)]);
+      // 立ち位置の前、剣と反対がわから顔へ：横へのびてふくらむ大剣が見えるように
+      //   （剣は横へ水平に向くので、剣のがわから映すと切っ先がこちらを向いて短く見える。敵は画面のうしろ）
+      this.focus(e);
+      this.setFov(46);
+      this.setCam(dest.clone().addScaledVector(f0, 0.3).addScaledVector(r0, -hs * 1.5).add(V3(0, 0.75, 0)), dest.clone().addScaledVector(r0, hs * 0.45).add(V3(0, 0.5, 0)), { snap: true });
+      const rot0 = g.rotation.y;
+      // 切っ先がとどく長さ：いちばん遠い敵の体の中ほどまで。太刀すじの高さは敵の体の中ほど
+      const reach = clamp(Math.max(...ts.map(x => Math.hypot(x.home.x - dest.x, x.home.z - dest.z) - x.model.radius * 0.35)), 1.5, 3.4);
+      const yT = clamp(ts.reduce((a, x) => a + this.hitPoint(x.u).y, 0) / ts.length, 0.35, 0.75);
+      // 剣は、体の中心から手を通って外へ、地面と平行に（切っ先が太刀すじの高さ）。剣の向きを決めてから swordAim が向ける
+      const radial = () => { const v = m.handPos().sub(g.position); v.y = 0; return v.normalize(); };
+      let blade = 0, sw = null;
+      const pointer = () => {
+        if (!sw) return;
+        const hp = m.handPos();
+        sw.dir.copy(radial()).multiplyScalar(Math.max(0.3, blade)).add(V3(0, yT - hp.y, 0)).normalize();
+      };
+      this.late.add(pointer);
+      sw = this.swordAim(m); sw.aim = 0;
+      // 構える：腰を落として、剣を持つ手を横へ。剣がぐんと大きくなる（ひと呼吸、回す向きと逆へ体をひねる）。にやり
+      const face0 = m.face && m.face.expr;
+      if (m.face) m.face.set('smug');
+      Sfx.tone(240, 0.3, 'triangle', 0.05, 380);
+      const b0 = m.tipPos().distanceTo(m.handPos()) / m.extras.hold.scale.x;
+      const grow = clamp((reach - 0.32) / b0, 2.2, 4.4);
+      this.tweenPose(m, SWING_BACK, 0.28);
+      this.weaponGrow(m, grow, 0.32);
+      await GFX.tween(0.32, k => {
+        g.rotation.y = rot0 - spin * 0.35 * Ease.out(k);
+        sw.aim = k; blade = b0 * lerp(1, grow, k);
+      });
+      for (let i = 0; i < 6; i++) this.fluffBits(m.tipPos(), V3((Math.random() - 0.5) * 0.6, 0.3 + Math.random() * 0.4, (Math.random() - 0.5) * 0.6));
+      await GFX.delay(0.05);
+      // うしろ上から：回る体と、扇の太刀すじと、なぎ払われる敵の列がいっしょに見えるように
+      //   （真うしろだと、すぐ前の敵が子の頭にかくれる。剣と反対がわへずらす）
+      const cx = ts.reduce((a, x) => a.add(x.home), V3()).multiplyScalar(1 / ts.length), mid = dest.clone().lerp(cx, 0.45);
+      const wideX = Math.max(...ts.map(x => Math.abs(x.home.clone().sub(mid).dot(r0))));
+      const back = 3.2 + wideX * 0.7;
+      this.setFov(38);
+      this.setCam(mid.clone().addScaledVector(f0, -back).addScaledVector(r0, -hs * 1.6).add(V3(0, 2.9 + wideX * 0.4, 0)), mid.clone().add(V3(0, 0.3, 0)), { snap: true });
+      // ぐるりと一回転：うしろからだんだん速く回って、いちばん速いところで敵の列を通る
+      Sfx.noise(0.55, 0.16, 1400);
+      this.tweenPose(m, SWING_OUT, 0.15);
+      const total = TAU + 0.35, th0 = ang(radial());
+      const smear = this.swingSmear(g.position, { spin, r0: reach * 0.35, r1: reach + 0.15, y: yT, col: gold });
+      // 切っ先が通る順（回しはじめから何ラジアンか）
+      const pass = ts.map(x => ({ x, at: ((wrap(ang(x.home.clone().sub(dest)) - th0) * spin) % TAU + TAU) % TAU })).sort((a, b) => a.at - b.at);
+      let pi = 0;
+      await GFX.tween(0.5, k => {
+        const p = total * k;
+        g.rotation.y = rot0 - spin * 0.35 + spin * p;
+        g.updateMatrixWorld(true);
+        const rd = radial();
+        smear.head = ang(rd);
+        // 切っ先から、わた毛
+        if (k > 0.3 && Math.random() < 0.8) this.fluffBits(m.tipPos(), V3().crossVectors(up, rd).multiplyScalar(spin * (0.5 + Math.random())).add(V3(0, 0.3, 0)));
+        while (pi < pass.length && p >= pass[pi].at) { this.swingHit(pass[pi].x, rd, spin, gold, pass[pi].x === t ? 1 : 0.75); pi++; }
+      }, Ease.in);
       Sfx.swing();
-      this.fx.swirl(dest.clone().add(V3(0, 0.6, 0)), c.col, { r: 1.7, life: 0.4, tilt: 0, speed: 12, arc: 2.6, width: 0.08 });
-      await this.sweep(m, POSES.strike, 0.22, c.col, { twist: -1.2, n: 5, size: 0.16 });
-      GFX.shake(0.15);
-      for (const x of ts) this.squash(x, 0.2);
-      this.fluff(this.hitPoint(t.u), 24);
-      GFX.delay(0.2).then(() => this.weaponGrow(m, 1, 0.25));
+      // ふりぬいて、少し行きすぎてから構えにもどる。剣を元の大きさに
+      smear.stop();
+      GFX.tween(0.25, k => { g.rotation.y = rot0 + spin * 0.3 * Math.sin(k * Math.PI) * (1 - k * 0.5); }, Ease.out).then(() => { g.rotation.y = rot0; });
+      this.tweenPose(m, POSES.ready, 0.25);
+      GFX.delay(0.12).then(() => { sw.release(0.2).then(() => this.late.delete(pointer)); this.weaponGrow(m, 1, 0.25); if (m.face) m.face.set(face0 || 'neutral'); });
     },
   },
   // にゃんだー斬り：その場で大剣を右手で天へかかげると、刃の根もとから天へ光の柱がのびる。キメ顔を見せてから、その柱ごと振りおろして敵をまっぷたつ、
@@ -2388,7 +2457,7 @@ Object.assign(BattleView.prototype, {
   //   下が地面で四角く切れないよう、いつも手前に描く
   //   ctl.end(dur) で細くなって消える。ctl.release(dur) で剣の向きを元へ戻す
   lightPillar(m, col, { w = 1, life = 6, root = 0.08 } = {}) {
-    const hold = m.extras.hold, q0 = hold.quaternion.clone(), g = new THREE.Group();
+    const hold = m.extras.hold, aim = this.swordAim(m), g = new THREE.Group();
     // 帯の形（幅 1・長さ 1）：下の段は細く、TAPER の長さでひろがる。段の高さは毎フレーム、長さに合わせて直す
     const geo = new THREE.BufferGeometry(), TAPER = 0.9;
     const pos = new Float32Array([-0.08, 0, 0, 0.08, 0, 0, -0.5, 0.1, 0, 0.5, 0.1, 0, -0.5, 1, 0, 0.5, 1, 0]);
@@ -2400,21 +2469,13 @@ Object.assign(BattleView.prototype, {
       ms.userData.w = wd; ms.userData.op = op; ms.renderOrder = 12; ms.frustumCulled = false; g.add(ms); return ms;
     };
     const ls = [layer(hdr(col, 1.1), 2.2, true, 0.35), layer(new THREE.Color(col), 1.1, false, 0.9), layer(hdr('#ffffff', 1.4), 0.36, true, 0.9)];
-    const X = V3(), Z = V3(), M = new THREE.Matrix4(), Y = V3(0, 1, 0), pq = new THREE.Quaternion(), wq = new THREE.Quaternion();
-    // 剣のいまの向き（はじめは今の構えのまま）
-    m.group.updateMatrixWorld(true);
-    const ctl = { dir: m.tipPos().sub(m.handPos()).normalize(), len: 0, w, op: 1, depth: true, endAt: -1, endDur: 0.4, age: 0, aim: 1, base: V3(),
+    const X = V3(), Z = V3(), M = new THREE.Matrix4();
+    // 剣の向き（ctl.dir）は swordAim と同じもの。剣を向けたあとに柱を置く（late は足した順に呼ばれる）
+    const ctl = { dir: aim.dir, len: 0, w, op: 1, depth: true, endAt: -1, endDur: 0.4, age: 0, base: V3(),
       end(d = 0.4) { if (ctl.endAt < 0) { ctl.endAt = ctl.age; ctl.endDur = d; } },
-      release(d = 0.2) { return GFX.tween(d, k => { ctl.aim = 1 - k; }); } };
+      release: d => aim.release(d) };
     const late = dt => {
       ctl.age += dt;
-      // 剣を ctl.dir へ（aim：1 でぴったり、0 で元の持ち方）
-      m.group.updateMatrixWorld(true);
-      hold.parent.getWorldQuaternion(pq);
-      wq.copy(pq).multiply(q0);
-      const want = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(wq), ctl.dir.clone().normalize()).multiply(wq);
-      hold.quaternion.copy(pq.clone().invert().multiply(want)).slerp(q0, 1 - ctl.aim);
-      hold.updateMatrixWorld(true);
       const b = hold.localToWorld(ctl.base.set(0, root, 0)), d = ctl.dir.clone().normalize();
       let op = ctl.op, wk = ctl.w * (1 + Math.sin(ctl.age * 31) * 0.04);
       if (ctl.endAt >= 0) { const f = Math.min(1, (ctl.age - ctl.endAt) / ctl.endDur); op *= 1 - f; wk *= 1 - f * 0.7; if (f >= 1) op = 0; }
@@ -2431,7 +2492,27 @@ Object.assign(BattleView.prototype, {
       for (const ms of ls) { ms.material.depthTest = ctl.depth; ms.scale.set(ms.userData.w * wk, L, 1); ms.material.opacity = ms.userData.op * op; ms.visible = op > 0.001 && ctl.len > 0.01; }
     };
     this.late.add(late);
-    this.fx.add(g, life, k => { if (k >= 1) { this.late.delete(late); hold.quaternion.copy(q0); } });
+    this.fx.add(g, life, k => { if (k >= 1) { this.late.delete(late); aim.stop(); } });
+    return ctl;
+  },
+  // 右手の剣を ctl.dir へ向ける：持ち手の根もと（extras.hold）を回すので、2頭身で腕が上がらなくても剣は思った向きを向く。
+  //   体の骨を動かしたあと（view.late）に置くので、振っているあいだもずれない。ctl.aim：1 でぴったり、0 で元の持ち方。
+  //   ctl.release(dur) で元の持ち方へ戻して外す（ctl.stop() ですぐ外す）
+  swordAim(m) {
+    const hold = m.extras.hold, q0 = hold.quaternion.clone(), Y = V3(0, 1, 0), pq = new THREE.Quaternion(), wq = new THREE.Quaternion();
+    m.group.updateMatrixWorld(true);
+    const late = () => {
+      m.group.updateMatrixWorld(true);
+      hold.parent.getWorldQuaternion(pq);
+      wq.copy(pq).multiply(q0);
+      const want = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(wq), ctl.dir.clone().normalize()).multiply(wq);
+      hold.quaternion.copy(pq.clone().invert().multiply(want)).slerp(q0, 1 - ctl.aim);
+      hold.updateMatrixWorld(true);
+    };
+    const ctl = { dir: m.tipPos().sub(m.handPos()).normalize(), aim: 1,   // はじめは今の構えのまま
+      release: (d = 0.2) => GFX.tween(d, k => { ctl.aim = Math.min(ctl.aim, 1 - k); }).then(() => ctl.stop()),
+      stop: () => { if (this.late.delete(late)) hold.quaternion.copy(q0); } };
+    this.late.add(late);
     return ctl;
   },
   // 衝撃波：p を中心に、地面すれすれの光の壁の輪がひろがり、白い土けむりが外へ舞う
@@ -2515,10 +2596,91 @@ Object.assign(BattleView.prototype, {
     }
     this.fx.sprite(this.hitPoint(t.u), col, 2 * s, 0.4, { k: 3 });
   },
-  // ねこじゃらしの穂のわた毛：ふわふわ浮いて流れる
-  fluff(p, n = 20) {
-    const a = hdr('#fffbe8', 1.6), b = hdr('#ffe07a', 1.6);
-    for (let i = 0; i < n; i++) this.p.emit(p.clone().add(V3((Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.4)), V3((Math.random() - 0.5) * 2.5, 0.4 + Math.random() * 1.2, (Math.random() - 0.5) * 1.5), i % 3 ? a : b, { life: 1.4, size: 0.12, drag: 2.5, grav: -0.3 });
+  // ねこじゃらしの穂のわた毛：小さな白い玉が、ふわふわ流れてゆっくり落ちる（v：はじめの速さ）。
+  //   明るい草原でも見えるよう、光でなく色の玉。ひとつの InstancedMesh にまとめて一回で描く
+  fluffBits(p, v, s = 0.055) {
+    const N = 96, LIFE = 4;
+    let pool = this.fluffPool_;
+    if (!pool || pool.dead) {
+      const im = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 6, 4), new THREE.MeshBasicMaterial({ fog: false }), N);
+      im.frustumCulled = false; im.renderOrder = 11; im.count = N;
+      const cols = ['#fffbe8', '#fff4cc', '#ffeaa8'].map(x => new THREE.Color(x));
+      for (let i = 0; i < N; i++) im.setColorAt(i, cols[i % 3]);
+      pool = this.fluffPool_ = { im, P: Array.from({ length: N }, () => ({ live: false, p: V3(), v: V3(), age: 0, life: 1, s: 0, ph: 0 })), age: 0, dead: false };
+      const Mx = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = V3();
+      this.fx.add(im, 1e6, (k, o, dt) => {
+        let any = false;
+        pool.P.forEach((q, i) => {
+          let sc = 0;
+          if (q.live) {
+            q.age += dt;
+            if (q.age >= q.life) q.live = false;
+            else {
+              any = true;
+              q.v.multiplyScalar(Math.exp(-2.4 * dt));
+              q.p.addScaledVector(q.v, dt);
+              q.p.x += Math.sin(q.age * 3 + q.ph) * 0.12 * dt; q.p.z += Math.cos(q.age * 2.3 + q.ph) * 0.1 * dt;
+              q.p.y = Math.max(0.03, q.p.y - 0.12 * dt);
+              sc = q.s * Math.min(1, q.age / 0.08) * Math.min(1, (q.life - q.age) / 0.5);
+            }
+          }
+          Mx.compose(q.p, Q, S.setScalar(Math.max(sc, 1e-4))); im.setMatrixAt(i, Mx);
+        });
+        im.instanceMatrix.needsUpdate = true;
+        pool.age = any ? 0 : pool.age + dt;
+        if (pool.age > LIFE) { pool.dead = true; o.visible = false; this.fx.items.find(it => it.obj === o).life = 0; }
+      });
+    }
+    const q = pool.P.find(x => !x.live); if (!q) return;
+    pool.age = 0;
+    Object.assign(q, { live: true, age: 0, life: 1.6 + Math.random() * 1.2, s: s * (0.7 + Math.random() * 0.6), ph: Math.random() * 6 });
+    q.p.copy(p); q.v.copy(v);
+  },
+  // ぶんまわしの太刀すじ：c を中心に、地面と平行な扇の帯（高さ y、半径 r0〜r1）。ctl.head（剣の向きの角度、atan2(x, z)）を追い、
+  //   うしろへ span までのびて、しっぽほど薄れる。外のふちほど濃く金色。明るい草原でも見えるよう、ふつうの合成。
+  //   ctl.stop() で、しっぽが頭に追いついて消える
+  swingSmear(c, { spin = 1, r0 = 0.5, r1 = 2, y = 0.45, span = 2.6, col = '#ffe07a', cream = '#fffbe8', op = 0.85 } = {}) {
+    const S = 40, RW = [0, 0.45, 0.84, 0.94, 1], RA = [0, 0.25, 0.8, 1, 0];   // 内から外への段（幅の割合）と、段ごとの濃さ
+    const nr = RW.length, pos = new Float32Array((S + 1) * nr * 3), colr = new Float32Array((S + 1) * nr * 4), idx = [];
+    for (let i = 0; i < S; i++) for (let j = 0; j < nr - 1; j++) { const a = i * nr + j, b = a + nr; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+    const geo = new THREE.BufferGeometry();
+    geo.setIndex(idx);
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(colr, 4));
+    const ms = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    ms.frustumCulled = false; ms.renderOrder = 11;
+    const ca = hdr(cream, 1.05), cb = hdr(col, 1.6), cc = new THREE.Color();
+    let start = null, len = 0, stopAt = -1, age = 0;
+    const ctl = { head: null, stop() { if (stopAt < 0) stopAt = age; } };
+    this.fx.add(ms, 30, (k, o, dt) => {
+      age += dt;
+      if (ctl.head == null) return;
+      if (start == null) start = ctl.head;
+      let fade = 1;
+      if (stopAt >= 0) { const f = Math.min(1, (age - stopAt) / 0.3); len *= Math.exp(-9 * dt); fade = 1 - f; if (f >= 1) { o.visible = false; this.fx.items.find(it => it.obj === o).life = 0; return; } }
+      else { let d = (ctl.head - start) * spin; d = ((d % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2); len = Math.min(span, Math.max(len, d)); }
+      for (let i = 0; i <= S; i++) {
+        const s = i / S, a = ctl.head - spin * len * s, as = Math.pow(1 - s, 1.5) * op * fade, sa = Math.sin(a), co = Math.cos(a);
+        for (let j = 0; j < nr; j++) {
+          const r = lerp(r0, r1, RW[j]), n = i * nr + j;
+          pos[n * 3] = c.x + sa * r; pos[n * 3 + 1] = y; pos[n * 3 + 2] = c.z + co * r;
+          cc.copy(ca).lerp(cb, RW[j]);
+          colr[n * 4] = cc.r; colr[n * 4 + 1] = cc.g; colr[n * 4 + 2] = cc.b; colr[n * 4 + 3] = RA[j] * as;
+        }
+      }
+      geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
+    });
+    return ctl;
+  },
+  // ぶんまわしで切っ先が通った敵：ぽよんとつぶれ、なぎ払った向きへわた毛がはじけて、金色の太刀すじがひと筋
+  swingHit(x, radial, spin, col, s = 1) {
+    const p = this.hitPoint(x.u), tan = V3().crossVectors(V3(0, 1, 0), radial).multiplyScalar(spin);
+    this.squash(x, 0.24 * s);
+    GFX.shake(0.07 * s);
+    Sfx.tone(520, 0.12, 'triangle', 0.035, 260);
+    for (let i = 0; i < 14 * s; i++) this.fluffBits(p.clone().add(V3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.4)), tan.clone().multiplyScalar(1.2 + Math.random() * 2).add(V3((Math.random() - 0.5) * 1.2, 0.4 + Math.random() * 1.2, (Math.random() - 0.5) * 1.2)), 0.065);
+    // 太刀すじの向きを、画面の上の角度へ
+    const a = p.clone().project(this.camera), b = p.clone().addScaledVector(tan, 0.4).project(this.camera);
+    this.fx.slash(p, col, { cam: this.camera, size: 1.6 * s, angle: Math.atan2((b.y - a.y), (b.x - a.x) * this.camera.aspect), life: 0.26 });
   },
   // ---------- クロの技の部品 ----------
   // 影の体：キャラのモデルを、むらさきがかった半透明の黒にしたもの（影分身・残像）
