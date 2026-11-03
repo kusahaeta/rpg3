@@ -641,6 +641,11 @@ const P2_STYLES = {
   nekogami: { sub: '#fffff0', dark: '#ffd24a', crown: { color: '#fff4c8', emissive: '#ffe08a', ei: 1.0 }, pulse: '#ffe08a', fog: '#f8e8f0', swirl: ['#ffffff', '#ff9ad8', '#ffe08a'], tint: [0.05, 0.15, 0.4], desat: 0.1, charge: '#fffff0', tone: [220, 180, 160] },
 };
 
+// 大きな敵へ寄るカメラ（BattleView.setCam）：頭のてっぺんが FIT_TOP より上の敵だけ引く。引くのは FIT_MAX 倍まで
+//   画面のまん中から上 FIT_UP・下 FIT_DOWN（半分の高さを 1 として）が、上下の UI にかくれないところ
+const FIT_TOP = 2.6, FIT_UP = 0.62, FIT_DOWN = 0.52, FIT_MAX = 3.2;
+// 敵のダメージの数字を出す、画面の縦の範囲（1280×720 の座標。上は名前と HP のバー、下は仲間のカードをよける）
+const FX_TOP = 130, FX_BOT = 560, FX_MIN = 160;
 class BattleView extends BaseView {
   constructor(battle, theme) {
     // 物語の場所で戦う（第一章）：探索フィールドの区画を背景に組み立てる
@@ -750,16 +755,40 @@ class BattleView extends BaseView {
   //   コドク・ねこ神は第二形態で 5.6 ほどになり、ふつうのカメラでは頭が名前と HP のバーの裏や画面の外へ出る
   enemyTall() {
     let top = 0;
-    for (const u of this.b.aliveEnemies()) {
-      const e = this.ent(u); if (!e) continue;
-      const g = e.model.group;
-      if (e.top0 == null) { g.updateMatrixWorld(true); e.top0 = (new THREE.Box3().setFromObject(e.model.inner).max.y - g.position.y) / g.scale.y; }
-      top = Math.max(top, e.top0 * g.scale.y);
-    }
+    for (const u of this.b.aliveEnemies()) { const e = this.ent(u); if (e) top = Math.max(top, this.foeTop(e)); }
     return Math.max(0, top - 3.4);
+  }
+  // 敵の頭のてっぺんの高さ（見た目の箱から測る）
+  foeTop(e) {
+    const g = e.model.group;
+    if (e.top0 == null) { g.updateMatrixWorld(true); e.top0 = (new THREE.Box3().setFromObject(e.model.inner).max.y - g.position.y) / g.scale.y; }
+    return e.top0 * g.scale.y;
+  }
+  // 技で寄る相手を覚えておく：背の高い敵（コドク・ねこ神など）なら、寄りのカメラを fitCam で引く
+  fitFoe(ts) {
+    let best = null, top = FIT_TOP;
+    for (const t of ts) if (t && !t.ally) { const h = this.foeTop(t); if (h > top) { top = h; best = t; } }
+    this.fit = best;
+  }
+  // 大きな敵のそばを映すカメラを、うしろへ引いて少し上を見る
+  //   技のカメラはふつうの背の敵に合わせて寄せてあり、大きな敵では頭とダメージの数字が画面の上の外へ出る。
+  //   注視点の奥行きで、地面（味方の足もと）が下の仲間のカードより上に、敵の頭が上の名前と HP のバーより下に入るまで引く。
+  //   FIT_MAX 倍で足りないときは、味方を画に残して、敵の頭のほうを切る
+  setCam(pos, look, o) {
+    const t = this.fit;
+    if (t && Math.hypot(look.x - t.home.x, look.z - t.home.z) < t.model.radius + 3) {
+      const v = V3().subVectors(pos, look), half = v.length() * Math.tan(this.camera.fov * Math.PI / 360), top = this.foeTop(t);
+      if (look.y + FIT_UP * half < top) {
+        const k = clamp(top / ((FIT_UP + FIT_DOWN) * half), 1, FIT_MAX), h2 = half * k;
+        look = look.clone(); look.y = Math.min(Math.max(look.y, top - FIT_UP * h2), FIT_DOWN * h2);
+        pos = look.clone().addScaledVector(v, k);
+      }
+    }
+    super.setCam(pos, look, o);
   }
   wide() {
     const hasBoss = this.b.enemies.some(e => e.def.boss), tall = this.enemyTall();
+    this.fit = null;
     this.unfocus(); this.setFov(38); this.roll = 0; this.sway = 0.4;
     this.setCam(V3(0, hasBoss ? 2.8 : 2.1, (hasBoss ? 10.2 : 8.2) + tall), V3(0, hasBoss ? 2.1 : 1.0, -2.5), { speed: 2.5 });
   }
@@ -855,6 +884,7 @@ class BattleView extends BaseView {
   }
   onTurn(u) {
     const e = this.ent(u); if (!e) return;
+    this.fit = null;
     if (e.ally) {
       this.focus(e);
       this.face(e, this.enemyCenter());
@@ -894,7 +924,7 @@ class BattleView extends BaseView {
     const mv = MOVES[this.animOf(opt)];
     const away = mv && mv.keep ? this.park(src) : this.recall(src);
     this.lastAttack = { src, moved: away };
-    this.unfocus(); this.sway = 0;
+    this.unfocus(); this.sway = 0; this.fitFoe(tEnts);
     if (mv && mv.attack) { await mv.attack.call(this, e, tEnts, { col, ult, kind, opt }); if (ult) GFX.shake(0.3); return; }
     if (m.style === 'melee' && !opt.ranged) {
       const multi = tEnts.length > 2;
@@ -946,6 +976,7 @@ class BattleView extends BaseView {
   async quickShot(src, t, kind, opt = {}) {
     const e = this.ent(src), te = this.ent(t); if (!e || !te) return;
     const col = ELEMENTS[this.b.elemOf(src, kind, opt)].color, mv = MOVES[this.animOf(opt)];
+    this.fitFoe([te]);
     if (mv && mv.hop) return mv.hop.call(this, e, te, { col, ult: kind === 'ult', kind, opt });
     if (this.lastAttack && this.lastAttack.src === src && this.lastAttack.moved) {
       const dest = this.meleeSpot(te, 0.7);
@@ -962,6 +993,7 @@ class BattleView extends BaseView {
   async restrike(src, t, i, kind, opt = {}) {
     const e = this.ent(src), te = this.ent(t); if (!e || !te) return;
     const m = e.model, col = ELEMENTS[this.b.elemOf(src, kind, opt)].color, mv = MOVES[this.animOf(opt)];
+    this.fitFoe([te]);
     if (mv && mv.restrike) return mv.restrike.call(this, e, te, i, { col, ult: kind === 'ult', kind, opt });
     if (!this.lastAttack || this.lastAttack.src !== src || !this.lastAttack.moved) { await this.fx.projectile(m.tipPos(), this.hitPoint(t), col, { dur: 0.2, size: 0.5, arc: 0.3 }); return; }
     this.face(e, te.home);
@@ -973,7 +1005,7 @@ class BattleView extends BaseView {
   async motion(src, anim, targets) {
     const e = this.ent(src), mv = MOVES[anim]; if (!e || !mv) return;
     const ts = targets.map(t => this.ent(t)).filter(Boolean), col = this.b.abColor(src);
-    this.unfocus(); this.sway = 0;
+    this.unfocus(); this.sway = 0; this.fitFoe(ts);
     if (mv.attack) { this.lastAttack = { src, moved: this.recall(src) }; await mv.attack.call(this, e, ts, { col, ult: false, kind: 'skill', opt: {} }); }
     else if (mv.support) await mv.support.call(this, e, targets, { col });
   }
@@ -1716,7 +1748,19 @@ class BattleView extends BaseView {
         // 当たりの枠のずれは .e-hit の top に直に書く（毎フレーム変わる値を el のカスタムプロパティにすると、
         //   transition のある HP の帯などのぶん Safari がメモリを手放さない）
         const hit = el.querySelector('.e-hit');
-        if (hit) { hit.style.top = (yTop - clamp(yTop, 150, 640)).toFixed(1) + 'px'; hit.style.height = Math.max(40, yBot - yTop) + 'px'; hit.style.width = Math.max(60, w) + 'px'; }
+        if (hit) {
+          const hh = Math.max(40, yBot - yTop);
+          hit.style.top = (yTop - clamp(yTop, 150, 640)).toFixed(1) + 'px'; hit.style.height = hh + 'px'; hit.style.width = Math.max(60, w) + 'px';
+          // ダメージの数字（.fx の中で上から 30% あたり）は、枠のうち画面に見えている部分に出す
+          //   （寄りのカメラで大きな敵の頭が画面の外へ出ると、枠の上のほうも外へ出て、数字が見えなくなる）
+          const fx = e.fxEl && e.fxEl.parentNode === hit ? e.fxEl : (e.fxEl = hit.querySelector('.fx'));
+          if (fx) {
+            const least = Math.min(FX_MIN, hh);
+            let a = clamp(FX_TOP - yTop, 0, hh), z = clamp(FX_BOT - yTop, 0, hh);
+            if (z - a < least) { a = Math.max(0, z - least); z = a + least; }
+            fx.style.top = a.toFixed(1) + 'px'; fx.style.height = (z - a).toFixed(1) + 'px'; fx.style.bottom = 'auto';
+          }
+        }
       }
       if (e.ally && u.anchor) {
         v.copy(this.hitPoint(u)); v.y += 0.4; v.project(cam);
