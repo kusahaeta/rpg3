@@ -1630,19 +1630,12 @@ const FIELD_ZONES = {
     anchor: [7, 41], spawn: [0, 43], chestAt: [[-51, 29], [29, -41], [53, 43], [-25, 7]], exits: [{ key: 's', to: 'valley' }, { key: 'd', to: 'cave_lake', stair: 'down' }],
     // 光の水晶を三つ灯すと、大空洞の南の大水晶が光を放つ。十五枚の光の鏡（五色。同じ色はいっしょに回る）で光の筋を曲げ、
     // 坑道の受けの水晶まで導くと、影の壁が消える。正解は一通り（十枚の鏡を通る）。光の当たった鏡から順に直すだけでは解けない
-    // はじめは鏡も台もない。三つ灯して大水晶のそばへ来ると、シロが魔法で十五枚の鏡を出す。向きはばらばらで、壁へは届かない（beam.call）
+    // はじめは鏡も台もない。三つ灯すと大水晶の前に目的地の印が出て、着くと会話シーン（c4_03m）でシロが魔法で十五枚の鏡を出す。向きはばらばらで、壁へは届かない（beam.call）
     seals: [{ id: 'caveSeal1', wall: [-2, -25.3, 6, -24.7], lamps: [[-31, -43], [51, 13], [51, -41]], after: 'c4_03b', openAfter: 'c4_03c',
       openToast: '光の筋が受けの水晶に届くと、影の壁が、光にとけて消えた！',
       beam: { from: [-7, 15], dir: 'n', to: [1, -19], init: [1, 0, 0, 1, 1],
         mirrors: [[-7, -3, 3], [1, -3, 2], [1, 11, 2], [7, 11, 0], [7, -7, 1], [-11, -7, 4], [-11, -3, 0], [-17, -3, 2], [-17, -9, 3], [1, -9, 0], [9, -9, 1], [21, 11, 0], [-3, -5, 0], [15, 1, 1], [9, 11, 0]],
-        call: { who: 'shiro', r: 4.5, toast: '三つの光が、大水晶に集まった！　大空洞の南の、大水晶のところへ行ってみよう',
-          // 大水晶のそばへ来ると：シロが魔法で鏡を出す（lines）→ 鏡がそろって光が曲がる → 壁へは届かず、鏡を回すことになる（after）
-          lines: [['n', '大水晶が、まぶしい光を放っている。……けれど光の筋は、まっすぐ北へのびて、岩壁に当たって止まっていた。'], ['kuro', '……やはり、まっすぐでは届かないか。'],
-            ['shiro', 'ふふん、ここからが天才の出番よ。……光が曲がらないなら、曲げる道具を作ればいいの。'], ['shiro', '光よ、鏡となって、道を照らしなさい！']],
-          after: [['n', '光の筋は、鏡に当たって曲がった。……けれど、影の壁とは、ぜんぜんちがうほうへ進んでいく。'], ['mike', 'すごーい、光が曲がった！　……あれ？　壁のほうに、行ってないよ？'],
-            ['shiro', 'お、おかしいわね……。いそいで出したから、鏡の向きが、ばらばらになっちゃったみたい。'], ['kuro', '……枠の色を見ろ。同じ色の鏡は、魔力でつながっているようだ。一枚回せば、同じ色の鏡がみんな回るぞ。'],
-            ['shiro', 'し、仕様よ、仕様！　……目の前の鏡ばかり回してたら、光が迷子になるわ。光がどこを通るか、先まで考えましょ。'],
-            ['n', '（光の鏡の前で{ F |「調べる」}を押すと、その色の鏡がみんな回る。五色の鏡の向きを組み合わせて、光の筋を坑道の受けの水晶まで導こう）']],
+        call: { who: 'shiro', at: [-7, 11.5], scene: 'c4_03m', toast: '三つの光が、大水晶に集まった！　大空洞の南の、大水晶のところへ行ってみよう',
           away: '大水晶が、まぶしい光を放っている。……けれど光の筋は、まっすぐ北へのびて、岩壁に当たって止まっている。シロなら、何か思いつくかもしれない。（シロを編成に入れよう）' } } }],
     notes: [{ at: [-53, -11], mark: [-0.6, 2.4, 0], title: '壁のひっかき傷', text: '四本の爪あとが並んでいる。……「影の四剣、ここに参上」' },
       { at: [-50, -14], mark: 1.0, title: '焚き火のあと', text: '石を並べた、小さな焚き火のあと。四匹ぶんの足あとが、奥へと続いている。' }],
@@ -4205,8 +4198,8 @@ class ZoneKit {
   }
   // 光の筋（seals の beam）：大水晶（from）・光の鏡（mirrors: [x, z, 最初の向き]）・受けの水晶（to）。鏡の向きは Save.data.flags（id_m番号）に残す
   //   光の水晶をすべて灯すと、大水晶が光を放つ。光の鏡で曲げた光の筋が受けの水晶に届くと、影の壁が消える（FieldView.turnMirror）
-  //   call：はじめは鏡も台もなく、光の水晶をすべて灯して大水晶のそばへ来ると、call.who の子が魔法で台ごと鏡を出す
-  //   （FieldView.updateMirrorCall。出したことは id_mir に残す）。前のセーブで鏡を回したことがあれば（id_g色）、はじめから鏡がある
+  //   call：はじめは鏡も台もなく、光の水晶をすべて灯すと大水晶の前（call.at）に目的地の印が出て、着くと会話シーン（call.scene）で、
+  //   call.who の子が魔法で台ごと鏡を出す（FieldView.mirrorGoal。シーンでは fx: 'mirrors'。見終えたら id_mir に残す）。前のセーブで鏡を回したことがあれば（id_g色）、はじめから鏡がある
   beamParts(S, o, flags) {
     const B = S.beam, kit = this, T = this.T, HY = 1.15;
     const gst = (B.init || [0]).map((v, g) => flags[`${S.id}_g${g}`] ?? v);
@@ -4262,6 +4255,19 @@ class ZoneKit {
         const r = b.called ? traceBeam(T, B, beamStates(B, b.gst)) : traceBeam(T, bare, []); draw(r.pts); b.hit = r.hit; rc.material = r.hit ? litM : dimM;
       } };
     b.update();
+    // 会話シーンの fx: 'mirrors'：大水晶に近い台から順に、台ごと鏡があらわれ、そろったら光の筋を引きなおす（this は会話シーンの画面）
+    if (this.v.hooks && !called) this.v.hooks.mirrors = function () {
+      const root = this.set && this.set.root; let last = 0;
+      for (const m of mirrors) {
+        const ms = 200 + Math.hypot(m.pos.x - fx, m.pos.z - fz) * 45; last = Math.max(last, ms);
+        setTimeout(() => {
+          m.show(); const w = root ? root.localToWorld(m.pos.clone()) : m.pos.clone();
+          this.fx.pillar(w, MIRROR_COLS[m.g][1], { h: 3.5, r: 0.5, life: 0.7 }); this.p.burst(w.add(V3(0, 1.2, 0)), '#cfefff', 24, { speed: 2.5, up: 1, life: 0.7, size: 0.08 });
+          Sfx.tone(990 + m.g * 110, 0.16, 'sine', 0.03, 0);
+        }, ms);
+      }
+      setTimeout(() => { b.called = true; b.update(); }, last + 200);
+    };
     this.tick((dt, t) => {
       mirrors.forEach(m => {
         m.pivot.rotation.y += (m.target - m.pivot.rotation.y) * (1 - Math.exp(-10 * dt));

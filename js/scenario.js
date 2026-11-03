@@ -1425,6 +1425,28 @@ const SCENES = {
       ['shiro', 'それは、見てのお楽しみ。', { f: 'smug', r: { kuro: 'serious' } }],
       ['n', '（洞窟のあちこちにある「光の水晶」を三つ灯すと、大空洞の南の大水晶が光を放つ。光ったら、大水晶のところへ行こう）', { cam: 'wide', dur: 8 }],
     ] },
+  // 黒影洞窟 1F：光の水晶を三つ灯して、大水晶の前へ来たとき（FieldView.mirrorGoal）。シロが魔法で台ごと光の鏡を出す（fx: 'mirrors'）が、
+  //   鏡の向きはばらばらで、光の筋は壁へ届かない。鏡を回して直すことになる
+  c4_03m: { title: '光の鏡', bgm: 'zone',
+    stage: { zone: 'cave', at: [-4, 9], face: 0, points: { crystal: [-3, 1.7, -6], stop: [-3, 1, 21], mirrors: [1, 1, 12] },
+      // beam：一行の北東の高いところから、一行ごしに光る大水晶と、北へのびる光の筋（大水晶の南は岩壁で、うしろからは撮れない）。
+      //   field：東の高いところから、鏡があらわれる大空洞と、曲がった光の筋を見わたす
+      shots: { beam: { pos: [4.5, 5.4, 8.5], look: [-2, -0.3, -1.5] }, field: { pos: [9, 8.5, 3], look: [-5, 0, 13] } } },
+    lines: [
+      ['n', '三つの光を集めた大水晶が、まぶしく輝いている。……けれど光の筋は、まっすぐ北へのびて、岩壁に当たって止まっていた。', { cam: 'beam', dur: 8, look: { all: 'stop' } }],
+      ['kuro', '……やはり、まっすぐでは届かないか。', { f: 'serious', g: 'lookDown' }],
+      ['mike', 'シロ、考えがあるって言ってたよね！　どうするの？', { f: 'serious', g: 'tilt', to: 'shiro' }],
+      ['shiro', 'ふふん、ここからが天才の出番よ。……光が曲がらないなら、曲げる道具を作ればいいの。', { f: 'smug', g: 'hipHand' }],
+      ['shiro', '光よ、鏡となって、道を照らしなさい！', { f: 'serious', fx: 'wave:shiro', stance: { shiro: 'ready' }, cam: 'shiro', close: true }],
+      ['n', 'シロが杖をかかげると、大空洞のあちこちに、石の台と光の鏡が、つぎつぎとあらわれた！', { fx: 'mirrors', lock: 3.4, cam: 'field', dur: 9, look: { all: 'mirrors' }, r: { mike: 'surprise', kuro: 'surprise', tama: 'surprise' } }],
+      ['n', '光の筋は、鏡に当たって曲がった。……けれど、影の壁とは、ぜんぜんちがうほうへ進んでいく。', { cam: 'field', dur: 7 }],
+      ['mike', 'すごーい、光が曲がった！　……あれ？　壁のほうに、行ってないよ？', { f: 'surprise', g: 'point', look: { mike: 'mirrors' } }],
+      ['shiro', 'お、おかしいわね……。いそいで出したから、鏡の向きが、ばらばらになっちゃったみたい。', { f: 'worry', g: 'think' }],
+      ['kuro', '……枠の色を見ろ。同じ色の鏡は、魔力でつながっているようだ。一枚回せば、同じ色の鏡がみんな回るぞ。', { f: 'serious', g: 'explain', look: { kuro: 'mirrors' } }],
+      ['shiro', 'し、仕様よ、仕様！　……目の前の鏡ばかり回してたら、光が迷子になるわ。光がどこを通るか、先まで考えましょ。', { f: 'pout', g: 'hipHand', r: { kuro: 'serious' } }],
+      ['tama', '……かがみ……きらきら……。', { f: 'sleepy', g: 'tilt', look: { tama: 'mirrors' } }],
+      ['n', '（光の鏡の前で{ F |「調べる」}を押すと、その色の鏡がみんな回る。五色の鏡の向きを組み合わせて、光の筋を坑道の受けの水晶まで導こう）', { cam: 'wide', dur: 8 }],
+    ] },
   c4_03c: { title: '割れた盾', bgm: 'sad',
     stage: { zone: 'cave_lake', at: [-11, 16], face: 0, points: { relics: [-2.4, 0.5, 3], wall: [11, 2, 8], east: [62, 3, 39] } },
     lines: [

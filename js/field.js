@@ -87,6 +87,7 @@ class FieldView extends BaseView {
     this.curLook.set(sp.x, gy + 1.4, sp.z);
     // 目的地の上から再開した場合は、一度離れるまで到着扱いにしない
     this.questHold = !!(this.quest && !this.quest.gate && Math.hypot(this.quest.pos.x - sp.x, this.quest.pos.z - sp.z) < 2.4);
+    this.mirrorGoal();
     this.rememberPos();
     this.playBgm();
   }
@@ -409,8 +410,12 @@ class FieldView extends BaseView {
       for (let a = 0; a < Math.PI * 2; a += 0.4) { const x = qx + Math.cos(a) * r, z = qz + Math.sin(a) * r; if (!this.blocked(x, z, 1.2) && (!this.T || this.T.reach[this.T.at(x, z)])) { spot = { x, z }; found = true; break; } }
       if (found) break;
     }
-    const sy = this.gy(spot.x, spot.z), bh = this.T ? Math.min(40, this.T.ceilOf(this.T.at(spot.x, spot.z)) - sy) : 40;
-    const g = new THREE.Group(); g.position.set(spot.x, sy, spot.z); this.scene.add(g);
+    this.quest = { step, ...this.questMark(spot.x, spot.z) };
+  }
+  // 目的地の印：金の光の柱と、ひし形の宝石と、床の輪（近くの敵は消す）
+  questMark(x, z) {
+    const sy = this.gy(x, z), bh = this.T ? Math.min(40, this.T.ceilOf(this.T.at(x, z)) - sy) : 40;
+    const g = new THREE.Group(); g.position.set(x, sy, z); this.scene.add(g);
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.6, bh, 16, 1, true), new THREE.MeshBasicMaterial({ color: hdr('#ffd66b', 1.4), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
     beam.position.y = bh / 2; g.add(beam);
     const dia = new THREE.Mesh(new THREE.OctahedronGeometry(0.35), glowMat('#ffd66b', 3)); dia.position.y = 2.2; dia.scale.y = 1.5; g.add(dia);
@@ -418,8 +423,25 @@ class FieldView extends BaseView {
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; g.add(ring);
     // 土の道や水たまりの塗り（renderOrder 1〜2）より後に描く。先に描くと、深度を書かない光の柱と輪が塗りで上書きされる
     beam.renderOrder = ring.renderOrder = 3;
-    this.groups.forEach(gr => { if (Math.hypot(gr.home.x - spot.x, gr.home.z - spot.z) < 7) { gr.alive = false; this.scene.remove(gr.model.group); } });
-    this.quest = { step, pos: V3(spot.x, sy, spot.z), g, dia, ring };
+    this.groups.forEach(gr => { if (Math.hypot(gr.home.x - x, gr.home.z - z) < 7) { gr.alive = false; this.scene.remove(gr.model.group); } });
+    return { pos: V3(x, sy, z), g, dia, ring };
+  }
+  // 寄り道の目的地：物語の目的地と同じ印を出し、そのあいだは物語の目的地の印・案内をかくす。着くと onArrive（clearSubGoal でもとにもどす）
+  setSubGoal(x, z, onArrive) {
+    const main = this.quest, m = this.questMark(x, z);
+    m.label = document.createElement('div'); m.label.className = 'fd-qmark'; this.root.querySelector('.fd-world').appendChild(m.label);
+    if (main) { if (main.label) main.label.style.display = 'none'; if (main.g) main.g.visible = false; }
+    const em = this.root.querySelector('.fd-quest em'); if (em) em.style.display = 'none';
+    this.quest = { ...m, step: main && main.step, main, onArrive, sub: true };
+    this.questHold = Math.hypot(x - this.player.pos.x, z - this.player.pos.z) < 2.4;
+  }
+  clearSubGoal() {
+    const q = this.quest; if (!q || !q.sub) return;
+    this.scene.remove(q.g); q.label.remove();
+    const main = this.quest = q.main;
+    if (main) { if (main.label) main.label.style.display = ''; if (main.g) main.g.visible = true; }
+    const em = this.root.querySelector('.fd-quest em'); if (em) em.style.display = '';
+    this.questHold = !!(main && !main.gate && main.pos.distanceTo(this.player.pos) < 2.4);
   }
   questArrive() {
     if (this.busy || !this.quest || this.quest.gate) return;
@@ -1862,7 +1884,7 @@ class FieldView extends BaseView {
       o.beam.active = true; o.beam.update(); o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
       this.fx.pillar(V3(o.beam.B.from[0], this.gy(...o.beam.B.from), o.beam.B.from[1]), '#cfefff', { h: 8, r: 1, life: 1 });
       if (o.beam.hit) this.openSeal(o);
-      else setTimeout(() => { Sfx.heal(); this.toast(!o.beam.called ? o.beam.B.call.toast : S.beamToast || Tx('三つの光が、大水晶に集まった！　光の鏡で、光の筋を影の壁まで導こう')); }, 500);
+      else { this.mirrorGoal(); setTimeout(() => { Sfx.heal(); this.toast(!o.beam.called ? o.beam.B.call.toast : S.beamToast || Tx('三つの光が、大水晶に集まった！　光の鏡で、光の筋を影の壁まで導こう')); }, 500); }
     } else if (all) {
       o.lamps.forEach(x => { x.left = 0; delete flags[S.id + '_t' + x.i]; });
       this.openSeal(o);
@@ -1886,40 +1908,22 @@ class FieldView extends BaseView {
     if (!b.active) { this.toast('光の鏡の向きが変わった。……今は、光が来ていない'); return; }
     if (b.hit && !o.open) this.openSeal(o);
   }
-  // 光の鏡を出すできごと（beam.call）：光の水晶をすべて灯して、大水晶のそば（call.r）へ来ると、call.who の子が魔法で台ごと鏡を出す。
-  //   鏡は近い順にあらわれ、そろうと光の筋を引きなおす（向きはばらばらで、壁へは届かない）。その子が一行にいなければ、近づくたびに away を出す
-  updateMirrorCall() {
-    const p = this.player.pos;
+  // 光の鏡を出すできごと（beam.call）：光の水晶をすべて灯して鏡がまだなら、大水晶の前（call.at）に目的地の光の柱を出す。
+  //   着くと、会話シーン（call.scene）で call.who の子が魔法で台ごと鏡を出す。見終えたら id_mir に残して、鏡のある区画へもどる。
+  //   その子が一行にいなければ away を出し、一度離れてまた来ると、もう一度
+  mirrorGoal() {
     for (const o of this.sealObjs || []) {
-      const b = o.beam; if (!b || !b.B.call || b.called || o.open || !b.active) continue;
-      const C = b.B.call, [fx, fz] = b.B.from, d = Math.hypot(p.x - fx, p.z - fz);
-      if (d > C.r + 2) b.warned = false;
-      if (d > C.r || b.warned) continue;
-      if (!this.team.some(m => m.key === C.who)) { b.warned = true; this.startTalk('', [['n', C.away]]); continue; }
-      this.callMirrors(o);
+      const b = o.beam; if (!b || !b.B.call || b.called || o.open || !b.active || (this.quest && this.quest.sub)) continue;
+      const C = b.B.call;
+      this.setSubGoal(C.at[0], C.at[1], () => {
+        if (!this.team.some(m => m.key === C.who)) { this.startTalk('', [['n', C.away]]); return; }
+        this.busy = true; this.keys.clear();
+        this.root.querySelector('.fd-wipe').classList.add('on');
+        setTimeout(() => this.leave(() => App.go(DialogueScreen, C.scene, () => {
+          (Save.data.flags || (Save.data.flags = {}))[o.S.id + '_mir'] = true; Save.save(); App.go(FieldScreen);
+        })), 700);
+      });
     }
-  }
-  callMirrors(o) {
-    const b = o.beam, C = b.B.call, has = ([k]) => k === 'n' || this.team.some(m => m.key === k);
-    (Save.data.flags || (Save.data.flags = {}))[o.S.id + '_mir'] = true; b.called = true; Save.save();
-    this.startTalk('', C.lines.filter(has));
-    this.talk.after = () => {
-      this.busy = true;
-      const p = this.player.pos;
-      Sfx.heal(); this.p.burst(p.clone().add(V3(0, 1.4, 0)), '#cfefff', 40, { speed: 3, up: 2, life: 0.9 });
-      let last = 0;
-      for (const m of b.mirrors) {
-        const ms = 250 + Math.hypot(m.pos.x - p.x, m.pos.z - p.z) * 30; last = Math.max(last, ms);
-        setTimeout(() => {
-          m.show(); this.fx.pillar(m.pos, MIRROR_COLS[m.g][1], { h: 3.5, r: 0.5, life: 0.7 });
-          this.p.burst(m.pos.clone().add(V3(0, 1.2, 0)), '#cfefff', 24, { speed: 2.5, up: 1, life: 0.7, size: 0.08 });
-          if (m.pos.distanceTo(this.player.pos) < 14) Sfx.tone(990 + m.g * 110, 0.16, 'sine', 0.04, 0);
-        }, ms);
-      }
-      // 鏡がそろったら光の筋を引きなおして、少し見せてから「届かない」の掛け合い
-      setTimeout(() => { b.update(); if (b.hit && !o.open) this.openSeal(o); }, last + 150);
-      setTimeout(() => { this.busy = false; if (!o.open) this.startTalk('', C.after.filter(has)); }, last + 1400);
-    };
   }
   // 記憶のかけらを、ちがう順にさわった：灯した光がみんな消えて、遠くへ押しもどされる
   wrongOrder(o) {
@@ -3262,7 +3266,7 @@ class FieldView extends BaseView {
     else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
     this.updateRoots(d, t); this.updateShadows(d, t); this.updateNap(d, t);
     this.updateNemuri(t);
-    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateMirrorCall(); this.updateStroke(); this.updateSizeReset(); this.updateLoop(); }
+    if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); this.updateSizeReset(); this.updateLoop(); }
     this.updateGuards(d, t); this.updateRollers(d, t);
     if (this.followers && !this.flight) this.updateFollowers(d, t);
     this.updateEnemies(d, t);
@@ -3339,7 +3343,7 @@ class FieldView extends BaseView {
     if (this.quest) {
       const q = this.quest, dist = q.pos.distanceTo(p.pos);
       if (q.dia) { q.dia.rotation.y = t * 2; q.dia.position.y = 2.2 + Math.sin(t * 2.5) * 0.15; q.ring.scale.setScalar(1 + Math.sin(t * 3) * 0.05); }
-      this.root.querySelector('.fd-qd').textContent = `　${Math.round(dist)}m`;
+      const qd = this.root.querySelector('.fd-qd'); if (qd) qd.textContent = `　${Math.round(dist)}m`;
       v.set(q.pos.x, q.pos.y + 3, q.pos.z).project(this.camera);
       const onScreen = v.z < 1 && Math.abs(v.x) < 0.95 && Math.abs(v.y) < 0.95;
       let sx = (v.x + 1) * 640, sy = (1 - v.y) * 360;
@@ -3352,6 +3356,7 @@ class FieldView extends BaseView {
       q.label.classList.toggle('edge', !onScreen);
       q.label.textContent = onScreen ? (q.gate ? Tx('◆ {0}へ {1}m', q.via, Math.round(dist)) : `◆ ${Math.round(dist)}m`) : '◆';
       if (dist >= 2.4) this.questHold = false;
+      else if (q.onArrive && !this.questHold && !this.busy) { this.questHold = true; this.fx.pillar(q.pos, '#ffd66b', { h: 8, r: 1.2, life: 0.8 }); Sfx.select(); q.onArrive(); }
       else if (!q.gate && !this.questHold && !this.busy) this.questArrive();
     }
     const it = this.busy ? null : this.nearestInteract();
