@@ -221,6 +221,13 @@ for n in title hill talk fluff town battle vista; do node tools/promo/rec.mjs $n
 node tools/promo/make.mjs <場面のフォルダ> <出力のフォルダ>
 ```
 
+必殺技から始まる版は `promo/app-store-1920x886-ult.mp4`（28 秒。Google Play 用は `promo/google-play-1920x1080-ult.mp4`）。検索結果ではプレビューの頭が音なしで流れるので、いちばん動きのある必殺技を先にした。ミケ「炎の大車輪」→ シロ「ダイヤモンドダスト」→ マオウ「暗黒ねこ波」（それぞれカットイン → 技 → ダメージの数字）→ シロの「ファイア！」で魚が降る → 綿毛のてっぺんで眠るタマ → タイトル。曲は戦闘の曲から、魚の場面でタイトルの曲へ（後半はちょうど 6 小節で、街めぐり版と同じ所で終わる）。両わきの星の帯は入れず、ゲームの画面を横いっぱいにして上下を切る（場面ごとの位置は `PLANS.ult.crop`）。並びは `make.mjs` の `PLANS.ult`：
+
+```
+for n in battleUlt talk tamaNap title; do node tools/promo/rec.mjs $n <場面のフォルダ>/$n; done
+node tools/promo/make.mjs <場面のフォルダ> <出力のフォルダ> --plan=ult
+```
+
 字幕入り版は `promo/app-store-1920x886-captions.mp4`（Google Play 用は `promo/google-play-1920x1080-captions.mp4`）。場面ごとに「2頭身のにゃんこと 大冒険」「にぎやかな仲間たち」などの字幕が上に出て、最後の見晴らし台にタイトルの文字が出る。字幕の文字と位置は `make.mjs` の `CAPTIONS`。探索に入ったときの地名が字幕と重なるので、探索の場面（hill・fluff・town）だけ地名を消して撮りなおし、ほかの場面はそのまま使う：
 
 ```
