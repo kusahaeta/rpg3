@@ -1393,7 +1393,7 @@ const STORY = [
     { t: 'field', zone: 'valley', at: [-16, -8], scene: 'c4_02', battle: '4-1', after: 'c4_02b', g: '谷の丘の上の墓標へ' },
     { t: 'field', zone: 'valley', at: [18, -5], scene: 'c4_02c', g: '谷の北東、川のほとりの野営あとで、影の四剣の記録をさがす' },
     { t: 'field', zone: 'cave', at: [0, 37], scene: 'c4_03', battle: '4-2', after: 'c4_03a', g: '谷の北、黒影洞窟へ' },
-    { t: 'field', zone: 'cave', at: [2, -15], scene: 'c4_03b', start: ['cave', -2, 6], yaw: Math.PI, g: '黒影洞窟の奥へ進む' },   // start：c4_03a を話した大空洞から歩き出す
+    { t: 'field', zone: 'cave', at: [2, -15], scene: 'c4_03b', start: ['cave', -2, 6], yaw: Math.PI, g: '黒影洞窟の奥へ進む', also: ['c4_03m'] },   // start：c4_03a を話した大空洞から歩き出す
     { t: 'field', zone: 'cave_lake', at: [-11, 15], scene: 'c4_03c', g: '光の水晶を三つ灯し、大水晶の光を光の鏡で影の壁まで導いて、洞窟の下の階へ' },
     { t: 'field', zone: 'cave_deep', at: [0, 35], scene: 'c4_03d', g: '最初の光が消える前に光の水晶を三つとも灯して橋の影の壁を消し、洞窟の最深部へ' },
     { t: 'field', zone: 'cave_deep', at: [0, -30], scene: 'c4_04', battle: '4-3', after: 'c4_05', g: '影の四剣が集まった順に記憶のかけらにふれて闇の扉を開き、三本の剣の眠る大広間へ' },
@@ -1463,7 +1463,8 @@ const STORY_MAIN = 8;
 
 // シーンに章の名前を付け、舞台（stage）を集める
 const SCENE_STAGES = {};
-STORY.forEach(ch => ch.steps.forEach(st => [st.id, st.scene, st.after].filter(Boolean).forEach(id => { if (SCENES[id]) SCENES[id].chapter = ch.title.split('　')[0]; })));
+// also：その段階のフィールドで起きる会話シーン（章の名前だけつける。あらすじには出さない）
+STORY.forEach(ch => ch.steps.forEach(st => [st.id, st.scene, st.after, ...(st.also || [])].filter(Boolean).forEach(id => { if (SCENES[id]) SCENES[id].chapter = ch.title.split('　')[0]; })));
 for (const [id, sc] of Object.entries(SCENES)) { if (sc.stage) SCENE_STAGES[id] = sc.stage; if (!sc.chapter && id.startsWith('b_')) sc.chapter = '友情の特別イベント'; }
 
 const RECAP = {
