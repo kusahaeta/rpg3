@@ -6322,12 +6322,42 @@ class ZoneKit {
     }
     this.boxCol(x, z, s, s, s, ry);
   }
-  lantern(x, z, col = '#ffb04a', h = 2.6) {
-    this.box(x, z, 0.18, h, 0.18, 'wood2');
-    this.mesh(new THREE.BoxGeometry(0.7, 0.1, 0.1), 'wood2', x + 0.3, h - 0.1, z);
-    this.mesh(new THREE.BoxGeometry(0.28, 0.36, 0.28), this.glow(col, 2.2), x + 0.55, h - 0.45, z, { noShadow: true });
+  // 木の灯り柱（高さ h、腕は ry の向きの +x）：石の根石に木目の角柱と頭の笠、腕と筋かい。腕の先の金具から、
+  //   鉄の枠と屋根の灯籠を吊るす（灯りは光のにじみつき）
+  lantern(x, z, col = '#ffb04a', h = 2.6, ry = 0) {
+    const y = this.gy(x, z), rot = [0, ry, 0], hs = posHash(x, z), F = this.benchMats().frame, B = (w, hh, d) => new THREE.BoxGeometry(w, hh, d);
+    const flat = g => { g = g.toNonIndexed(); g.computeVertexNormals(); return g; };   // 四角すいの面を平らに見せる
+    const plank = (len, t, k) => this.plankGeo(len, t, t, hs + k, len);
+    // 根石と柱、柱の頭の笠
+    this.mg('stone', B(0.36, 0.2, 0.36).translate(0, 0.1, 0), x, y, z, rot);
+    this.mg(F, plank(h - 0.15, 0.15, 0).rotateZ(Math.PI / 2).translate(0, 0.15 + (h - 0.15) / 2, 0), x, y, z, rot);
+    this.mg('wood2', flat(new THREE.ConeGeometry(0.15, 0.12, 4).rotateY(Math.PI / 4)).translate(0, h + 0.06, 0), x, y, z, rot);
+    // 腕と、その下の筋かい
+    const ya = h - 0.22, ax = 0.56;
+    this.mg(F, plank(0.82, 0.1, 1).translate(0.31, ya, 0), x, y, z, rot);
+    const bx0 = 0.075, by0 = ya - 0.42, bx1 = 0.4, by1 = ya - 0.05, bl = Math.hypot(bx1 - bx0, by1 - by0);
+    this.mg(F, plank(bl, 0.07, 2).rotateZ(Math.atan2(by1 - by0, bx1 - bx0)).translate((bx0 + bx1) / 2, (by0 + by1) / 2, 0), x, y, z, rot);
+    // 吊り金具：腕に巻いた帯と、短い棒・輪
+    this.mg('iron', B(0.06, 0.12, 0.12).translate(ax, ya, 0), x, y, z, rot);
+    const yt = ya - 0.17;   // 灯籠の屋根のてっぺん
+    this.mg('iron', B(0.025, ya - 0.05 - yt, 0.025).translate(ax, (ya - 0.05 + yt) / 2, 0), x, y, z, rot);
+    this.mg('iron', new THREE.TorusGeometry(0.035, 0.012, 6, 10).translate(ax, yt + 0.01, 0), x, y, z, rot);
+    // 灯籠：屋根・上の帯・光る火袋（四隅の柱と、各面のまん中の桟）・底板と下のつまみ
+    this.mg('iron', flat(new THREE.ConeGeometry(0.24, 0.15, 4).rotateY(Math.PI / 4)).translate(ax, yt - 0.075, 0), x, y, z, rot);
+    this.mg('iron', B(0.25, 0.035, 0.25).translate(ax, yt - 0.165, 0), x, y, z, rot);
+    const yc = yt - 0.33, gh = 0.28;
+    this.mg(this.glow(col, 2.2), B(0.2, gh, 0.2).translate(ax, yc, 0), x, y, z, rot);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) this.mg('iron', B(0.035, gh, 0.035).translate(ax + sx * 0.105, yc, sz * 0.105), x, y, z, rot);
+    for (const s of [-1, 1]) {
+      this.mg('iron', B(0.016, gh, 0.012).translate(ax, yc, s * 0.104), x, y, z, rot);
+      this.mg('iron', B(0.012, gh, 0.016).translate(ax + s * 0.104, yc, 0), x, y, z, rot);
+    }
+    this.mg('iron', B(0.26, 0.045, 0.26).translate(ax, yc - gh / 2 - 0.022, 0), x, y, z, rot);
+    this.mg('iron', flat(new THREE.ConeGeometry(0.06, 0.07, 4).rotateY(Math.PI / 4).rotateX(Math.PI)).translate(ax, yc - gh / 2 - 0.08, 0), x, y, z, rot);
+    // 光のにじみ（火袋のまん中）
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(col, 0.5), blending: THREE.AdditiveBlending, depthWrite: false }));
-    sp.scale.setScalar(1.8); sp.position.set(x + 0.55, h - 0.45 + this.gy(x, z), z); this.scene.add(sp);
+    sp.scale.setScalar(1.8); sp.position.set(x + Math.cos(ry) * ax, y + yc, z - Math.sin(ry) * ax); this.scene.add(sp);
+    this.col(x, z, 0.2, h);
   }
   stoneLantern(x, z, col = '#ffb04a') {
     this.box(x, z, 0.9, 0.3, 0.9, 'stone');
