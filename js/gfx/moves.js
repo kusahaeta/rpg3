@@ -2634,8 +2634,9 @@ Object.assign(BattleView.prototype, {
   closeCam(dest) { this.setCam(V3(dest.x + 3.3, 1.5, dest.z + 2.8), V3(dest.x - 0.4, 0.9, dest.z - 1.4), { speed: 5 }); },
   // 横から：手もとの動き（まくら・こぶし・しっぽ）が見えるように
   //   敵へ向かうと左手が -X 側になるので、左手のもの（まくら・ねこパンチ）が見えるよう、ふつうは左から映す
+  //   見る点は立ち位置から敵へ半分（0.75 まで。大きな敵では体の中に入り、カメラが体にめりこむ）
   sideCam(dest, t, side = -1) {
-    const mid = dest.clone().add(t.home).multiplyScalar(0.5);
+    const d = dest.distanceTo(t.home), mid = dest.clone().lerp(t.home, Math.min(0.5, 0.75 / Math.max(d, 0.01)));
     this.setCam(V3(mid.x + side * 2.3, 1.05, mid.z + 0.9), V3(mid.x, 0.7, mid.z), { speed: 9 });
   },
   // 立ち位置へ跳んでいく（攻撃のあとは attackEnd で戻る）
