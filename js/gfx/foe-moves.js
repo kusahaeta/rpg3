@@ -135,11 +135,14 @@ const FOE_MOVES = {
     })));
   },
   // 吐く（ほのお・こおり・胞子・ガス・ほこり・湯気・こけのこな）：口もとから、ねらった子へ流れていく
+  //   傘のある敵（ねこまたきのこ）は、ためるあいだ傘をふくらませ（userData.puff）、吐くときにぶるっとしぼむ
   async breath(e, ts, c) {
-    const o = c.mv.obj || 'fire', from = this.foeMouth(e), big = o === 'gas' || o === 'dust';
+    const o = c.mv.obj || 'fire', from = this.foeMouth(e), big = o === 'gas' || o === 'dust', U = e.model.group.userData;
     this.foeFlash(e, c.col);
+    U.puff = 1;
     await this.foePose(e, { ...POSES.cast, lean: -0.2, headX: -0.3 }, 0.2);
     this.foeLean(e, -0.15, 0.2);
+    U.puff = 0;
     this.foePose(e, { ...POSES.cast, lean: 0.25, headX: 0.15 }, 0.12);
     this.foeLean(e, 0.2, 0.12);
     const cols = { fire: ['#ff6a3c', '#ffd23c'], ice: ['#6fd6f5', '#ffffff'], spore: ['#ff9ad8', '#fff0a8'], gas: ['#9aff8a', '#ff9ad8'], dust: ['#b8b0a0', '#e8e0d0'], moss: ['#7ad84a', '#e8ffa8'], steam: ['#ffffff', '#ffb87a'] }[o] || [c.col, '#ffffff'];
