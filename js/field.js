@@ -3059,6 +3059,12 @@ class FieldView extends BaseView {
       if (kd === K.EXIT) { const E = T.exits[T.ch[i]]; g.fillStyle = E.cabin ? '#e8c77a' : T.locked.has(E.key) ? '#ff4d6d' : '#8ae0ff'; g.globalAlpha = 0.8; g.fillRect(x, y, s, s); g.globalAlpha = 1; }
       if (T.ch[i] === 'I') { g.fillStyle = '#ff5a78'; for (const [u, v] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) g.fillRect(x + u * s - 1.5, y + v * s - 1.5, 3, 3); }   // キャンディの柵
     }
+    // 池（zone.pond）：水ぎわの内側を 0.5m きざみでぬる
+    if (T.pond) {
+      g.fillStyle = '#3a8ad0';
+      for (const [bx, bz, br] of T.pond.blobs) for (let z = bz - br; z < bz + br; z += 0.5) for (let x = bx - br; x < bx + br; x += 0.5)
+        if (T.inPond(x + 0.25, z + 0.25)) g.fillRect((x + T.hw) * k, (z + T.hd) * k, 0.5 * k + 0.5, 0.5 * k + 0.5);
+    }
     // 壁・窓・段差の輪郭
     for (let r = 0; r < T.rows; r++) for (let c = 0; c < T.cols; c++) {
       const i = T.idx(c, r); if (T.kind[i] < K.FLOOR) continue;

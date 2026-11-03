@@ -15,7 +15,7 @@
 //  zone.floatBelow：その高さより低い床・階段は、奈落に浮かぶ岩盤（側面は板の厚みだけで、裏は岩肌）。それ以上の床は、奈落の底まで続く地面
 //  zone.rootRamps：階段は段を作らず、区画の組み立てで根をはわせて、根の上を歩いて下る坂にする
 // ============================================================
-const CELL = 2, STEP = 0.6, ABYSS = -40;
+const CELL = 2, STEP = 0.6, ABYSS = -40, POND_STOP = 0.1;
 const TK = { SOLID: 0, WINDOW: 1, VOID: 2, FLOOR: 3, STAIR: 4, LIFT: 5, DOOR: 6, EXIT: 7 };
 const STAIR_DIR = { '^': ['z', -1], 'v': ['z', 1], '<': ['x', -1], '>': ['x', 1] };
 const DIR4 = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // 北・東・南・西
@@ -37,6 +37,13 @@ class Terrain {
     this.cabinKeys = new Set((zone.exits || []).filter(e => e.lift).map(e => e.key));
     // くぼみ（zone.dents）：床をすり鉢状に下げる（流れ星のクレーターなど）。depth を負にすると、なだらかな丘（top：平らな頂上の半径）
     this.dents = (zone.dents || []).map(d => { const [x, z] = zonePoint(zone, d.at); return { x, z, r: d.r, depth: d.depth || 0.8, rim: d.rim || 0, w: d.w || 1, top: d.top || 0 }; });
+    // 池（zone.pond）：床をなだらかにへこませて水をはる。blobs：[x, z, r] のくぼみ（重なると深さが足されて、岸が丸くつながる）。
+    //   depth：一つのくぼみのまん中の深さ、lv：水面の床からの深さ、h：まわりの床の高さ。水ぎわ（水面から STOP 以内の地面）からは、水に入れない
+    if (zone.pond) {
+      const P = zone.pond, lv = P.lv || 0.45;
+      this.pond = { blobs: P.blobs.map(([x, z, r]) => [...zonePoint(zone, [x, z]), r]), depth: P.depth || 1.5, lv, y: (P.h || 0) - lv };
+      for (const [x, z, r] of this.pond.blobs) this.dents.push({ x, z, r, depth: this.pond.depth, rim: 0, w: 1, top: 0 });
+    }
     for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) {
       const i = r * this.cols + c, ch = rows[r][c] ?? '#';
       this.ch[i] = ch;
@@ -289,6 +296,15 @@ class Terrain {
     }
     return y;
   }
+  // 池の深さ（床から下へ。池のくぼみだけ）。水の深さは pondDepth - pond.lv
+  pondDepth(x, z) {
+    const P = this.pond; if (!P) return 0;
+    let y = 0;
+    for (const [bx, bz, r] of P.blobs) { const s = Math.hypot(x - bx, z - bz); if (s < r) { const u = 1 - (s / r) ** 2; y += P.depth * u * u; } }
+    return y;
+  }
+  // 池の水ぎわより内側か（m：水面から上へ、どこまでを水ぎわとするか）
+  inPond(x, z, m = 0) { return !!this.pond && this.pondDepth(x, z) > this.pond.lv - m; }
   // そのマスにくぼみがかかるか
   dentTouches(c, r) {
     const x0 = this.cx(c) - CELL / 2, z0 = this.cz(r) - CELL / 2;
@@ -330,7 +346,7 @@ class Terrain {
     let bad = 0;
     for (const [dx, dz] of RING) {
       const px = x + dx * r, pz = z + dz * r, i = this.at(px, pz);
-      if (!this.walkable(i, o) || !this.stepOk(this.groundOf(i, px, pz) - h0, o)) bad++;
+      if (!this.walkable(i, o) || !this.stepOk(this.groundOf(i, px, pz) - h0, o) || (this.pond && this.inPond(px, pz, POND_STOP))) bad++;
     }
     return bad;
   }
@@ -388,6 +404,7 @@ class Terrain {
     if (i < 0) return true;
     const k = this.kind[i];
     if (this.water[i]) return y < this.cap[i] + 0.15 || y > this.ceilOf(i) - 0.35;
+    if (this.pond && y < this.pond.y + 0.15 && this.inPond(x, z)) return true;
     if (k <= TK.WINDOW) return !this.open || y < (this.viewTop || this.top)[i] + 0.3;
     if (y > this.ceilOf(i) - 0.35) return true;
     if (k === TK.DOOR) return y > this.h[i] + 3.7;
@@ -1699,6 +1716,7 @@ function buildArchitecture(view, T) {
     }
     const pmesh = G.mesh(pm); if (pmesh) { pmesh.renderOrder = 1; scene.add(pmesh); }
   }
+  if (T.pond) buildPond(view, T);
   // 水面のきらめき
   if (A.water && view.zoneTicks) view.zoneTicks.push((dt, t) => { mats.water.emissiveIntensity = 0.26 + Math.sin(t * 1.3) * 0.06; });
 
@@ -1723,6 +1741,55 @@ function interiorLighting(view, zone) {
     else if (o.isDirectionalLight && o !== view.env.key) { o.color.set('#b8c6ff'); o.intensity *= 0.35; }
   });
   view.scene.fog.color.set(th.fog || '#141a2e'); view.scene.fog.density = th.fogD || 0.012;
+}
+
+// ------------------------------------------------------------
+//  池（zone.pond）の水面と水ぎわ。水面はくぼみより少し広く張り、はみ出したところは、まわりの地面にかくれる
+//   水面：深いところほど濃い青で透けにくく、浅い岸ぎわは底が透ける。水ぎわ：水の中から岸の少し上まで、ぬれた砂の帯
+// ------------------------------------------------------------
+function buildPond(view, T) {
+  const P = T.pond, S = CELL / 8;   // くぼみの床（dentSurf）と同じ細かさ・同じ格子点にそろえる
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const [x, z, r] of P.blobs) { x0 = Math.min(x0, x - r); x1 = Math.max(x1, x + r); z0 = Math.min(z0, z - r); z1 = Math.max(z1, z + r); }
+  x0 = Math.floor((x0 + T.hw) / S) * S - T.hw; z0 = Math.floor((z0 + T.hd) / S) * S - T.hd;
+  const nx = Math.ceil((x1 - x0) / S), nz = Math.ceil((z1 - z0) / S);
+  const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  // vert(x, z) → [y, r, g, b, a] か null。四隅のどれかの a が 0 より大きいマスだけ作る
+  const sheet = (vert, mat) => {
+    const V = [];
+    for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) V.push(vert(x0 + i * S, z0 + j * S));
+    const pos = [], col = [], idx = [], at = new Int32Array(V.length).fill(-1);
+    const use = k => { if (at[k] < 0) { const v = V[k], i = k % (nx + 1), j = (k / (nx + 1)) | 0; at[k] = pos.length / 3; pos.push(x0 + i * S, v[0], z0 + j * S); col.push(v[1], v[2], v[3], v[4]); } return at[k]; };
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+      const q = [(j + 1) * (nx + 1) + i, (j + 1) * (nx + 1) + i + 1, j * (nx + 1) + i + 1, j * (nx + 1) + i];
+      if (q.some(k => !V[k]) || !q.some(k => V[k][4] > 0)) continue;
+      const [a, b, c, d] = q.map(use); idx.push(a, b, c, a, c, d);
+    }
+    if (!idx.length) return null;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4)); g.setIndex(idx); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, mat); view.scene.add(m); return m;
+  };
+  const C = h => new THREE.Color(h), lerpC = (a, b, t) => a.clone().lerp(b, t);
+  // 水ぎわの砂：岸の上（水面から 0.28m）から水の中（0.6m）まで。水ぎわはぬれて濃く、上は乾いて白っぽい
+  const dry = C('#d8c79c'), wet = C('#a8916a'), under = C('#8a8a62');
+  const sand = sheet((x, z) => {
+    const y = T.groundAt(x, z); if (!Number.isFinite(y)) return null;
+    const hgt = P.lv - T.pondDepth(x, z), a = hgt > 0 ? 1 - smooth(0.06, 0.3, hgt) : 1 - smooth(-0.35, -0.65, hgt) * 0.6;
+    const c = hgt > 0 ? lerpC(wet, dry, smooth(0, 0.2, hgt)) : lerpC(wet, under, smooth(0, -0.4, hgt));
+    return [y + 0.012, c.r, c.g, c.b, a];
+  }, new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, depthWrite: false, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  if (sand) { sand.receiveShadow = true; sand.renderOrder = 1; }
+  // 水面：岸ぎわは明るい浅葱色で底が透け、深いところは濃い青
+  const shallow = C('#a6ecdc'), mid = C('#5cc0e4'), deep = C('#2c74bc');
+  const waterM = new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, depthWrite: false, roughness: 0.3, metalness: 0.08, emissive: '#2a78b8', emissiveIntensity: 0.2 });
+  const water = sheet((x, z) => {
+    const w = T.pondDepth(x, z) - P.lv; if (w < -0.3) return [P.y, 0, 0, 0, 0];
+    const t = clamp(w / 1.0, 0, 1), c = t < 0.35 ? lerpC(shallow, mid, t / 0.35) : lerpC(mid, deep, (t - 0.35) / 0.65);
+    return [P.y, c.r, c.g, c.b, 0.42 + 0.48 * smooth(0, 0.8, w)];
+  }, waterM);
+  if (water) water.renderOrder = 2;
+  if (view.zoneTicks) view.zoneTicks.push((dt, t) => { waterM.emissiveIntensity = 0.18 + Math.sin(t * 1.3) * 0.05; });
 }
 
 // ------------------------------------------------------------

@@ -65,6 +65,7 @@ Object.assign(EN, {
   'ミケの家': 'Mike\'s House',
   '表札に「ミケ」。……窓辺に、食べかけの魚が干してある。': 'The nameplate says "Mike." ...A half-eaten fish is drying by the window.',
   '猫神社': 'Cat Shrine',
+  'すんだ水の中を、にしきごいが、すいすい泳いでいる。……ミケのしっぽが、ぴくりと動いた。': 'Koi glide lazily through the clear water. ...Mike\'s tail gives a twitch.',
   '世界を作った猫の神さまの社。お賽銭箱の上の絵の神さまは、大きなあくびをしている。': 'The shrine of the cat god who made the world. The god painted above the offering box is letting out a big yawn.',
   // ── field-zones.js FIELD_ZONES.hill
   '村はずれの丘': 'Outskirts Hill',

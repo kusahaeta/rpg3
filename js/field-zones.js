@@ -58,16 +58,18 @@ const FIELD_ZONES = {
       '##000000000000000000000,,,,,,,,,,,,e',
       '##000000000000000000000,,,,,,,,,,,,e',
       '##00000000000000000,,0000000000000##',
-      '##00000000000000000,,00000000~~~00##',
-      '##00000000000000000,,000000~~~~~~0##',
-      '##00000000000000000,,000000~~~~~~0##',
-      '##00000000000000000,,000000~~~~~~0##',
-      '##00000000000000000,,0000000~~~~00##',
-      '###0000000000000000,,00000000~~~0###',
+      '##00000000000000000,,0000000000000##',
+      '##00000000000000000,,0000000000000##',
+      '##00000000000000000,,0000000000000##',
+      '##00000000000000000,,0000000000000##',
+      '##00000000000000000,,0000000000000##',
+      '###0000000000000000,,000000000000###',
       '####000000000000000,,00000000000####',
       '###################,,###############',
       '###################cc###############',
     ],
+    // 南東の池：三つのくぼみを重ねた、北東から南西へのびるそら豆の形。岸はなだらかな草地で、水ぎわは砂
+    pond: { blobs: [[24.5, 19.5, 6.4], [20.4, 22.6, 4.4], [28.4, 16.6, 3.8]] },
     spawn: [0, 10], anchor: [8, 7],   // anchor：ひとっとびで立つ所（anchor から村の中ほどへ 5m）が、第一章の村長に報告する目的地（[0, 5]）の上にならないように
     exits: [{ key: 'a', to: 'road1' }, { key: 'e', to: 'hill' }, { key: 'c', to: 'forest_in' }, { key: 'd', to: 'dream' }],
     areas: [{ name: 'ぽかぽか村・村長の家', at: [-8, -28, 10, -14] }, { name: 'ぽかぽか村・猫神社', at: [16, -28, 36, -14] }, { name: 'ぽかぽか村・猫神社の参道', at: [20, -14, 28, -8] },
@@ -106,6 +108,7 @@ const FIELD_ZONES = {
     notes: [{ at: [6.4, -11], face: 0, board: ['村の掲示板', '収穫祭は延期します　——村長'], title: '村の掲示板', text: '「にゃんだーの樹の実りが悪く、今年の収穫祭は延期します——村長」' , until: 'done' },
       { at: [6.4, -11], face: 0, board: ['村の掲示板', '収穫祭をひらきます　——村長'], title: '村の掲示板', when: 'done', text: '「にゃんだーの樹に、実がもどりました。今年の収穫祭は、盛大にひらきます！——村長」' },
       { at: [-21.8, -8], mark: [-0.9, 2.3, 0], title: 'ミケの家', text: '表札に「ミケ」。……窓辺に、食べかけの魚が干してある。' },
+      { at: [23, 14.2], mark: [0, 0.5, 1.6], title: '池', text: 'すんだ水の中を、にしきごいが、すいすい泳いでいる。……ミケのしっぽが、ぴくりと動いた。' },
       { at: [24, -23.5], mark: [0, 1.5, 2.55], reach: 3.2, title: '猫神社', text: '世界を作った猫の神さまの社。お賽銭箱の上の絵の神さまは、大きなあくびをしている。' }],
     map2d: [470, 380],
     // 第八章「村を守る」：c8_01 を見てから c8_02 を見るまで、影の獣が広場を囲む（c8_01 の舞台と同じ場所に、一行のほうを向いて立つ）。
@@ -5513,6 +5516,79 @@ class ZoneKit {
     this.col(x, z, r * 0.9, 0.3);
     return m;
   }
+  // ---------------- 池（zone.pond。地形が、くぼみと水面を作る）のほとり ----------------
+  // (cx, cz) から向き a へ進んで、水ぎわに出たところ。out：水ぎわから外へずらす m（負なら水の中へ）
+  pondEdge(cx, cz, a, out = 0) {
+    const T = this.T, dx = Math.cos(a), dz = Math.sin(a);
+    let d = 0; while (d < 30 && T.inPond(cx + dx * d, cz + dz * d)) d += 0.05;
+    return [cx + dx * (d + out), cz + dz * (d + out)];
+  }
+  // 水の深さ（水面から底まで。岸の上は負）
+  pondWater(x, z) { return this.T.pondDepth(x, z) - this.T.pond.lv; }
+  // 水ぎわの小石：池をぐるりと、水の中から岸の上まで
+  pondPebbles(cx, cz, n = 70) {
+    for (let i = 0; i < n; i++) {
+      const [x, z] = this.pondEdge(cx, cz, this.r() * Math.PI * 2, -0.3 + this.r() * 0.8), s = 0.1 + this.r() ** 2 * 0.22;
+      this.put('rock', x, this.gy(x, z) + s * 0.15, z, [s, s * 0.5, s * 0.8], [0, this.r() * 3, 0], this.tint(this.r() < 0.5 ? '#b4ae9e' : '#9a968a', 0.12));
+    }
+  }
+  // がまと葦のしげみ：細い葉と、茶色の穂。風でゆっくりゆれる（しげみごとに一つの形にまとめる）
+  reeds(x, z, n = 14, rad = 0.8) {
+    const r = this.r, leaf = [], spike = [], M = (g, px, py, pz, rx, rz) => g.applyMatrix4(new THREE.Matrix4().compose(V3(px, py, pz), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, 0, rz)), V3(1, 1, 1)));
+    for (let i = 0; i < n; i++) {
+      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * rad, px = Math.cos(a) * d, pz = Math.sin(a) * d, h = 0.9 + r() * 0.8, rx = (r() - 0.5) * 0.35, rz = (r() - 0.5) * 0.35;
+      leaf.push(M(new THREE.ConeGeometry(0.035, h, 4).translate(0, h / 2, 0), px, 0, pz, rx, rz));
+      if (i % 3 === 0) {   // 穂：葉より少し高い茎の先に
+        const hs = h + 0.15;
+        leaf.push(M(new THREE.CylinderGeometry(0.012, 0.015, hs, 4).translate(0, hs / 2, 0), px, 0, pz, rx * 0.5, rz * 0.5));
+        spike.push(M(new THREE.CylinderGeometry(0.055, 0.055, 0.3, 7).translate(0, hs - 0.2, 0), px, 0, pz, rx * 0.5, rz * 0.5));
+      }
+    }
+    const g = new THREE.Group(); g.position.set(x, this.gy(x, z) - 0.05, z); this.scene.add(g);
+    for (const [list, col] of [[leaf, '#5f9e3c'], [spike, '#7a4e2c']]) if (list.length) { const m = new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(list), this.M(col)); m.castShadow = true; g.add(m); }
+    const ph = r() * 6;
+    this.tick((dt, t) => { g.rotation.x = Math.sin(t * 0.9 + ph) * 0.035; g.rotation.z = Math.sin(t * 0.7 + ph * 1.3) * 0.045; });
+  }
+  // すいれん：切れこみのある丸い葉と、ところどころに桃色の花（水の深さ deep m 以上のところへ、(cx, cz) から rad m 以内に n 枚）
+  lilyPads(cx, cz, rad, n, deep = 0.2) {
+    const y = this.T.pond.y + 0.015, cols = ['#4f9e46', '#5fb052', '#6aba5a'];
+    for (let i = 0, k = 0; i < n * 20 && k < n; i++) {
+      const a = this.r() * Math.PI * 2, d = Math.sqrt(this.r()) * rad, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d, s = 0.28 + this.r() * 0.26;
+      if (this.pondWater(x, z) < deep || this.pondWater(x + s, z) < deep || this.pondWater(x - s, z) < deep) continue;
+      k++;
+      this.mg(cols[k % 3], new THREE.CircleGeometry(s, 14, 0.25, Math.PI * 2 - 0.5).rotateX(-Math.PI / 2).rotateY(this.r() * 6), x, y + k * 0.0006, z);
+      if (k % 3 === 1) {   // 花：六枚の花びらと、黄色いしべ
+        for (let p = 0; p < 6; p++) { const pa = p / 6 * Math.PI * 2 + this.r() * 0.3; this.mg('#ffb8d8', new THREE.SphereGeometry(0.07, 6, 4).scale(1, 0.7, 2).translate(0, 0, 0.08).rotateX(-0.6).rotateY(pa), x, y + 0.06, z); }
+        this.mg('#ffe07a', new THREE.SphereGeometry(0.045, 6, 4), x, y + 0.08, z);
+      }
+    }
+  }
+  // 池の魚（にしきごい）：水の中を、楕円をえがいてゆっくり泳ぐ。ときどき水面に波の輪
+  //   paths：[[中心 x, 中心 z, 半径 x, 半径 z, 速さ（負なら逆回り）, 色], ...]
+  pondFish(paths) {
+    const y = this.T.pond.y - 0.2, fish = [];
+    for (const [px, pz, ra, rb, sp, col] of paths) {
+      // 深い水は透けにくいので、魚は水面のあとに、半ば透かして描く（水の中にいるように、少しにじむ）
+      const M = this.mc['koi' + col] || (this.mc['koi' + col] = new THREE.MeshStandardMaterial({ color: col, roughness: 0.6, metalness: 0, transparent: true, opacity: 0.7, depthWrite: false }));
+      const g = new THREE.Group(); this.scene.add(g);
+      const body = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6).scale(0.12, 0.06, 0.3), M); body.renderOrder = 3; g.add(body);
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.2, 4).rotateX(Math.PI / 2).scale(1, 0.25, 1).translate(0, 0, -0.08), M); tail.position.z = -0.26; tail.renderOrder = 3; g.add(tail);
+      fish.push({ g, tail, px, pz, ra, rb, sp, ph: this.r() * 6 });
+    }
+    // 波の輪（二つを使いまわす）
+    const rings = [0, 1].map(() => { const m = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false })); m.renderOrder = 3; m.position.y = this.T.pond.y + 0.02; this.scene.add(m); return { m, t: 9 }; });
+    let next = 3, ri = 0;
+    this.tick((dt, t) => {
+      for (const f of fish) {
+        const a = t * f.sp + f.ph, x = f.px + Math.cos(a) * f.ra, z = f.pz + Math.sin(a) * f.rb;
+        f.g.position.set(x, y + Math.sin(t * 0.8 + f.ph) * 0.04, z);
+        f.g.rotation.y = Math.atan2(-Math.sin(a) * f.ra * f.sp, Math.cos(a) * f.rb * f.sp);
+        f.tail.rotation.y = Math.sin(t * 6 + f.ph) * 0.45;
+      }
+      if ((next -= dt) <= 0) { const f = fish[(this.r() * fish.length) | 0]; if (f) { const R = rings[ri++ % 2]; R.m.position.x = f.g.position.x; R.m.position.z = f.g.position.z; R.t = 0; } next = 3 + Math.random() * 4; }
+      for (const R of rings) { R.t += dt; const k = Math.min(1, R.t / 1.6); R.m.scale.setScalar(0.15 + k * 0.75); R.m.material.opacity = 0.45 * (1 - k); }
+    });
+  }
   bridge(x, z, len, ry = 0, w = 2.4) {
     const g = new THREE.Group(); g.position.set(x, this.gy(x, z), z); g.rotation.y = ry; this.scene.add(g);
     for (let i = 0; i < Math.ceil(len / 0.5); i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, 0.44), this.mat(i % 2 ? 'wood' : 'wood2')); p.position.set(0, 0.25 + Math.sin(i / (len / 0.5) * Math.PI) * 0.35, -len / 2 + i * 0.5); p.castShadow = true; p.receiveShadow = true; g.add(p); }
@@ -8126,9 +8202,14 @@ const ZONE_BUILD = {
     K.sign(17.2, 1.5, -Math.PI / 2, post ? 'ミケと魚屋' : '魚屋', '今日のおすすめ：焼き魚', '#8ad8ff', 3.1, 2.6);
     K.fishRack(21.5, -5, 0); K.fishRack(22, 5, 0); K.barrel(16.5, -2); K.barrel(16, 5);
     K.catHouse(30, -3, 5, 6, 3.4, 'w', { roof: 'roofOrange' });
-    // 南東の池：すいれんと、ほとりのベンチ
-    for (let i = 0; i < 10; i++) { const a = K.r() * 6, d = K.r() * 3.4, x = 24.5 + Math.cos(a) * d, z = 20 + Math.sin(a) * d * 1.3; const pad = K.mesh(new THREE.CircleGeometry(0.35 + K.r() * 0.25, 12, 0.3, Math.PI * 1.85), 'leaf2', x, 0.06, z, { rx: -Math.PI / 2, noShadow: true }); pad.rotation.z = K.r() * 6; if (i % 3 === 0) K.mesh(new THREE.SphereGeometry(0.12, 8, 6), '#ffb8d8', x, 0.14, z, { noShadow: true }); }
-    K.bench(24, 13.1, 0); K.flowers(17, 26.5, 10, 1.4, ['#ffb8d8', '#ffffff']); K.flowers(31.5, 13.2, 8, 1.2, ['#ffb8d8', '#ffffff']); K.rock(31.2, 22, 0.6);
+    // 南東の池：岸の小石と岩、がまのしげみ、すいれん、泳ぐにしきごい。北の岸にベンチ
+    const PC = [24.5, 19.5], edge = (deg, out = 0) => K.pondEdge(PC[0], PC[1], deg * Math.PI / 180, out);
+    K.pondPebbles(PC[0], PC[1], 80);
+    for (const [deg, s] of [[2, 0.75], [158, 0.5], [302, 0.6], [92, 0.4]]) K.rock(...edge(deg, 0.1), s);
+    for (const [deg, n, rad] of [[44, 16, 0.9], [66, 10, 0.6], [138, 14, 0.8], [328, 12, 0.7], [196, 8, 0.5]]) K.reeds(...edge(deg, -0.15), n, rad);
+    K.lilyPads(20.8, 22.6, 2.2, 8); K.lilyPads(27.4, 20.6, 1.8, 6);
+    K.pondFish([[24.6, 19.4, 2.0, 1.5, 0.32, '#ff8a3a'], [21.4, 22.0, 1.2, 0.9, -0.42, '#f6f2ea'], [26.4, 17.8, 1.4, 1.0, 0.28, '#e8553a']]);
+    K.bench(24, 12.9, 0);
     // 猫神社：参道の鳥居と石灯籠、丘の上の小さな鳥居、飛び石、社。奥の道に灯籠
     K.torii(24, -6.8, 0, 1); K.torii(24, -15.4, 0, 0.82); K.shrine(24, -23.5, 0);
     for (const [x, z] of [[21.2, -7.6], [26.8, -7.6], [21.4, -16.4], [26.6, -16.4], [31.2, -16.8], [31.2, -23.2]]) K.stoneLantern(x, z);
