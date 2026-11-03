@@ -5911,7 +5911,7 @@ class ZoneKit {
     const c = Math.cos(ry), sn = Math.sin(ry);
     for (const u of [-1.2, 1.2]) this.box(x + u * c, z - u * sn, 0.12, 1.9, 0.12, 'wood2', { col: false });
     this.mesh(new THREE.BoxGeometry(2.6, 0.08, 0.08), 'wood2', x, 1.8, z, { ry });
-    for (let i = 0; i < 5; i++) { const u = -1 + i * 0.5, f = this.mesh(new THREE.SphereGeometry(0.14, 10, 8), i % 2 ? '#8ab8d8' : '#b8c8d8', x + u * c, 1.4, z - u * sn); f.scale.set(0.5, 2.2, 0.8); this.mesh(new THREE.ConeGeometry(0.12, 0.18, 3), '#8ab8d8', x + u * c, 1.0, z - u * sn, { rx: Math.PI }).scale.z = 0.3; }
+    for (let i = 0; i < 5; i++) { const u = -1 + i * 0.5, f = this.mesh(new THREE.SphereGeometry(0.14, 10, 8), i % 2 ? '#8ab8d8' : '#b8c8d8', x + u * c, 1.4, z - u * sn); f.scale.set(0.5, 2.2, 0.8); this.mesh(new THREE.ConeGeometry(0.12, 0.18, 3), '#8ab8d8', x + u * c, 1.03, z - u * sn).scale.z = 0.3; }   // しっぽ：とがった先を胴に差し、広がった側を下へ
     this.col(x, z, 1.4, 1.9);
   }
   // 水車：川に立てた、ゆっくり回る木の水車。x, z：軸の中心（川の中）、ry：軸の向き（0 で南北。+Z の側に軸受け）、r：半径、y：軸の高さ（水面から）
