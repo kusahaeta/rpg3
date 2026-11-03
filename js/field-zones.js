@@ -524,10 +524,10 @@ const FIELD_ZONES = {
       '#####1111111111,,,,1111111111#####',
       '#####1111111111^^^^1111111111#####',
       '#####0000000000,,,,0000000000#####',
-      '####00000000000,,,,00000000000####',
-      '~~~~~~~~~~~~~~~====~~~~~~~~~~~~~~~',
-      '~~~~~~~~~~~~~~~====~~~~~~~~~~~~~~~',
-      '####00000000000,,,,000000000000###',
+      '000000000000000,,,,000000000000000',
+      '000000000000000====000000000000000',
+      '000000000000000====000000000000000',
+      '0#0000000000000,,,,000000000000###',
       '###000000000000,,,,000000000000###',
       '###000000000000,,,,000000000000###',
       '###000000000000,,,,000000000000###',
@@ -537,6 +537,9 @@ const FIELD_ZONES = {
       '############000,,,,000############',
       '###############bbbb###############',
     ],
+    // 川：東（まどろみの林のほう）から西へ、下宿の北をうねって流れる。広い橋の下ではまっすぐ細く、水車のところは南岸に寄せる
+    //   （地図の 20〜23 行めは、この川に合わせて作った岸）
+    river: { path: [[38, 11.8, 3], [29, 10.6, 3], [21, 12, 2.6], [13, 10.8, 3.2], [8, 11.9, 2.4], [4, 12, 2.3], [0, 12, 2.3], [-4, 12, 2.3], [-8, 12, 2.4], [-13, 11.3, 2.8], [-21, 12.4, 3], [-30, 11.4, 3], [-38, 12.2, 3]] },
     anchor: [12, 1], exits: [{ key: 'b', to: 'road1_hill' }, { key: 'a', to: 'road2' }, { key: 'c', to: 'woods' }],
     areas: [{ name: '街道の宿場・見晴らしの高台', at: [-30, -30, -17, -16] }, { name: '街道の宿場・上宿', at: [-17, -32, 24, -14] },
       { name: '街道の宿場・川べり', at: [-34, 5, 34, 14] }, { name: '街道の宿場・下宿', at: [-34, 14, 34, 32] }],
@@ -5636,7 +5639,8 @@ class ZoneKit {
       this.put('rock', x, T.soilAt(x, z) + s * 0.15, z, [s, s * 0.5, s * 0.8], [0, this.r() * 3, 0], this.tint(this.r() < 0.5 ? '#b4ae9e' : '#9a968a', 0.12));
     }
   }
-  // 川の流れ（zone.river）：水の上に、曲がりにそって流れの筋とさざなみを重ねて流し、葉っぱや花びらを流す。o.speed：流れの速さ（m/秒。path の向きへ）、o.leaves：葉の数
+  // 川の流れ（zone.river）：水の上に、曲がりにそって流れの筋とさざなみを重ねて流し、葉っぱや花びらを流す。o.speed：流れの速さ（m/秒。path の向きへ）、o.leaves：葉の数、
+  //   o.avoid：葉がよけて通るもの [x, z, 流れにそった半径, 横の半径]（水車など。川のまん中の側へよける）
   riverStream(o = {}, L = this.T.pond.lines[0]) {
     const T = this.T, Y = T.pond.y, sp = o.speed ?? 0.9, tex = this.flowTextures(), [s0, s1] = this.riverSpan(L);
     // 帯：川の中心線にそって 0.5m ごと、水の幅の 85% に。両はしは透かす（u：流れにそった長さ、v：横の位置。どちらも m）
@@ -5662,13 +5666,25 @@ class ZoneKit {
       const s = s0 + Math.random() * (s1 - s0);
       return { m, s, off: lane(s), k: 0.8 + Math.random() * 0.4, ph: Math.random() * 6, spin: (Math.random() - 0.5) * 1.2 };
     });
+    // よけるもの：川にそった位置 s と、よけて通る横の位置 b（まん中からのずれ。流れの右が正）
+    const avoid = (o.avoid || []).map(([x, z, ra, rb]) => {
+      const s = lineNear(L, x, z)[2], [cx, cz, , dx, dz] = linePoint(L, s), off = (x - cx) * dz - (z - cz) * dx, sg = Math.sign(off) || 1;
+      return { s, ra, sg, b: off - sg * (rb + 0.3) };
+    });
+    const dodge = (s, off) => {
+      for (const A of avoid) {
+        const k = 1 - Math.abs(s - A.s) / A.ra;
+        if (k > 0 && (off - A.b) * A.sg > 0) off += (A.b - off) * k * k * (3 - 2 * k);
+      }
+      return off;
+    };
     this.tick((dt, t) => {
       for (const Ly of layers) Ly.t.offset.x += Ly.v * dt;
       for (const F of leaves) {
         F.s += sp * F.k * dt;
         if (sp > 0 ? F.s > s1 : F.s < s0) { F.s = sp > 0 ? s0 : s1; F.off = lane(F.s); }
-        const [x, z, , dx, dz] = linePoint(L, F.s);
-        F.m.position.set(x + dz * F.off, Y + 0.03 + Math.sin(t * 2 + F.ph) * 0.015, z - dx * F.off); F.m.rotation.y += F.spin * dt;
+        const [x, z, , dx, dz] = linePoint(L, F.s), off = avoid.length ? dodge(F.s, F.off) : F.off;
+        F.m.position.set(x + dz * off, Y + 0.03 + Math.sin(t * 2 + F.ph) * 0.015, z - dx * off); F.m.rotation.y += F.spin * dt;
       }
     });
     // 水面のきらめき
@@ -5995,7 +6011,7 @@ class ZoneKit {
   }
   // 水車：川に立てた、ゆっくり回る木の水車。x, z：軸の中心（川の中）、ry：軸の向き（0 で南北。+Z の側に軸受け）、r：半径、y：軸の高さ（水面から）
   waterWheel(x, z, ry = 0, r = 1.8, y = 0.9) {
-    const y0 = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y0 + y, z); g.rotation.y = ry;
+    const T = this.T, y0 = T.inPond(x, z) ? T.pond.y : this.gy(x, z), g = new THREE.Group(); g.position.set(x, y0 + y, z); g.rotation.y = ry;
     const spin = new THREE.Group(); g.add(spin);
     const at = (geo, mat, px, py, pz, o = {}) => this.mesh(geo, mat, px, py, pz, { ...o, parent: spin });
     // 二枚の輪と、輪をつなぐ腕木・羽根板・こしき
@@ -6012,33 +6028,6 @@ class ZoneKit {
     this.tick(dt => { spin.rotation.z -= dt * 0.55; });
     // 羽根が水をかく、しぶき
     this.v.emitters.push(dt => { if (Math.random() < dt * 9) this.v.p.emit(V3(x + (Math.random() - 0.5) * 1.2, y0 + 0.05, z + (Math.random() - 0.5) * 0.8), V3((Math.random() - 0.5) * 0.6, 1 + Math.random() * 0.8, (Math.random() - 0.5) * 0.4), hdr('#e8f4ff', 1.1), { life: 0.7, size: 0.07, drag: 0.6 }); });
-  }
-  // 川の流れ：水面の上に、流れの筋とゆるいさざなみの模様を重ねて流し、浮かんだ葉っぱや花びらを流す（流れは X の向き）。
-  //   x0〜x1, z0〜z1：川の範囲、y：水面の高さ（絶対）、o.speed：流れの速さ（m/秒。負で -X へ）、o.leaves：浮かべる葉の数、o.avoid：葉を流さない [z0, z1]（水車のあたりなど）
-  riverFlow(x0, z0, x1, z1, y, o = {}) {
-    const W = x1 - x0, D = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, sp = o.speed ?? -1, tex = this.flowTextures();
-    const layers = [[tex.ripple, 5.5, 0.55, 0.012], [tex.streak, 3.2, 0.7, 0.02], [tex.streak, 4.6, 0.45, 0.028]].map(([base, tile, op, dy], k) => {
-      const t = base.clone(); t.repeat.set(W / tile, Math.max(1, D / tile * 2)); t.offset.y = k * 0.37; t.needsUpdate = true;
-      const m = this.mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshBasicMaterial({ map: t, color: '#eaf8ff', transparent: true, opacity: op, depthWrite: false }), cx, y + dy, cz, { abs: true, rx: -Math.PI / 2, noShadow: true });
-      m.renderOrder = 3;
-      return { t, v: -sp / tile * (k === 2 ? 1.25 : k === 0 ? 0.7 : 1) };
-    });
-    // 浮かんで流れる葉っぱと花びら
-    const avoid = o.avoid, lane = () => { for (let i = 0; i < 10; i++) { const z = z0 + 0.4 + Math.random() * (D - 0.8); if (!avoid || z < avoid[0] || z > avoid[1]) return z; } return z0 + 0.5; };
-    const leaves = [...Array(o.leaves ?? 8)].map((_, i) => {
-      const m = this.mesh(new THREE.SphereGeometry(0.12, 8, 4), ['#6ab850', '#8ac862', '#ffc8dc', '#e8b050'][i % 4], x0 + Math.random() * W, y + 0.03, lane(), { abs: true, noShadow: true });
-      m.scale.set(1, 0.18, 0.6);
-      return { m, k: 0.8 + Math.random() * 0.4, ph: Math.random() * 6, spin: (Math.random() - 0.5) * 1.2 };
-    });
-    this.tick((dt, t) => {
-      for (const L of layers) L.t.offset.x += L.v * dt;
-      for (const L of leaves) {
-        const p = L.m.position; p.x += sp * L.k * dt; p.y = y + 0.03 + Math.sin(t * 2 + L.ph) * 0.015; L.m.rotation.y += L.spin * dt;
-        if (sp < 0 ? p.x < x0 : p.x > x1) { p.x = sp < 0 ? x1 : x0; p.z = lane(); }
-      }
-    });
-    // 水面のきらめき
-    this.v.emitters.push(dt => { if (Math.random() < dt * 8) this.v.p.emit(V3(x0 + Math.random() * W, y + 0.04, z0 + 0.3 + Math.random() * (D - 0.6)), V3(sp, 0.02, 0), hdr('#ffffff', 1.4), { life: 1.0, size: 0.05, drag: 0 }); });
   }
   // 流れの模様のテクスチャ（流れの筋・さざなみ。横＝流れの向き）
   flowTextures() {
@@ -8434,7 +8423,8 @@ const ZONE_BUILD = {
   },
   // 街道の宿場：南の木戸と下宿（田んぼ・水車小屋）、川べりと橋、広場（茶屋・高札場・井戸・鍛冶屋と道具屋の屋台）、上宿（旅籠・問屋場）、見晴らしの高台
   rest(K) {
-    K.flora({ trees: [['round', 4], ['pine', 1]], leaf: ['#6abf52', '#5ab04a', '#7ac85a'], fruit: '#ff9a7a', bush: 0.7, flower: ['#ffffff', '#ffe07a', '#ffb8d8'] });
+    const fo = { trees: [['round', 4], ['pine', 1]], leaf: ['#6abf52', '#5ab04a', '#7ac85a'], fruit: '#ff9a7a', bush: 0.7, flower: ['#ffffff', '#ffe07a', '#ffb8d8'] };
+    K.flora(fo);
     // ---- 広場：踏み固めた土。北の石段の上に上宿、南の石段の下に川べり ----
     K.mesh(new THREE.CircleGeometry(8, 40), new THREE.MeshStandardMaterial({ color: '#c8b494', roughness: 1 }), 1, 0.015, -5, { rx: -Math.PI / 2, noShadow: true }).receiveShadow = true;
     // 茶屋「ねこじゃらし」：店先に赤い毛氈の縁台と野点傘、のぼり旗
@@ -8483,8 +8473,8 @@ const ZONE_BUILD = {
     K.flowers(-23, 7, 8, 1.2, ['#ffffff', '#b8d8ff']); K.flowers(21, 8.8, 8, 1.2, ['#ffffff', '#b8d8ff']);
     // ---- 下宿：川の水車小屋、東の民家、西の田んぼ。南の木戸 ----
     K.catHouse(21, 17.6, 5, 5, 3.4, 'w', { roof: 'roofOrange', sign: '水車小屋' }); K.waterWheel(21, 12.6, 0, 1.8, 0.9);
-    // 川は東（まどろみの林のほう）から西へ流れる
-    K.riverFlow(-34, 10, 34, 14, K.gy(-20, 12), { speed: -1.1, leaves: 9, avoid: [11.9, 13.3] });
+    // 川は東（まどろみの林のほう）から西へ流れる。流れる葉は、水車をよけて北側を通る
+    K.riverStream({ speed: 1.1, leaves: 9, avoid: [[21, 12.6, 2.4, 0.9]] }); K.riverPebbles(130); K.riverMouths(fo);
     K.catHouse(13, 25.6, 6, 5, 3.4, 'w', { roof: 'roofBlue' }); K.catHouse(26, 24, 5, 5, 3.2, 'n', { roof: 'roofRed' });
     K.box(17.2, 23.4, 0.9, 1.0, 2.2, 'bark'); K.barrel(9, 21.5); K.crate(9.6, 20.2);
     for (const x of [-23, -17.4, -11.8]) for (const z of [18, 23.6]) K.paddy(x, z, 4.6, 4.6);
