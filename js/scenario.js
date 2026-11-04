@@ -1290,7 +1290,7 @@ const SCENES = {
       ['n', '【目的】谷の丘の上の墓標へ。', { cam: 'wide', dur: 5 }],
     ] },
   c4_02: { title: '墓標', cast: ['e:kageneko'], bgm: 'sad',
-    stage: { zone: 'valley', at: [-16, -7.5], face: 0,
+    stage: { zone: 'valley', at: [-22, -16.5], face: 0,
       cast: { kuro: { at: [0, 1.4] }, mike: { at: [-1.2, 0.2] }, 'e:kageneko': [{ at: [-3.4, 5], hidden: true }, { at: [3.2, 5.4], hidden: true }] },
       points: { graves: [0, 1, 8.5] } },
     lines: [
@@ -1309,7 +1309,7 @@ const SCENES = {
       ['kuro', '……影ども。ここを荒らすな！', { f: 'angry', stance: { all: 'ready' }, face: { kuro: 'e:kageneko' } }],
     ] },
   c4_02b: { title: '最後の夜の記録', bgm: 'sad',
-    stage: { zone: 'valley', at: [-16, -7.5], face: 0, cast: { kuro: { at: [0, 1.4] }, mike: { at: [-1.2, 0.2] } }, points: { graves: [0, 1, 8.5], camp: [34, 1, 1.5] } },
+    stage: { zone: 'valley', at: [-22, -16.5], face: 0, cast: { kuro: { at: [0, 1.4] }, mike: { at: [-1.2, 0.2] } }, points: { graves: [0, 1, 8.5], camp: [41, 1, 34] } },   // camp：北の谷へ上る細い谷のほう
     lines: [
       ['n', '影は、墓標のまわりから、すうっと消えていった。', { cam: 'look:graves', dur: 6, look: { all: 'graves' } }],
       ['kuro', '……今の影。……俺たちが追っていた「異変」と、同じにおいがした。', { f: 'serious', look: { kuro: 'graves' } }],
@@ -1317,12 +1317,13 @@ const SCENES = {
       ['kuro', '……記録だ。', { f: 'surprise', g: 'surprise', r: { all: 'surprise' } }],
       ['kuro', '……ハヤテは、毎晩、野営のテントで調査の記録をつけていた。……最後の夜のテントが、まだ川のほとりに残っているかもしれない。', { f: 'serious', g: 'point', look: { all: 'camp' } }],
       ['tama', '……さがしに、いこ。', { f: 'smile', g: 'nod', to: 'kuro' }],
-      ['n', '【目的】谷の北東、川のほとりの野営あとで、影の四剣の記録をさがす。', { cam: 'wide', dur: 5 }],
+      ['n', '【目的】谷の北東の奥、川のほとりの野営あとで、影の四剣の記録をさがす。', { cam: 'wide', dur: 5 }],
     ] },
   c4_02c: { title: '主のいないテント', bgm: 'sad',
-    stage: { zone: 'valley', at: [20.5, -7], face: -90, points: { tent: [2, 1.1, 2.5] } },
+    // tent：一行の右うしろの高いところから、谷川のほとりのテントを見る（左に谷川、奥に洞窟の岩棚の崖）
+    stage: { zone: 'valley_north', at: [25, -17.5], face: 0, points: { tent: [0, 1.1, 6.5] }, shots: { tent: { pos: [3.5, 3.4, -3], look: [-2, 0.5, 7] } } },
     lines: [
-      ['n', '谷の北東、川のほとりの野営あと。雨ざらしの古いテントが、ぽつんと残っていた。', { cam: 'look:tent', dur: 7, look: { all: 'tent' } }],
+      ['n', '谷の北東の奥、黒影洞窟の下の、川のほとりの野営あと。雨ざらしの古いテントが、ぽつんと残っていた。', { cam: 'tent', dur: 7, look: { all: 'tent' } }],
       ['kuro', '……ここで、最後の夜を過ごした。……あいつらと。', { f: 'sad', g: 'lookDown', look: { kuro: 'tent' } }],
       ['n', 'テントの中には、色あせた毛布と、四つの荷物。……けれど、記録の手帳は、どこにもなかった。', { cam: 'wide', dur: 6 }],
       ['shiro', '……ないわね。どこか、ほかの場所にしまったのかしら。', { f: 'worry', g: 'think', to: 'kuro' }],
@@ -1524,7 +1525,7 @@ const SCENES = {
   // 谷の墓に剣を立てたあと。クロが三匹に「ただいま」を言い、一行は古代遺跡へ（ミケの両親の話は、最初に墓へ来た c4_02 でしている）
   c4_06: { title: 'お別れ', bgm: 'sad',
     // graves：一行の右前から、剣の立った三つの墓を見下ろす
-    stage: { zone: 'valley', at: [-16, -7.5], face: 0, cast: { kuro: { at: [0, 1.4] }, mike: { at: [-1.2, 0.2] } }, points: { graves: [0, 1, 8.5] },
+    stage: { zone: 'valley', at: [-22, -16.5], face: 0, cast: { kuro: { at: [0, 1.4] }, mike: { at: [-1.2, 0.2] } }, points: { graves: [0, 1, 8.5] },
       shots: { graves: { pos: [3.4, 3.0, 3.0], look: [0.2, 0.5, 8.6] } } },
     lines: [
       ['n', '谷に戻った一行は、三本の剣を、それぞれの墓の前に立てた。……名前のない四つ目の石は、もうない。', { cam: 'graves', dur: 8, look: { all: 'graves' } }],

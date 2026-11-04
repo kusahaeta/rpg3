@@ -512,6 +512,10 @@ Object.assign(EN, {
   '古いテント': 'Old Tent',
   '雨ざらしのテント。中に、誰かの荷物が残されている。': 'A weather-beaten tent. Someone\'s belongings are still inside.',
   '影の四剣が、最後に野営したテント。色あせた毛布と、四つの荷物が残っている。': 'The tent where the Four Shadow Blades last camped. A faded blanket and four packs remain.',
+  // ── field-zones.js FIELD_ZONES.valley_north
+  'くろねこ谷・北の谷': 'Blackcat Valley: North Gorge',
+  '↑ 黒影洞窟': '↑ Shadowblack Cave',
+  '← 苔むす古道': '← Mossy Old Road',
   // ── field-zones.js FIELD_ZONES.valley_village
   '谷の集落': 'Valley Hamlet',
   '……おかえり、クロ。': '...Welcome home, Kuro.',
@@ -1179,6 +1183,8 @@ Object.assign(EN, {
   '→ 谷の集落': '→ Valley Hamlet',
   '宿と長老の家': 'Inn & Elder\'s House',
   '↑ 墓標の丘・黒影洞窟': '↑ Grave Hill & Shadowblack Cave',
+  '← 墓標の丘': '← Grave Hill',
+  '→ 黒影洞窟': '→ Shadowblack Cave',
   '谷の宿': 'Valley Inn',
   'ゆっくり おやすみ': 'Rest well',
   '長老の家': 'Elder\'s House',

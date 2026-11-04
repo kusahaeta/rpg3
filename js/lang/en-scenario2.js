@@ -1021,7 +1021,7 @@ Object.assign(EN, {
   '第四章　黒猫の過去': 'Chapter 4　The Black Cat\'s Past',
   '城下町の東、くろねこ谷を抜けて谷の集落へ': 'From east of the castle town, through Blackcat Valley to the valley hamlet',
   '谷の丘の上の墓標へ': 'To the graves on the valley hill',
-  '谷の北東、川のほとりの野営あとで、影の四剣の記録をさがす': 'Search for the Four Shadow Blades\' record at the old campsite by the river, northeast of the valley',
+  '谷の北東の奥、川のほとりの野営あとで、影の四剣の記録をさがす': 'Search for the Four Shadow Blades\' record at the old campsite by the river, deep in the northeast of the valley',
   '谷の北、黒影洞窟へ': 'To Shadowblack Cave, north of the valley',
   '黒影洞窟の奥へ進む': 'Head deeper into Shadowblack Cave',
   '光の水晶を三つ灯し、大水晶の光を光の鏡で影の壁まで導いて、洞窟の下の階へ': 'Light the three light crystals, guide the great crystal\'s beam to the shadow wall with the light mirrors, and go down a floor in the cave',
