@@ -1005,10 +1005,10 @@ Object.assign(EN, {
   '……記録だ。': '...The record.',
   '……ハヤテは、毎晩、野営のテントで調査の記録をつけていた。……最後の夜のテントが、まだ川のほとりに残っているかもしれない。': '...Every night, Hayate wrote up our investigation in the camp tent. ...The tent from the last night might still be by the river.',
   '……さがしに、いこ。': '...let\'s go... look for it.',
-  '【目的】谷の北東、川のほとりの野営あとで、影の四剣の記録をさがす。': '[Goal] Search for the Four Shadow Blades\' record at the old campsite by the river, northeast of the valley.',
+  '【目的】谷の北東の奥、川のほとりの野営あとで、影の四剣の記録をさがす。': '[Goal] Search for the Four Shadow Blades\' record at the old campsite by the river, deep in the northeast of the valley.',
   // ── scenario.js SCENES.c4_02c
   '主のいないテント': 'The Empty Tent',
-  '谷の北東、川のほとりの野営あと。雨ざらしの古いテントが、ぽつんと残っていた。': 'The old campsite by the river, northeast of the valley. A weather-beaten old tent stood there all alone.',
+  '谷の北東の奥、黒影洞窟の下の、川のほとりの野営あと。雨ざらしの古いテントが、ぽつんと残っていた。': 'The old campsite by the river, deep in the northeast of the valley, just below Shadowblack Cave. A weather-beaten old tent stood there all alone.',
   '……ここで、最後の夜を過ごした。……あいつらと。': '...We spent the last night here. ...With them.',
   'テントの中には、色あせた毛布と、四つの荷物。……けれど、記録の手帳は、どこにもなかった。': 'Inside the tent were a faded blanket and four packs. ...But the notebook with the record was nowhere to be found.',
   '……ないわね。どこか、ほかの場所にしまったのかしら。': '...It\'s not here. Did he keep it somewhere else?',

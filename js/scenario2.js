@@ -1090,7 +1090,7 @@ Object.assign(SCENES, {
       ['shiro', '……もう。……それなら、いいわ。', { f: 'shy', g: 'handChest' }],
     ] },
   b_kuro_maou: { title: '……',
-    stage: { zone: 'valley', at: [-10, 14], face: 0, party: ['kuro', 'maou'], cast: { kuro: { at: [-0.7, 0], stance: 'armsCrossed' }, maou: { at: [0.7, 0.1], stance: 'armsCrossed' } } },
+    stage: { zone: 'valley', at: [-12, 20], face: 0, party: ['kuro', 'maou'], cast: { kuro: { at: [-0.7, 0], stance: 'armsCrossed' }, maou: { at: [0.7, 0.1], stance: 'armsCrossed' } } },
     lines: [
       ['kuro', '……。', { f: 'serious' }],
       ['maou', '……。', { f: 'serious' }],
@@ -1388,10 +1388,10 @@ const STORY = [
     { t: 'reward', niboshi: 500, g: '第三章 おしまい' },
   ] },
   // 第四章：谷の丘の墓標。三本の剣が立ち、名前のない石はもうない（夕焼けの空）
-  { title: '第四章　黒猫の過去', clearBgm: 'kuroneko', clearSet: { zone: 'valley', at: [-16, -9.5], face: 0, cam: { pos: [1.6, 1.6, -5.5], look: [-0.4, 3.6, 4] } }, steps: [
+  { title: '第四章　黒猫の過去', clearBgm: 'kuroneko', clearSet: { zone: 'valley', at: [-22, -18.5], face: 0, cam: { pos: [1.6, 1.6, -5.5], look: [-0.4, 3.6, 4] } }, steps: [
     { t: 'field', zone: 'valley_village', at: [-12, 1], scene: 'c4_01', g: '城下町の東、くろねこ谷を抜けて谷の集落へ' },
-    { t: 'field', zone: 'valley', at: [-16, -8], scene: 'c4_02', battle: '4-1', after: 'c4_02b', g: '谷の丘の上の墓標へ' },
-    { t: 'field', zone: 'valley', at: [18, -5], scene: 'c4_02c', g: '谷の北東、川のほとりの野営あとで、影の四剣の記録をさがす' },
+    { t: 'field', zone: 'valley', at: [-22, -17], scene: 'c4_02', battle: '4-1', after: 'c4_02b', g: '谷の丘の上の墓標へ' },
+    { t: 'field', zone: 'valley_north', at: [25, -17], scene: 'c4_02c', g: '谷の北東の奥、川のほとりの野営あとで、影の四剣の記録をさがす' },
     { t: 'field', zone: 'cave', at: [0, 37], scene: 'c4_03', battle: '4-2', after: 'c4_03a', g: '谷の北、黒影洞窟へ' },
     { t: 'field', zone: 'cave', at: [2, -15], scene: 'c4_03b', start: ['cave', -2, 6], yaw: Math.PI, g: '黒影洞窟の奥へ進む', also: ['c4_03m'] },   // start：c4_03a を話した大空洞から歩き出す
     { t: 'field', zone: 'cave_lake', at: [-11, 15], scene: 'c4_03c', g: '光の水晶を三つ灯し、大水晶の光を光の鏡で影の壁まで導いて、洞窟の下の階へ' },
@@ -1403,7 +1403,7 @@ const STORY = [
   // 第五章：石畳の丘の、古代遺跡の神殿の正面（猫の紋章と、光る扉）
   { title: '第五章　眠れる子猫', clearBgm: 'ruins', clearSet: { zone: 'ruins_hill', at: [0, -18], face: 0, fog: 0.6, cam: { pos: [3, 2.2, -12], look: [0, 7.5, 15] } }, steps: [
     // 第四章の終わりに谷の墓へ戻っているので、墓標の丘から歩き出す（谷や遺跡の外庭にいれば、その場から）
-    { t: 'field', zone: 'ruins_out', at: [-6, 20], start: ['valley', -16, -8], near: ['valley', 'valley_village', 'old_road', 'ruins_out'], yaw: 0, scene: 'c5_01', battle: '5-1', g: '谷の北西から苔むす古道を上って、古代遺跡へ' },
+    { t: 'field', zone: 'ruins_out', at: [-6, 20], start: ['valley', -22, -17], near: ['valley', 'valley_village', 'valley_north', 'old_road', 'ruins_out'], yaw: 0, scene: 'c5_01', battle: '5-1', g: '谷の北西から苔むす古道を上って、古代遺跡へ' },
     { t: 'field', zone: 'ruins_hill', at: [0, -12.5], scene: 'c5_01b', g: '外庭の北、石畳の丘を上って、遺跡の入口へ' },
     { t: 'field', zone: 'ruins_in', at: [0, -4], scene: 'c5_02', clear: '5-2', g: '高台の「つながりの石畳」をひと筆でつないで入口の結界を消し、遺跡の中へ' },
     { t: 'field', zone: 'ruins_maze', at: [-18, 35], scene: 'c5_02b', g: '大広間の奥、崩れた迷宮へ。入口の間の、白く光る水晶のもとへ' },
@@ -1495,7 +1495,7 @@ const BATTLE_SETS = {
   '3-1': { zone: 'tower', at: [0, 16], face: 0 },
   '3-2': { zone: 'tower_3f', at: [0, 4], face: 0 },
   '3-3': { zone: 'tower_top', at: [0, -26], face: 0 },
-  '4-1': { zone: 'valley', at: [-4, -12], face: 90 },
+  '4-1': { zone: 'valley', at: [-10, -21], face: 90 },
   '4-2': { zone: 'cave', at: [-2, 8], face: 0 },   // c4_03 で、クロがひとりで駆けていった大空洞
   '4-3': { zone: 'cave_deep', at: [0, -33], face: 0 },
   '5-1': { zone: 'ruins_out', at: [-2, 6], face: 0 },
