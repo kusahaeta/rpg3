@@ -1682,7 +1682,7 @@ const FIELD_ZONES = {
 
   // 黒影洞窟：B1 入口 → B2 地底湖 → B3 最深部。下りの道は「影の壁」がふさぎ、洞窟のあちこちの光の水晶を灯すと消える（ZoneKit.seals）
   cave: { ci: 3, name: '黒影洞窟', bgm: 'cave', floor: 'B1', stage: '4-2', arenas: [[0, 39, 0]], build: 'cave', arch: 'cave', bg: 'cave', groups: 9, chests: 4, crystals: 5, calmAfter: '4-3',
-    world: true,
+    world: true, foes: ['kageneko', 'koumori'],
     th: { pattern: 'rock', floor: '#3a3444', floor2: '#443c50', line: '#8a6aff', floorGlow: 0.3, fog: '#141028', fogD: 0.02, light: 1.1, water: '#4a5aa8', waterGlow: '#3a2a9a' },
     // B1：入口の大広間からうねる坑道を北へ、中央の大空洞。その北の坑道を影の壁がふさぐ。光の水晶は、西の長い坑道の先の地底の泉（途中に焚き火のあとの小部屋）、
     //     東の大部屋の岩棚の上（石段）、北東の水晶の間（水路を板橋で渡る）。南西は小さな泉のある脇穴
@@ -1754,7 +1754,7 @@ const FIELD_ZONES = {
       { at: [-50, -14], mark: 1.0, title: '焚き火のあと', text: '石を並べた、小さな焚き火のあと。四匹ぶんの足あとが、奥へと続いている。' }],
     map2d: [620, 30] },
   cave_lake: { ci: 3, name: '黒影洞窟・地底湖', bgm: 'cave', floor: 'B2', parent: 'cave', stage: '4-2', arenas: [[-29, 16, 0]], build: 'caveLake', arch: 'cave', bg: 'cave', groups: 8, chests: 4, crystals: 4, calmAfter: '4-3',
-    world: true,
+    world: true, foes: ['kageneko', 'koumori', 'yadokari'],
     th: { pattern: 'rock', floor: '#34303e', floor2: '#3e3848', line: '#8a6aff', floorGlow: 0.35, fog: '#100c22', fogD: 0.02, light: 1.05, water: '#3a4aa0', waterGlow: '#4a2ac0' },
     // B2：湖を見下ろす高台から石段で広い南の岸へ。湖をまたぐ長い橋のたもとを影の壁がふさぐ。光の水晶は、西の細長い入り江の奥と、東の岩棚の上
     //     （石段で上る）。南西と南東に脇穴
@@ -1819,7 +1819,7 @@ const FIELD_ZONES = {
       { at: [-12.2, 11.8], mark: 0.9, when: 'scene:c4_03c', title: 'リンのリボン', text: '色あせた、青いリボン。……光の水晶のかけらが、ひとつ結びつけてある。' }],
     map2d: [620, 30] },
   cave_deep: { ci: 3, name: '黒影洞窟・最深部', bgm: 'cave', floor: 'B3', parent: 'cave', stage: '4-3', arenas: [[0, -33, 0], [-35, 12, 0], [37, 16, 0], [-4, 37, 90], [26, -13, 90]], build: 'caveDeep', arch: 'cave', bg: 'cave', groups: 5, chests: 4, crystals: 3, calmAfter: '4-3',
-    world: true,
+    world: true, foes: ['kageneko', 'yadokari', 'koumori'],
     th: { pattern: 'rock', floor: '#302a3a', floor2: '#3a3244', line: '#8a6aff', floorGlow: 0.4, fog: '#0c0a1c', fogD: 0.02, light: 1.0, water: '#3a4aa0', waterGlow: '#4a2ac0' },
     // 戦場：三本の剣の大広間（ステージ 4-3）のほか、西の縁・東の縁・到着の岩棚・北の縁。道中の戦いは近くの縁で戦い、闇の扉の奥の剣は見せない
     // B3：底の見えない「闇の淵」を巡って下りる。到着の南の岩棚（高さ6）→ 石段で西の縁（高さ3）→ 石段で北の縁（高さ0）。東の縁から岩の橋で淵の中の小島へ。

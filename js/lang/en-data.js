@@ -215,6 +215,14 @@ Object.assign(EN, {
   'かげぬい': 'Shadow Stitch',
   // ── data.js ENEMY_MOVES.cleave
   '重い一撃': 'Heavy Blow',
+  // ── data.js ENEMY_MOVES.sonic
+  'ちょうおんぱ': 'Ultrasonic Wave',
+  'くらくら': 'Dizzy',
+  // ── data.js ENEMY_MOVES.pinch
+  'はさみうち': 'Pincer Snap',
+  // ── data.js ENEMY_MOVES.crystalSpike
+  'すいしょうの柱': 'Crystal Pillars',
+  'すいしょうのとげ': 'Crystal Thorns',
   // ── data.js ENEMY_MOVES.kuroCharge
   '影が、刀のまわりに集まっていく…': 'Shadows gather around the blade...',
   // ── data.js ENEMY_MOVES.kuroNova
@@ -387,6 +395,10 @@ Object.assign(EN, {
   '泣き虫ピエロ「笑ってくれないなら……みんな泣かせてやる！」': 'Crybaby Clown: "If you won\'t laugh... then I\'ll make you all cry!"',
   // ── data.js ENEMIES.kageneko
   'かげねこ': 'Shadow Cat',
+  // ── data.js ENEMIES.koumori
+  'すいしょうコウモリ': 'Crystal Bat',
+  // ── data.js ENEMIES.yadokari
+  'すいしょうヤドカリ': 'Crystal Hermit Crab',
   // ── data.js ENEMIES.yoroi
   'さまよう鎧': 'Wandering Armor',
   // ── data.js ENEMIES.kako_kuro
