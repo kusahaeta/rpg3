@@ -319,6 +319,9 @@ const ENEMY_MOVES = {
   finale:  { name: 'さみしいフィナーレ', anim: 'finale', type: 'aoe', mult: 1.5 },
   shade:   { name: 'かげぬい', anim: 'spike', elem: 'quantum',       type: 'single', mult: 1.1, eff: { kind: 'buff', chance: 0.6, buff: { key: 'e_shade', name: 'かげぬい', stat: 'spd', value: -0.15, turns: 2 } } },
   cleave:  { name: '重い一撃', anim: 'slash',       type: 'single', mult: 1.8 },
+  sonic:   { name: 'ちょうおんぱ', anim: 'shout',     type: 'aoe',    mult: 0.5, eff: { kind: 'buff', chance: 0.5, buff: { key: 'e_sonic', name: 'くらくら', stat: 'atk', value: -0.15, turns: 2 } } },
+  pinch:   { name: 'はさみうち', anim: 'slash', glyph: 'x', type: 'single', mult: 1.5 },
+  crystalSpike: { name: 'すいしょうの柱', anim: 'spike', elem: 'quantum', type: 'blast', mult: 0.85, adj: 0.45, eff: { kind: 'buff', chance: 0.5, buff: { key: 'e_crystal', name: 'すいしょうのとげ', stat: 'def', value: -0.2, turns: 2 } } },
   lonely:  { name: '孤高の剣', anim: 'slash',       type: 'single', mult: 1.6 },
   kuroCharge: { name: '影が、刀のまわりに集まっていく…', type: 'charge', next: 'kuroNova' },
   kuroNova: { name: '影の乱れ斬り', anim: 'phantom', elem: 'quantum', type: 'aoe', mult: 1.6 },
@@ -416,6 +419,9 @@ const ENEMIES = {
     turn: { at: 0.5, name: '泣き顔の仮面', cry: '泣き虫ピエロ「笑ってくれないなら……みんな泣かせてやる！」', weak: ['ice', 'fire', 'physical'], moves: [['tears', 2], ['laughgas', 1], ['juggle', 1], ['showtime', 1], ['summon', 1]] }, summon: 'ghost', moves: [['laughgas', 2], ['juggle', 2], ['tears', 1], ['showtime', 1], ['summon', 1]] },
   // 第四章：くろねこ谷・黒影洞窟
   kageneko: { name: 'かげねこ',       shape: 'shadowcat', color: '#6a5a9a', hp: 4200, atk: 1250, spd: 110, tough: 30, weak: ['imaginary', 'fire', 'physical'], moves: [['shade', 2], ['strike', 1]] },
+  // 黒影洞窟の道中にだけ出る（物語の戦い 4-2・4-3 は、影の敵のまま）
+  koumori:  { name: 'すいしょうコウモリ', shape: 'bat',  color: '#9a7ae8', hp: 3400, atk: 1250, spd: 130, tough: 20, weak: ['imaginary', 'lightning', 'ice'], moves: [['bite', 2], ['sonic', 1]] },
+  yadokari: { name: 'すいしょうヤドカリ', shape: 'hermit', color: '#f0906a', hp: 6400, atk: 1200, spd: 72, tough: 40, weak: ['lightning', 'physical', 'fire'], moves: [['pinch', 2], ['crystalSpike', 1]] },
   yoroi:    { name: 'さまよう鎧',     shape: 'armor',    color: '#8a8aa8', elite: true, hp: 15000, atk: 1350, spd: 85, tough: 90, eres: 0.2, weak: ['lightning', 'imaginary', 'fire'], moves: [['cleave', 2], ['blast', 1], ['aoe', 1]] },
   kako_kuro:{ name: '過去の影クロ',   shape: 'shadowkuro', color: '#7a5aff', boss: true, hp: 56000, atk: 1450, spd: 105, tough: 170, eres: 0.3, weak: ['imaginary', 'fire', 'lightning'],
     turn: { at: 0.5, name: '心の殻', cry: '過去の影クロ「近づくな……近づくなッ！」', guard: 0.6, until: 'break', end: ['殻が割れた！', '「……っ。なんで、そこまで……」'] }, summon: 'kageneko', moves: [['lonely', 2], ['pastEcho', 2], ['kuroCharge', 1], ['summon', 1]] },

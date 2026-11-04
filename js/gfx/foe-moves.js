@@ -44,10 +44,13 @@ const FOE_MOVES = {
     this.jawFx(this.hitPoint(t.u), c.col, Math.max(1, t.model.height * 0.8));
   },
   // 大きく振りかぶって斬る（重い一撃・孤高の剣）。snip はハサミで十字に
+  //   ハサミのある敵（すいしょうヤドカリ）は、とびこみながらハサミをあけ（userData.jaw）、十字に切るところで閉じる
   async slash(e, ts, c) {
-    const t = ts[0];
+    const t = ts[0], U = e.model.group.userData;
+    if (c.mv.glyph === 'x') U.jaw = 1;
     await this.foeLunge(e, t, { pose: POSES.charge, back: 0.9 });
     await this.foePose(e, POSES.cleave, 0.08);
+    U.jaw = 0;
     const p = this.hitPoint(t.u);
     if (c.mv.glyph === 'x') {
       this.fx.slash(p, c.col, { cam: this.camera, size: 2.6, angle: 0.8 });
@@ -196,9 +199,13 @@ const FOE_MOVES = {
     await GFX.delay(0.22);
   },
   // かげぬい：影から黒い棘が突き出して、足をぬいとめる
+  //   すいしょうの柱：同じ形の棘を、水晶の色で。ハサミのある敵は、ハサミをふりあげる（userData.raise）
   async spike(e, ts, c) {
+    const U = e.model.group.userData;
     this.foeFlash(e, c.col);
+    U.raise = 1;
     await this.foePose(e, POSES.raise, 0.2);
+    GFX.delay(0.5).then(() => { U.raise = 0; });
     for (const t of ts) {
       const g = t.home.clone();
       this.fx.ring(g.clone().add(V3(0, 0.05, 0)), c.col, { r: 1.2, life: 0.5, width: 0.3 });
@@ -231,9 +238,11 @@ const FOE_MOVES = {
     }
   },
   // 叫ぶ・笑う・いびき・おしゃべり：声の輪と文字が、こちらへとどく
+  //   口のあく敵（すいしょうコウモリなど）は、叫ぶあいだ口をあける（userData.jaw）
   async shout(e, ts, c) {
-    const from = this.foeMouth(e), gl = c.mv.glyph;
+    const from = this.foeMouth(e), gl = c.mv.glyph, U = e.model.group.userData;
     this.foeFlash(e, c.col);
+    U.jaw = 1;
     await this.foePose(e, { ...POSES.open, headX: -0.3 }, 0.18);
     this.foeLean(e, -0.15, 0.18);
     const dark = c.mv.obj === 'dark';
@@ -244,6 +253,7 @@ const FOE_MOVES = {
       if (dark) for (let j = 0; j < 6; j++) this.p.emit(from, cen.clone().sub(from).multiplyScalar(1.8).add(V3((Math.random() - 0.5) * 3, (Math.random() - 0.5), 0)), hdr(c.col, 2), { life: 0.6, size: 0.18, drag: 0 });
     });
     for (const t of ts) { this.foeKnock(t, V3(0, 0, 1), 0.2); t.model.flash(c.col, 0.8); }
+    U.jaw = 0;
     this.foeLean(e, 0, 0.2);
   },
   // こしょこしょ：みんなのまわりで羽根がくすぐる
