@@ -1024,16 +1024,172 @@ function buildEnemy(key, look = {}) {
       emitFn = (p, pos) => { if (Math.random() < 0.3) p.emit(V3(pos.x + (Math.random() - 0.5) * 0.6, pos.y + 0.3, pos.z), V3(0, -0.4, 0), hdr('#d8d8ff', 1.2), { life: 1, size: 0.12, drag: 0.5 }); };
       float = 0.2; height = 1.6; radius = 0.55; break;
     }
-    case 'mimic': {   // クスクスミミック：ふたがぱくぱく開く宝箱
-      const wm = tm('#8a5a36'), gm = tm('#ffcf4a', { emissive: new THREE.Color('#ffcf4a'), emissiveIntensity: 0.15 }); gm.userData.e0 = new THREE.Color('#ffcf4a'); gm.userData.ei0 = 0.15;
-      add(P(new THREEX.RoundedBoxGeometry(1.1, 0.6, 0.75, 2, 0.06), wm), 0, 0.3, 0);
-      add(P(new THREE.BoxGeometry(1.14, 0.1, 0.79), gm), 0, 0.52, 0);
-      const lid = new THREE.Group(); lid.position.set(0, 0.6, -0.37); inner.add(lid);
-      const top = add(P(new THREE.CylinderGeometry(0.37, 0.37, 1.1, 16, 1, false, 0, Math.PI), wm), 0, 0, 0.37, lid); top.rotation.z = Math.PI / 2;
-      for (let i = 0; i < 7; i++) { add(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.14, 4), tm('#fff6e0')), -0.45 + i * 0.15, 0.62, 0.34).rotation.x = Math.PI; add(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 4), tm('#fff6e0')), -0.45 + i * 0.15, -0.05, 0.74, lid); }
-      const tongue = add(new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), tm('#ff6a8a')), 0, 0.62, 0.2); tongue.scale.set(1, 0.3, 1.3);
-      const ey = eyes(0.2, 0.12, 0.68, 0.08, lid, { angry: true });
-      update = (dt, t) => { lid.rotation.x = -0.25 - Math.max(0, Math.sin(t * 5 + root.userData.ph)) * 0.55; inner.position.y = Math.abs(Math.sin(t * 5)) * 0.04; };
+    case 'mimic': {   // クスクスミミック：笑顔の塔の宝箱。ふたが口になり、金色に光る三日月の笑い目で、ふたをカタカタ鳴らしてクスクス笑う。猫の顔の錠前と、猫の足の脚
+      const BU = THREEX.BufferGeometryUtils;
+      // 描く回数をへらすため、いっしょに動く部品は頂点の色をつけて一つの形にまとめる（boar と同じ）
+      const tint = (g, c) => { const k = new THREE.Color(c), a = new Float32Array(g.attributes.position.count * 3); for (let i = 0; i < a.length; i += 3) k.toArray(a, i); g.setAttribute('color', new THREE.BufferAttribute(a, 3)); g.deleteAttribute('uv'); return g; };
+      // 位置（p）と面の向き（n）で色を決める
+      const paint = (g, fn) => { const q = g.attributes.position, nq = g.attributes.normal, p = V3(), n = V3(), c = new THREE.Color(), a = new Float32Array(q.count * 3); for (let k = 0; k < q.count; k++) { fn(p.fromBufferAttribute(q, k), n.fromBufferAttribute(nq, k), c); c.toArray(a, k * 3); } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); g.deleteAttribute('uv'); return g; };
+      const mg = list => BU.mergeGeometries(list.map(g => g.index ? g.toNonIndexed() : g));   // 角のまるい箱は index がないので、そろえてまとめる
+      const ss = (x, a, b) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
+      const vcM = tm('#ffffff', { vertexColors: true }), flatM = new THREE.MeshBasicMaterial({ vertexColors: true });
+      const OC = '#2a1608', goldC = '#e2aa48', beanC = '#c27a3a', toothC = '#fff2d8', seamC = '#4a2812';
+      const woods = ['#8e5a32', '#9c663a', '#87532e'].map(c => new THREE.Color(c)), mouthC = new THREE.Color('#3a1020');
+      // 大きさ：箱の幅 W・奥行き D、脚の高さ FH、箱の高さ BH。ふたは半径 R の半円柱を、たて K に少しつぶす
+      const W = 1.06, D = 0.72, FH = 0.07, BH = 0.5, RIM = FH + BH, R = 0.37, K = 0.78, LW = W + 0.02;
+      // 箱は前の下のふち（tip）を軸に、前へかたむく。大きくあけるときに、ふたの目がこちらを向いたままになる
+      const tip = new THREE.Group(); tip.position.z = D / 2; inner.add(tip);
+      const box = new THREE.Group(); box.position.z = -D / 2; tip.add(box);
+      // ---- 箱：横板三枚の木の箱。角あて・帯・びょうは金。口の中（上の面）は暗い赤
+      {
+        const wood = paint(new THREEX.RoundedBoxGeometry(W, BH, D, 3, 0.045).translate(0, FH + BH / 2, 0), (p, n, c) => {
+          const band = clamp(Math.floor((p.y - FH) / (BH / 3)), 0, 2);
+          c.copy(woods[band]).multiplyScalar(0.85 + 0.15 * ss(p.y, FH, FH + BH * 0.5)).lerp(mouthC, ss(n.y, 0.6, 0.95));
+        });
+        const gold = [];
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) gold.push(new THREEX.RoundedBoxGeometry(0.11, BH + 0.012, 0.11, 2, 0.02).translate(sx * (W / 2 - 0.045), FH + BH / 2, sz * (D / 2 - 0.045)));
+        for (const sz of [-1, 1]) {
+          for (const sx of [-1, 1]) {
+            gold.push(new THREE.BoxGeometry(0.075, BH, 0.016).translate(sx * 0.3, FH + BH / 2, sz * (D / 2 + 0.006)));
+            for (const y of [0.13, 0.27, 0.41]) gold.push(new THREE.SphereGeometry(0.016, 8, 6).translate(sx * 0.3, FH + y, sz * (D / 2 + 0.016)));
+          }
+          // 口のふちと、足もとの帯
+          for (const y of [RIM - 0.025, FH + 0.025]) { gold.push(new THREE.BoxGeometry(W + 0.02, 0.05, 0.02).translate(0, y, sz * (D / 2 + 0.008))); gold.push(new THREE.BoxGeometry(0.02, 0.05, D + 0.02).translate(sz * (W / 2 + 0.008), y, 0)); }
+        }
+        // 錠前：猫の顔の形（まるい板に三角の耳）
+        const LY = RIM - 0.17, LZ = D / 2 + 0.012;
+        gold.push(new THREE.CylinderGeometry(0.085, 0.085, 0.022, 24).rotateX(Math.PI / 2).translate(0, LY, LZ));
+        for (const s of [-1, 1]) gold.push(new THREE.ConeGeometry(0.042, 0.075, 4).rotateY(Math.PI / 4).scale(1, 1, 0.35).rotateZ(-s * 0.4).translate(s * 0.055, LY + 0.08, LZ));
+        // 脚：四すみに、金の猫の足と肉球
+        const beans = [];
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+          const x = sx * (W / 2 - 0.1), z = sz * (D / 2 - 0.1);
+          gold.push(new THREE.SphereGeometry(0.078, 14, 10).scale(1.1, 0.62, 1.2).translate(x, 0.045, z));
+          for (const a of [-0.5, 0, 0.5]) beans.push(new THREE.SphereGeometry(0.026, 8, 6).scale(1, 0.8, 1).translate(x + Math.sin(a) * 0.065, 0.035, z + sz * Math.cos(a) * 0.075));
+        }
+        // 下の歯：口のふちの前と横に、少しずつ大きさのちがう、まるい三角の歯
+        const teeth = [];
+        for (let i = 0; i < 7; i++) { const h = 0.08 + (i % 3 === 1 ? 0.015 : 0); teeth.push(new THREE.ConeGeometry(0.042, h, 8).scale(1, 1, 0.6).translate(-0.39 + i * 0.13, RIM + h / 2 - 0.006, D / 2 - 0.045)); }
+        for (const s of [-1, 1]) for (const z of [0.18, 0.02]) teeth.push(new THREE.ConeGeometry(0.036, 0.07, 8).scale(0.6, 1, 1).translate(s * (W / 2 - 0.045), RIM + 0.03, z));
+        add(P(mg([wood, ...gold.map(g => tint(g, goldC)), ...beans.map(g => tint(g, beanC)), ...teeth.map(g => tint(g, toothC))]), vcM, { oc: OC }), 0, 0, 0, box);
+        // 板の継ぎ目・鍵穴・口の中の暗がり（光の当たらない色で）
+        const flat = [];
+        for (const y of [FH + BH / 3, FH + BH * 2 / 3]) {
+          for (const sz of [-1, 1]) flat.push(tint(new THREE.BoxGeometry(W - 0.04, 0.008, 0.004).translate(0, y, sz * (D / 2 + 0.002)), seamC));
+          for (const sx of [-1, 1]) flat.push(tint(new THREE.BoxGeometry(0.004, 0.008, D - 0.04).translate(sx * (W / 2 + 0.002), y, 0), seamC));
+        }
+        flat.push(tint(new THREE.CircleGeometry(0.02, 12).translate(0, LY + 0.01, LZ + 0.014), '#2a1406'));
+        flat.push(tint(new THREE.ShapeGeometry(new THREE.Shape([new THREE.Vector2(-0.012, 0.004), new THREE.Vector2(-0.018, -0.045), new THREE.Vector2(0.018, -0.045), new THREE.Vector2(0.012, 0.004)])).translate(0, LY, LZ + 0.014), '#2a1406'));
+        const deep = new THREE.Color('#2a0a14'), gum = new THREE.Color('#6a1e2e');
+        flat.push(paint(new THREE.PlaneGeometry(W - 0.1, D - 0.1, 8, 6).rotateX(-Math.PI / 2).translate(0, RIM + 0.003, 0), (p, n, c) => c.copy(gum).lerp(deep, ss(1 - Math.max(Math.abs(p.x) / (W / 2 - 0.05), Math.abs(p.z) / (D / 2 - 0.05)), 0.0, 0.9))));
+        add(new THREE.Mesh(mg(flat), flatM), 0, 0, 0, box);
+      }
+      // ---- 舌：口の床から、三つの節で前へのびる。ふだんは奥にしまい、笑う・かみつく・しゃべると、ふちからべろんと垂れる
+      const tongue = new THREE.Group(); tongue.position.set(0, RIM + 0.02, -0.12); box.add(tongue);
+      const tSegs = [];
+      {
+        const tM = tm('#ffffff', { vertexColors: true });
+        let par = tongue;
+        [[0.15, 0.2], [0.135, 0.1], [0.11, 0.05]].forEach(([r, L], i) => {
+          const g = new THREE.Group(); g.position.z = i ? tSegs[i - 1].L : 0; par.add(g);
+          // 節は、まるい両はしを継ぎ目から少しだけはみ出す長さ（-0.4r〜L+0.4r）に縮める。はみ出しすぎると、曲げたとき十字に見える
+          const fz = (L + 0.8 * r) / (L + 2 * r);
+          const body = tint(new THREE.CapsuleGeometry(r, L, 4, 12).rotateX(Math.PI / 2).scale(1, 0.24, fz).translate(0, 0, L / 2), '#ff7a98');
+          const groove = tint(new THREE.CapsuleGeometry(0.008, L * 0.8, 2, 6).rotateX(Math.PI / 2).translate(0, r * 0.24 - 0.002, L / 2), '#d84a6e');
+          add(P(mg([body, groove]), tM, { oc: '#5a1424' }), 0, 0, 0, g);
+          tSegs.push({ g, L }); par = g;
+        });
+      }
+      // ---- ふた：うしろの蝶番を軸に開く半円柱。木の板（たて板）に金の帯とびょう。裏は暗い赤の上あごと、上の歯
+      const lid = new THREE.Group(); lid.position.set(0, RIM, -D / 2); box.add(lid);
+      const zc = D / 2;   // ふたの中心（蝶番から）
+      const onLid = (f, r = R) => V3(0, K * r * Math.sin(f), zc + r * Math.cos(f));   // f：前のふち（0）から、てっぺん（π/2）・うしろ（π）へ
+      const lidN = f => V3(0, Math.sin(f) / K, Math.cos(f)).normalize();
+      {
+        const wood = paint(new THREE.CylinderGeometry(R, R, LW, 40, 1, false, 0, Math.PI).rotateZ(Math.PI / 2).scale(1, K, 1).translate(0, 0, zc), (p, n, c) => {
+          const f = Math.atan2(p.y / K, p.z - zc), band = clamp(Math.floor(f / (Math.PI / 5)), 0, 4);
+          if (Math.abs(n.x) > 0.9) c.copy(woods[1]).multiplyScalar(0.8); else c.copy(woods[band % 3]);   // 横の半円の面は一色（たて板の色だと扇形のむらになる）
+        });
+        const gold = [];
+        for (const [x, w] of [[-0.3, 0.075], [0.3, 0.075], [-(LW / 2 - 0.028), 0.056], [LW / 2 - 0.028, 0.056]]) gold.push(new THREE.CylinderGeometry(R + 0.012, R + 0.012, w, 40, 1, true, 0, Math.PI).rotateZ(Math.PI / 2).scale(1, K, 1).translate(x, 0, zc));
+        for (const sz of [-1, 1]) gold.push(new THREE.BoxGeometry(LW, 0.036, 0.02).translate(0, 0.018, zc + sz * (R + 0.006)));
+        for (const x of [-0.3, 0.3]) for (const f of [0.5, Math.PI / 2, Math.PI - 0.5]) gold.push(new THREE.SphereGeometry(0.017, 8, 6).translate(x, ...onLid(f, R + 0.022).toArray().slice(1)));
+        for (const x of [-0.3, 0.3]) gold.push(new THREE.CylinderGeometry(0.03, 0.03, 0.12, 10).rotateZ(Math.PI / 2).translate(x, 0.0, -0.012));   // 蝶番
+        // 上の歯：下の歯と互いちがいに
+        const teeth = [];
+        for (let i = 0; i < 6; i++) { const h = 0.075 + (i % 2 ? 0.012 : 0); teeth.push(new THREE.ConeGeometry(0.04, h, 8).rotateX(Math.PI).scale(1, 1, 0.6).translate(-0.325 + i * 0.13, -h / 2 + 0.006, zc + R - 0.05)); }
+        for (const s of [-1, 1]) for (const z of [zc + 0.25, zc + 0.1]) teeth.push(new THREE.ConeGeometry(0.034, 0.065, 8).rotateX(Math.PI).scale(0.6, 1, 1).translate(s * (LW / 2 - 0.05), -0.028, z));
+        add(P(mg([wood, ...gold.map(g => tint(g, goldC)), ...teeth.map(g => tint(g, toothC))]), vcM, { oc: OC }), 0, 0, 0, lid);
+        // たて板の継ぎ目と、上あご
+        const flat = [];
+        for (let i = 1; i < 5; i++) { const f = i * Math.PI / 5, p = onLid(f, R + 0.002); flat.push(tint(new THREE.BoxGeometry(LW - 0.04, 0.006, 0.006).rotateX(-f + Math.PI / 2).translate(0, p.y, p.z), seamC)); }
+        const deep = new THREE.Color('#2e0a16'), gum = new THREE.Color('#7a2436');
+        flat.push(paint(new THREE.PlaneGeometry(LW - 0.06, 2 * R - 0.05, 8, 6).rotateX(Math.PI / 2).translate(0, 0.004, zc), (p, n, c) => c.copy(gum).lerp(deep, ss(1 - Math.max(Math.abs(p.x) / (LW / 2 - 0.03), Math.abs(p.z - zc) / (R - 0.025)), 0.0, 0.9))));
+        add(new THREE.Mesh(mg(flat), flatM), 0, 0, 0, lid);
+      }
+      // ---- 目：ふたの前に浮かぶ、金色に光る三日月の笑い目（下のふちが上へ反る）。目じりを少し上げて、いたずらっぽく。笑うと細くなる
+      const EF = 0.42, eyes = new THREE.Group(); eyes.position.copy(onLid(EF, R + 0.006)); eyes.quaternion.setFromUnitVectors(V3(0, 0, 1), lidN(EF)); lid.add(eyes);
+      {
+        const crescent = (w, h, lo) => {   // 上はまるく、下のふちは lo の深さで上へ反る
+          const sh = new THREE.Shape(), N = 14;
+          for (let i = 0; i <= N; i++) { const u = -1 + 2 * i / N; sh[i ? 'lineTo' : 'moveTo'](u * w, h * Math.pow(1 - u * u, 0.55) - h * 0.45); }
+          for (let i = N - 1; i > 0; i--) { const u = -1 + 2 * i / N; sh.lineTo(u * w, h * lo * (1 - u * u) - h * 0.45); }
+          return new THREE.ShapeGeometry(sh);
+        };
+        const sock = [], glw = [];
+        for (const s of [-1, 1]) {
+          sock.push(tint(crescent(0.118, 0.17, 0.3).translate(0, -0.008, 0).rotateZ(s * 0.16).translate(s * 0.19, 0, 0), '#241008'));
+          glw.push(crescent(0.084, 0.13, 0.4).rotateZ(s * 0.16).translate(s * 0.19, 0, 0.003).deleteAttribute('uv'));
+        }
+        add(new THREE.Mesh(mg(sock), flatM), 0, 0, 0, eyes);
+        add(new THREE.Mesh(mg(glw), glowMat('#ffeb8a', 1.8)), 0, 0, 0.001, eyes);
+      }
+      // ---- 動き
+      // ふだん：数秒おきに、ふたを小刻みにカタカタ鳴らしてクスクス笑う（体もふるえる）
+      // root.userData.jaw（0〜1）：ふたを大きくあける（クスクスがぶり・ゲラゲラ笑い）。閉じるときは、がちっと一度閉まる。talk：会話でしゃべる口
+      // 体が動いた道のり（戦闘のとびかかり・舞台で歩くとき）から、ぴょんぴょん跳ねる
+      let jw = 0, lidA = 0.25, snap = 0, prevJ = 0, spd = 0, lx = null, lz = 0, gp = 0, hop = 0, tOut = 0;
+      update = (dt, t) => {
+        const U = root.userData, ph = U.ph;
+        if (dt > 0) {
+          const px = root.position.x, pz = root.position.z, d = lx == null ? 0 : Math.hypot(px - lx, pz - lz);
+          const v = d > 2 ? 0 : d / dt / (root.scale.x || 1);
+          spd += (Math.min(v, 8) - spd) * (1 - Math.exp(-8 * dt)); lx = px; lz = pz;
+        }
+        const J = U.jaw || 0, talk = U.talk ? (Math.sin(t * 13 + ph) > 0 ? 0.5 : 0.12) : 0;
+        if (prevJ > 0.5 && J < 0.5) snap = 0.14;
+        prevJ = J;
+        jw += (Math.max(J, talk) - jw) * (1 - Math.exp(-24 * dt));
+        // クスクスの波：2.4 秒に一度、0.9 秒ほど
+        const cyc = (t * 0.42 + ph * 0.37) % 1, burst = cyc < 0.38 ? Math.sin(cyc / 0.38 * Math.PI) : 0;
+        const chat = burst * (0.5 + 0.5 * Math.sin(t * 30 + ph)) * (1 - jw);
+        const idle = 0.2 + Math.sin(t * 1.3 + ph) * 0.04 + chat * 0.24;
+        const wide = 0.74 + Math.sin(t * 24 + ph) * 0.09 * Math.min(1, J + talk);
+        const want = snap > 0 ? 0.0 : idle + (wide - idle) * jw;
+        lidA += (want - lidA) * (1 - Math.exp(-(snap > 0 ? 70 : 20) * dt));
+        snap -= dt;
+        lid.rotation.x = -lidA;
+        // 跳ねる：動いているあいだ、着地でつぶれる
+        const mv = clamp(spd / 1.2, 0, 1);
+        hop += (mv - hop) * (1 - Math.exp(-(mv > hop ? 6 : 10) * dt));
+        if (hop > 0.02) gp += dt * 9; else gp = 0;   // 止まっても、宙で止まらず、小さくなりながら着地まで跳ねる
+        const air = Math.abs(Math.sin(gp)), land = 1 - ss(air, 0, 0.35);
+        box.position.y = air * 0.2 * hop + chat * 0.015;
+        box.scale.set(1 + land * 0.08 * hop, 1 - land * 0.12 * hop, 1 + land * 0.08 * hop);
+        box.rotation.x = -Math.cos(gp) * 0.08 * hop;
+        tip.rotation.x = jw * 0.36;
+        box.rotation.z = Math.sin(t * 33) * (chat * 0.02 + jw * 0.015) + Math.sin(t * 1.1 + ph) * 0.02;
+        // 舌：笑う・あけると、前へ出て、ふちから垂れてゆれる
+        tOut += (Math.max(jw, chat * 0.35) - tOut) * (1 - Math.exp(-10 * dt));
+        tongue.position.set(0, RIM + 0.02 + tOut * 0.05, -0.12 + tOut * 0.3);   // 出すときは、節の継ぎ目が前のふちの上に来る
+        const wag = Math.sin(t * (6 + jw * 10) + ph);
+        tSegs[0].g.rotation.set(-0.06 - tOut * 0.08, wag * 0.08 * tOut, 0);
+        tSegs[1].g.rotation.set(tOut * (1.25 + wag * 0.15), wag * 0.2 * tOut, 0);
+        tSegs[2].g.rotation.set(tOut * (-0.6 - wag * 0.3), wag * 0.25 * tOut, 0);
+        // 目：笑うほど細く。ときどきまばたき
+        const bl = (t * 0.29 + ph) % 4 > 3.88 ? 0.15 : 1;
+        eyes.scale.y = bl * (1 - Math.max(jw * 0.38, chat * 0.3));
+      };
       height = 1.3; radius = 0.75; scale = 1.1; break;
     }
     case 'armor':       // さまよう鎧：中身のない古い鎧。部品は少しずつ浮いて、すき間と首の穴から青白い光がもれる。猫耳のかぶと、欠けた大剣、肉球の盾
