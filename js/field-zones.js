@@ -5546,10 +5546,9 @@ class ZoneKit {
       if (r() < 0.6) { const b = at(L * 0.5, 2), d2 = d.clone().applyAxisAngle(V3(0, 1, 0), (r() < 0.5 ? 1 : -1) * (0.5 + r() * 0.4)); tube([b, b.clone().addScaledVector(d2, 10).setY(y0 + 1.2), b.clone().addScaledVector(d2, 20 + r() * 8).setY(y0 - 1)], 2.2, 0.5, 1.4, 12); }
     }
     // 樹冠：大枝が横へ大きく張り出し、枝先がやや垂れる。枝先と、上をおおう丸屋根に葉のかたまり
-    const greens = ['#5ad06a', '#4ab85a', '#72d872', '#3f9f4e'], gray = new THREE.Color('#9a9a88');
-    const leaves = greens.map(g => { const target = new THREE.Color(g), m = new THREE.MeshStandardMaterial({ color: gray.clone().multiplyScalar(0.8 + target.g * 0.25).lerp(target, h), roughness: 0.85, flatShading: true, fog }); return { m, target }; });
-    const clusters = [], ends = [];
-    const blob = (c, rr, li) => { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(rr, 2), leaves[li].m); m.position.copy(c); m.scale.y = 0.78; m.rotation.set(r() * 3, r() * 3, 0); this.add(m); clusters.push({ c, r: rr }); };
+    //   葉は、タイトル・遠景の樹と同じ作り（treeCanopy）：でこぼこの茂みに葉のもようを貼り、葉の房の板をかさねる。下と奥ほど暗い青緑、上ほど明るい黄緑
+    const clusters = [], ends = [], clumps = [];
+    const blob = (c, rr) => { r(); r(); clumps.push([c.x - C.x, c.y - C.y, c.z - C.z, rr]); clusters.push({ c, r: rr }); };
     const N = 10;
     for (let i = 0; i < N; i++) {
       const a = i / N * Math.PI * 2 + (r() - 0.5) * 0.35, d = V3(Math.cos(a), 0, Math.sin(a)), R = 64 + r() * 14, ye = 74 + r() * 8;
@@ -5571,8 +5570,25 @@ class ZoneKit {
     // 上の丸屋根：てっぺんから外へ、段ごとに低く（横に長くならないよう、上の二段で厚みをもたせる）
     blob(top.clone().add(V3(0, 14, 0)), 24, 2);
     for (const [rad, y, n, sz] of [[14, 22, 6, 17], [32, 12, 10, 16], [22, -8, 8, 16], [46, -16, 14, 15], [70, -25, 20, 13], [88, -34, 22, 11]]) for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + r() * 0.4; blob(top.clone().add(V3(Math.cos(a) * rad, y + r() * 4, Math.sin(a) * rad)), sz + r() * 3, i % 4); }
+    // 葉の色：弱っているあいだは灰色（green が 0）。よみがえると setGreen で 1 へ
+    //   霧の中（ふだんの区画）では、遠くの樹はかすんで細かいところが見えないので、葉の房は置かず、茂みも粗く（軽量の画質と同じ）
+    const green = { value: h }, lo = GFX.low || fog;
+    let cs = 7; const crnd = () => (cs = (cs * 16807) % 2147483647) / 2147483647;
+    const { geo: cgeo, cards } = treeCanopy(clumps, {
+      rnd: crnd, detail: lo ? 3 : 5, col: [new THREE.Color('#2e7464'), new THREE.Color('#5cc066'), new THREE.Color('#e4f89a'), ['#80d874', '#4cbc98', '#b8e070'].map(c => new THREE.Color(c))],
+      hy: [64, 140], out: [20, 80], size: 2.2, lift: 2, want: (rr, n) => fog ? 0 : rr * rr * (lo ? 0.2 : 0.5) / n,
+    });
+    const look = { sun: [-0.35, 0.55, -0.75], rim: ['#fff0d8', '#fff0d8', '#fff0d8'], rimK: 0.4, haze: ['#000000', '#000000'], hz: [0, 0, 0, 0], glow: [0, 0.35] }, gx = { fog, green, gray: '#a4a490' };
+    const canopy = new THREE.Mesh(cgeo, treeMat(look, {}, look.rim[1], look.glow[1], false, [leafTileTex(), 0.09, 0.5, 0.7], gx)); canopy.position.copy(C); this.add(canopy);
+    if (cards.length) {
+      const tufts = new THREE.Mesh(treeCardGeo(cards), treeMat(look, { map: leafTuftTex(), alphaTest: 0.5 }, look.rim[2], look.glow[1], true, null, gx));
+      tufts.position.copy(C); tufts.frustumCulled = false; this.scene.add(tufts);
+    }
+    // 根もとの茂みの葉（ふつうの、平たい面の葉）
+    const gray = new THREE.Color('#9a9a88');
+    const leaves = ['#5ad06a', '#4ab85a', '#72d872', '#3f9f4e'].map(g => { const target = new THREE.Color(g), from = gray.clone().multiplyScalar(0.8 + target.g * 0.25), m = new THREE.MeshStandardMaterial({ color: from.clone().lerp(target, h), roughness: 0.85, flatShading: true, fog }); return { m, target, from }; });
     // 根もとをおおう苔の丘と茂み（区画の中には入れない）
-    const ground = ['#5f9a44', '#4a8238'].map(g => { const target = new THREE.Color(g), m = new THREE.MeshStandardMaterial({ color: dullC.clone().lerp(target, h), roughness: 0.95, flatShading: true, fog }); leaves.push({ m, target }); return m; });
+    const ground = ['#5f9a44', '#4a8238'].map(g => { const target = new THREE.Color(g), m = new THREE.MeshStandardMaterial({ color: dullC.clone().lerp(target, h), roughness: 0.95, flatShading: true, fog }); leaves.push({ m, target, from: dullC.clone() }); return m; });
     const [mossM, mossM2] = ground;
     for (let i = 0; i < 90; i++) {
       const a = r() * Math.PI * 2, rad = 18 + Math.pow(r(), 0.7) * 80, x = C.x + Math.cos(a) * rad, z = C.z + Math.sin(a) * rad;
@@ -5586,7 +5602,10 @@ class ZoneKit {
       if (cl.r < 7 || i % 3 === 2 || cl.c.y > y0 + 104) return;
       const out = cl.c.clone().sub(C).setY(0).normalize(), n = cl.r > 11 ? 2 : 1;
       for (let j = 0; j < n; j++) {
-        const d = out.clone().applyAxisAngle(V3(0, 1, 0), (r() - 0.5) * 1.6).multiplyScalar(0.75).add(V3(0, -0.65, 0)).normalize(), p = cl.c.clone().addScaledVector(d, cl.r * 0.84);
+        // 茂みのでこぼこの面（treeCanopy と同じふくらみ）の、少し内がわに
+        const d = out.clone().applyAxisAngle(V3(0, 1, 0), (r() - 0.5) * 1.6).multiplyScalar(0.75).add(V3(0, -0.65, 0)).normalize();
+        const b = canopyBump(cl.c.x - C.x + d.x * cl.r, cl.c.y - C.y + d.y * cl.r, cl.c.z - C.z + d.z * cl.r), rr = cl.r * (1 + b) * 0.95;
+        const p = cl.c.clone().add(V3(d.x * rr, d.y * rr * 0.8, d.z * rr));
         const col = cols[(i + j) % 4], g = new THREE.Group(); g.position.copy(p);
         const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 2.2, 5), stemM); stem.position.y = 0.4; g.add(stem);
         const f = new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 12), glowMat(col, 3 * lumaBoost(col), { fog: false })); f.position.y = -1.4; f.scale.y = 1.12; g.add(f);
@@ -5598,7 +5617,9 @@ class ZoneKit {
     });
     if (fruits.length) this.tick((dt, t) => { for (const g of fruits) { const u = g.userData; u.halo.scale.setScalar(6 + Math.sin(t * 1.6 + u.ph) * 1.1); g.rotation.z = Math.sin(t * 0.9 + u.ph) * 0.08; } });
     setMoss(h);
-    return { leaves, gray, fruits, top, setMoss };
+    // 葉の色（0：灰色 〜 1：みどり）
+    const setGreen = k => { green.value = k; for (const l of leaves) l.m.color.copy(l.from).lerp(l.target, k); };
+    return { leaves, fruits, top, setMoss, setGreen };
   }
   roundTree(x, z, s = 1, leaf = 'leaf', o = {}) {
     this.cyl(x, z, 0.22 * s, 1.8 * s, 'bark', { r2: 0.16 * s, seg: 7, col: o.col });
@@ -10699,11 +10720,10 @@ const ZONE_BUILD = {
     // bloom（第八章の終わりの場面）：葉は灰色、実はまだない状態から始め、hooks.treeBloom／fruitsGrow で、葉にみどりが戻り、実がふくらむ
     const bloom = !!(K.v.flags && K.v.flags.bloom);
     const T = K.nyanderTree(0, 76, { health: bloom ? 0 : h, fruit: revived || bloom, hidden: bloom, clear: bloom });
-    const from = T.leaves.map(l => l.m.color.clone());
     const anims = [];
     K.tick(dt => { for (let i = anims.length - 1; i >= 0; i--) { const o = anims[i]; o.t += dt; const k = Math.min(1, o.t / o.d); o.f(k); if (k >= 1) anims.splice(i, 1); } });
     if (K.v.hooks) {
-      K.v.hooks.treeBloom = () => anims.push({ t: 0, d: 3, f: k => { const e = k * k * (3 - 2 * k); T.leaves.forEach((l, i) => l.m.color.copy(from[i]).lerp(l.target, e)); T.setMoss(e); } });
+      K.v.hooks.treeBloom = () => anims.push({ t: 0, d: 3, f: k => { const e = k * k * (3 - 2 * k); T.setGreen(e); T.setMoss(e); } });
       K.v.hooks.fruitsGrow = () => T.fruits.forEach((g, i) => anims.push({ t: -i / T.fruits.length * 4 - Math.random() * 0.3, d: 0.8, f: k => {
         k = Math.max(0, k); g.userData.s = 0.001 + (1 - Math.pow(1 - k, 3)); g.scale.setScalar(g.userData.s);
         if (k > 0 && !g.userData.pop) { g.userData.pop = 1; K.v.p.burst(g.position.clone().add(V3(0, -1.4, 0)), '#fff0a8', 24, { speed: 3, life: 0.9, size: 0.22 }); }
