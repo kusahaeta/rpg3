@@ -3522,24 +3522,57 @@ function sceneOrder(id) {
 }
 
 // ---------------- まどろみの林の小物（探索・会話シーンで共用） ----------------
-// 綿毛の玉（たんぽぽの種の集まり）：放射状の細い毛の先に白い冠毛、うっすら光る外側。s で大きさ（半径 0.62 × s）
-let PUFF_GEO = null;
-function makePuff(s = 1) {
-  if (!PUFF_GEO) {
-    const parts = [], hair = new THREE.CylinderGeometry(0.008, 0.008, 0.55, 3), tip = new THREE.SphereGeometry(0.05, 6, 4), up = V3(0, 1, 0), q = new THREE.Quaternion(), M = new THREE.Matrix4();
-    for (let i = 0; i < 56; i++) {
-      const y = 1 - (i + 0.5) / 56 * 2, r = Math.sqrt(1 - y * y), a = i * 2.39996, dir = V3(Math.cos(a) * r, y, Math.sin(a) * r);
-      q.setFromUnitVectors(up, dir);
-      parts.push(hair.clone().applyMatrix4(M.compose(dir.clone().multiplyScalar(0.3), q, V3(1, 1, 1))));
-      parts.push(tip.clone().applyMatrix4(M.makeTranslation(dir.x * 0.58, dir.y * 0.58, dir.z * 0.58)));
-    }
-    PUFF_GEO = THREEX.BufferGeometryUtils.mergeGeometries(parts);
+// 綿毛の玉（たんぽぽの種の集まり）：カメラを向く板 1 枚に、まん丸に見た綿毛の絵（puffTex）。s で大きさ（半径 0.7 × s）
+// 決まった順の乱数（絵が毎回同じになるように）
+function seededRnd(seed) { let s = seed; return () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646; }
+// 綿毛の玉を、まん丸に見た絵：うすいもや、まん中の花托、そこからのびる細い柄、柄の先の冠毛（正面のものは丸く開き、ふちのものは外へ扇に開く）
+//   奥の種 → 花托 → 手前の種の順に描く（手前の種は花托にかさなる）
+function puffTex() {
+  if (TexCache.puff) return TexCache.puff;
+  const N = 512, C = N / 2, R = C * 0.94, c = document.createElement('canvas'); c.width = c.height = N;
+  const g = c.getContext('2d'), rnd = seededRnd(7);
+  let gr = g.createRadialGradient(C, C, 0, C, C, R);
+  gr.addColorStop(0, 'rgba(255,255,255,.1)'); gr.addColorStop(0.6, 'rgba(255,255,255,.08)'); gr.addColorStop(0.85, 'rgba(255,255,255,.07)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, N, N);
+  g.lineCap = 'round';
+  const seeds = [];
+  for (let i = 0; i < 440; i++) {
+    // 球の面の種を正面から見たときの、中心からのへだたり（ふちほど多い）
+    const a = rnd() * Math.PI * 2, u = rnd(), rho = Math.sqrt(1 - u * u);
+    seeds.push({ a, rho, front: rnd() < 0.5, L: R * (0.11 + rnd() * 0.06) });
   }
+  const seed = S => {
+    const { a, rho, L } = S, rt = R * 0.8 * rho, ca = Math.cos(a), sa = Math.sin(a), tx = C + ca * rt, ty = C + sa * rt;
+    g.strokeStyle = '#ffffff'; g.globalAlpha = S.front ? 0.2 : 0.12; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(C + ca * R * 0.08, C + sa * R * 0.08); g.lineTo(tx, ty); g.stroke();
+    const n = 12, spread = Math.PI * 2 - rho * (Math.PI * 2 - 2.2);
+    for (let j = 0; j < n; j++) {
+      const b = a + (spread > 6 ? j / n * Math.PI * 2 : (j / (n - 1) - 0.5) * spread) + (rnd() - 0.5) * 0.2, l = L * (0.75 + rnd() * 0.25);
+      g.globalAlpha = (S.front ? 0.3 : 0.2) + rnd() * 0.3; g.lineWidth = 0.8 + rnd() * 0.6;
+      g.beginPath(); g.moveTo(tx, ty);
+      g.quadraticCurveTo(tx + Math.cos(b) * l * 0.5 + ca * l * 0.15, ty + Math.sin(b) * l * 0.5 + sa * l * 0.15, tx + Math.cos(b) * l, ty + Math.sin(b) * l); g.stroke();
+    }
+    // 冠毛の根もと（毛の集まるところ）の、ほのかな光
+    g.globalAlpha = S.front ? 0.5 : 0.3; g.fillStyle = '#ffffff'; g.beginPath(); g.arc(tx, ty, 1.6, 0, Math.PI * 2); g.fill();
+  };
+  seeds.filter(S => !S.front).forEach(seed);
+  // 花托：うす茶の丸に、種のついていた小さなくぼみ
+  g.globalAlpha = 1; const cr = R * 0.13;
+  gr = g.createRadialGradient(C - cr * 0.3, C - cr * 0.3, 0, C, C, cr);
+  gr.addColorStop(0, '#d8c8a2'); gr.addColorStop(0.8, '#a89068'); gr.addColorStop(1, 'rgba(150,126,90,0)');
+  g.fillStyle = gr; g.beginPath(); g.arc(C, C, cr, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#76603e';
+  for (let i = 0; i < 26; i++) { const a = i * 2.39996, d = Math.sqrt((i + 0.5) / 26) * cr * 0.75; g.globalAlpha = 0.55; g.beginPath(); g.arc(C + Math.cos(a) * d, C + Math.sin(a) * d, 2, 0, Math.PI * 2); g.fill(); }
+  seeds.filter(S => S.front).forEach(seed);
+  g.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (TexCache.puff = t);
+}
+function makePuff(s = 1) {
   const g = new THREE.Group();
-  const hairs = new THREE.Mesh(PUFF_GEO.clone(), new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#fff8e8', emissiveIntensity: 0.45, roughness: 1 }));
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 12), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.22, depthWrite: false }));
-  const core = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshStandardMaterial({ color: '#c8b070', roughness: 1 }));
-  g.add(hairs, shell, core); g.scale.setScalar(s);
+  const puff = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex(), color: '#fffdf4', transparent: true, depthWrite: false }));
+  // 深度を書かないので、川の流れの筋・道の塗り（renderOrder 1〜5）より後に描く。先に描くと、奥の川で上書きされる
+  puff.renderOrder = OVER_PAINT; puff.scale.setScalar(1.5); g.add(puff); g.scale.setScalar(s);
   return g;
 }
 // ねむり花の周期：閉じている → ふくらむ（あぶない合図）→ 粉をはく。ph は花ごとのずれ（0〜1）
