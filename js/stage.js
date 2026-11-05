@@ -1325,7 +1325,7 @@ const STAGE_FX = {
 function partyAt(sceneId) {
   const joined = [HERO];
   const gives = ls => { const out = []; const walk = l => l.forEach(x => { if (x && x.give) out.push(x.give); else if (x && x.c) x.c.forEach(([, rs]) => walk(rs)); }); walk(ls); return out; };
-  for (const ch of STORY) for (const st of ch.steps) for (const id of [st.id, st.scene, st.after].filter(Boolean)) {
+  for (const ch of STORY) for (const st of ch.steps) for (const id of [st.id, st.scene, st.after, ...(st.also || [])].filter(Boolean)) {
     if (id === sceneId) return joined.slice();
     const sc = SCENES[id]; if (sc) for (const k of gives(sc.lines)) if (!joined.includes(k)) joined.push(k);
     if (sc && sc.leave) sc.leave.forEach(k => { const i = joined.indexOf(k); if (i >= 0) joined.splice(i, 1); });
