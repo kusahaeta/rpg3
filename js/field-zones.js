@@ -8226,6 +8226,81 @@ function royalCrest(K, x, y, z, ry, s = 1) {
   for (const u of [-0.18, 0, 0.18]) K.mg('gold', new THREE.ConeGeometry(0.07 * s, (u ? 0.2 : 0.28) * s, 4), ...at(0.2, u ? 0.56 : 0.6, u), [0, ry, 0]);
   K.mg(K.glow('#ff6a8a', 2), new THREE.SphereGeometry(0.05 * s, 8, 6), ...at(0.24, 0.47));
 }
+// 本の背表紙を横に 16 本並べた一枚の絵（本棚の本はみな、この絵のどれかの列を貼る。一つの材質で描けて軽い）
+//   上から：小口（紙の白, v 0.94〜）・表紙の地の色（v 0.91〜0.94, 側面に使う）・背表紙（v 0〜0.9）
+const SPINE_N = 16, SPINE_BASE = ['#a83a3a', '#3a5a9a', '#3a7a4a', '#7a4a8a', '#c8902a', '#7a5030', '#9a3a4a', '#3a4a7a',
+  '#5a8a3a', '#b85a2a', '#3a7a8a', '#7a3a6a', '#8a7a3a', '#3a3a4a', '#b05a6a', '#4a4a8a'];
+function bookSpineTex() {
+  if (TexCache.spines) return TexCache.spines;
+  const W = 32, H = 256, c = document.createElement('canvas'); c.width = W * SPINE_N; c.height = H; const g = c.getContext('2d');
+  const base = SPINE_BASE;
+  const gold = '#e8c464', top = 24;
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < SPINE_N; i++) {
+    const x = i * W, kind = i % 4;
+    g.fillStyle = '#f2e6c8'; g.fillRect(x, 0, W, 15);   // 小口
+    g.fillStyle = base[i]; g.fillRect(x, 15, W, H - 15);
+    // 丸い背：両はしを暗く、まん中を少し明るく
+    const gr = g.createLinearGradient(x, 0, x + W, 0);
+    gr.addColorStop(0, 'rgba(0,0,0,.45)'); gr.addColorStop(0.25, 'rgba(0,0,0,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,.12)');
+    gr.addColorStop(0.75, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,.45)');
+    g.fillStyle = gr; g.fillRect(x, top, W, H - top);
+    // 革のむら
+    for (let k = 0; k < 40; k++) { g.fillStyle = `rgba(0,0,0,${0.05 + rnd() * 0.08})`; g.fillRect(x + rnd() * W, top + rnd() * (H - top), 2, 2 + rnd() * 6); }
+    const band = (y, h, col = gold) => { g.fillStyle = col; g.fillRect(x, y, W, h); };
+    if (kind === 0) {          // 上下に金の二本線
+      for (const y of [top + 14, top + 22, H - 30, H - 22]) band(y, 3);
+    } else if (kind === 1) {   // 明るい題の札と、上下の金の線
+      band(top + 10, 3); band(H - 18, 3);
+      g.fillStyle = '#efe0b8'; g.fillRect(x + 5, top + 50, W - 10, 46);
+      g.strokeStyle = gold; g.lineWidth = 2; g.strokeRect(x + 6, top + 51, W - 12, 44);
+    } else if (kind === 2) {   // 背の段（とじ糸のふくらみ）と金の丸
+      for (let k = 0; k < 5; k++) { const y = top + 18 + k * 44; band(y, 5, 'rgba(0,0,0,.35)'); band(y - 2, 2, 'rgba(255,255,255,.18)'); }
+      g.fillStyle = gold; g.beginPath(); g.arc(x + W / 2, top + 84, 5, 0, 7); g.fill();
+    } else {                   // 太い金の帯と、金の点
+      band(top + 12, 10); band(H - 26, 6);
+      g.fillStyle = gold; for (let k = 0; k < 3; k++) g.fillRect(x + W / 2 - 2, top + 48 + k * 12, 4, 6);
+    }
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (TexCache.spines = t);
+}
+// 本の箱に、背表紙の絵の i 列めを貼る（立てた本で：背 = +z の面、表紙 = ±x、上下と裏 = 小口）。
+//   all でなければ（棚の本）、見えない底と裏の面は捨てる
+function bookGeo(w, h, d, i, all = false) {
+  const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv, u0 = (i + 0.5) / SPINE_N;
+  for (let f = 0; f < 6; f++) for (let k = 0; k < 4; k++) {
+    const j = f * 4 + k;
+    if (f === 4) uv.setXY(j, (i + 0.1 + uv.getX(j) * 0.8) / SPINE_N, uv.getY(j) * 0.9);
+    else uv.setXY(j, u0, f < 2 ? 0.925 : 0.975);
+  }
+  if (!all) { const ix = Array.from(geo.index.array); geo.setIndex([...ix.slice(0, 18), ...ix.slice(24, 30)]); }   // +x, -x, +y, +z
+  return geo;
+}
+// 本の材質（背表紙の絵）。棚の本は影を落とさない（棚の枠の影の中にある）。机や床に積んだ本は shadow で影を落とす
+function bookMat(K, shadow = false) {
+  const k = shadow ? 'bookSpinesSh' : 'bookSpines';
+  return K.mc[k] || (K.mc[k] = Object.assign(new THREE.MeshStandardMaterial({ map: bookSpineTex(), roughness: 0.8, metalness: 0 }), { userData: { noShadow: !shadow } }));
+}
+// 横に積んだ本の山（y は置く面の高さ。下ほど大きい本、一冊ずつ少しずつ向きをずらす）。s：大きさ
+function bookPile(K, x, y, z, n, ry = 0, s = 1) {
+  const M = bookMat(K, true);
+  for (let i = 0; i < n; i++) {
+    const L = (0.42 - i * 0.025 + (K.r() - 0.5) * 0.06) * s, d = L * (0.68 + K.r() * 0.12), t = (0.05 + K.r() * 0.04) * s;
+    const g = bookGeo(t, L, d, Math.floor(K.r() * SPINE_N), true);
+    g.rotateZ(Math.PI / 2); g.rotateY(ry + (K.r() - 0.5) * 0.7 + (K.r() < 0.5 ? Math.PI : 0));
+    K.mg(M, g, x + (K.r() - 0.5) * 0.04 * s, y + t / 2, z + (K.r() - 0.5) * 0.04 * s); y += t;
+  }
+}
+// 開いた本（y は置く面の高さ）：表紙と、まん中のとじ目へ向かって少し沈んだ左右のページ。s：大きさ
+function openBook(K, x, y, z, ry = 0, s = 1) {
+  const c = Math.cos(ry), sn = Math.sin(ry), col = SPINE_BASE[Math.floor(K.r() * SPINE_N)], W = 0.24 * s, D = 0.34 * s;
+  for (const sd of [-1, 1]) {
+    const u = sd * W / 2, rz = sd * 0.06, lift = W / 2 * Math.sin(0.06);
+    K.mg(col, new THREE.BoxGeometry(W + 0.01, 0.012, D + 0.02), x + u * c, y + 0.006 + lift, z - u * sn, [0, ry, rz]);
+    K.mg('#f4ecd8', new THREE.BoxGeometry(W - 0.01, 0.03 * s, D - 0.01), x + u * 0.97 * c, y + 0.012 + 0.015 * s + lift, z - u * 0.97 * sn, [0, ry, rz]);
+  }
+}
 // 王家の書庫の絵：初代王の織物（にゃんだーの樹の下で笑う王と民）・古代文字の石板の彫り（光る線だけ）・天窓のステンドグラス
 function archiveTapestryTex() {
   const c = document.createElement('canvas'); c.width = 256; c.height = 320; const g = c.getContext('2d');
@@ -8321,23 +8396,84 @@ function palaceProps(K) {
     K.mg('#ffe0b0', new THREE.SphereGeometry(0.34, 12, 10), x + Math.sin(ry) * 0.12, K.gy(x, z) + y + 0.1, z + Math.cos(ry) * 0.12, [0, ry, 0], [1, 1, 0.35]);
     K.mg('gold', new THREE.ConeGeometry(0.22, 0.28, 5), x + Math.sin(ry) * 0.1, K.gy(x, z) + y + 0.55, z + Math.cos(ry) * 0.1);
   };
-  // 本棚（ry = 正面）：棚板と色とりどりの背表紙。h：高さ（回廊の下は低い棚）
-  const shelf = (x, z, ry, w = 3, h = 3.2) => {
-    const y = K.gy(x, z), c = Math.cos(ry), sn = Math.sin(ry), rows = Math.max(2, Math.floor((h - 0.3) / 0.75));
-    K.box(x, z, w, h, 0.6, 'wood2', { ry });
-    K.mg('gold', new THREE.BoxGeometry(w + 0.1, 0.1, 0.66), x, y + h - 0.05, z, [0, ry, 0]);
-    for (let k = 0; k < rows; k++) for (let b = 0; b < Math.floor(w / 0.22); b++) {
-      if (K.r() < 0.12) continue;
-      const u = -w / 2 + 0.2 + b * 0.22, bh = 0.45 + K.r() * 0.2;
-      K.mg(pick(['#b84a4a', '#4a6ab8', '#4a9a5a', '#c8a040', '#8a5ab8', '#6a4a30']), new THREE.BoxGeometry(0.18, bh, 0.42), x + u * c + sn * 0.12, y + 0.3 + k * 0.75 + bh / 2, z - u * sn + c * 0.12, [0, ry, 0]);
+  // 本棚（ry = 正面, 奥行き 0.6）：台座・側板・裏板・棚板・仕切り・天板の飾りの枠に、本を収める。h：高さ（回廊の下は低い棚）
+  //   fill：'books'（背表紙の絵を貼った本。高さ・厚み・奥行きはばらばら。ところどころ、すき間・もたれた本・横に積んだ本）
+  //         'pantry'（食料庫：ジャムや蜂蜜の瓶と、ひもでしばった紙の包み）
+  const spineM = bookMat(K);
+  const shelf = (x, z, ry, w = 3, h = 3.2, fill = 'books') => {
+    const y = K.gy(x, z), c = Math.cos(ry), sn = Math.sin(ry), D = 0.6, side = 0.07, base = 0.16, crown = 0.18;
+    // 棚の中の位置（u：幅の向き, ly：床からの高さ, lz：前が +）に置く
+    const put = (mat, geo, u, ly, lz) => K.mg(mat, geo, x + u * c + lz * sn, y + ly, z - u * sn + lz * c, [0, ry, 0]);
+    const inH = h - base - crown, rows = Math.max(2, Math.round(inH / 0.72)), rowH = inH / rows;
+    const bays = Math.max(1, Math.round((w - 2 * side) / 1.05)), bayW = (w - 2 * side - (bays - 1) * 0.05) / bays;
+    // 枠
+    put('wood2', new THREE.BoxGeometry(w + 0.04, base, D + 0.04), 0, base / 2, 0.02);                            // 台座
+    for (const s of [-1, 1]) put('wood2', new THREE.BoxGeometry(side, h - base, D), s * (w - side) / 2, base + (h - base) / 2, 0);   // 側板
+    put('#3a2618', new THREE.BoxGeometry(w - 2 * side, inH, 0.03), 0, base + inH / 2, -D / 2 + 0.015);         // 裏板（暗くして奥行きを出す）
+    for (let b = 1; b < bays; b++) put('wood2', new THREE.BoxGeometry(0.05, inH, D - 0.04), -w / 2 + side + b * (bayW + 0.05) - 0.025, base + inH / 2, -0.02);   // 仕切り
+    for (let k = 1; k < rows; k++) put('wood', new THREE.BoxGeometry(w - 2 * side, 0.04, D - 0.04), 0, base + k * rowH, -0.02);   // 棚板
+    put('wood2', new THREE.BoxGeometry(w + 0.16, crown * 0.6, D + 0.12), 0, h - crown * 0.3, 0.04);           // 天板の飾り（張り出す）
+    put('wood2', new THREE.BoxGeometry(w + 0.06, crown * 0.4, D + 0.04), 0, h - crown * 0.8, 0.02);
+    put('gold', new THREE.BoxGeometry(w + 0.17, 0.035, 0.02), 0, h - crown * 0.6, D / 2 + 0.105);              // 金の縁
+    K.boxCol(x, z, w, D, h, ry);
+    // 中身（棚の一段・一区画ずつ）
+    const front = D / 2 - 0.04;
+    for (let k = 0; k < rows; k++) for (let b = 0; b < bays; b++) {
+      const y0 = base + k * rowH + (k ? 0.02 : 0), ch = rowH - 0.06, uL = -w / 2 + side + b * (bayW + 0.05), uR = uL + bayW;
+      let u = uL + 0.01 + K.r() * 0.04;
+      if (fill === 'pantry') {
+        while (u < uR - 0.2) {
+          if (K.r() < 0.55) {   // 瓶：中身の色、木のふた
+            const r = 0.07 + K.r() * 0.04, jh = 0.16 + K.r() * 0.14, lz = front - r - K.r() * 0.1;
+            put(pick(['#e8a040', '#c84a4a', '#8ab84a', '#d8c8a0', '#a85a8a']), new THREE.CylinderGeometry(r, r, jh, 10), u + r, y0 + jh / 2, lz);
+            put('wood', new THREE.CylinderGeometry(r * 0.8, r * 0.8, 0.04, 10), u + r, y0 + jh + 0.02, lz);
+            u += r * 2 + 0.03 + K.r() * 0.05;
+          } else {              // 紙の包み：ひもを十字に
+            const pw = 0.18 + K.r() * 0.12, ph = 0.1 + K.r() * 0.1, pd = 0.2 + K.r() * 0.1, lz = front - pd / 2 - K.r() * 0.05;
+            put(pick(['#e8d8b0', '#c8b088', '#d8c8a8']), new THREE.BoxGeometry(pw, ph, pd), u + pw / 2, y0 + ph / 2, lz);
+            put('#8a5a3a', new THREE.BoxGeometry(0.015, ph + 0.01, pd + 0.01), u + pw / 2, y0 + ph / 2, lz);
+            put('#8a5a3a', new THREE.BoxGeometry(pw + 0.01, ph + 0.01, 0.015), u + pw / 2, y0 + ph / 2, lz);
+            u += pw + 0.03 + K.r() * 0.05;
+          }
+        }
+        continue;
+      }
+      let prev = false;   // ひとつ前が、まっすぐ立った本か（もたれる相手）
+      while (u < uR - 0.05) {
+        const r = K.r();
+        if (r < 0.06) { u += 0.1 + K.r() * 0.2; prev = false; continue; }    // すき間
+        if (r < 0.13 && uR - u > 0.5) {                                     // 横に積んだ本
+          const L = 0.3 + K.r() * 0.12; let yy = y0;
+          for (let n = 2 + Math.floor(K.r() * 3); n > 0; n--) {
+            const t = 0.05 + K.r() * 0.04, d = 0.24 + K.r() * 0.1, g = bookGeo(t, L - K.r() * 0.05, d, Math.floor(K.r() * SPINE_N));
+            g.rotateZ(Math.PI / 2); g.rotateY((K.r() - 0.5) * 0.12);
+            put(spineM, g, u + L / 2, yy + t / 2, front - d / 2 - K.r() * 0.03); yy += t;
+          }
+          u += L + 0.03; prev = false; continue;
+        }
+        const big = K.r() < 0.08, bw = big ? 0.14 + K.r() * 0.06 : 0.055 + K.r() * 0.08;
+        const bh = Math.min(ch, ch * (big ? 0.85 : 0.6) + K.r() * ch * 0.3), bd = 0.28 + K.r() * 0.12 + (big ? 0.06 : 0);
+        if (u + bw > uR) break;
+        const lean = r < 0.18 && prev && u + bh * 0.4 + bw < uR;     // ひとつ前の本にもたれる
+        const g = bookGeo(bw, bh, bd, Math.floor(K.r() * SPINE_N)), lz = front - bd / 2 - K.r() * 0.03;
+        if (lean) {
+          const a = 0.2 + K.r() * 0.2, bx = u + bh * Math.sin(a);              // 下の左はしが棚板につき、上の左はしが前の本にふれる
+          g.rotateZ(a);
+          put(spineM, g, bx + bw / 2 * Math.cos(a) - bh / 2 * Math.sin(a), y0 + bw / 2 * Math.sin(a) + bh / 2 * Math.cos(a), lz);
+          u = bx + bw * Math.cos(a) + 0.1 + K.r() * 0.15; prev = false;
+        } else {
+          put(spineM, g, u + bw / 2, y0 + bh / 2, lz);
+          u += bw + (K.r() < 0.2 ? 0.006 : 0); prev = true;
+        }
+      }
     }
   };
   // 両面の本棚（部屋のまん中に立つ列）
   const stack = (x, z, ry, w, h) => { const c = Math.cos(ry), sn = Math.sin(ry); shelf(x + sn * 0.3, z + c * 0.3, ry, w, h); shelf(x - sn * 0.3, z - c * 0.3, ry + Math.PI, w, h); };
   // 壁ぞいに本棚を並べる：a0〜a1 のあいだ（軸は along）、もう一方の座標は at
-  const shelfRow = (along, a0, a1, at, ry, h, w = 3.3) => {
+  const shelfRow = (along, a0, a1, at, ry, h, w = 3.3, fill) => {
     const n = Math.max(1, Math.floor((a1 - a0) / (w + 0.3))), step = (a1 - a0) / n;
-    for (let i = 0; i < n; i++) { const a = a0 + step * (i + 0.5); along === 'x' ? shelf(a, at, ry, w, h) : shelf(at, a, ry, w, h); }
+    for (let i = 0; i < n; i++) { const a = a0 + step * (i + 0.5); along === 'x' ? shelf(a, at, ry, w, h, fill) : shelf(at, a, ry, w, h, fill); }
   };
   // いす（ry = 座った子の向き）と、緑のかさの読書灯
   const chair = (x, z, ry, mat = 'wood2') => { K.box(x, z, 0.55, 0.45, 0.55, mat, { col: false }); K.mesh(new THREE.BoxGeometry(0.55, 0.9, 0.1), mat, x - Math.sin(ry) * 0.27, 0.9, z - Math.cos(ry) * 0.27, { ry }); };
@@ -9228,9 +9364,9 @@ const ZONE_BUILD = {
     for (const x of [-29, -25, -21]) stack(x, -25, Math.PI / 2, 6);
     // 北西のすみの机：書き物机と地球儀、本の山（エピローグでは魔法学校の校長室）
     K.box(-36, -24.5, 1.4, 0.8, 0.9, 'wood', { round: true });
-    K.mesh(new THREE.BoxGeometry(0.5, 0.06, 0.36), '#f4ecd8', -36, 0.84, -24.5, { ry: 0.3 });
+    openBook(K, -35.95, K.gy(-36, -24.5) + 0.8, -24.45, 0.3, 1.05);
     globe(-37.6, -22.5);
-    for (let i = 0; i < 4; i++) K.mesh(new THREE.BoxGeometry(0.4, 0.1, 0.3), pick(['#b84a4a', '#4a6ab8', '#c8a040']), -36.4, 0.85 + i * 0.1, -25.2, { ry: K.r() * 0.6, noShadow: true });
+    bookPile(K, -36.42, K.gy(-36, -24.5) + 0.8, -24.68, 4, 0.2, 0.8);
     // 南の閲覧室：長い閲覧机といす、読書灯。西は本棚の列
     for (const z of [-9, -3]) {
       K.box(-25.5, z, 6, 0.8, 1.6, 'wood', { round: true });
@@ -9316,7 +9452,7 @@ const ZONE_BUILD = {
       for (let i = 0; i < 5; i++) K.mesh(new THREE.SphereGeometry(0.18, 8, 6), pick(['#ff8a5a', '#8ad85a', '#ffd24a', '#e84a4a']), 29 + i * 1 + (K.r() - 0.5) * 0.3, 1.0, z + (K.r() - 0.5) * 0.6);
       K.mesh(new THREE.BoxGeometry(0.8, 0.05, 0.5), 'wood2', 33, 0.88, z, { noShadow: true });
     }
-    shelfRow('x', 19, 30, 10.3, 0, 2.6, 3);   // 食料の棚（北の壁）：瓶と包み
+    shelfRow('x', 19, 30, 10.3, 0, 2.6, 3, 'pantry');   // 食料の棚（北の壁）：瓶と包み
     for (const [x, z] of [[19.2, 30], [19.2, 31.3], [20.5, 33], [43, 32.6], [41.7, 33]]) K.barrel(x, z);
     K.crate(23, 33.2); K.crate(24.2, 33.3, 0.8); K.crate(39, 11.2);
     for (let i = 0; i < 6; i++) { const x = 34 + i * 0.9; K.mesh(new THREE.ConeGeometry(0.12, 0.4, 6), pick(['#6a9a4a', '#c8a040', '#e8d8b0']), x, 2.6, 10.3, { rx: Math.PI }); }   // つるした香草と玉ねぎ
@@ -9330,7 +9466,6 @@ const ZONE_BUILD = {
     const { ceil, chandelier, sconce, portrait, shelf, stack, chair, lamp } = palaceProps(K);
     const M = K.T.zone.map, R = M.length, C = M[0].length;
     const cx = c => 2 * c - C + 1, cz = r => 2 * r - R + 1, ch = (c, r) => (M[r] || '')[c] || '#', wall = (c, r) => ch(c, r) === '#';
-    const book = () => pick(['#b84a4a', '#4a6ab8', '#4a9a5a', '#c8a040', '#8a5ab8', '#6a4a30', '#2a4a6a']);
     // 立てかけたはしご（ry = 本棚の正面。x, z は本棚の前の面）
     const ladder = (x, z, ry, h) => {
       const H = h - 0.3, run = 0.85, th = -Math.atan2(run, H), L = Math.hypot(run, H), y0 = K.gy(x, z);
@@ -9397,14 +9532,14 @@ const ZONE_BUILD = {
       chair(x, z + 1.15, Math.PI);
       K.mesh(new THREE.BoxGeometry(0.62, 0.05, 0.5), '#a8b8e8', x, 0.5, z + 1.15, { noShadow: true });   // いすの毛布
       K.mesh(new THREE.BoxGeometry(0.6, 0.62, 0.06), '#a8b8e8', x, 0.86, z + 1.46, { rx: 0.12 });
-      for (const sd of [-1, 1]) K.mg('#f4ecd8', new THREE.BoxGeometry(0.34, 0.03, 0.46), x + sd * 0.18, y + 0.02, z - 0.05, [0, 0, sd * 0.05]);
-      for (const [bx, n] of [[-0.8, 6], [0.75, 4]]) for (let i = 0; i < n; i++) K.mg(book(), new THREE.BoxGeometry(0.36, 0.08, 0.28), x + bx + (K.r() - 0.5) * 0.06, y + 0.04 + i * 0.08, z + 0.1, [0, (K.r() - 0.5) * 0.5, 0]);
+      openBook(K, x, y, z - 0.05, 0, 1.4);   // 読みかけの本
+      bookPile(K, x - 0.8, y, z + 0.1, 6, 0, 0.9); bookPile(K, x + 0.75, y, z + 0.1, 4, 0, 0.9);
       K.mg('gold', new THREE.CylinderGeometry(0.1, 0.12, 0.03, 12), x + 0.5, y + 0.015, z - 0.3);   // 燃えつきたろうそく
       K.mg('white', new THREE.CylinderGeometry(0.04, 0.045, 0.06, 8), x + 0.5, y + 0.06, z - 0.3);
       K.mg('white', new THREE.CylinderGeometry(0.07, 0.05, 0.08, 10), x - 0.45, y + 0.04, z - 0.32);   // 紅茶のカップ
       for (let i = 0; i < 4; i++) K.mg('white', new THREE.SphereGeometry(0.06, 6, 5), x - 0.2 + K.r() * 0.6, y + 0.04, z - 0.35 + K.r() * 0.2, null, [1, 0.6, 1]);   // 丸めた書きそこない
       lamp(x - 0.95, z - 0.3, y);
-      for (const [bx, bz, n] of [[-1.6, 1.0, 5], [1.5, 0.8, 3], [1.7, -0.4, 4]]) for (let i = 0; i < n; i++) K.mesh(new THREE.BoxGeometry(0.4, 0.1, 0.3), book(), x + bx, 0.05 + i * 0.1, z + bz, { ry: K.r() * 0.8, noShadow: i > 0 }); }
+      for (const [bx, bz, n] of [[-1.6, 1.0, 5], [1.5, 0.8, 3], [1.7, -0.4, 4]]) bookPile(K, x + bx, K.gy(x + bx, z + bz), z + bz, n, K.r() * 0.8); }
 
     // ---- 西の壇（最奥）：古代文字の石板と、青緑の灯り ----
     { const x = cx(1) - 0.75, z = 0, y = K.gy(x, z);
@@ -10478,7 +10613,7 @@ const ZONE_BUILD = {
     for (const x of [22, 26]) { K.box(x, -10, 2.6, 0.08, 0.08, 'gold', { y: 2.4, col: false }); for (const sd of [-1, 1]) K.box(x + sd * 1.25, -10, 0.08, 2.4, 0.08, 'gold', { col: false }); K.colBox(x, -10, 1.3, 0.3, 2.4);
       for (let i = 0; i < 4; i++) K.mg(pick(['clothPurple', 'clothRed', '#2a1a3a']), new THREE.BoxGeometry(0.5, 1.8, 0.08), x - 0.9 + i * 0.6, 1.45, -10 + (i % 2 ? 0.05 : -0.05), [0, (i - 1.5) * 0.15, 0]); }
     { const x = 31, z = -20.7; K.box(x, z, 2.2, 3.4, 0.2, 'gold'); K.mesh(new THREE.PlaneGeometry(1.8, 3), K.glow('#d8b0ff', 0.45), x, 1.7, z + 0.11, { noShadow: true });
-      K.mesh(new THREE.BoxGeometry(0.6, 0.06, 0.45), 'clothRed', x, 0.04, z + 3.2, { ry: 0.4 }); }
+      openBook(K, x, K.gy(x, z + 3.2), z + 3.2, 0.4, 1.3); }   // 床に開いたまま落ちている本
     K.box(22, -21, 3, 1.6, 0.6, 'wood2'); for (let i = 0; i < 3; i++) { const x = 21 + i; K.mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.18, 10, 1, true), 'gold', x, 1.7, -21); }
     // 魔王の寝室：まるい猫のベッド、まくら、ナイトテーブル、壁の絵
     { const x = 26, z = 16; K.cyl(x, z, 2.2, 0.6, 'clothPurple', { seg: 24 }); K.mesh(new THREE.TorusGeometry(2.1, 0.45, 10, 28), 'clothPurple', x, 0.75, z, { rx: Math.PI / 2 });
