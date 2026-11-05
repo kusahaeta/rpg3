@@ -626,7 +626,7 @@ function farTree(T) {
 // なだらかな丘の遠景
 // 区画が遠景の小物をよけてほしいところ（zone.envSkip(x, z)：遠くに見せたいものの手前など）
 const envSkip = (T, x, z) => !!(T.zone && T.zone.envSkip && T.zone.envSkip(x, z));
-// とても広い区画（中心から角まで 90m をこえる）は、遠景の丘と木を、そのぶん遠くへ（区画の中にめりこまないように）
+// とても広い区画（中心から角まで 90m をこえる）は、遠景の丘を、そのぶん遠くへ（区画の中にめりこまないように）
 const envPush = T => { const Z = T.zone; return Z && Z.w ? Math.max(0, Math.hypot(Z.w / 2, Z.d / 2) - 90) : 0; };
 //   o.rnd：置き方の乱数（ふつうは毎回ちがう。タイトルのように、いつも同じ景色にしたいときは seeded を渡す）
 //   o.skip(x, z, rad)：この丘を置かないとき true（大きな樹にめりこむところなど。rad は丘の半径）
@@ -637,18 +637,6 @@ function hills(T, col, r = 140, n = 16, hgt = 18, y0 = -4, o = {}) {
     if (envSkip(T, x, z) || (o.skip && o.skip(x, z, rad))) continue;
     const h = new THREE.Mesh(new THREE.SphereGeometry(rad, 16, 10), m);
     h.position.set(x, y0 - 10, z); h.scale.y = (hgt + rnd() * hgt) / 45; T.root.add(h);
-  }
-}
-// 遠くの木々（ぽこぽこした木）
-function farTrees(T, col, n = 40, r0 = 70, r1 = 120, trunkCol = '#6a4a2a') {
-  const lm = new THREE.MeshStandardMaterial({ color: col, roughness: 1 }), tm = new THREE.MeshStandardMaterial({ color: trunkCol, roughness: 1 }), push = envPush(T);
-  for (let i = 0; i < n; i++) {
-    const a = Math.random() * Math.PI * 2, r = r0 + push + Math.random() * (r1 - r0), s = 2 + Math.random() * 3;
-    // 広い区画では、区画の中やすぐそばに生えないように
-    const Z = T.zone, x = Math.cos(a) * r, z = Math.sin(a) * r;
-    if ((Z && Z.w && Math.abs(x) < Z.w / 2 + 10 && Math.abs(z) < Z.d / 2 + 10) || envSkip(T, x, z)) continue;
-    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.3 * s, 0.4 * s, 2 * s, 6), tm); tr.position.set(Math.cos(a) * r, s, Math.sin(a) * r); T.root.add(tr);
-    const c = new THREE.Mesh(new THREE.SphereGeometry(1.6 * s, 10, 8), lm); c.position.set(tr.position.x, s * 2.8, tr.position.z); c.scale.y = 1.15; T.root.add(c);
   }
 }
 // 浮かぶ島・雲のかたまり
@@ -676,14 +664,14 @@ function motes(T, col, rate = 20, o = {}) {
 const ENV_PROPS = {
   studio(T) { T.noTree = true; },
   meadow(T) {
-    hills(T, '#7ab85a'); farTrees(T, '#5aa048', T.bare ? 30 : 40); puffClouds(T, 12);
+    hills(T, '#7ab85a'); puffClouds(T, 12);
     motes(T, '#ffe8f0', 14, { fall: true, drift: 1.2, size: 0.07, life: 7 });   // 花びら
   },
   night(T) {
-    hills(T, '#1e3424'); farTrees(T, '#1e3a2a', 40); motes(T, '#fff4b8', 12, { size: 0.05, life: 4, k: 2.2 });   // 蛍
+    hills(T, '#1e3424'); motes(T, '#fff4b8', 12, { size: 0.05, life: 4, k: 2.2 });   // 蛍
   },
   forest(T) {
-    hills(T, '#4a7a3a', 130, 16, 24); farTrees(T, '#3a7a3a', 70, 50, 110, '#4a3422'); farTrees(T, '#4a8a44', 50, 110, 150);
+    hills(T, '#4a7a3a', 130, 16, 24);
     motes(T, '#fff4a8', 30, { fall: true, size: 0.07, life: 6, k: 2.6, drift: 0.2 });   // ほしふる：光の粒が降る
     // こもれびの光の柱
     const rays = [];
@@ -693,7 +681,7 @@ const ENV_PROPS = {
     }
     T.updaters.push((dt, t) => rays.forEach(([m, p]) => { m.material.opacity = 0.08 + Math.sin(t * 0.5 + p) * 0.05; }));
   },
-  road(T) { hills(T, '#9ab868', 150, 18, 20); farTrees(T, '#6aa850', 30, 80, 140); puffClouds(T, 14, '#fff6ec'); motes(T, '#ffe8b8', 8, { size: 0.05, life: 5 }); },
+  road(T) { hills(T, '#9ab868', 150, 18, 20); puffClouds(T, 14, '#fff6ec'); motes(T, '#ffe8b8', 8, { size: 0.05, life: 5 }); },
   kingdom(T) {
     hills(T, '#8ab870', 160, 14, 14); puffClouds(T, 14, '#ffffff', 26);
     motes(T, '#ffb8d8', 12, { fall: true, drift: 1.2, size: 0.07, life: 7 });   // 紙ふぶき・花びら
@@ -710,7 +698,7 @@ const ENV_PROPS = {
   // くろねこ谷・魔王領からは、にゃんだーの樹は見えない（区画・戦闘・会話の場面とも、このテーマ。古代遺跡の ruins も同じ）
   valley(T) {
     T.noTree = true;
-    hills(T, '#3a3448', 120, 18, 34); farTrees(T, '#2a2a3a', 30, 60, 120, '#1a1a24');
+    hills(T, '#3a3448', 120, 18, 34);
     motes(T, '#c8a8ff', 16, { size: 0.06, life: 5, k: 2 });
   },
   cave(T) {
@@ -726,7 +714,7 @@ const ENV_PROPS = {
   // 古代遺跡・苔むす古道からも、にゃんだーの樹は見えない
   ruins(T) {
     T.noTree = true;
-    hills(T, '#6a8a6a', 140, 16, 26); farTrees(T, '#5a8a5a', 30, 70, 130); puffClouds(T, 8);
+    hills(T, '#6a8a6a', 140, 16, 26); puffClouds(T, 8);
     const sm = new THREE.MeshStandardMaterial({ color: '#b8b098', roughness: 1 });
     for (let i = 0; i < 10; i++) { const a = Math.random() * Math.PI * 2, r = 60 + Math.random() * 50, h = 8 + Math.random() * 20; const c = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2, h, 10), sm); c.position.set(Math.cos(a) * r, h / 2 - 1, Math.sin(a) * r); c.rotation.z = (Math.random() - 0.5) * 0.3; T.root.add(c); }
     motes(T, '#b8ffe8', 10, { size: 0.05, life: 5, k: 2 });
