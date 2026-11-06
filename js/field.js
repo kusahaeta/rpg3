@@ -215,6 +215,15 @@ class FieldView extends BaseView {
     noteDefs.forEach(n => this.reserved.push(P(n.at, 2)));
     const cur = typeof Story !== 'undefined' ? Story.current() : null;
     if (cur && cur.step.t === 'field' && cur.step.zone === this.zoneId) this.reserved.push(P(zonePoint(Z, cur.step.at), 4));
+    // ごろごろ岩の通り道には、宝箱・爪とぎの丸太を置かない（突っこむ岩が丸太にぶつかって、坂の途中で止まってしまう）。
+    //   岩が走らなくなったあとも、置き場所が変わらないように、いつもあける
+    const lineRes = (ax, az, bx, bz, r) => { const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 1.5); for (let k = 0; k <= n; k++) this.reserved.push({ x: lerp(ax, bx, k / n), z: lerp(az, bz, k / n), r }); };
+    for (const R of Z.rollers || []) {
+      const rr = R.r || (R.kind === 'charge' ? 1.4 : 1.1);
+      if (R.kind !== 'charge') lineRes(R.a[0], R.a[1], R.b[0], R.b[1], rr + 1);
+      else if (R.lane) { const [hx, hz] = R.home, l = Math.hypot(...R.face), L = R.range || 40; lineRes(hx, hz, hx + R.face[0] / l * L, hz + R.face[1] / l * L, Math.max(R.lane, rr) + 1); }
+      else this.reserved.push(P(R.home, R.sight));   // ねらう岩：見張っている広場のどこへでも突っこむ
+    }
 
     // 地形（部屋・通路・段差・昇降機・扉）
     if (this.T) {
