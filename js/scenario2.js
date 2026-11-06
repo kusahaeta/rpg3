@@ -1335,7 +1335,6 @@ const RECAP_2 = {
 //  物語の進行
 //  away：その段階のあいだ、一行を離れている子（フィールドの隊列と戦闘に出ない。js/state.js の teamMembers）
 //  heal：目的地に着いたら、会話の前にみんなの HP を全回復する（やられた子も起きる。全員の力がいる仕掛けの前など。js/story.js の arrive）
-//  review：その会話を見終えたら、iOS のアプリで一度だけ App Store のレビューを頼む（js/story.js の askReview）
 // ------------------------------------------------------------
 const STORY = [
   // clearSet：章のおしまいの画面の背景（SceneryView の loc）。区画のその場所を中心に、face の向きを見る。
@@ -1362,7 +1361,7 @@ const STORY = [
     { t: 'field', zone: 'woods', at: [5, 6], scene: 'c2_03', g: '宿場の東、まどろみの林で眠っている子をさがす' },
     { t: 'field', zone: 'woods_valley', at: [9, 14], scene: 'c2_03g', g: '西の丘の綿毛につかまって川を越え、飛んでいった子を追って、ねむり花の谷へ' },
     { t: 'field', zone: 'woods_deep', at: [1, -19], scene: 'c2_03h', g: 'ねむり花の粉をよけながら、ねぼけ歩きの子を追って、林のいちばん奥へ' },
-    { t: 'scene', id: 'c2_03i', g: 'タマ', review: true },   // タマが仲間になったら
+    { t: 'scene', id: 'c2_03i', g: 'タマ' },
     { t: 'field', zone: 'woods_valley', at: [8, 18], scene: 'c2_03j', battle: '2-2', after: 'c2_03b', g: 'タマをつれて、来た道を戻る（ねむり花の谷の花畑へ）' },
     { t: 'scene', id: 'c2_03c', g: '宿場の夜' },
     { t: 'scene', id: 'c2_03d', g: 'いなくなったシロ' },
