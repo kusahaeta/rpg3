@@ -75,7 +75,8 @@ const Story = {
     const step = cur.step;
     const next = () => { this.advance(); this.run(); };
     switch (step.t) {
-      case 'scene': App.go(DialogueScreen, step.id, next); break;
+      // review：その会話を見終えたら、App Store のレビューを頼む（askReview）
+      case 'scene': App.go(DialogueScreen, step.id, step.review ? () => { askReview(); next(); } : next); break;
       case 'battle': this.battle(step.stage, step.after ? () => App.go(DialogueScreen, step.after, next) : next); break;
       case 'field': {
         // start：この段階を始めるとき、指定の区画・位置から歩き出す（遠い場所へ旅立つときなど）
@@ -471,6 +472,15 @@ const Debug = {
 };
 Debug.init();
 
+// iOS のアプリで一度だけ、App Store のレビューを頼む（次の画面が出て、少し落ちついてから）。
+// 出すかどうか・回数は iOS が決める。受け口のないブラウザ版・Android 版では何もしない
+function askReview() {
+  const review = window.webkit && webkit.messageHandlers && webkit.messageHandlers.review;
+  if (!review || Save.data.flags.reviewAsked) return;
+  Save.data.flags.reviewAsked = true; Save.save();
+  setTimeout(() => { try { review.postMessage(0); } catch (e) { /* 出せなくてもよい */ } }, 2000);
+}
+
 // ============================================================
 //  章クリア・エンディング
 // ============================================================
@@ -486,12 +496,6 @@ function ChapterClearScreen(ci, niboshi) {
     <div class="res-info">${niboshi ? `<div class="rw"><i class="ic-jade"></i>${Tx('章のごほうび　にぼし +{0}', niboshi)}</div>` : ''}
     ${nx && !nx.hidden ? `<div class="dim">${Tx('次のお話「{0}」', nx.title)}</div>` : ''}</div>
     <button class="btn gold" data-ok>${nx && !nx.hidden ? Tx('次のお話へ') : Tx('冒険にもどる')}</button></div></div>`);
-  // 第二章を終えたら、iOS のアプリで一度だけ App Store のレビューを頼む（ファンファーレのあと、少し落ちついてから）
-  const review = window.webkit && webkit.messageHandlers && webkit.messageHandlers.review;
-  if (ci === 1 && review && !Save.data.flags.reviewAsked) {
-    Save.data.flags.reviewAsked = true;
-    setTimeout(() => { try { review.postMessage(0); } catch (e) { /* 出せなくてもよい */ } }, 1500);
-  }
   Save.save(); Sfx.win(); Music.play(ch.clearBgm || 'hope');
   s.querySelector('[data-ok]').onclick = () => { Sfx.click(); nx && !nx.hidden ? Story.run() : App.go(FieldScreen); };
   return s;
