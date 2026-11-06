@@ -1,3 +1,4 @@
+import StoreKit
 import UIKit
 import UniformTypeIdentifiers
 import WebKit
@@ -31,6 +32,8 @@ final class GameViewController: UIViewController, WKNavigationDelegate {
         config.setURLSchemeHandler(WebAssetHandler(), forURLScheme: Self.scheme)
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+        // ゲームから webkit.messageHandlers.review.postMessage(0) で、App Store のレビューを頼む
+        config.userContentController.add(ReviewRequest(), name: "review")
         #if DEBUG
         DebugConsole.install(on: config.userContentController)
         #endif
@@ -92,6 +95,14 @@ final class GameViewController: UIViewController, WKNavigationDelegate {
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         webView.removeFromSuperview()
         createWebView()
+    }
+}
+
+/// App Store のレビューのお願いを出す。出すかどうか・回数（1年に3回まで）は iOS が決める
+final class ReviewRequest: NSObject, WKScriptMessageHandler {
+    func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard let scene = message.webView?.window?.windowScene else { return }
+        AppStore.requestReview(in: scene)
     }
 }
 

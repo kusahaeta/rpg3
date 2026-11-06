@@ -486,6 +486,12 @@ function ChapterClearScreen(ci, niboshi) {
     <div class="res-info">${niboshi ? `<div class="rw"><i class="ic-jade"></i>${Tx('章のごほうび　にぼし +{0}', niboshi)}</div>` : ''}
     ${nx && !nx.hidden ? `<div class="dim">${Tx('次のお話「{0}」', nx.title)}</div>` : ''}</div>
     <button class="btn gold" data-ok>${nx && !nx.hidden ? Tx('次のお話へ') : Tx('冒険にもどる')}</button></div></div>`);
+  // 第二章を終えたら、iOS のアプリで一度だけ App Store のレビューを頼む（ファンファーレのあと、少し落ちついてから）
+  const review = window.webkit && webkit.messageHandlers && webkit.messageHandlers.review;
+  if (ci === 1 && review && !Save.data.flags.reviewAsked) {
+    Save.data.flags.reviewAsked = true;
+    setTimeout(() => { try { review.postMessage(0); } catch (e) { /* 出せなくてもよい */ } }, 1500);
+  }
   Save.save(); Sfx.win(); Music.play(ch.clearBgm || 'hope');
   s.querySelector('[data-ok]').onclick = () => { Sfx.click(); nx && !nx.hidden ? Story.run() : App.go(FieldScreen); };
   return s;
