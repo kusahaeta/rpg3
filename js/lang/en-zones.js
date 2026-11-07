@@ -618,11 +618,11 @@ Object.assign(EN, {
   '丘の西の見晴らし台。……ずっと南に、くろねこ谷が見える。遺跡を建てた猫たちも、ここから谷をながめたのだろうか。': 'The lookout on the west of the hill. ...Far to the south, you can see Blackcat Valley. Did the cats who built the ruins gaze at the valley from here too?',
   // ── field-zones.js FIELD_ZONES.ruins_in
   '壁画・一': 'Mural I',
-  '巨大な猫が、大きな樹を抱いて眠っている。': 'A giant cat sleeps, hugging a great tree.',
+  '巨大な猫が、大きな樹を抱いて眠っている。……猫のしっぽは根になって、樹の根もとへのびている。': 'A giant cat sleeps, hugging a great tree. ...The cat\'s tail has turned into a root, reaching for the base of the tree.',
   '壁画・二': 'Mural II',
   '四匹の猫が、樹のまわりで手をつないでいる。……一匹は、とても小さい。': 'Four cats hold paws around the tree. ...One of them is very small.',
   '古代文字': 'Ancient Script',
-  '「樹は、猫たちのつながりから生まれた。つながりが絶えるとき、樹は最後のにゃんこを生む」': '"The tree was born from the bonds between cats. When the bonds fade, the tree will give birth to the Last Nyanko."',
+  '「樹は、猫たちのつながりから生まれた。つながりが絶えるとき、樹は最後のにゃんこを生む」……「最後のにゃんこは、やがて、樹へ——」。そこから先は、崩れて読めない。': '"The tree was born from the bonds between cats. When the bonds fade, the tree will give birth to the Last Nyanko." ..."And in time, the Last Nyanko shall return to the tree—" Beyond that, it has crumbled away.',
   // ── field-zones.js FIELD_ZONES.ruins_maze
   '崩れた迷宮': 'Crumbling Labyrinth',
   '……おや。今の時代から来た子たちかい。': '...Oh my. Children from the present age, are you?',
@@ -630,6 +630,7 @@ Object.assign(EN, {
   '白い水晶だけは、どちらへも行き来させてくれる。困ったら、ここへもどっておいで。': 'Only the white crystal lets you go back and forth. If you get stuck, come back here.',
   'わしは、ここの墓守じゃった。……ふしぎじゃのう、白い子の気配がする。なつかしい、においじゃ。': 'I was the grave keeper here. ...How strange, I sense the presence of the white child. What a nostalgic scent.',
   'となりの部屋の石の棺には、樹を守った猫たちが眠っておる。そっとしておいておくれ。': 'In the stone coffins in the next room sleep the cats who protected the tree. Please let them rest.',
+  '……樹から生まれた子は、樹へかえる。昔から、そう言われておる。……かえった子が、どうなるのか。それは、だれも知らんのじゃ。': '...A child born of the tree returns to the tree. So it has been said since long ago. ...But what becomes of the child who returns? That, no one knows.',
   '大きな樹のまわりで、みんなで手をつないで歌ったんだ。': 'We all held paws around the great tree and sang together.',
   '……あの子は、ずっと眠っていたけれど。いつか目をさましたら、いっしょに歌えるかなあ。': '...That little one slept the whole time, though. I wonder if, when they wake up someday, we can sing together.',
   '気をつけて。まちがえた水晶にふれると、前も後ろもふさがって、どこへも行けなくなるよ。': 'Be careful. Touch the wrong crystal, and the way ahead and behind will be blocked, and you\'ll be stuck.',

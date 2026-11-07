@@ -2151,9 +2151,9 @@ const FIELD_ZONES = {
       '##############ss##############',
     ],
     anchor: [20, 16], exits: [{ key: 's', to: 'ruins_hill' }, { key: 'm', to: 'ruins_maze' }],
-    notes: [{ at: [-24.6, -15], mark: [-1.0, 4.4, 0], title: '壁画・一', text: '巨大な猫が、大きな樹を抱いて眠っている。' },
+    notes: [{ at: [-24.6, -15], mark: [-1.0, 4.4, 0], title: '壁画・一', text: '巨大な猫が、大きな樹を抱いて眠っている。……猫のしっぽは根になって、樹の根もとへのびている。' },
       { at: [24.6, -15], mark: [1.0, 4.4, 0], title: '壁画・二', text: '四匹の猫が、樹のまわりで手をつないでいる。……一匹は、とても小さい。' },
-      { at: [-12, -28.4], mark: [0, 4.4, -1.0], title: '古代文字', text: '「樹は、猫たちのつながりから生まれた。つながりが絶えるとき、樹は最後のにゃんこを生む」' }],
+      { at: [-12, -28.4], mark: [0, 4.4, -1.0], title: '古代文字', text: '「樹は、猫たちのつながりから生まれた。つながりが絶えるとき、樹は最後のにゃんこを生む」……「最後のにゃんこは、やがて、樹へ——」。そこから先は、崩れて読めない。' }],
     map2d: [770, 30] },
 
   // 崩れた迷宮：壁画の大広間の奥。南の入口の間から、4x4 の小部屋（地下墓所・宝物庫・墓守の部屋など）を抜けて、北の封印の扉の間（開くと封印の間へ）。
@@ -2228,7 +2228,7 @@ const FIELD_ZONES = {
       crystals: [[-18, 32, 'W'], [-32, -26, 'N'], [4, -26, 'N'], [22, -26, 'P'], [4, -12, 'P'], [22, -12, 'N'], [-32, 2, 'P'], [-14, 2, 'N'], [4, 2, 'P'], [22, 2, 'W'], [-14, 16, 'N'], [4, 16, 'P']],
       ghosts: [
         [-28, 36, Math.PI / 2, ['……おや。今の時代から来た子たちかい。', 'この迷宮の水晶はね、色で行き先がちがうんだ。金は「昔」へ、青は「今」へ。片道しか運んでくれないよ。', '白い水晶だけは、どちらへも行き来させてくれる。困ったら、ここへもどっておいで。']],
-        [-29, 4, -Math.PI / 2, ['わしは、ここの墓守じゃった。……ふしぎじゃのう、白い子の気配がする。なつかしい、においじゃ。', 'となりの部屋の石の棺には、樹を守った猫たちが眠っておる。そっとしておいておくれ。']],
+        [-29, 4, -Math.PI / 2, ['わしは、ここの墓守じゃった。……ふしぎじゃのう、白い子の気配がする。なつかしい、においじゃ。', 'となりの部屋の石の棺には、樹を守った猫たちが眠っておる。そっとしておいておくれ。', '……樹から生まれた子は、樹へかえる。昔から、そう言われておる。……かえった子が、どうなるのか。それは、だれも知らんのじゃ。']],
         [-9, -9, 0.4, ['大きな樹のまわりで、みんなで手をつないで歌ったんだ。', '……あの子は、ずっと眠っていたけれど。いつか目をさましたら、いっしょに歌えるかなあ。']],
         [27, 5, -Math.PI / 2, ['気をつけて。まちがえた水晶にふれると、前も後ろもふさがって、どこへも行けなくなるよ。', 'そんなときは、水晶の光が入口まで連れもどしてくれる。何度でも、ためしてごらん。']],
         [27, 19, Math.PI, ['迷ったら、行きたい部屋のことを考えてごらん。', 'その部屋の口は、瓦礫かい？　石の門かい？　……「今」の姿で入るか、「昔」の姿で入るか。それが分かれ道さ。']],
@@ -7582,18 +7582,28 @@ class ZoneKit {
     g.strokeStyle = '#6a5030'; g.fillStyle = '#8a6a40'; g.lineWidth = 5; g.lineCap = 'round';
     const cat = (cx, cy, s, fill) => { g.beginPath(); g.ellipse(cx, cy, 28 * s, 34 * s, 0, 0, Math.PI * 2); fill ? g.fill() : g.stroke(); g.beginPath(); g.arc(cx, cy - 46 * s, 24 * s, 0, Math.PI * 2); fill ? g.fill() : g.stroke(); for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(cx + sd * 12 * s, cy - 64 * s); g.lineTo(cx + sd * 22 * s, cy - 84 * s); g.lineTo(cx + sd * 26 * s, cy - 58 * s); g.stroke(); } };
     if (kind === 0) {   // 大きな樹を抱く巨大な猫：ほかの壁画と同じ線だけの絵。樹より大きな猫が寝そべり、前足を幹にまわし、頭を幹に寄せて眠る。空に三日月と星
-      g.lineWidth = 8; g.beginPath(); g.moveTo(390, 302); g.lineTo(390, 160); g.moveTo(390, 294); g.lineTo(368, 304); g.moveTo(390, 294); g.lineTo(412, 304); g.stroke();
+      g.lineWidth = 8; g.beginPath(); g.moveTo(390, 302); g.lineTo(390, 160); g.moveTo(390, 294); g.quadraticCurveTo(404, 304, 424, 310); g.stroke();
       for (let i = 0; i < 7; i++) { g.beginPath(); g.arc(390 + Math.cos(i) * 55, 92 + Math.sin(i * 2) * 22, 40, 0, Math.PI * 2); g.stroke(); }
       g.lineWidth = 6;
+      // 猫は少し上に描いて、胴の下に根の入るすき間をあける
+      g.save(); g.translate(0, -16);
       g.beginPath(); g.ellipse(190, 262, 150, 40, 0, 0, Math.PI * 2); g.stroke();
       g.beginPath(); g.arc(320, 214, 44, 0, Math.PI * 2); g.stroke();
       for (const sd of [-1, 1]) { g.beginPath(); g.moveTo(320 + sd * 14, 174); g.lineTo(320 + sd * 28, 148); g.lineTo(320 + sd * 38, 182); g.stroke(); }
       // 前足：胸と首もとから、幹をかかえる
       g.beginPath(); g.moveTo(300, 264); g.quadraticCurveTo(352, 286, 406, 262); g.moveTo(352, 240); g.quadraticCurveTo(378, 252, 406, 228); g.stroke();
-      // しっぽ：胴のはしから、まるく
-      g.beginPath(); g.moveTo(44, 256); g.bezierCurveTo(8, 232, 4, 302, 70, 302); g.stroke();
+      // しっぽ：胴のはしから、まるく下へ
+      g.beginPath(); g.moveTo(44, 256); g.bezierCurveTo(8, 232, 2, 300, 56, 300); g.stroke();
       // 閉じた目
       g.lineWidth = 4; for (const ex of [304, 332]) { g.beginPath(); g.arc(ex, 210, 7, 0.1 * Math.PI, 0.9 * Math.PI); g.stroke(); }
+      g.restore();
+      // しっぽの先が根になって、胴の下をうねりながら、樹の根もとへつながる（猫が樹にとけこんでいく。第七章の前ぶれ）
+      g.lineWidth = 5; g.beginPath(); g.moveTo(56, 284); g.quadraticCurveTo(80, 288, 96, 300); g.quadraticCurveTo(150, 314, 210, 302); g.quadraticCurveTo(270, 290, 330, 304); g.quadraticCurveTo(362, 311, 390, 300); g.stroke();
+      // 細いひげ根
+      g.lineWidth = 2.5;
+      for (const [rx, ry, l, r] of [[128, 309, 10, 12], [200, 304, 8, 14], [262, 294, 12, 10], [318, 302, 9, 12], [366, 308, 8, 10]]) {
+        g.beginPath(); g.moveTo(rx, ry); g.quadraticCurveTo(rx - l * 0.4, ry + 6, rx - l, ry + 11); g.moveTo(rx, ry); g.quadraticCurveTo(rx + r * 0.5, ry + 5, rx + r, ry + 9); g.stroke();
+      }
       // 夜空：三日月と星
       g.lineWidth = 5; g.beginPath(); g.arc(96, 74, 30, 0.35 * Math.PI, 1.65 * Math.PI); g.quadraticCurveTo(70, 74, 96 + Math.cos(0.35 * Math.PI) * 30, 74 + Math.sin(0.35 * Math.PI) * 30); g.stroke();
       g.lineWidth = 4; for (const [sx, sy] of [[168, 52], [200, 108], [146, 132]]) { g.beginPath(); g.moveTo(sx - 8, sy); g.lineTo(sx + 8, sy); g.moveTo(sx, sy - 8); g.lineTo(sx, sy + 8); g.stroke(); }
