@@ -799,7 +799,6 @@ Object.assign(EN, {
   '……うむ。': '...Indeed.',
   '……それから一時間、二匹は並んで空を見ていた。': '...For an hour after that, the two sat side by side, watching the sky.',
   '……悪くない時間だった。': '...That was not a bad hour.',
-  '……ああ。': '...Yeah.',
   // ── scenario2.js .b_maou_shiro
   '実験台': 'Test Subject',
   'マオウ！　新しい魔法ができたの。ちょっと実験台になって！': 'Maou! I made a new spell. Be my test subject for a sec!',

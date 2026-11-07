@@ -34,6 +34,7 @@ Object.assign(POSES, {
   shrug:       { armRx: -0.35, armRz: -0.6, elbowR: -1.35, armLx: -0.35, armLz: 0.6, elbowL: -1.35, headY: 0.18, headX: 0.05 },
   offer:       { armRx: -1.15, armRz: -0.15, elbowR: -0.45, lean: 0.06, headX: 0.04 },
   offerL:      { armLx: -1.15, armLz: 0.15, elbowL: -0.45, lean: 0.06, headX: 0.04 },
+  offerUp:     { armLx: -2.0, armLz: 0.05, elbowL: -0.15, lean: 0.06, headX: -0.05 },   // 左手に持った物を、向かいの子の口もとまで持ち上げて差し出す（のら犬に魚を食べさせる）
   present:     { armLx: -0.8, armLz: 0.7, elbowL: -0.35, armRz: -0.1, elbowR: -0.3, twist: 0.15 },
   raise:       { armLx: -2.9, armLz: 0.1, elbowL: -0.25, armRz: -0.2, elbowR: -0.3, headX: -0.18 },
   // 左手に持った物を、胸の前で見つめる。身振り gazeHand のほか、立ち方（stance）にして持ち上げたままにもできる（タマの灰色の葉）
@@ -262,6 +263,9 @@ class Actor {
     if (item === 'fish') {   // 焼き魚
       const f = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 8), toon('#c8a070')); f.scale.set(0.6, 2.2, 0.9); g.add(f);
       const t = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.07, 3), toon('#a8804a')); t.position.y = 0.16; t.scale.z = 0.3; g.add(t);
+    } else if (item === 'rawFish') {   // 生の魚（シロの魔法で降ってくる魚と同じ色）。焼き魚より大きく、遠くからでも見える
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), toon('#8ab8d8')); f.scale.set(0.55, 2, 0.8); f.position.y = 0.12; g.add(f);
+      const t = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.1, 3), toon('#6a98b8')); t.position.y = 0.36; t.scale.z = 0.3; g.add(t);
     } else if (item === 'fruit' || item === 'fruitGray') {   // 笑いの実
       const f = new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 10), item === 'fruit' ? glowMat('#ffd24a', 2.2) : toon('#9a9488')); g.add(f);
       const lf = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), toon('#5ab04a')); lf.scale.set(1.4, 0.4, 0.8); lf.position.set(0.04, 0.09, 0); g.add(lf);
@@ -294,6 +298,7 @@ class Actor {
     }
     g.position.y = -0.03;
     if (item === 'jarashiUp') { g.rotation.x = Math.PI; g.userData.swing = true; }   // 手の先（腕の向き）へのばす
+    if (item === 'rawFish') g.rotation.x = Math.PI;   // 頭を手の先へ（差し出すしぐさで、相手のほうへ向く）
     if (item === 'letter') g.rotation.x = Math.PI / 2;   // 封筒の面を、手のひらの向き（見ている人の側）へ
     if (item === 'leaf') g.rotation.set(-1.9, 0, 0.2);   // 軸をつまんで、葉を下へ垂らす（立てると大きな頭にめりこむ）。gazeHand の手で、面が前を向く
     this.m.armL.grip.add(g); this.item = g;
