@@ -7,7 +7,7 @@ App Store Connect に入れる文面と、答える項目の案。審査に出�
 | 項目 | 内容 |
 | --- | --- |
 | 名前（30字まで） | にゃんこファンタジー |
-| サブタイトル（30字まで） | 流れ星のおちた丘から |
+| サブタイトル（30字まで） | かわいいにゃんこと不思議な世界を大冒険 |
 | バンドル ID | com.kusahaeta.nyanko |
 | SKU | nyanko-fantasy |
 | 主な言語 | 日本語（英語のローカリゼーションも足す。下の「英語の文面」） |
@@ -22,7 +22,13 @@ App Store Connect に入れる文面と、答える項目の案。審査に出�
 
 ## プロモーション用テキスト（170字まで・審査なしでいつでも変えられる）
 
-2頭身のにゃんこたちが、ぽかぽか村から世界の果てまで旅をする 3D コマンド RPG。仲間との友情が深まるほど、ふたりで撃つコンボ技が増えていく。
+```
+食いしんぼうの勇者、無口なツッコミ役、失敗しない（はずの）天才魔法使い、戦闘中でも寝るヒーラー。
+そんなでこぼこな猫たちが、世界を救う旅に出る。笑って、ぶつかって、少しずつ本当の仲間になっていくRPG。
+広告なし・課金なし・最後まで無料
+```
+
+（2026-11-08 に入れた。それまでの「広告なし・課金なし・最後まで無料」だけのころは、プロダクトページを見た人の約 8% がダウンロードしていた）
 
 ## 説明
 
@@ -133,7 +139,7 @@ rpg,cat,cats,kitten,turn-based,3d,adventure,offline,cute,story,party,jrpg,friend
 - 制限のない Web アクセス・ユーザーどうしのやりとり・ユーザーが作る内容：なし
 - 広告：なし／App 内課金：なし
 
-答えから自動で決まる（9+ になる見こみ）。
+答えから自動で決まる。9+ の見こみだったが、ストアでは 13+ になった（戦闘がゲームの中心なので、そのままにする）。
 
 ## App のプライバシー
 
@@ -155,7 +161,7 @@ The recording starts from the Home Screen, launches the app, and shows the typic
 The app has no account registration, no login, no user-generated content, and no paid content or In-App Purchases, so none of those flows exist.
 
 2. Purpose and target audience
-Nyanko Fantasy is an offline, single-player 3D turn-based RPG in which a party of cute two-head-tall cats travels from their village to the end of the world. It is meant for players of all ages (rated 9+) who enjoy story-driven RPGs. It provides a complete adventure with exploration, puzzles and turn-based battles, and the bonds between party members unlock combo skills and special events. The game is free, with no ads and no In-App Purchases.
+Nyanko Fantasy is an offline, single-player 3D turn-based RPG in which a party of cute two-head-tall cats travels from their village to the end of the world. It is meant for players (rated 13+) who enjoy story-driven RPGs. It provides a complete adventure with exploration, puzzles and turn-based battles, and the bonds between party members unlock combo skills and special events. The game is free, with no ads and no In-App Purchases.
 
 3. Setup and how to access the main features
 No login, account or sample files are needed. Launch the app and tap the title screen to start a new game; progress is saved automatically on the device.
@@ -166,7 +172,7 @@ The game text is available in English and Japanese. The language follows the dev
 None. All game content is bundled in the app. The app does not connect to the internet and uses no third-party services such as analytics, advertising, authentication, payment or AI services. It uses the open-source three.js library (MIT License) inside the app for 3D rendering.
 
 5. Regional differences
-The app is distributed only on the Japan App Store. There are no regional differences in features or content; the app works the same way everywhere.
+The app is distributed on the App Store in Japan and other regions. There are no regional differences in features or content; the app works the same way everywhere.
 
 6. Regulated industry / third-party material
 Not applicable. The app is a game and is not in a regulated industry. The characters, story, 3D models, art and music are original works created by the developer; three.js is used under the MIT License.
