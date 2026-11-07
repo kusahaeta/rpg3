@@ -40,6 +40,13 @@ Object.assign(POSES, {
   // 左手に持った物を、胸の前で見つめる。身振り gazeHand のほか、立ち方（stance）にして持ち上げたままにもできる（タマの灰色の葉）
   gazeHand:    { armLx: -1.35, armLz: -0.2, elbowL: -0.9, headX: 0.22 },
   reach:       { armLx: -1.5, armLz: -0.05, elbowL: -0.12, lean: 0.12, headX: -0.1, legLx: -0.3, kneeL: 0.15 },
+  // 浮いている子の手を、高めにのばしてつかむ（grab は左手、grabR は右手）
+  grab:        { armLx: -2.8, armLz: -0.05, elbowL: -0.1, lean: 0.1, headX: -0.25, legLx: -0.35, kneeL: 0.2 },
+  grabR:       { armRx: -2.8, armRz: 0.05, elbowR: -0.1, lean: 0.1, headX: -0.25, legRx: -0.35, kneeR: 0.2 },
+  // 樹の心臓の光に引かれて浮かぶ（タマ）：両手を下の一行のほうへのばし、足はうしろへ流れる
+  pulled:      { armLx: -0.5, armLz: 0.12, elbowL: -0.1, armRx: -0.5, armRz: -0.12, elbowR: -0.1, lean: -0.1, headX: -0.1, legLx: 0.45, kneeL: 0.35, legRx: 0.3, kneeR: 0.45 },
+  // うしろから両手で肩をささえて、ふんばる（クロがシロを）
+  brace:       { hipsY: -0.06, lean: -0.08, headX: -0.05, armLx: -1.25, armLz: -0.22, elbowL: -0.45, armRx: -1.25, armRz: 0.22, elbowR: -0.45, legLx: -0.45, kneeL: 0.3, legRx: 0.4, kneeR: 0.15 },
   insert:      { armLx: -1.05, armLz: -0.15, elbowL: -0.55, armRx: -0.3, elbowR: -0.5, lean: 0.28, headX: 0.25 },
   bow:         { lean: 0.55, headX: 0.25, armRx: 0.05, armRz: 0.25, elbowR: -0.5, armLx: 0.05, armLz: -0.25, elbowL: -0.5 },
   lookDown:    { headX: 0.4, lean: 0.06, armRz: -0.08, armLz: 0.08 },
@@ -1282,6 +1289,161 @@ const STAGE_FX = {
       this.fx.ring(g, '#fff0a8', { r: 26, life: 2.2, width: 0.25 });
       for (let i = 0; i < 48; i++) { const a = Math.random() * Math.PI * 2, s = 8 + Math.random() * 6; this.p.emit(g.clone().add(V3(0, 0.15, 0)), V3(Math.cos(a) * s, 0.2, Math.sin(a) * s), hdr(pick(cols), 2.6), { life: 2, size: 0.14, drag: 0.2 }); }
       Sfx.tone(660 + w * 220, 0.5, 'sine', 0.05);
+    });
+  },
+  // 樹の心臓が、どくん、と大きく脈打つ（第七章、タマが樹に取りこまれかける前ぶれ）。光の輪が床を外へ広がる
+  heartBeat() {
+    const c = this.point('core') || this.W(0, 12, 4.6), floor = V3(c.x, this.O.y + 0.06, c.z);
+    for (let i = 0; i < 2; i++) GFX.delay(i * 0.34).then(() => {
+      this.fx.sprite(c, '#b8ff9a', 7 - i * 2, 0.9, { k: 2.4, grow: 1.4 });
+      this.fx.ring(floor, '#b8ff9a', { r: 16 - i * 4, life: 1.3, width: 0.35, k: 2.2 });
+      Sfx.tone(62, 0.32, 'sine', 0.12 - i * 0.04, -18);
+    });
+    this.p.burst(c, '#d8ffc0', 60, { speed: 5, life: 1.2, size: 0.1 });
+    GFX.flash('#e0ffd0', 0.25, 0.6);
+  },
+  // 樹の心臓の光が、役を引きよせる（第七章、コドクに勝ったあと、タマが樹に取りこまれかける）
+  //   treePull:役,in,前,高さ … 光につつまれ、心臓のほうへ浮いて引きよせられる（前：舞台の前の位置まで。高さ：浮く高さ）。光の粒は、役のまわりから心臓へ流れこむ
+  //   treePull:役,slip,前     … ぐいっと、もう少し引かれる（つないだ手がはなれかける）
+  //   treePull:役,back,前     … 流れが逆になる。光の粒は心臓から役をこえて一行のほうへ流れ、役は押しもどされて床へ下りる
+  //   treePull:役,hold,手の役  … 手の役が、役の手をつかむ（つないだ手のあいだに、小さなあたたかい光をともす）
+  //   treePull:役,off          … 光がおさまる（つないだ手の光も消える）
+  //   引かれているあいだ、役は一行のほうを向いたまま（話し手も見ない）
+  treePull(arg) {
+    const [k, mode = 'in', z, h] = String(arg).split(','), a = this.actors[k]; if (!a) return;
+    const core = this.point('core') || this.W(0, 12, 4.6);
+    let S = this.pull;
+    if (!S) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#b8ff9a', 1.5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
+      this.scene.add(sp);
+      S = this.pull = { a, dir: 0, k: 0, sp, hold: {} };
+      this.zoneTicks.push((dt, t) => {
+        S.k = lerp(S.k, S.dir ? 1 : 0, 1 - Math.exp(-3 * dt));
+        const b = S.a, c = b.pos.clone(); c.y += b.lift + b.headH * 0.55;
+        sp.position.copy(c); sp.scale.setScalar((1.3 + Math.sin(t * 7) * 0.12) * S.k + 0.01); sp.material.opacity = S.k * 0.4;
+        // つないだ手：つかんでいる役の手と、役の手のあいだに光をともす（左右の手のうち、近いほう）
+        const near = (q, to) => ['L', 'R'].map(s => q.m['arm' + s].grip.getWorldPosition(V3())).sort((p, r) => p.distanceTo(to) - r.distanceTo(to))[0];
+        for (const [hk, hs] of Object.entries(S.hold)) {
+          const ha = this.actors[hk]; if (!ha) continue;
+          const hp = near(ha, c), tp = near(b, hp);
+          hs.position.lerpVectors(hp, tp, 0.5); hs.scale.setScalar(0.34 + Math.sin(t * 9 + hk.length) * 0.05);
+        }
+        if (S.k < 0.05) return;
+        const jit = s => V3((Math.random() - 0.5) * s, (Math.random() - 0.5) * s * 0.8, (Math.random() - 0.5) * s);
+        for (let i = 0; i < 4; i++) if (Math.random() < dt * (S.dir > 0 ? 30 : 45) * S.k) {
+          const col = hdr(pick(['#b8ff9a', '#fff0a8', '#d8ffc0']), 2.4), life = 0.8 + Math.random() * 0.4;
+          if (S.dir > 0) {   // 役のまわりから心臓へ
+            const from = c.clone().add(jit(1.6)), to = core.clone().add(jit(1.2));
+            this.p.emit(from, to.sub(from).multiplyScalar(1 / life), col, { life, size: 0.09, drag: 0 });
+          } else {           // 心臓のほうから、役をこえて一行のほうへ（心臓は根にかこまれて見えないので、少し手前から）
+            const from = V3().lerpVectors(core, c, 0.45).add(jit(1.6)), to = c.clone().addScaledVector(this.F, -3.5).add(jit(2.4)); to.y = Math.max(to.y, this.O.y + 0.3);
+            this.p.emit(from, to.sub(from).multiplyScalar(1 / life), col, { life, size: 0.11, drag: 0 });
+          }
+        }
+        // 役の体から、小さな光の粒が立ちのぼる
+        if (Math.random() < dt * 14 * S.k) this.p.emit(c.clone().add(jit(0.7)), V3(0, 0.6 + Math.random() * 0.6, 0), hdr('#e8ffd8', 2), { life: 0.9, size: 0.05, drag: 0.5 });
+      });
+    }
+    S.a = a;
+    if (mode === 'hold') {
+      if (!S.hold[z]) { const hs = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffe8b0', 2.2), blending: THREE.AdditiveBlending, depthWrite: false })); this.scene.add(hs); S.hold[z] = hs; }
+      Sfx.tone(880, 0.25, 'sine', 0.04); return;
+    }
+    if (mode === 'off') { S.dir = 0; a.faceLock = null; for (const hs of Object.values(S.hold)) hs.removeFromParent(); S.hold = {}; return; }
+    // 役は一行のほうを向いたまま、前（心臓の方向）へ流される
+    a.faceLock = Math.atan2(-this.F.x, -this.F.z);
+    const lx = V3().subVectors(a.pos, this.O).dot(this.R), p0 = a.pos.clone(), l0 = a.lift;
+    const go = (to, lift, dur, ease) => GFX.tween(dur, e => { a.pos.lerpVectors(p0, to, e); a.pos.y = this.gy(a.pos.x, a.pos.z); a.lift = lerp(l0, lift, e); }, ease);
+    if (mode === 'in') {
+      S.dir = 1;
+      go(this.W(lx, +z), +(h ?? 0.4), 3.2, Ease.inOut);
+      Sfx.tone(110, 2.4, 'sine', 0.06, 160); Sfx.tone(440, 2.2, 'sine', 0.03, 220, 0.3);
+    } else if (mode === 'slip') {
+      go(this.W(lx, +z), l0 + 0.08, 0.5, Ease.out);
+      GFX.shake(0.2); Sfx.tone(180, 0.5, 'sawtooth', 0.04, 120);
+    } else if (mode === 'back') {
+      S.dir = -1;
+      this.fx.sprite(core, '#fff0a8', 6, 0.9, { k: 2.6, grow: 1.4 }); GFX.flash('#fff8e0', 0.35, 0.7);
+      go(this.W(lx, +z), 0, 2.4, Ease.inOut);
+      Sfx.tone(660, 0.8, 'sine', 0.05, -220); Sfx.tone(990, 1, 'sine', 0.04, -330, 0.25);
+    }
+  },
+  // 闇が濃くなる：gloom:点 ／ gloom:off（第七章、コドクを倒したあとに集まりはじめていた闇が、タマを助けるあいだに強まる）
+  //   点のまわりに黒紫の闇のかたまりがわき続け、2 秒かけてふくらむ。画面全体も暗くなる（darkness）。off で闇は消え、明るさは dawn でもどす
+  gloom(arg) {
+    let G = this.gloomFx;
+    if (arg === 'off') { if (G) G.on = false; return; }
+    const c = this.point(arg || 'ward') || this.W(0, 7);
+    if (!G) {
+      // 闇のかたまり：光を足す粒では黒が見えないので、ふつうに重ねる黒紫の煙の板を何枚か
+      const puffs = [];
+      for (let i = 0; i < 9; i++) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: new THREE.Color(i % 3 ? '#140a24' : '#2e1650'), transparent: true, opacity: 0, depthWrite: false }));
+        sp.userData = { a: i / 9 * Math.PI * 2, d: 0.4 + (i % 3) * 0.5, y: 0.3 + (i % 4) * 0.35, ph: i * 1.7, s: 2.3 + (i % 3) * 0.8 };
+        this.scene.add(sp); puffs.push(sp);
+      }
+      G = this.gloomFx = { on: true, c, k: 0, puffs };
+      this.zoneTicks.push((dt, t) => {
+        G.k = G.on ? Math.min(1, G.k + dt / 2) : Math.max(0, G.k - dt / 0.8);
+        for (const sp of G.puffs) {
+          const u = sp.userData, a = u.a + t * 0.25, wob = Math.sin(t * 1.3 + u.ph);
+          sp.position.set(G.c.x + Math.cos(a) * u.d * (0.6 + G.k), this.O.y + u.y * (0.5 + G.k) + wob * 0.12, G.c.z + Math.sin(a) * u.d * (0.6 + G.k));
+          sp.scale.setScalar(u.s * (0.3 + G.k) * (1 + wob * 0.08)); sp.material.opacity = 0.85 * G.k;
+        }
+        if (G.k <= 0) return;
+        const n = dt * 70 * G.k, r = 0.8 + G.k * 1.6;
+        for (let i = 0; i < 4; i++) if (Math.random() < n / 4) {
+          const a = Math.random() * Math.PI * 2, d = Math.random() * r;
+          const p = V3(G.c.x + Math.cos(a) * d, this.O.y + Math.random() * 0.4, G.c.z + Math.sin(a) * d);
+          this.p.emit(p, V3((Math.random() - 0.5) * 0.4, 0.5 + Math.random() * (0.8 + G.k), (Math.random() - 0.5) * 0.4), hdr(Math.random() < 0.25 ? '#8a5aff' : pick(['#1a0f30', '#2a1a4a']), 2), { life: 1.6 + G.k, size: 0.35 + G.k * 0.35, drag: 0.3 });
+        }
+      });
+    }
+    G.on = true; G.c = c;
+    STAGE_FX.darkness.call(this);
+    Sfx.tone(55, 2, 'sawtooth', 0.07, 15);
+  },
+  // 影を食い止める：ward:役 ／ ward:役,off（第七章、タマを助けるあいだ、マオウが強まっていくコドクの闇をおさえる）
+  //   舞台の点 ward（なければ役の前 2m）から闇がわき上がり、役のほうへ押しよせては、役の手前で紫の火花になって散る
+  ward(arg) {
+    const [k, mode] = String(arg).split(','), a = this.actors[k];
+    let W = this.wardFx;
+    if (mode === 'off') { if (W) W.on = false; return; }
+    if (!a) return;
+    const c = this.point('ward') || a.pos.clone().add(V3(Math.sin(a.yaw), 0, Math.cos(a.yaw)).multiplyScalar(2));
+    if (!W) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#b04aff', 1.4), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
+      this.scene.add(sp);
+      W = this.wardFx = { on: true, a, c, k: 0, sp };
+      this.zoneTicks.push((dt, t) => {
+        W.k = lerp(W.k, W.on ? 1 : 0, 1 - Math.exp(-3 * dt));
+        const b = W.a, front = V3().lerpVectors(b.pos, W.c, 0.3); front.y = b.pos.y + b.headH * 0.6;   // 闇がぶつかる所（役の前）
+        W.sp.position.copy(front); W.sp.scale.setScalar((1.1 + Math.sin(t * 6) * 0.12) * W.k + 0.01); W.sp.material.opacity = W.k * 0.5;
+        if (W.k < 0.05) return;
+        const jit = s => V3((Math.random() - 0.5) * s, Math.random() * s * 0.5, (Math.random() - 0.5) * s);
+        for (let i = 0; i < 3; i++) if (Math.random() < dt * 30 * W.k) {
+          const from = W.c.clone().add(jit(2.4)), life = 0.7 + Math.random() * 0.3, to = front.clone().add(jit(0.4));
+          this.p.emit(from, to.sub(from).multiplyScalar(1 / life), hdr(pick(['#2a1a4a', '#4a2a7a', '#8a5aff']), 2), { life, size: 0.3, drag: 0 });
+        }
+        if (Math.random() < dt * 12 * W.k) this.p.burst(front.clone().add(jit(0.5)), '#c8a0ff', 6, { speed: 2.5, life: 0.4, size: 0.05 });
+      });
+    }
+    W.on = true; W.a = a; W.c = c;
+    this.fx.ring(V3(c.x, this.O.y + 0.05, c.z), '#8a5aff', { r: 3, life: 1, width: 0.3 });
+    Sfx.tone(80, 1, 'sawtooth', 0.05, -20); Sfx.tone(330, 0.5, 'sine', 0.04, 110, 0.4);
+  },
+  // 魔法が失敗して、光がはじける：fizzle:唱える役,相手。杖の先が光ってから、ふたりのあいだで、ぱちんと白い光が散る
+  fizzle(arg) {
+    const [ka, kb] = String(arg || 'shiro').split(','), a = this.actors[ka || 'shiro'], b = this.actors[kb]; if (!a) return;
+    STAGE_FX.spell.call(this, a.key);
+    GFX.delay(0.4).then(() => {
+      const c = b ? V3().lerpVectors(a.m.handPos(), b.headPos(), 0.5) : a.m.tipPos();
+      this.fx.sprite(c, '#ffffff', 1.1, 0.35, { k: 2, grow: 1.6 });
+      this.fx.ring(c, '#fff0a8', { r: 1.1, life: 0.45, width: 0.06, k: 2, face: this.camera.position });
+      this.p.burst(c, '#fff4c8', 40, { speed: 4, life: 0.5, size: 0.06 });
+      this.p.burst(c, '#b8ff9a', 24, { speed: 2.5, life: 0.7, size: 0.05 });
+      GFX.flash('#ffffff', 0.15, 0.3); GFX.shake(0.3);
+      Sfx.noise(0.25, 0.22, 2400); Sfx.tone(520, 0.3, 'square', 0.04, -380);
     });
   },
   // 封印の扉が開く
