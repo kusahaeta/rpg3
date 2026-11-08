@@ -3698,6 +3698,36 @@ const ZMAT = {
   candyPink: ['#ffb8d8', 0.05, 0.5], candyBlue: ['#b8e0ff', 0.05, 0.5], candyYellow: ['#fff0a8', 0.05, 0.5], cream: ['#fff8ec', 0, 0.7], choco: ['#7a4a2a', 0.05, 0.6],
 };
 
+// 遠景の木の絵（ZoneKit.farTree）：森の木を横から描いた絵。丸い木 2 本・針葉樹 2 本を横にならべる（一つ 256 画素四方）。
+//   w：絵の一つぶんの幅と高さ（大きさ 1 の木で m）、y0：絵の下のはしの、根もとからの高さ。cols：絵に描いた葉の色（丸い木・針葉樹）
+const LUSH_IMP = { w: 5.2, y0: -0.2, cols: ['#62a04e', '#3e7846'] };
+function lushImpostorTex() {
+  if (TexCache.lushImp) return TexCache.lushImp;
+  const N = 256, rt = new THREE.WebGLRenderTarget(N * 4, N);
+  const scene = new THREE.Scene(), W = LUSH_IMP.w;
+  scene.add(new THREE.AmbientLight('#ffffff', 1.7)); const sun = new THREE.DirectionalLight('#fff4e0', 1.2); sun.position.set(-3, 5, 4); scene.add(sun);
+  // 森の木は ZoneKit で作る（区画はないので、木立のきわの葉を省くこともない）。
+  //   真横から描くと、葉が重ならずすかすかに見えたので、形のちがう木を二本、同じ所に重ねて描く
+  const kit = new ZoneKit({ zone: { name: 'impostor' }, scene, rand: seeded(1), T: null });
+  kit.makingTrees = true;
+  for (let i = 0; i < 4; i++) for (let k = 0; k < 2; k++) {
+    const x = (i - 1.5) * W, xk = x + k * 0.003, s = 1 - k * 0.08;
+    i < 2 ? kit.lushTree(xk, 0, 0, s, { leaf: [LUSH_IMP.cols[0]] }) : kit.lushFir(xk, 0, 0, s, { pine: [LUSH_IMP.cols[1]] });
+  }
+  const leafM = lushLeafMat(), barkM = lushBarkMat(), geos = kit.treeGeos();
+  for (const [g, leaf] of geos) scene.add(new THREE.Mesh(g, leaf ? leafM : barkM));
+  const cam = new THREE.OrthographicCamera(-2 * W, 2 * W, LUSH_IMP.y0 + W, LUSH_IMP.y0, 0.1, 40); cam.position.set(0, 0, 20);
+  const R = GFX.renderer, prev = R.getRenderTarget(), pc = R.getClearColor(new THREE.Color()), pa = R.getClearAlpha();
+  R.setRenderTarget(rt); R.setClearColor('#3a5a30', 0); R.clear(); R.render(scene, cam);
+  // 描いた絵は、ふつうの画像（DataTexture）に写して持つ。描いた先（render target）のままだと、スマホで 3D 描画が止まって作り直したときに消える
+  const px = new Uint8Array(N * 4 * N * 4); R.readRenderTargetPixels(rt, 0, 0, N * 4, N, px);
+  R.setRenderTarget(prev); R.setClearColor(pc, pa);
+  for (const [g] of geos) g.dispose(); leafM.dispose(); barkM.dispose(); rt.dispose();
+  const t = new THREE.DataTexture(px, N * 4, N, THREE.RGBAFormat);
+  t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.needsUpdate = true;
+  return (TexCache.lushImp = t);
+}
+
 const INST_CELL = 32;   // 木・岩などの InstancedMesh を分ける区切りの大きさ（ZoneKit.flush）
 // 豊かな森の巨大な根の細かさ（ZoneKit.lushRoot）：perM 根 1m あたりの輪の数、ends 両はしに寄せる割合（0〜1）、rs 輪の角の数
 const ROOT_Q = { perM: 1.0, ends: 0.3, rs: 12 };   // 1m に 1.6 輪・14 角（5.3 千三角形）とほぼ同じ見た目で 2.9 千。これより粗いと、アーチのてっぺんが折れ線に見えた
@@ -3777,7 +3807,7 @@ class ZoneKit {
     return (this.batches[key] = this.batches[key] || { acc: new GeoAcc(4), mat: this.M(mat) }).acc;
   }
   flush() {
-    this.flushTrees(); this.flushToon(); this.flushRoots();
+    this.flushTrees(); this.flushFar(); this.flushToon(); this.flushRoots();
     for (const b of Object.values(this.batches || {})) { const m = b.acc.mesh(b.mat); if (m) { m.castShadow = true; this.scene.add(m); } }
     this.batches = {};
     // 形の違う部品（町の建物など）は、材質ごとに一つのジオメトリにまとめて描く
@@ -3836,9 +3866,15 @@ class ZoneKit {
   tint(c, k = 0.08) { const col = new THREE.Color(c), v = 1 + (this.r() - 0.5) * k * 2; return col.multiplyScalar(v).getStyle(); }
   // 1本の木（kind：round 丸い木／pine 針葉樹／dead 枯れ木／spooky 魔王領の木／mush 大きなきのこ／candy お菓子／crystal 水晶）
   plant(kind, x, y, z, s = 1, o = {}) {
-    // 豊かな森（テーマの lush）：丸い木・針葉樹は、作り直した森の木で
-    if (this.v.canopy && kind === 'pine') return this.lushFir(x, y, z, s, o);
-    if (this.v.canopy && (kind === 'round' || !['dead', 'spooky', 'mush', 'candy', 'crystal'].includes(kind))) return this.lushTree(x, y, z, s, o);
+    // 丸い木・針葉樹は、どのフィールドも、ほしふる森で作り直した森の木で（実はつけない。葉の中に丸が浮いて見えた）。
+    //   ほしふる森のほかは、区画の乱数を、もとの木と同じだけ進める（あとに置く茂み・岩・小物の位置を変えない）。
+    //   o.thin：森の木は枝と葉が多いので、奥の木をもっとまばらに（乱数だけ進めて植えない）。
+    //   o.plain：もとの丸い葉の玉の木のまま（ねこ神の夢のお菓子の森。木ではなく、お菓子の飾り）
+    if (!o.plain && (kind === 'pine' || !['dead', 'spooky', 'mush', 'candy', 'crystal'].includes(kind))) {
+      if (!this.v.canopy) { this.burn(kind === 'pine' ? 7 : 21); if (kind !== 'pine' && o.fruit && this.r() < 0.3) this.burn(8); }
+      if (o.thin) return;
+      return kind === 'pine' ? this.lushFir(x, y, z, s, o) : this.lushTree(x, y, z, s, o);
+    }
     const r = this.r, leaf = () => this.tint(pick(o.leaf || ['#5ab04a', '#4a9a3e', '#6abf52']), 0.1), bark = this.tint(o.bark || '#7a5a3a');
     switch (kind) {
       case 'pine':
@@ -3883,8 +3919,15 @@ class ZoneKit {
       }
     }
   }
+  // 区画の乱数を n 回進める（森の木に置きかえた部品が、もとは使っていたぶん）
+  burn(n) { for (let i = 0; i < n; i++) this.r(); }
+  // 葉の材質の名前（ZMAT）を色に
+  leafCol(leaf) { return ZMAT[leaf] ? ZMAT[leaf][0] : typeof leaf === 'string' ? leaf : '#5ab04a'; }
   shrub(x, y, z, s = 1, o = {}) {
-    if (this.v.canopy) return this.lushShrub(x, y, z, s, o);
+    if (!o.plain) {
+      if (!this.v.canopy) { this.burn(9); if (o.flower && this.r() < 0.5) this.burn(6); }
+      return this.lushShrub(x, y, z, s, o);
+    }
     for (let i = 0; i < 3; i++) this.put('blob', x + (i - 1) * 0.45 * s, y + 0.35 * s, z + (this.r() - 0.5) * 0.4 * s, [0.55 * s, 0.42 * s, 0.55 * s], [0, this.r() * 3, 0], this.tint(pick(o.bushLeaf || o.leaf || ['#4a9a3e', '#5aa848'])));
     if (o.flower && this.r() < 0.5) for (let i = 0; i < 3; i++) this.put('dot', x + (this.r() - 0.5) * 1.1 * s, y + 0.62 * s, z + (this.r() - 0.5) * 0.6 * s, 0.08 * s, null, pick(o.flower));
   }
@@ -3898,9 +3941,11 @@ class ZoneKit {
       if (T.kind[i] > TK.WINDOW || T.water[i]) continue;
       const c = T.colOf(i), rw = T.rowOf(i), x = T.cx(c), z = T.cz(rw), y = T.cap[i], d = T.dist[i] < 0 ? 9 : T.dist[i];
       if (o.skip && o.skip(x, z)) continue;
-      if (d >= 4 && r() < (this.v.canopy ? 0.6 : 0.4)) continue;   // 奥の木はまばらに大きく（豊かな森は、枝と葉が多いぶん、もっとまばらに）
+      if (d >= 4 && r() < (this.v.canopy ? 0.6 : 0.4)) continue;   // 奥の木はまばらに大きく
       const s = (o.size || 1) * (0.85 + r() * 0.45) * (d >= 3 ? 1.25 : 1);
-      this.plant(kindOf(), x + (r() - 0.5) * 0.9, y, z + (r() - 0.5) * 0.9, s, d >= 3 ? { ...o, lod: true } : o);   // 奥の木は、豊かな森では枝分かれを一段へらす
+      // 奥の木は、森の木の枝分かれを一段へらす。ほしふる森のほかの奥の木は、位置で決めて 3 分の 1 をさらに省く（区画の乱数の進み方を変えずに、ほしふる森と同じ 6 割に）
+      const thin = !this.v.canopy && !o.plain && d >= 4 && posHash(x * 3.1, z * 3.1) % 1000 < 333;
+      this.plant(kindOf(), x + (r() - 0.5) * 0.9, y, z + (r() - 0.5) * 0.9, s, d >= 3 ? { ...o, lod: true, thin } : o);
       if (d !== 1) continue;
       DIR4.forEach(([dc, dr]) => {
         const j = T.idx(c + dc, rw + dr); if (j < 0 || !T.isWalkKind(T.kind[j]) || Math.abs(T.h[j] - y) > 0.3) return;
@@ -3945,18 +3990,22 @@ class ZoneKit {
   //   INST_CELL 四方ごとに、枝と葉をそれぞれ一つの形にまとめて描く（区切りごとに 2 回）。
   //   aWind：[ゆれの位相（木ごと。0〜1）, 枝のゆれの大きさ（0〜1）]。
   //   形は型つき配列（LushBuf）に直接ためる：位置は 32 ビット、法線は 8 ビット、色は枝 16 ビット・葉 8 ビット、ゆれと絵の位置は 16 ビット
-  //   一本ずつの形は、その木の位置から決まる乱数（treeRand）で作るので、何度作っても同じ。作った形は LUSH_TREE_CACHE に二区画ぶん取っておき、
-  //   その区画の戦闘の背景や、行き来でまた入ったときは作らずに使う（非力なスマホでは、一区画の木を作るのに数秒かかる）
+  //   一本ずつの形は、その木の位置から決まる乱数（treeRand）で作るので、何度作っても同じ。
+  //   木はその場では作らず、植える木の一覧（treeJobs）にためて、flushTrees でまとめて作る。一覧が同じなら同じ形なので、作った形は
+  //   LUSH_TREE_CACHE に二区画ぶん取っておき、その区画の戦闘の背景や、行き来でまた入ったときは作らずに使う（非力なスマホでは、一区画の木を作るのに数秒かかる）。
+  //   見分けは一覧から（区画の名前だけで見分けると、戦場のまわりだけの戦闘の背景・戦場の木を省いた背景・物語で変わる木を取り違える）
   treeBin(x, z) {
     const mk = leaf => ({ P: new LushBuf(Float32Array), N: new LushBuf(Int8Array), C: new LushBuf(leaf ? Uint8ClampedArray : Uint16Array), W: new LushBuf(Uint16Array), U: new LushBuf(Uint16Array), I: new LushBuf(Uint32Array) });
-    if (this.lushCached()) return this._scratch || (this._scratch = { B: mk(false), L: mk(true) });   // 取っておいた形を使うときは、作ったものは捨てる（目印の巨木の実の置き場所だけ要る）
     const k = Math.floor(x / INST_CELL) + ',' + Math.floor(z / INST_CELL);
     this.trees = this.trees || new Map();
     return this.trees.get(k) || this.trees.set(k, { B: mk(false), L: mk(true) }).get(k);
   }
   lushKey() { return (this.v.zoneId || this.zone.name) + '|' + (GFX.low ? 1 : 0); }
-  // 取っておいた、この区画の木の形（なければ null）
-  lushCached() { if (this._hit === undefined) this._hit = LUSH_TREE_CACHE.get(this.lushKey()) || null; return this._hit; }
+  // 植える木を一覧にためる（flushTrees で作る）。sig：形を決めるもの（種類・位置・大きさ・色・奥の木か・太さ）
+  deferTree(fn, x, y, z, s, o) {
+    const sig = [fn, x.toFixed(2), y.toFixed(2), z.toFixed(2), s.toFixed(3), o.lod ? 1 : 0, o.thick || 1, o.leaf, o.pine, o.bushLeaf, o.bark].join(',');
+    (this.treeJobs || (this.treeJobs = [])).push({ fn, a: [x, y, z, s, o], sig });
+  }
   // その木の位置から決まる乱数（区画の乱数は使わない。使うと、木のあとに置く小物が、取っておいた形を使うときとで変わってしまう）
   treeRand(x, z, k = 0) { return seeded(posHash(x + k * 0.731, z - k * 0.377) + 7919 * k); }
   // 木立（壁）の周りの葉は 7 割省く：歩ける所（道・広場・橋）の上へはみ出す葉と、歩ける所に面した木立の 1 マスめの葉。
@@ -4036,10 +4085,9 @@ class ZoneKit {
   }
   // 広葉樹：根の張った幹がやや傾いてのび、3〜4 本の大枝に分かれ、その先で小枝に分かれる。枝のなかほどから先に、小枝の葉。
   //   大きさ s は、いままでの丸い木（plant の round）とそろえる（高さ 4m ほど）。o.leaf：葉の色の候補、o.thick：幹の太さの倍率（目印の巨木）、
-  //   o.lod：奥の木（枝分かれを一段へらし、葉を大きく少なく）。
-  //   返すもの：葉をつけた点 [[x, y, z], …]（光る実の置き場所）
+  //   o.lod：奥の木（枝分かれを一段へらし、葉を大きく少なく）
   lushTree(x, y, z, s = 1, o = {}) {
-    if (this.lushCached()) return [];
+    if (!this.makingTrees) return this.deferTree('lushTree', x, y, z, s, o);
     const r = this.treeRand(x, z), b = this.treeBin(x, z), big = s > 2, thick = o.thick || 1, wall = this.inWall(x, z);
     const bark = lushTint(o.bark || '#7a5a3a', 0.12, r), col = lushTint(lushPick(o.leaf || ['#5ab04a', '#4a9a3e', '#62b44e'], r), 0.1, r), lit = col.clone().lerp(new THREE.Color('#e8f59a'), 0.55);
     const lx = (r() - 0.5) * 0.3 * s, lz = (r() - 0.5) * 0.3 * s, H = (1.4 + r() * 0.3) * s, F = V3(x + lx, y + H, z + lz);
@@ -4047,7 +4095,7 @@ class ZoneKit {
     const T = { y, h: cr.y + cr.ry - y, ph: posHash(x, z) % 1000 / 1000, r }, shade = this.crownShade(cr), C0 = V3(cr.x, cr.y, cr.z);
     this.lushTube(b.B, [V3(x, y - 0.15, z), V3(x + lx * 0.25, y + H * 0.5, z + lz * 0.25), F], 0.17 * s * thick, 0.11 * s * thick, bark, { ...T, flare: 0.7, fph: r() * 6, rs: big ? 12 : 7, seg: big ? 6 : 4 });
     const low = GFX.low ? 1.7 : 1, w = 0.82 * Math.sqrt(s) * (o.lod ? 1.35 : 1) * Math.sqrt(low), step = 0.16 * Math.pow(s, 0.6) * (o.lod ? 1.8 : 1) * low;
-    const maxD = (big ? 3 : 2) - (o.lod ? 1 : 0), spots = [], rv = () => V3(r() - 0.5, r() - 0.5, r() - 0.5);
+    const maxD = (big ? 3 : 2) - (o.lod ? 1 : 0), rv = () => V3(r() - 0.5, r() - 0.5, r() - 0.5);
     const away = (D, ang) => { const p = V3().crossVectors(D, rv()).normalize(); return D.clone().multiplyScalar(Math.cos(ang)).addScaledVector(p, Math.sin(ang)).normalize(); };
     const grow = (P0, D, len, rad, depth) => {
       const P2 = P0.clone().addScaledVector(D, len).addScaledVector(rv(), len * 0.2), P1 = P0.clone().lerp(P2, 0.5).add(V3(0, len * 0.08, 0)).addScaledVector(rv(), len * 0.12);
@@ -4073,7 +4121,6 @@ class ZoneKit {
         for (let k = 0; k < (depth === maxD ? 2 : 1); k++) {
           const U = T1.clone().multiplyScalar(0.7).addScaledVector(out, 0.6).addScaledVector(rv(), 1.0).add(V3(0, 0.2, 0)).normalize();
           this.lushSpray(b.L, P, U, w * (0.8 + r() * 0.4), 0, (r() - 0.5) * 0.9, col, lit, T, shade, out.clone().addScaledVector(rv(), 0.6).add(V3(0, 0.25, 0)));
-          spots.push([P.x, P.y, P.z]);
         }
       }
     };
@@ -4083,11 +4130,10 @@ class ZoneKit {
       grow(F, V3(Math.sin(el) * Math.cos(a), Math.cos(el), Math.sin(el) * Math.sin(a)), (1.0 + r() * 0.3) * s, 0.085 * s * thick, 0);
     }
     grow(F, V3((r() - 0.5) * 0.3, 1, (r() - 0.5) * 0.3).normalize(), 0.95 * s, 0.07 * s * thick, 1);   // まん中の頂き
-    return spots;
   }
   // 針葉樹：まっすぐな幹に、枝が輪のように 6、7 本ずつ段になって出る。下の段ほど長く垂れ、枝にそって平たい針葉の小枝を二、三枚
   lushFir(x, y, z, s = 1, o = {}) {
-    if (this.lushCached()) return;
+    if (!this.makingTrees) return this.deferTree('lushFir', x, y, z, s, o);
     const r = this.treeRand(x, z), b = this.treeBin(x, z), col = lushTint(lushPick(o.pine || ['#3a7a44', '#2e6a3a', '#447e48'], r), 0.1, r), lit = col.clone().lerp(new THREE.Color('#cfe8a0'), 0.4);
     const H = (3.9 + r() * 0.6) * s, T = { y, h: H, ph: posHash(x, z) % 1000 / 1000, r }, low = GFX.low ? 1.55 : 1, wall = this.inWall(x, z);
     this.lushTube(b.B, [V3(x, y - 0.15, z), V3(x, y + H * 0.5, z), V3(x, y + H * 0.97, z)], 0.16 * s, 0.03 * s, lushTint('#6a4a32', 0.1, r), { ...T, flare: 0.5, fph: r() * 6, rs: 6, seg: 4 });
@@ -4113,11 +4159,13 @@ class ZoneKit {
     for (let k = 0; k < 3; k++) this.lushSpray(b.L, V3(x, y + H * 0.84, z), V3((r() - 0.5) * 0.5, 1, (r() - 0.5) * 0.5).normalize(), 0.62 * s, 1, k * 1.05, col, lit, T, shade);
   }
   // 茂み（木立のふち）：根もとから外へ斜めにのびる茎を 4、5 本。茎にそって小枝の葉。
-  //   いままでの茂みの花（o.flower の光る丸い点）はつけない（茂みの上に丸が浮いて見えた）
+  //   いままでの茂みの花（o.flower の光る丸い点）はつけない（茂みの上に丸が浮いて見えた）。
+  //   草むらのない区画（ほしふる森のほか）：茎がなく根もとが草でかくれないので、葉の束が地面から浮いて見えた。
+  //   根もとに、地面をはう葉を茎ごとに二枚足し、木立のきわでも葉を省かない（背が低く、カメラの前はふさがない）
   lushShrub(x, y, z, s = 1, o = {}) {
-    if (this.lushCached()) return;
+    if (!this.makingTrees) return this.deferTree('lushShrub', x, y, z, s, o);
     const r = this.treeRand(x, z), b = this.treeBin(x, z), col = lushTint(lushPick(o.bushLeaf || o.leaf || ['#4a9a3e', '#5aa848'], r), 0.1, r), lit = col.clone().lerp(new THREE.Color('#e8f59a'), 0.5);
-    const cr = { x, y: y + 0.38 * s, z, rx: 0.75 * s, ry: 0.5 * s }, shade = this.crownShade(cr), T = { y, h: 1.0 * s, ph: posHash(x, z) % 1000 / 1000, r }, n = 4 + (r() < 0.5 ? 1 : 0), a0 = r() * 6.28, wall = this.inWall(x, z);
+    const cr = { x, y: y + 0.38 * s, z, rx: 0.75 * s, ry: 0.5 * s }, shade = this.crownShade(cr), T = { y, h: 1.0 * s, ph: posHash(x, z) % 1000 / 1000, r }, n = 4 + (r() < 0.5 ? 1 : 0), a0 = r() * 6.28, bare = !this.v.canopy, wall = !bare && this.inWall(x, z);
     for (let i = 0; i < n; i++) {
       const a = a0 + i / n * 6.28 + (r() - 0.5) * 0.6, D = V3(Math.cos(a) * 0.75, 0.7 + r() * 0.2, Math.sin(a) * 0.75).normalize(), P0 = V3(x + (r() - 0.5) * 0.2 * s, y, z + (r() - 0.5) * 0.2 * s), len = (0.55 + r() * 0.2) * s;
       for (const t of [0.25, 0.45, 0.65, 0.85, 1.0]) {
@@ -4125,34 +4173,81 @@ class ZoneKit {
         if (wall && this.openThin(A.x, A.z)) continue;
         this.lushSpray(b.L, A, U, 0.5 * Math.sqrt(s) * (0.85 + r() * 0.3), 0, (r() - 0.5) * 0.9, col, lit, T, shade, A.clone().sub(V3(cr.x, cr.y, cr.z)).add(V3(0, 0.3 * s, 0)));
       }
+      if (bare) for (const da of [-0.45, 0.45]) {   // 地面をはう葉：根もとから外へ、ほぼ水平に
+        const g = a + da + (r() - 0.5) * 0.3, U = V3(Math.cos(g), 0.12 + r() * 0.15, Math.sin(g)).normalize(), A = V3(P0.x, y - 0.03 * s, P0.z).addScaledVector(U, 0.05 * s);
+        this.lushSpray(b.L, A, U, 0.5 * Math.sqrt(s) * (0.9 + r() * 0.3), 0, (r() - 0.5) * 0.6, col, lit, T, shade, V3(U.x * 0.3, 1, U.z * 0.3));
+      }
     }
   }
   // 森の木をまとめて描く（flush から）。形は treeBin の型つき配列のまま、ちょうどの長さに切って渡す
   flushTrees() {
-    const hit = this.lushCached(), key = this.lushKey();
-    if (!this.trees && !hit) return;
+    const jobs = this.treeJobs; if (!jobs || !jobs.length) return;
+    this.treeJobs = null;
+    let h = 2166136261;
+    for (const j of jobs) for (let i = 0; i < j.sig.length; i++) h = Math.imul(h ^ j.sig.charCodeAt(i), 16777619);
+    const key = this.lushKey() + '|' + jobs.length + '|' + (h >>> 0).toString(36), hit = LUSH_TREE_CACHE.get(key);
     const barkM = lushBarkMat(), leafM = lushLeafMat();
+    // 葉が受ける空の照り返し：上は空の上の色と地平線のあいだ、下は空の下の色に、場面の環境マップの強さをかける。
+    //   ほしふる森は、暗めの森にした見た目のまま（照り返しなし）
+    if (!this.v.canopy && this.v.ch) {
+      const th = { ...(THEMES[this.zone.bg || this.v.ch.bg] || THEMES.meadow), ...(this.zone.th || {}) }, k = this.v.scene.environmentIntensity ?? 0.35;
+      leafM.uniforms.envUp.value.set(th.top).lerp(new THREE.Color(th.horizon), 0.6).multiplyScalar(k); leafM.uniforms.envDown.value.set(th.bottom).multiplyScalar(k);
+    }
     let geos = hit;
     if (hit) { LUSH_TREE_CACHE.delete(key); LUSH_TREE_CACHE.set(key, hit); }   // 最近使ったものを、うしろへ
     else {
-      geos = [];
-      for (const { B, L } of this.trees.values()) for (const b of [B, L]) {
-        if (!b.I.n) continue;
-        const g = new THREE.BufferGeometry(), nv = b.P.n / 3, I = b.I.out();
-        g.setAttribute('position', new THREE.BufferAttribute(b.P.out(), 3)); g.setAttribute('normal', new THREE.BufferAttribute(b.N.out(), 3, true));
-        g.setAttribute('color', new THREE.BufferAttribute(b.C.out(), 3, true)); g.setAttribute('aWind', new THREE.BufferAttribute(b.W.out(), 2, true));
-        if (b.U.n) g.setAttribute('uv', new THREE.BufferAttribute(b.U.out(), 2, true));
-        g.setIndex(new THREE.BufferAttribute(nv > 65535 ? I : new Uint16Array(I), 1));
-        g.computeBoundingSphere(); g.boundingSphere.radius += 0.3;
-        geos.push([g, b === L]);
-      }
+      this.makingTrees = true;
+      for (const j of jobs) this[j.fn](...j.a);
+      this.makingTrees = false;
+      geos = this.treeGeos();
       LUSH_TREE_CACHE.set(key, geos);
       while (LUSH_TREE_CACHE.size > 2) LUSH_TREE_CACHE.delete(LUSH_TREE_CACHE.keys().next().value);
     }
     // 葉は影を受けない（lushLeafMat）。省エネ・軽量の画質では、葉は影も落とさない（影の画像に、葉をもう一度描くことになる）。
     //   形は取っておくので、場面を片付けて GPU から消えても（disposeTree）、次に描くときにまた載る
     for (const [g, leaf] of geos) { const m = new THREE.Mesh(g, leaf ? leafM : barkM); m.castShadow = !leaf || !GFX.eco; m.receiveShadow = !leaf; this.scene.add(m); }
+  }
+  // 作った森の木の形（treeBin の型つき配列）を、区切りごとの BufferGeometry に：[[形, 葉か], …]
+  treeGeos() {
+    const geos = [];
+    for (const { B, L } of (this.trees || new Map()).values()) for (const b of [B, L]) {
+      if (!b.I.n) continue;
+      const g = new THREE.BufferGeometry(), nv = b.P.n / 3, I = b.I.out();
+      g.setAttribute('position', new THREE.BufferAttribute(b.P.out(), 3)); g.setAttribute('normal', new THREE.BufferAttribute(b.N.out(), 3, true));
+      g.setAttribute('color', new THREE.BufferAttribute(b.C.out(), 3, true)); g.setAttribute('aWind', new THREE.BufferAttribute(b.W.out(), 2, true));
+      if (b.U.n) g.setAttribute('uv', new THREE.BufferAttribute(b.U.out(), 2, true));
+      g.setIndex(new THREE.BufferAttribute(nv > 65535 ? I : new Uint16Array(I), 1));
+      g.computeBoundingSphere(); g.boundingSphere.radius += 0.3;
+      geos.push([g, b === L]);
+    }
     this.trees = null;
+    return geos;
+  }
+  // 遠景の木（区画の外。見晴らし台から見える野や尾根など）：森の木を横から描いた絵（lushImpostorTex）を、十字に交差させた板 2 枚に貼る。
+  //   一本 4 三角形（森の木は一本 100〜1000）。pine：針葉樹、col：葉の色（絵の葉の色との比で、頂点の色にかける）。影は落とさない。flush でまとめて一つに
+  farTree(x, y, z, s, pine, col) { (this.farList || (this.farList = [])).push([x, y, z, s, pine, col]); }
+  flushFar() {
+    const list = this.farList; if (!list) return;
+    this.farList = null;
+    const n = list.length, P = new Float32Array(n * 24), N = new Int8Array(n * 24), C = new Uint8Array(n * 24), U = new Float32Array(n * 16), I = new Uint32Array(n * 12), c = new THREE.Color(), ref = LUSH_IMP.cols.map(h => new THREE.Color(h));
+    list.forEach(([x, y, z, s, pine, col], t) => {
+      const h = posHash(x, z), cell = (pine ? 2 : 0) + (h & 1), a = (h % 628) / 100, W = LUSH_IMP.w * s / 2, y0 = y + LUSH_IMP.y0 * s, y1 = y0 + LUSH_IMP.w * s;
+      const k = ref[pine ? 1 : 0]; c.set(col); const cr = Math.min(255, c.r / k.r * 255), cg = Math.min(255, c.g / k.g * 255), cb = Math.min(255, c.b / k.b * 255);
+      for (let q = 0; q < 2; q++) {
+        const dx = Math.cos(a + q * Math.PI / 2) * W, dz = Math.sin(a + q * Math.PI / 2) * W, v = t * 8 + q * 4;
+        [[x - dx, y0, z - dz, 0, 0], [x + dx, y0, z + dz, 1, 0], [x + dx, y1, z + dz, 1, 1], [x - dx, y1, z - dz, 0, 1]].forEach(([px, py, pz, u, w], i) => {
+          P.set([px, py, pz], (v + i) * 3); N.set([0, 127, 0], (v + i) * 3); C.set([cr, cg, cb], (v + i) * 3); U.set([(cell + u) / 4, w], (v + i) * 2);
+        });
+        I.set([v, v + 1, v + 2, v, v + 2, v + 3], t * 12 + q * 6);
+      }
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.BufferAttribute(N, 3, true));
+    g.setAttribute('color', new THREE.BufferAttribute(C, 3, true)); g.setAttribute('uv', new THREE.BufferAttribute(U, 2)); g.setIndex(new THREE.BufferAttribute(I, 1));
+    g.computeBoundingSphere();
+    // 絵には光と陰を描きこんであるので、まわりの光に加えて少し自分で光らせる（区画の森の木の葉も、日が透けたように少し光る）
+    const tex = lushImpostorTex(), m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.45, vertexColors: true, alphaTest: 0.45, side: THREE.DoubleSide }));
+    m.castShadow = m.receiveShadow = false; this.scene.add(m);
   }
   // 岩の崖（crag）の上にも、ところどころ木や岩を置く
   cragTop(o = {}) {
@@ -5874,25 +5969,26 @@ class ZoneKit {
     const setGreen = k => { green.value = k; for (const l of leaves) l.m.color.copy(l.from).lerp(l.target, k); };
     return { leaves, fruits, top, setMoss, setGreen };
   }
+  // 手で置く木と茂み：ほしふる森で作り直した森の木で（実・花はつけない）。区画の乱数は、もとの部品と同じだけ進める（ほしふる森も。前からそうだった）
   roundTree(x, z, s = 1, leaf = 'leaf', o = {}) {
-    this.cyl(x, z, 0.22 * s, 1.8 * s, 'bark', { r2: 0.16 * s, seg: 7, col: o.col });
-    const n = o.lush ? 5 : 3;
-    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + this.r(); const m = this.mesh(new THREE.IcosahedronGeometry((0.9 + this.r() * 0.3) * s, 1), leaf, x + Math.cos(a) * 0.55 * s, (2.2 + this.r() * 0.5) * s, z + Math.sin(a) * 0.55 * s); m.scale.y = 0.85; }
-    this.mesh(new THREE.IcosahedronGeometry(1.05 * s, 1), leaf, x, 2.8 * s, z).scale.y = 0.9;
-    if (o.fruit) for (let i = 0; i < 4; i++) { const a = this.r() * 6; this.mesh(new THREE.SphereGeometry(0.12 * s, 8, 6), this.glow(o.fruit, 1.4), x + Math.cos(a) * 0.9 * s, (2.4 + this.r() * 0.6) * s, z + Math.sin(a) * 0.9 * s, { noShadow: true }); }
+    this.burn((o.lush ? 5 : 3) * 3 + (o.fruit ? 8 : 0));
+    this.lushTree(x, this.gy(x, z), z, s, { leaf: [this.leafCol(leaf)] });
+    if (o.col !== false) this.col(x, z, 0.22 * s, 1.8 * s);
   }
-  pine(x, z, s = 1, leaf = 'leafDark') {
-    this.cyl(x, z, 0.2 * s, 1.2 * s, 'bark', { seg: 7 });
-    for (let i = 0; i < 3; i++) this.mesh(new THREE.ConeGeometry((1.4 - i * 0.36) * s, 1.6 * s, 8), leaf, x, (1.5 + i * 0.95) * s, z);
+  //   o.far：遠景の木（十字の板の絵。farTree）
+  pine(x, z, s = 1, leaf = 'leafDark', o = {}) {
+    if (o.far) { this.farTree(x, this.gy(x, z), z, s * 1.15, true, this.leafCol(leaf)); this.col(x, z, 0.2 * s, 1.2 * s); return; }
+    this.lushFir(x, this.gy(x, z), z, s, { pine: [this.leafCol(leaf)] });
+    this.col(x, z, 0.2 * s, 1.2 * s);
+  }
+  bush(x, z, s = 1, leaf = 'leaf2', flower) {
+    this.burn(3 + (flower ? 8 : 0));
+    this.lushShrub(x, this.gy(x, z), z, s, { bushLeaf: [this.leafCol(leaf)] });
+    this.col(x, z, 0.8 * s, 0.8 * s);
   }
   deadTree(x, z, s = 1) {
     this.cyl(x, z, 0.2 * s, 2.6 * s, 'bark', { r2: 0.1 * s, seg: 6 });
     for (let i = 0; i < 4; i++) this.mesh(new THREE.CylinderGeometry(0.03 * s, 0.08 * s, 1.3 * s, 5), 'bark', x, (1.6 + i * 0.25) * s, z, { rz: (i % 2 ? 1 : -1) * (0.6 + this.r() * 0.4), ry: i * 1.6 });
-  }
-  bush(x, z, s = 1, leaf = 'leaf2', flower) {
-    for (let i = 0; i < 3; i++) { const m = this.mesh(new THREE.IcosahedronGeometry(0.55 * s, 1), leaf, x + (i - 1) * 0.45 * s, 0.35 * s, z + (this.r() - 0.5) * 0.4 * s); m.scale.y = 0.75; }
-    if (flower) for (let i = 0; i < 4; i++) this.mesh(new THREE.SphereGeometry(0.09 * s, 6, 4), flower, x + (this.r() - 0.5) * 1.2 * s, 0.62 * s, z + (this.r() - 0.5) * 0.6 * s, { noShadow: true });
-    this.col(x, z, 0.8 * s, 0.8 * s);
   }
   // 花：細い茎に葉を一、二枚、花は花びらの絵を貼った板（透けるところは抜く）。花の向きと傾きは一本ずつばらばら
   //   花びらは裏を向いても沈まないよう、絵の色で少しだけ光らせる
@@ -9213,7 +9309,8 @@ const ZONE_BUILD = {
     K.bench(-6, 8, 0.4); K.bench(7.2, -1.6, -0.9);
     for (const [x, z] of [[-9.2, -7], [8.4, -8.2], [-9.4, 10.4], [8.4, 12.4], [-12, 15.5], [1, 13.6]]) K.lantern(x, z, '#ffc86a', 2.6);
     for (const [x, z] of [[-8, 12], [8, 13], [-12, -11], [12, -11], [-30, 4], [30, 10], [-4, -12.4]]) K.flowers(x, z, 14, 1.8);
-    for (const [x, z, s] of [[-12, 26, 1.1], [3, 27, 1], [-31, 8.5, 1.2], [12.4, -11.6, 1]]) K.roundTree(x, z, s, 'leaf', { fruit: s > 1.1 ? '#ff8a8a' : null });
+    // (-1.5, 27)：南の門（ほしふる森へ）の手前の道のわき。道の上（3, 27）だと、枝分かれの森の木の樹冠が門をふさいだ
+    for (const [x, z, s] of [[-12, 26, 1.1], [-1.5, 27, 1], [-31, 8.5, 1.2], [12.4, -11.6, 1]]) K.roundTree(x, z, s, 'leaf', { fruit: s > 1.1 ? '#ff8a8a' : null });
     K.light(0, 5, 2, '#fff0c8', 6, 24);
   },
   // 村はずれの丘：丘の上に流れ星の落ちたクレーター、西の見晴らしに大きな木とベンチ
@@ -9529,7 +9626,7 @@ const ZONE_BUILD = {
     // 谷の北西の石段の上の踊り場と、出口の先の東のくぼみ：岩山から落ちてきた岩
     for (const [x, z] of [[-38, -60], [-26, -58.5], [21.5, -61.8]]) K.rock(x, z, 0.5 + K.r() * 0.3);
     // 東の遠く：まどろみの林
-    for (let i = 0; i < 30; i++) { const x = 56 + K.r() * 50, z = 1 + K.r() * 70; K.pine(x, z, 2.2 + K.r() * 1.6, i % 3 ? 'leafDark' : 'leaf2'); }
+    for (let i = 0; i < 30; i++) { const x = 56 + K.r() * 50, z = 1 + K.r() * 70; K.pine(x, z, 2.2 + K.r() * 1.6, i % 3 ? 'leafDark' : 'leaf2', { far: true }); }
     // 南の分かれ道と入口：岩
     for (const [x, z] of [[-17, 62], [17, 64.5], [-25, 43], [14, 43]]) K.rock(x, z, 0.6 + K.r() * 0.4);
     // 入口の西の泉：水ぎわの小石と、がまのしげみ
@@ -9597,7 +9694,7 @@ const ZONE_BUILD = {
     const BZ = riverZ(FX), BL = 18, road = (z0, z1) => pathStrip(z0 - z1, FX, GY + 0.02, (z0 + z1) / 2, -Math.PI / 2);
     road(-45, BZ + BL / 2 - 0.5); road(BZ - BL / 2 + 0.5, FZ);
     // 崖のふもと：くずれ落ちた岩と、茂み
-    const rockG = new THREE.DodecahedronGeometry(1, 0), blob = new THREE.IcosahedronGeometry(1, 1), coneG = new THREE.ConeGeometry(1, 1, 7, 1, true), trunkG = new THREE.CylinderGeometry(0.7, 1, 1, 5, 1, true);   // 遠くの木の幹と葉の円錐は、見えない底をはぶく
+    const rockG = new THREE.DodecahedronGeometry(1, 0), blob = new THREE.IcosahedronGeometry(1, 1);
     const screeM = farM('#a29c90'), bushM = farM('#5a9a48');
     for (let i = 0; i < 46; i++) {
       const x = -46 + K.r() * 96, z = -33 - K.r() * 11 * K.r(), s = 0.5 + K.r() * 1.6 * (1 - (-33 - z) / 12);
@@ -9609,17 +9706,14 @@ const ZONE_BUILD = {
     const WH = 11, FW = 110, FD = 2, FDEP = 84, FB = FZ - FDEP, TX = FX, TZ = FZ - FDEP - 36;
     const used = [[FX - 7, FZ, FX + 7, -32], [FX - FW / 2 - 4, FB - 4, FX + FW / 2 + 4, FZ + 4], [TX - 42, TZ - 40, TX + 42, TZ + 38], [TX - 42, TZ - 94, TX + 50, TZ - 40]];
     const free = (x, z, pad = 0) => Math.abs(z - riverZ(x)) > 8 + pad && !used.some(([x0, z0, x1, z1]) => x > x0 - pad && x < x1 + pad && z > z0 - pad && z < z1 + pad);
-    // 遠くの木：丸い木と針葉樹（色は数色から）。部品ごとに一つの InstancedMesh にまとめて描く（遠景は、いつもほとんど全体が画面に入るので、区画の木立のように区切らない）
-    //   見晴らし台から 130m より遠い丸い木は、葉の玉を粗く（三角形を少なく）
-    const treeParts = { trunk: [trunkG, []], blob: [blob, []], blob0: [new THREE.IcosahedronGeometry(1, 0), []], cone: [coneG, []] };
+    // 遠くの木：丸い木と針葉樹（色は数色から）。森の木の絵を十字の板に貼った遠景の木（K.farTree）。
+    //   区画の乱数は、もとの玉の木と同じだけ進める（あとに置く遠景の位置を変えない）
     const leafCols = ['#5d9c4a', '#4e8c42', '#6aa954', '#78b25a'], pineCols = ['#3c7646', '#33683c', '#4a804a'];
-    const tp = (k, x, y, z, sx, sy, sz, col, ry = 0) => treeParts[k][1].push([x, y, z, sx, sy, sz, col, ry]);
     const farTree = (x, z, s, pine) => {
-      const y = farH(x, z), b = Math.hypot(x + 22, z + 26) < 130 ? 'blob' : 'blob0';
-      tp('trunk', x, y + 0.9 * s, z, 0.3 * s, 1.8 * s, 0.3 * s, '#6a4a2e');
-      if (pine) { const c = pk(pineCols); tp('cone', x, y + 2.6 * s, z, 1.5 * s, 3 * s, 1.5 * s, c); tp('cone', x, y + 4 * s, z, 1.05 * s, 2.4 * s, 1.05 * s, c); return; }
-      const c = pk(leafCols); tp(b, x, y + 2.7 * s, z, 1.5 * s, 1.3 * s, 1.5 * s, c, K.r() * 3);
-      if (K.r() < 0.5) tp(b, x + (K.r() - 0.5) * 1.6 * s, y + 2.1 * s, z + (K.r() - 0.5) * 1.6 * s, 1.0 * s, 0.85 * s, 1.0 * s, c);
+      const y = farH(x, z);
+      if (pine) return K.farTree(x, y, z, s * 1.15, true, pk(pineCols));
+      const c = pk(leafCols); K.r(); if (K.r() < 0.5) K.burn(2);
+      K.farTree(x, y, z, s, false, c);
     };
     // 川：川岸の砂利と、空を映す水面（両はしは細くなって、尾根の切れ目の奥へ消える）
     const ribbon = (mat, x0, x1, half, y) => {
@@ -9798,15 +9892,8 @@ const ZONE_BUILD = {
     }
     for (let i = 0; i < 16; i++) { const x = TX + (K.r() < 0.5 ? -1 : 1) * (6 + K.r() * 32), z = TZ - 34 + K.r() * 68; farTree(x, z, 1.1 + K.r() * 0.4, false); }
     K.castleKeep(TX - 12, TZ - 72, { s: 1.1 }); K.smileTower(TX + 30, TZ - 62);
-    const treeM = farM('#ffffff'), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), col = new THREE.Color(), up = V3(0, 1, 0);
-    for (const [geo, list] of Object.values(treeParts)) {
-      if (!list.length) continue;
-      const im = new THREE.InstancedMesh(geo, treeM, list.length);
-      list.forEach(([x, y, z, sx, sy, sz, c, ry], i) => { im.setMatrixAt(i, m4.compose(V3(x, y, z), q.setFromAxisAngle(up, ry), V3(sx, sy, sz))); im.setColorAt(i, col.set(c)); });
-      im.computeBoundingSphere(); K.scene.add(im);
-    }
     // 東の遠く：まどろみの林
-    for (let i = 0; i < 30; i++) { const x = 52 + K.r() * 50, z = 66 + K.r() * 70; K.pine(x, z, 2.2 + K.r() * 1.6, i % 3 ? 'leafDark' : 'leaf2'); }
+    for (let i = 0; i < 30; i++) { const x = 52 + K.r() * 50, z = 66 + K.r() * 70; K.pine(x, z, 2.2 + K.r() * 1.6, i % 3 ? 'leafDark' : 'leaf2', { far: true }); }
     // 崖くずれ：外門の先の道を、大岩が道幅いっぱいに埋めている（ごろごろ団の岩が、何度もぶつかって崩した）。上に小さな岩が積もり、手前の道にも岩がころがり出ている
     //   当たりは、岩の山ぜんたいを道幅より広い四角ひとつで（ジャンプでも越えられない）。大岩に丸い当たりをつけると、崖ぎわで
     //   崖の側へ押し出されて当たりごと取り消され、すり抜けてしまう
@@ -11631,7 +11718,7 @@ const ZONE_BUILD = {
   // ---------------- クリア後 ----------------
   // ねこ神の夢・うとうとの庭：お菓子の木立とケーキの段、ちびクッキーとでかミルクの台、キャンディの柵。空には魚が泳ぐ
   dream(K) {
-    K.flora({ trees: [['candy', 3], ['round', 1]], leaf: ['#ffb8d8', '#b8e0ff', '#fff0a8', '#c8ffc8'], bark: '#fff8ec', bush: 0.7, bushLeaf: ['#ffd8ec', '#d8f0ff'], flower: ['#ffffff', '#ffe07a'] });
+    K.flora({ plain: true, trees: [['candy', 3], ['round', 1]], leaf: ['#ffb8d8', '#b8e0ff', '#fff0a8', '#c8ffc8'], bark: '#fff8ec', bush: 0.7, bushLeaf: ['#ffd8ec', '#d8f0ff'], flower: ['#ffffff', '#ffe07a'] });
     K.sizeStands(); K.cakeTops();
     K.picnicHill(-30, 9.6); K.dreamTheater(26, 37); K.napMeadow(29, -22);
     K.dreamFish(12, 30, 50);
