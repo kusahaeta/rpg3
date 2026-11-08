@@ -3568,9 +3568,19 @@ function puffTex() {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return (TexCache.puff = t);
 }
-function makePuff(s = 1) {
+// front：板を、見た目の大きさと位置はそのまま、玉の手前のはしまで寄せて描く（たんぽぽの茎は玉のまん中まで通るので、
+//   まん中の板のままだと、板より手前の茎が綿毛の上に描かれて綿毛を隠す）
+function makePuff(s = 1, front = false) {
   const g = new THREE.Group();
   const puff = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex(), color: '#fffdf4', transparent: true, depthWrite: false }));
+  if (front) {
+    // 視線にそってカメラへ近づける（xyz をそろって縮めるので、画面の上の位置と大きさは変わらない）。玉の半径は板の大きさの 0.47 倍
+    puff.material.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('mvPosition.xy += rotatedPosition;',
+        'float pz = min( scale.x * 0.45, - mvPosition.z * 0.5 ), kz = ( mvPosition.z + pz ) / mvPosition.z;\n  mvPosition.xyz *= kz; mvPosition.xy += rotatedPosition * kz;');
+    };
+    puff.material.customProgramCacheKey = () => 'puffFront';
+  }
   // 深度を書かないので、川の流れの筋・道の塗り（renderOrder 1〜5）より後に描く。先に描くと、奥の川で上書きされる
   puff.renderOrder = OVER_PAINT; puff.scale.setScalar(1.5); g.add(puff); g.scale.setScalar(s);
   return g;
@@ -5840,7 +5850,7 @@ class ZoneKit {
     const cap = new THREE.Mesh(this.dandelionTop(s, big, tr), body); top.add(cap);
     if (big) { stem.castShadow = cap.castShadow = stem.receiveShadow = cap.receiveShadow = true; g.add(new THREE.Mesh(S.geo, line)); top.add(new THREE.Mesh(cap.geometry.userData.hull, line)); }
     let head = null;
-    if (!o.bald) { head = makePuff(s); head.position.y = 0.05 * s; top.add(head); }
+    if (!o.bald) { head = makePuff(s, true); head.position.y = 0.05 * s; top.add(head); }
     if (o.col !== false) this.col(x, z, 0.25 * s, h);
     // ゆれ：茎の先が A m ほど、二つの向きに、ちがう速さでゆれる（もとの、てっぺんだけ 0.05 rad かたむけたのと同じくらい）
     const ph = this.r() * 6, A = 0.025 * h;
