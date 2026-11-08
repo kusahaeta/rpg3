@@ -1034,6 +1034,70 @@ function lushBarkMat() {
   m.customProgramCacheKey = () => 'lushBark';
   return m;
 }
+// 大きな根の樹皮の絵：根にそって（絵の縦に）のびる割れ目と、そのあいだの盛り上がった皮。色（map）と、高さから作った凹凸（normal）。
+//   縦横ともくり返す。根の uv は、u が根のまわり、v が根にそった長さ（ZoneKit.lushRoot）
+function lushRootTex() {
+  if (TexCache.lushRoot) return TexCache.lushRoot;
+  const W = 256, H = 512, rnd = seeded(11);
+  // くり返す値ノイズ（格子 px × py。縦の格子を粗くすると、縦にのびた形になる）。x・y は 0〜1 でひとまわり
+  const vn = (px, py) => {
+    const g = new Float32Array(px * py); for (let i = 0; i < g.length; i++) g[i] = rnd();
+    return (x, y) => {
+      const fx = x * px, fy = y * py, ix = Math.floor(fx), iy = Math.floor(fy); let u = fx - ix, v = fy - iy; u = u * u * (3 - 2 * u); v = v * v * (3 - 2 * v);
+      const x0 = ((ix % px) + px) % px, x1 = (x0 + 1) % px, y0 = ((iy % py) + py) % py, y1 = (y0 + 1) % py;
+      const a = g[y0 * px + x0], b = g[y0 * px + x1], c = g[y1 * px + x0], d = g[y1 * px + x1];
+      return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+    };
+  };
+  const warp = vn(6, 4); vn(9, 3);   // 太い割れ目（細い影に見えたのでやめた）の分も乱数を進めて、ほかの模様を変えない
+  const f2 = vn(20, 5), brk = vn(7, 10), fine = vn(64, 40), hue = vn(4, 3);
+  const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const Hm = new Float32Array(W * H), V = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const u = x / W, v = y / H, wu = u + (warp(u, v) - 0.5) * 0.09;
+    // 割れ目：ノイズが 0.5 をまたぐ細い筋（縦にのびる）。皮は、ところどころ横に切れる
+    const c2 = ss(0, 0.22, Math.abs(f2(wu * 1.03, v) - 0.5)), b = ss(0, 0.1, Math.abs(brk(wu, v) - 0.5));
+    Hm[y * W + x] = (0.62 + c2 * 0.26 + fine(u, v) * 0.12) * (0.72 + 0.28 * b);   // 0.62：太い割れ目があったころの皮の分（細い線の濃さはそのまま）
+    V[y * W + x] = hue(u, v);
+  }
+  const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
+  const cm = mk(), cn = mk(), gm = cm.getContext('2d'), gn = cn.getContext('2d'), im = gm.createImageData(W, H), inn = gn.createImageData(W, H);
+  const dk = [74, 50, 34], lt = [196, 150, 104], gr = [168, 158, 134], K = 5.5;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x, h = Hm[i], hv = V[i], t = Math.pow(h, 0.85), gk = ss(0.55, 0.85, hv) * 0.45 * t, k = 0.86 + 0.28 * hv, o = i * 4;
+    for (let c = 0; c < 3; c++) im.data[o + c] = Math.min(255, ((dk[c] + (lt[c] - dk[c]) * t) * (1 - gk) + gr[c] * gk) * k);
+    im.data[o + 3] = 255;
+    // 凹凸：高さの傾き（まわりはくり返しでつなぐ）。絵は上下が裏返って貼られる（flipY）ので、縦の傾きはそのまま
+    const hx = Hm[y * W + (x + 1) % W] - Hm[y * W + (x + W - 1) % W], hy = Hm[((y + 1) % H) * W + x] - Hm[((y + H - 1) % H) * W + x];
+    const nx = -hx * K, ny = hy * K, l = Math.sqrt(nx * nx + ny * ny + 1);
+    inn.data[o] = (nx / l * 0.5 + 0.5) * 255; inn.data[o + 1] = (ny / l * 0.5 + 0.5) * 255; inn.data[o + 2] = (1 / l * 0.5 + 0.5) * 255; inn.data[o + 3] = 255;
+  }
+  gm.putImageData(im, 0, 0); gn.putImageData(inn, 0, 0);
+  const map = new THREE.CanvasTexture(cm), normal = new THREE.CanvasTexture(cn);
+  map.colorSpace = THREE.SRGBColorSpace;
+  for (const t of [map, normal]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; }
+  return (TexCache.lushRoot = { map, normal });
+}
+// 大きな根の材質：樹皮の絵（lushRootTex）の色と凹凸に、頂点の色（地面ぎわ・筋のくぼみの陰）をかける。
+//   上を向いた所には、まだらに苔（区画の座標で、地面のノイズの絵 lushNoiseTex から。割れ目より皮の上に）
+function lushRootMat() {
+  const t = lushRootTex();
+  const m = new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normal, normalScale: new THREE.Vector2(1, 1), vertexColors: true, roughness: 0.93, metalness: 0 });
+  m.onBeforeCompile = sh => {
+    sh.uniforms.lushNz = { value: lushNoiseTex() };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vRP, vRN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vRP = position; vRN = normal;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D lushNz; varying vec3 vRP, vRN;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        { vec4 nz = texture2D(lushNz, vRP.xz * 0.03 + vRP.y * 0.011);
+          float bk = texture2D(map, vMapUv).g;
+          float moss = smoothstep(0.55, 0.85, normalize(vRN).y + (nz.r - 0.5) * 0.8) * smoothstep(0.35, 0.6, nz.g * 0.8 + bk * 0.9 - 0.2);
+          vec3 mc = mix(vec3(0.15, 0.34, 0.05), vec3(0.3, 0.52, 0.09), nz.b) * (0.8 + 0.8 * bk);
+          diffuseColor.rgb = mix(diffuseColor.rgb, mc, moss * 0.9); }`);
+  };
+  m.customProgramCacheKey = () => 'lushRoot';
+  return m;
+}
 // 小枝の葉の材質：葉の絵（leafSprayTex）の板を、両面で。
 //   光の当たり方は板の向きではなく、樹冠のまるみ（頂点の法線）で決めるので、なめらかに変わる。そこで光の計算は頂点ごとにして
 //   （画素ごとの計算は、絵を読んで透けるところを抜き、色をかけるだけ）、葉が何枚も重なる森でも軽くする（非力なスマホで葉がいちばん重かった）。

@@ -3699,6 +3699,8 @@ const ZMAT = {
 };
 
 const INST_CELL = 32;   // 木・岩などの InstancedMesh を分ける区切りの大きさ（ZoneKit.flush）
+// 豊かな森の巨大な根の細かさ（ZoneKit.lushRoot）：perM 根 1m あたりの輪の数、ends 両はしに寄せる割合（0〜1）、rs 輪の角の数
+const ROOT_Q = { perM: 1.0, ends: 0.3, rs: 12 };   // 1m に 1.6 輪・14 角（5.3 千三角形）とほぼ同じ見た目で 2.9 千。これより粗いと、アーチのてっぺんが折れ線に見えた
 // 置いた場所から決まる 0 以上の整数（小物の向き・模様を、乱数を使わずにばらけさせる）
 const posHash = (x, z) => Math.abs(Math.floor(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453));
 // 木の板の色（タル・ベンチ・木箱のテクスチャ）
@@ -3775,7 +3777,7 @@ class ZoneKit {
     return (this.batches[key] = this.batches[key] || { acc: new GeoAcc(4), mat: this.M(mat) }).acc;
   }
   flush() {
-    this.flushTrees(); this.flushToon();
+    this.flushTrees(); this.flushToon(); this.flushRoots();
     for (const b of Object.values(this.batches || {})) { const m = b.acc.mesh(b.mat); if (m) { m.castShadow = true; this.scene.add(m); } }
     this.batches = {};
     // 形の違う部品（町の建物など）は、材質ごとに一つのジオメトリにまとめて描く
@@ -8370,10 +8372,90 @@ class ZoneKit {
   }
   // 巨大な根（アーチ）
   root(x0, z0, x1, z1, r = 1, h = 3) {
+    if (this.v.canopy) { this.lushRoot(x0, z0, x1, z1, r, h); this.col(x0, z0, r * 1.2, 1); this.col(x1, z1, r * 1.2, 1); return null; }   // 豊かな森（テーマの lush）：作り直した根
     const pts = [V3(x0, -0.5, z0), V3((x0 + x1) / 2, h, (z0 + z1) / 2), V3(x1, -0.5, z1)];
     const m = this.mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, r, 8, false), 'bark', 0, 0, 0, { abs: true });
     this.col(x0, z0, r * 1.2, 1); this.col(x1, z1, r * 1.2, 1);
     return m;
+  }
+  // 豊かな森の巨大な根：地面からもり上がって、また地面にもぐる太い根（樹の根の、地上に出たところ）。
+  //   断面は 3 つと 5 つのふくらみ（よりあわさった筋）で、根にそってねじれる。地面に入るところは少し太く、そのまま土にもぐる。
+  //   樹皮の絵（lushRootTex）は u が根のまわり、v が根にそった長さ。輪の頂点ごとねじるので、割れ目も筋にそってねじれる。
+  //   地面の下にもぐった輪は作らない。輪の間隔は、張り出して形の変わる両はしで細かく、まん中で粗く（ROOT_Q）。
+  //   形は区画の乱数を使わず、根の位置から決める（treeRand）。区画の根は一つにまとめて描く（flushRoots）
+  lushRoot(x0, z0, x1, z1, r, h) {
+    const rnd = this.treeRand((x0 + x1) / 2, (z0 + z1) / 2, 5), Q = ROOT_Q;
+    const g0 = this.gy(x0, z0), g1 = this.gy(x1, z1), dx = x1 - x0, dz = z1 - z0, L = Math.hypot(dx, dz), px = -dz / L, pz = dx / L;
+    const sway = (rnd() - 0.5) * 0.1 * L, skew = (rnd() - 0.5) * 0.3, ph = rnd() * 6.28, dEnd = r * 3.6, thick = rnd() < 0.5 ? 1 : -1;
+    // 根の芯：両はしは地面の下（dEnd。いちばん太い半径より深く、切り口が地面から出ない）から。まん中の高さ h は、もとの根（アーチ）と同じ
+    const C = (t, o) => {
+      const s = t + skew * t * (1 - t), b = Math.sin(Math.PI * s), w = Math.sin(t * 9 + ph) * r * 0.2 * b;
+      o[0] = x0 + dx * s + px * (sway * b + w); o[2] = z0 + dz * s + pz * (sway * b + w);
+      o[1] = g0 - dEnd + (g1 - g0) * s + (h + dEnd) * (0.5 * b + 2 * s * (1 - s)) + Math.sin(t * 7 + ph * 1.3) * r * 0.15 * b;
+      return o;
+    };
+    // 長さと、芯が地面に出る所（tA・tB）
+    const q = [0, 0, 0], NS = 200; let len = 0, tA = 0, tB = 1, prev = C(0, [0, 0, 0]);
+    for (let i = 1; i <= NS; i++) {
+      const t = i / NS; C(t, q); len += Math.hypot(q[0] - prev[0], q[1] - prev[1], q[2] - prev[2]);
+      const up = q[1] > this.gy(q[0], q[2]);
+      if (up && !tA) tA = t; if (up) tB = t;
+      prev[0] = q[0]; prev[1] = q[1]; prev[2] = q[2];
+    }
+    const fw = 1.3 * r / len, taper = t => 1 + 0.14 * thick * (1 - 2 * t);
+    // 地面ぎわ（芯が地面に出る所のまわりと、地面の下）は 1：少しだけ太く、筋のふくらみも少し強く。根はそのまま土にもぐる
+    const gf = t => Math.min(1, Math.exp(-(((t - tA) / fw) ** 2)) + Math.exp(-(((t - tB) / fw) ** 2)) + (t < tA || t > tB ? 1 : 0));
+    //   地面の少し上から下へ、深いほど太らせる（根もとが外へ広がり、土にうまって見える。同じ太さのままだと、筒を地面で切ったように見え、
+    //   かたむいた脚の下に地面がのぞいた）
+    const under = t => { C(t, q); return treeSS(-0.7 * r, 1.4 * r, this.gy(q[0], q[2]) - q[1]); };
+    const radius = (t, j, rs) => { const f = j / rs * Math.PI * 2, g = gf(t), lob = 1 + (0.13 * Math.sin(3 * f) + 0.06 * Math.sin(5 * f + ph) + 0.04 * Math.sin(2 * f + t * 11 + ph)) * (1 + 0.2 * g);
+      return { r: r * taper(t) * (1 + 0.2 * g + 0.9 * under(t)) * lob, lob }; };
+    // 地面の下にもぐった輪は作らない（芯が、いちばん太い半径より深い所）
+    const deep = t => { C(t, q); return q[1] + r * 3 < this.gy(q[0], q[2]); };
+    let t0 = tA, t1 = tB; while (t0 > 0 && !deep(t0)) t0 = Math.max(0, t0 - 0.004); while (t1 < 1 && !deep(t1)) t1 = Math.min(1, t1 + 0.004);
+    const n = Math.max(6, Math.round(len * (t1 - t0) * Q.perM)), ts = [];
+    for (let i = 0; i <= n; i++) { const s = i / n; ts.push(t0 + (t1 - t0) * (s - Q.ends * Math.sin(2 * Math.PI * s) / (2 * Math.PI))); }
+    const tint = 0.92 + rnd() * 0.16;
+    this.rootTube(C, radius, ts, Q.rs, { twist: 0.32 * thick, uRep: Math.max(1, Math.round(r * 2.2)), vLen: 2.6, tint, r });
+  }
+  // 根の筒：芯 C(t, out) にそって、ts の位置ごとに rs 角の輪（radius(t, j, rs) → { r, lob }。lob：筋のふくらみ。くぼみを暗く）。
+  //   輪の向きは、前の輪の向きを接線に直交するよう直して運ぶ（ねじれない）。そのうえで、輪の頂点を根にそった長さ×twist だけ回す
+  rootTube(C, radius, ts, rs, o) {
+    const b = this.rootBuf || (this.rootBuf = { P: [], U: [], C: [], I: [], seam: [] }), n0 = b.P.length / 3;
+    const q = [0, 0, 0], q2 = [0, 0, 0], pv = [0, 0, 0]; let nx0 = 0, ny0 = 0, nz0 = 0, len = 0;
+    for (let i = 0; i < ts.length; i++) {
+      const t = ts[i]; C(Math.min(1, t + 1e-3), q2); C(Math.max(0, t - 1e-3), pv); C(t, q);
+      let tx = q2[0] - pv[0], ty = q2[1] - pv[1], tz = q2[2] - pv[2]; const tl = Math.hypot(tx, ty, tz) || 1; tx /= tl; ty /= tl; tz /= tl;
+      if (i === 0) { const ax = Math.abs(ty) < 0.9 ? 0 : 1, ay = ax ? 0 : 1; nx0 = -tz * ay; ny0 = tz * ax; nz0 = tx * ay - ty * ax; }
+      else { C(ts[i - 1], pv); len += Math.hypot(q[0] - pv[0], q[1] - pv[1], q[2] - pv[2]); }
+      const d = nx0 * tx + ny0 * ty + nz0 * tz; nx0 -= tx * d; ny0 -= ty * d; nz0 -= tz * d;
+      const nl = Math.hypot(nx0, ny0, nz0) || 1; nx0 /= nl; ny0 /= nl; nz0 /= nl;
+      const bx = ty * nz0 - tz * ny0, by = tz * nx0 - tx * nz0, bz = tx * ny0 - ty * nx0, tw = len * o.twist;
+      b.seam.push(b.P.length / 3, b.P.length / 3 + rs);
+      for (let j = 0; j <= rs; j++) {
+        const th = j / rs * Math.PI * 2 + tw, cs = Math.cos(th), sn = Math.sin(th), { r: rr, lob } = radius(t, j, rs);
+        const x = q[0] + (nx0 * cs + bx * sn) * rr, y = q[1] + (ny0 * cs + by * sn) * rr, z = q[2] + (nz0 * cs + bz * sn) * rr;
+        // 陰：地面ぎわほど暗く（土にうもれる所）、筋のくぼみも暗く
+        const ao = (0.55 + 0.45 * Math.min(1, Math.max(0, (y - this.gy(x, z) + 0.1) / (o.r * 1.3))) ** 0.7) * (0.8 + 0.2 * Math.min(1, Math.max(0, (lob - 0.85) / 0.3))) * o.tint;
+        b.P.push(x, y, z); b.U.push(j / rs * o.uRep, len / o.vLen); b.C.push(ao, ao * 0.98, ao * 0.95);
+      }
+    }
+    for (let i = 0; i < ts.length - 1; i++) for (let j = 0; j < rs; j++) { const a = n0 + i * (rs + 1) + j, d = a + rs + 1; b.I.push(a, a + 1, d, a + 1, d + 1, d); }   // 外向きの面（輪は N→B の向きにまわるので、この並びで外を向く）
+  }
+  // 区画の根をまとめて描く（flush から）。法線は面から求め、輪のつなぎ目（u が 0 と 1 の重なった頂点）は平均して、すじが出ないように
+  flushRoots() {
+    const b = this.rootBuf; if (!b) return; this.rootBuf = null;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(b.P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(b.U, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(b.C, 3));
+    g.setIndex(b.I); g.computeVertexNormals();
+    const N = g.attributes.normal.array;
+    for (let i = 0; i < b.seam.length; i += 2) {
+      const a = b.seam[i] * 3, c = b.seam[i + 1] * 3, x = N[a] + N[c], y = N[a + 1] + N[c + 1], z = N[a + 2] + N[c + 2], l = Math.hypot(x, y, z) || 1;
+      N[a] = N[c] = x / l; N[a + 1] = N[c + 1] = y / l; N[a + 2] = N[c + 2] = z / l;
+    }
+    g.computeBoundingSphere();
+    const m = new THREE.Mesh(g, this.mc.lushRoot || (this.mc.lushRoot = lushRootMat())); m.castShadow = m.receiveShadow = true;
+    this.scene.add(m);
   }
   // 光る水晶の塊
   // 光る鉱石：小さな水晶の群れ（高さ 0.3〜0.7m ほど。根もとの岩から、少しずつかたむいて生える）
