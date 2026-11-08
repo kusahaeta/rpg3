@@ -3586,6 +3586,35 @@ function makePuff(s = 1, front = false) {
   puff.renderOrder = OVER_PAINT; puff.scale.setScalar(1.5); g.add(puff); g.scale.setScalar(s);
   return g;
 }
+// ねむり花の茎（dandelionStem の太さ・色の表）：根もとが太く、緑。花の下で少しふくらむ
+const SLEEP_STEM_RAD = [[0, 0.085], [0.08, 0.068], [0.5, 0.058], [0.9, 0.052], [1, 0.07]];
+const SLEEP_STEM_COL = [[0, '#4c7a3c'], [0.12, '#5c9446'], [0.7, '#78b45a'], [1, '#86c062']];
+// 薄い面（花びら・葉）の格子：u（根もと 0 → 先 1、NU 等分）× v（-1〜1 の幅、NV 等分）。pt(u, v, out) で位置を out に。
+//   頂点の off 番めから、表（per 個）・裏（per 個）の順に、同じ位置で書く。表の法線は v の向き × u の向き（花びらは内がわ、葉は上がわ）。
+//   法線は格子のとなりの点から（形を書きかえるたびに呼ぶ）
+const SHEET_TMP = { Q: new Float32Array(0), o: [0, 0, 0] };
+function sheetWrite(P, N, off, NU, NV, pt) {
+  const per = (NU + 1) * (NV + 1), o = SHEET_TMP.o;
+  if (SHEET_TMP.Q.length < per * 3) SHEET_TMP.Q = new Float32Array(per * 3);
+  const Q = SHEET_TMP.Q;
+  for (let i = 0; i <= NU; i++) for (let j = 0; j <= NV; j++) { pt(i / NU, j / NV * 2 - 1, o); const q = (i * (NV + 1) + j) * 3; Q[q] = o[0]; Q[q + 1] = o[1]; Q[q + 2] = o[2]; }
+  for (let i = 0; i <= NU; i++) for (let j = 0; j <= NV; j++) {
+    const A = (Math.min(NU, i + 1) * (NV + 1) + j) * 3, B = (Math.max(0, i - 1) * (NV + 1) + j) * 3, Cq = (i * (NV + 1) + Math.min(NV, j + 1)) * 3, D = (i * (NV + 1) + Math.max(0, j - 1)) * 3;
+    const ux = Q[A] - Q[B], uy = Q[A + 1] - Q[B + 1], uz = Q[A + 2] - Q[B + 2], vx = Q[Cq] - Q[D], vy = Q[Cq + 1] - Q[D + 1], vz = Q[Cq + 2] - Q[D + 2];
+    let nx = vy * uz - vz * uy, ny = vz * ux - vx * uz, nz = vx * uy - vy * ux; const l = 1 / (Math.sqrt(nx * nx + ny * ny + nz * nz) || 1); nx *= l; ny *= l; nz *= l;
+    const k = i * (NV + 1) + j, f = (off + k) * 3, bk = (off + per + k) * 3, q = k * 3;
+    P[f] = P[bk] = Q[q]; P[f + 1] = P[bk + 1] = Q[q + 1]; P[f + 2] = P[bk + 2] = Q[q + 2];
+    N[f] = nx; N[f + 1] = ny; N[f + 2] = nz; N[bk] = -nx; N[bk + 1] = -ny; N[bk + 2] = -nz;
+  }
+}
+// sheetWrite の格子の三角形：表は法線の側から見て左回り、裏はその逆
+function sheetIdx(I, off, NU, NV) {
+  const per = (NU + 1) * (NV + 1);
+  for (let i = 0; i < NU; i++) for (let j = 0; j < NV; j++) {
+    const a = off + i * (NV + 1) + j, b = a + NV + 1, c = a + 1, d = b + 1;
+    I.push(a, c, b, c, d, b, a + per, b + per, c + per, c + per, b + per, d + per);
+  }
+}
 // ねむり花の周期：閉じている → ふくらむ（あぶない合図）→ 粉をはく。ph は花ごとのずれ（0〜1）
 const NEMURI_CYCLE = 5.4;
 function nemuriState(t, ph) {
@@ -5890,11 +5919,12 @@ class ZoneKit {
   // たんぽぽの茎：根もと（地面に少しもぐる）から高さ h（花托）まで。太さは根もとが太く、先へ細くなり、花托の下で少しふくらむ。
   //   色は根もとが赤み、先ほど明るい緑。縦にうすい筋（ひとつおきの頂点を明るく）。
   //   bend(bx, bz, top)：先が (bx, bz) だけずれるように、高さの二乗で曲げる。輪は茎の向きに直角。top を茎の先へ、茎の向きに立てて置く
-  dandelionStem(s, h, big) {
+  //   o.rad・o.col：太さ・色の表（[高さの割合, 値]。ねむり花の茎は緑で、根もとが太い）
+  dandelionStem(s, h, big, o = {}) {
     const NR = big ? 12 : 7, RS = big ? 10 : 6, nv = (NR + 1) * RS, y0 = -0.04 * s, L = h - y0;
     const tab = (T, t) => { let i = 0; while (i < T.length - 2 && T[i + 1][0] < t) i++; const [ta, a] = T[i], [tb, b] = T[i + 1]; return a + (b - a) * Math.max(0, Math.min(1, (t - ta) / (tb - ta))); };
-    const RAD = [[0, 0.078], [0.06, 0.062], [0.5, 0.052], [0.86, 0.044], [0.95, 0.05], [1, 0.06]];
-    const COL = [[0, '#9a5e54'], [0.1, '#8c8e5a'], [0.22, '#8ab462'], [0.7, '#a0c676'], [0.93, '#aacc7c'], [1, '#90b866']].map(([t, c]) => [t, new THREE.Color(c)]);
+    const RAD = o.rad || [[0, 0.078], [0.06, 0.062], [0.5, 0.052], [0.86, 0.044], [0.95, 0.05], [1, 0.06]];
+    const COL = (o.col || [[0, '#9a5e54'], [0.1, '#8c8e5a'], [0.22, '#8ab462'], [0.7, '#a0c676'], [0.93, '#aacc7c'], [1, '#90b866']]).map(([t, c]) => [t, new THREE.Color(c)]);
     const ts = [], rr = [], P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), C = new Float32Array(nv * 3), G = new Float32Array(nv), I = [], cs = [], sn = [];
     for (let j = 0; j < RS; j++) { const a = j / RS * 6.2832; cs.push(Math.cos(a)); sn.push(Math.sin(a)); }
     for (let i = 0; i <= NR; i++) {
@@ -6021,30 +6051,132 @@ class ZoneKit {
       return o;
     }));
   }
-  // ねむり花の見た目：葉と茎と、六枚の花びら（set(open, swell) で開き具合・ふくらみ）。s で大きさ
+  // ねむり花：根もとの葉（sleepLeaves）、しなる茎（dandelionStem と同じ筒）、てっぺんの花（sleepHead）。s で大きさ、o.h で茎の高さ（s をかける）
+  //   花はケシのような、外の 3 枚と内の 3 枚の花びら。つぼみ（open 0）は花びらが上へ立ち、先が内へ巻いて卵の形。開く（open 1）と外へ反って、ふちの上がった椀になる。
+  //   花びらは形ごと曲げて開く（頂点を書きかえる。開き具合が変わったときだけ）。まん中は、うす緑の実と、そのまわりの暗い紫の輪と、光る花粉の粒。
+  //   材質は森のきのこ・たんぽぽと同じトゥーン（頂点の色）。大きいもの（s ≥ 1）は、茎と実にふち取りと影。
+  //   形は位置から決まる乱数（treeRand）で。区画の乱数は、もとと同じ 1 回（向き）だけ進める。
+  //   set(open, swell, t)：open 0 = つぼみ、1 = 大きく開く。swell：つぼみがふくらんでふるえる（粉をはく前ぶれ）。o.col === false で当たり判定なし
   sleepFlower(x, z, s = 1, o = {}) {
     const y = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = this.r() * 6; this.scene.add(g);
-    for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 + 0.4, lf = new THREE.Mesh(new THREE.SphereGeometry(0.5 * s, 10, 6), this.M('#4a9a4a')); lf.scale.set(0.38, 0.08, 1); lf.position.set(Math.cos(a) * 0.45 * s, 0.1 * s, Math.sin(a) * 0.45 * s); lf.rotation.set(0.25, Math.PI / 2 - a, 0); g.add(lf); }
-    const h = (o.h ?? 1.35) * s, stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06 * s, 0.09 * s, h, 6), this.M('#5aa04a')); stem.position.y = h / 2; g.add(stem);
-    const head = new THREE.Group(); head.position.y = h + 0.05 * s; g.add(head);
-    const cup = new THREE.Mesh(new THREE.SphereGeometry(0.22 * s, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), this.M('#5aa04a')); head.add(cup);
-    const petals = [];
-    for (let i = 0; i < 6; i++) {
-      const pv = new THREE.Group(); pv.rotation.y = i / 6 * Math.PI * 2; head.add(pv);
-      const pm = new THREE.Mesh(new THREE.SphereGeometry(0.3 * s, 10, 8), this.M(i % 2 ? '#e8a0e0' : o.col || '#f4bce8')); pm.scale.set(0.75, 1.35, 0.35); pm.position.set(0, 0.36 * s, 0.1 * s); pv.add(pm);
-      petals.push(pv);
-    }
-    const heart = new THREE.Mesh(new THREE.SphereGeometry(0.17 * s, 12, 8), this.glow('#ffd8f0', 1.1)); heart.position.y = 0.16 * s; head.add(heart);
+    const tr = this.treeRand(x, z, 13), big = s >= 1, h = (o.h ?? 1.35) * s, low = h < 0.8 * s;
+    const body = this.mc.shroomToon || (this.mc.shroomToon = shroomToonMat()), line = this.mc.shroomLine || (this.mc.shroomLine = shroomLineMat());
+    const S = this.dandelionStem(s, h, big, { rad: SLEEP_STEM_RAD, col: SLEEP_STEM_COL });
+    const top = new THREE.Group(), head = new THREE.Group(); head.position.y = 0.05 * s; top.add(head); g.add(top);
+    const H = this.sleepHead(s, tr), parts = [new THREE.Mesh(S.geo, body), new THREE.Mesh(this.sleepLeaves(s, tr), body), new THREE.Mesh(H.geo, body)];
+    g.add(parts[0], parts[1]); head.add(parts[2]);
+    if (big) { for (const m of parts) m.castShadow = m.receiveShadow = true; g.add(new THREE.Mesh(S.geo, line)); head.add(new THREE.Mesh(H.hull, line)); }
     if (o.col !== false) this.col(x, z, 0.3 * s, h);
-    // open：0 = つぼみ、1 = 大きく開く。swell：ふくらんでふるえる（粉をはく前ぶれ）
+    // かしぎと、風のゆれ（茎ごとしなる）。茎の低い花（タマが眠る大きな花）は、まっすぐ立てて、ゆらさない
+    const la = tr() * 6.2832, lk = low ? 0 : (0.04 + tr() * 0.06) * h, rx = Math.cos(la) * lk, rz = Math.sin(la) * lk, ph = tr() * 6, A = 0.02 * h;
+    S.bend(rx, rz, top);
+    if (!low) this.tick((dt, t) => S.bend(rx + Math.sin(t * 0.8 + ph) * A, rz + Math.sin(t * 0.6 + ph * 2) * A * 0.8, top));
+    let last = -1;
     const set = (open, swell, t) => {
-      petals.forEach(pv => { pv.children[0].rotation.x = lerp(-0.12, 1.15, open); pv.children[0].position.z = lerp(0.1, 0.22, open) * s; });
+      if (open !== last) { last = open; H.open(open); }
       head.scale.setScalar(1 + swell * 0.35 + open * 0.1);
       head.rotation.z = swell ? Math.sin(t * 38) * 0.06 * swell : 0;
-      heart.scale.setScalar(1 + open * 0.6);
     };
     set(o.open || 0, 0, 0);
     return { g, head, set };
+  }
+  // ねむり花の根もとの葉：5〜6 枚が、茎のまわりから斜め上へ出て、先が地面へ垂れる。まん中の筋が明るく、ふちが少し上がる（浅い V の字）
+  sleepLeaves(s, tr) {
+    const n = tr() < 0.4 ? 6 : 5, a0 = tr() * 6.2832, NU = 6, NV = 4, per = (NU + 1) * (NV + 1), nv = n * per * 2;
+    const P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), C = new Float32Array(nv * 3), I = [];
+    const base = new THREE.Color('#3c763a'), tip = new THREE.Color('#6eb256'), rib = new THREE.Color('#a2d07e'), back = new THREE.Color('#6a9e58'), c = new THREE.Color();
+    for (let k = 0; k < n; k++) {
+      const phi = a0 + (k + (tr() - 0.5) * 0.5) / n * 6.2832, cp = Math.cos(phi), sp = Math.sin(phi);
+      const L = (0.42 + tr() * 0.18) * s, W = (0.09 + tr() * 0.03) * s, al0 = 0.55 + tr() * 0.3, ka = 1.5 + tr() * 0.5, off = k * per * 2;
+      // 葉の中すじ：垂直からの角 al が、根もと al0 から先へ ka ずつ増える（立ち上がって、先が垂れる）
+      sheetWrite(P, N, off, NU, NV, (u, v, out) => {
+        const al = al0 + ka * u, r = 0.03 * s + L * (Math.cos(al0) - Math.cos(al)) / ka, yy = 0.02 * s + L * (Math.sin(al) - Math.sin(al0)) / ka;
+        const w = W * (Math.sin(Math.PI * Math.pow(u, 0.7)) + 0.15 * (1 - u) + 0.04), up = 0.35 * w * Math.abs(v), rr = r - Math.cos(al) * up, sd = v * w;
+        out[0] = cp * rr - sp * sd; out[1] = yy + Math.sin(al) * up; out[2] = sp * rr + cp * sd;
+      });
+      sheetIdx(I, off, NU, NV);
+      for (let i = 0; i <= NU; i++) for (let j = 0; j <= NV; j++) {
+        const u = i / NU, v = Math.abs(j / NV * 2 - 1), q = (off + i * (NV + 1) + j) * 3, bq = q + per * 3;
+        c.copy(base).lerp(tip, Math.pow(u, 0.8)).lerp(rib, (1 - Math.min(1, v * 2)) * 0.45); C[q] = c.r; C[q + 1] = c.g; C[q + 2] = c.b;
+        c.copy(back).multiplyScalar(0.85 + 0.15 * u); C[bq] = c.r; C[bq + 1] = c.g; C[bq + 2] = c.b;
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(C, 3)); geo.setAttribute('aGlow', new THREE.BufferAttribute(new Float32Array(nv), 1));
+    geo.setIndex(I); geo.computeBoundingSphere();
+    return geo;
+  }
+  // ねむり花の花（head の中。y = 0 が花びらの根もと）：花びら 6 枚（外・内を交互に）と、まん中（萼・実・紫の輪・花粉の粒）。
+  //   open(k)：花びらを開き具合 k の形に書きかえる。まん中は開くほど少し大きく、紫の輪と花粉の粒は外へ広がる（つぼみの外へはみ出さない）
+  //   ふち取りは実だけ（hull）
+  sleepHead(s, tr) {
+    const NU = 8, NV = 6, NP = 6, per = (NU + 1) * (NV + 1), np = NP * per * 2;
+    const b = { P: new Array(np * 3).fill(0), N: new Array(np * 3).fill(0), C: [], G: new Array(np).fill(0.14), I: [], H: [] }, Cl = c => new THREE.Color(c);
+    const out = (lx, ly, lz, nx, ny, nz, col, gl) => { b.P.push(lx, ly, lz); b.N.push(nx, ny, nz); b.C.push(col.r, col.g, col.b); b.G.push(gl); };
+    // 花びらの形と色。外は大きく、開くと平たく反る。内は小さく、開くと外より少し立つ（椀が二重に見える。タマが眠る大きな花では、まん中をふさがない）
+    //   色：根もとは暗い紫（花の目）、先へ明るい桃色。裏も桃色で、根もとは緑（つぼみの外がわに見える）。
+    //   花びらはほんのり光らせる。裏は強めに（下を向いた裏が、陰の段で灰色にくすまないように。緑の根もとは弱く）
+    const FR = [[0, Cl('#8a3a7c')], [0.2, Cl('#c460a6')], [0.45, Cl('#ee9ed0')], [1, Cl('#ffe2f2')]], FRi = [[0, Cl('#7c3a86')], [0.2, Cl('#b464b6')], [0.45, Cl('#e0a4e0')], [1, Cl('#f8e4fa')]];
+    const BK = [[0, Cl('#8cb46c')], [0.16, Cl('#d68cc4')], [0.4, Cl('#f4a8da')], [1, Cl('#ffd8ee')]];
+    const grad = (T, u, c) => { let i = 0; while (i < T.length - 2 && T[i + 1][0] < u) i++; return c.copy(T[i][1]).lerp(T[i + 1][1], Math.max(0, Math.min(1, (u - T[i][0]) / (T[i + 1][0] - T[i][0])))); };
+    const pet = [], c = Cl('#ffffff'), I = [];
+    for (let k = 0; k < NP; k++) {
+      const outer = k % 2 === 0, phi = k / NP * 6.2832 + (tr() - 0.5) * 0.15;
+      pet.push({ cp: Math.cos(phi), sp: Math.sin(phi), L: (outer ? 0.62 : 0.52) * s * (0.94 + tr() * 0.12), W: (outer ? 0.26 : 0.21) * s, r0: (outer ? 0.08 : 0.065) * s, y0: (outer ? 0 : 0.012) * s,
+        c0: outer ? 0.34 : 0.22, ck: outer ? -1 : -0.8, o0: (outer ? 1.42 : 1.3) + (tr() - 0.5) * 0.12, ok: outer ? -0.7 : -0.75, ph: tr() * 6 });
+      sheetIdx(I, k * per * 2, NU, NV);
+      for (let i = 0; i <= NU; i++) for (let j = 0; j <= NV; j++) {
+        const u = i / NU, e = Math.abs(j / NV * 2 - 1), q = (k * per * 2 + i * (NV + 1) + j) * 3;
+        grad(outer ? FR : FRi, u, c).multiplyScalar(1 - 0.06 * e * e); b.C[q] = c.r; b.C[q + 1] = c.g; b.C[q + 2] = c.b;
+        grad(BK, u, c); b.C[q + per * 3] = c.r; b.C[q + per * 3 + 1] = c.g; b.C[q + per * 3 + 2] = c.b; b.G[q / 3 + per] = 0.2 + 0.4 * Math.min(1, u * 3);
+      }
+    }
+    // まん中：萼（花の下の緑のふくらみ）・実（うす緑。てっぺんは、ほんのり光る紫）・実のまわりの暗い紫の輪・花粉の粒
+    const gD = Cl('#4e8a44'), gr = Cl('#6aa856'), pod = Cl('#d2e8aa'), podD = Cl('#a6c684'), plum = Cl('#b468c0'), plumL = Cl('#e0a0e4'), fil = Cl('#5e2a68'), pol = Cl('#ffd870');
+    this.toonLathe(b, [[0.064 * s, -0.07 * s, gD, 0], [0.088 * s, -0.035 * s, gr, 0], [0.084 * s, -0.008 * s, gr, 0], [0.07 * s, 0.006 * s, gr, 0]], 12, out, 99);
+    const c1 = b.P.length / 3;
+    this.toonLathe(b, [[0.125 * s, 0.05 * s, fil, 0], [0.07 * s, 0.006 * s, fil, 0]], 16, out, 99);   // 紫の輪は内がわが上を向く（外から内へ並べる）
+    const nA = 18, a1 = tr() * 6.2832;
+    for (let i = 0; i < nA; i++) {   // 花粉の粒：小さなひし形（面ごとに平らな法線）
+      const a = a1 + i / nA * 6.2832, rr = (0.105 + (i % 2) * 0.018) * s, cx = Math.cos(a) * rr, cz = Math.sin(a) * rr, cy = (0.052 + (i % 2) * 0.016) * s, d = 0.016 * s;
+      const V = [[cx, cy + d, cz], [cx, cy - d * 0.8, cz], [cx + d, cy, cz], [cx - d, cy, cz], [cx, cy, cz + d], [cx, cy, cz - d]];
+      for (const [p, q, t] of [[0, 2, 4], [0, 4, 3], [0, 3, 5], [0, 5, 2], [1, 4, 2], [1, 3, 4], [1, 5, 3], [1, 2, 5]]) {
+        const A = V[p], B = V[q], T = V[t], ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2], vx = T[0] - A[0], vy = T[1] - A[1], vz = T[2] - A[2];
+        // 三角形の向き（A→B→T の面の向き）が粒の外を向くようにそろえる
+        let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const l = 1 / Math.sqrt(nx * nx + ny * ny + nz * nz); nx *= l; ny *= l; nz *= l;
+        const fl = nx * (A[0] + B[0] + T[0] - 3 * cx) + ny * (A[1] + B[1] + T[1] - 3 * cy) + nz * (A[2] + B[2] + T[2] - 3 * cz) < 0, o0 = b.P.length / 3;
+        if (fl) { nx = -nx; ny = -ny; nz = -nz; }
+        for (const W of [A, B, T]) out(W[0], W[1], W[2], nx, ny, nz, pol, 0.8);
+        b.I.push(o0, fl ? o0 + 2 : o0 + 1, fl ? o0 + 1 : o0 + 2);
+      }
+    }
+    const c2 = b.P.length / 3;
+    this.toonLathe(b, [[0.058 * s, -0.004 * s, podD, 0], [0.084 * s, 0.04 * s, pod, 0], [0.08 * s, 0.094 * s, pod, 0, plum, 0.35], [0.098 * s, 0.108 * s, plum, 0.35], [0.068 * s, 0.14 * s, plumL, 0.5], [0, 0.155 * s, plumL, 0.6]], 12, out);
+    const P = new Float32Array(b.P), N = new Float32Array(b.N), P0 = P.slice(), geo = new THREE.BufferGeometry(), hull = new THREE.BufferGeometry();
+    const pa = new THREE.BufferAttribute(P, 3), na = new THREE.BufferAttribute(N, 3); pa.setUsage(THREE.DynamicDrawUsage); na.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('position', pa); geo.setAttribute('normal', na);
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(b.C, 3)); geo.setAttribute('aGlow', new THREE.Float32BufferAttribute(b.G, 1));
+    geo.setIndex(I.concat(b.I)); geo.boundingSphere = new THREE.Sphere(V3(0, 0.25 * s, 0), 0.85 * s);
+    for (const k of ['position', 'normal', 'color', 'aGlow']) hull.setAttribute(k, geo.getAttribute(k));
+    hull.setIndex(b.H); hull.boundingSphere = geo.boundingSphere;
+    const open = k => {
+      for (let p = 0; p < NP; p++) {
+        const Q = pet[p], a0 = lerp(Q.c0, Q.o0, k), ka = lerp(Q.ck, Q.ok, k), cup = lerp(0.6, 0.22, k), ca0 = Math.cos(a0), sa0 = Math.sin(a0);
+        // 花びらの中すじ：垂直からの角が、根もと a0 から先へ ka ずつ変わる。幅の向きには、ふちが内がわへ上がる（椀）と、ふちのゆるい波
+        sheetWrite(P, N, p * per * 2, NU, NV, (u, v, o) => {
+          const al = a0 + ka * u, r = Q.r0 + Q.L * (ca0 - Math.cos(al)) / ka, yy = Q.y0 + Q.L * (Math.sin(al) - sa0) / ka;
+          const w = Q.W * Math.max(0.2 * (1 - u) + 0.03, Math.sqrt(Math.max(0, 1 - ((u - 0.55) / 0.45) ** 2)));
+          const off = (cup * w + 0.05 * Q.W * Math.sin(v * 5 + Q.ph) * u) * v * v, rr = r - Math.cos(al) * off, sd = v * w;
+          o[0] = Q.cp * rr - Q.sp * sd; o[1] = yy + Math.sin(al) * off; o[2] = Q.sp * rr + Q.cp * sd;
+        });
+      }
+      // まん中：萼と実は 1 → 1.2 倍。紫の輪と花粉の粒は、つぼみのうちは半分の半径に寄せる
+      const sc = 1 + 0.2 * k, sr = sc * (0.5 + 0.5 * k);
+      for (let i = np; i < P.length / 3; i++) { const f = i >= c1 && i < c2 ? sr : sc; P[i * 3] = P0[i * 3] * f; P[i * 3 + 1] = P0[i * 3 + 1] * sc; P[i * 3 + 2] = P0[i * 3 + 2] * f; }
+      pa.needsUpdate = na.needsUpdate = true;
+    };
+    return { geo, hull, open };
   }
   // 足あと：点を結ぶ道すじに、右・左と小さな肉球の足あと（ほんのり光る）
   // mat：ほかの光る物と別の材質にする（会話シーンで、あとから見せるときなど）
