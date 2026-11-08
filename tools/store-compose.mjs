@@ -20,14 +20,14 @@ if (lang === 'ja') SIZES.push([join(root, 'android/store/screenshots'), 1920, 10
 // 並べ方。one：1 枚を枠のはばいっぱいに（y は上下の切り方。0 で下を切る・1 で上を切る）。
 // cols：縦に分けて並べる（cx・cy はその絵の中の、列のまん中に来る点。zoom は列の高さに対する絵の高さ）。
 // trio：左に大きく 1 枚、右に 2 枚（見出しは左の大きい絵の上）。grid：2×2（上の段の 2 枚は、画の上のほうが景色のものにする。見出しが重なるので）。cap は見出し。
-// タイトルは「タップして はじめる」と言語ボタンなし（nostart）で撮る
+// タイトルは tools/shoot-store.mjs の title（5 匹がこちらを向く。「タップして はじめる」と言語ボタンなし）
 const CAP = {
   ja: { combo: '仲間とのコンボ技', field: 'かわいいにゃんこと不思議な世界を大冒険', yoroi: 'ターン制のコマンドバトル\n弱点を狙って有利に導こう', fit: '帽子にマントに服 おしゃれも楽しい', friends: 'ゆかいでくせの強い仲間たち' },
   en: { combo: 'Combo Moves with Your Friends', field: 'A Big Adventure Through a Wondrous World', yoroi: 'Turn-Based Command Battles\nStrike Weak Points to Gain the Upper Hand', fit: 'Hats, Capes, Outfits: Dress Up!', friends: 'A Fun and Quirky Crew of Friends' },
 }[lang];
 const SLIDES = [
   ['01-combo', { one: 'combo', y: 0.8 }, CAP.combo],
-  ['02-field', { cols: [['field', 0.53, 0.5], ['woods', 0.48, 0.5], ['tower', 0.5, 0.5]], zoom: 1 }, CAP.field],   // 風車の街道・まどろみの林・笑顔の塔
+  ['02-field', { cols: [['field', 0.52, 0.5], ['woods', 0.48, 0.5], ['tower', 0.48, 0.5]], zoom: 1 }, CAP.field],   // 風車の街道・まどろみの林・笑顔の塔
   ['03-yoroi', { one: 'yoroi', y: 1 }, CAP.yoroi],   // 下（仲間・技のボタン）を切らない。上の鎧の弱点の印は見出しと重なってよい
   ['04-fit', { cols: [['fit-mike', 0.285, 0.5], ['fit-kuro', 0.3, 0.5], ['fit-shiro', 0.28, 0.5], ['fit-tama', 0.29, 0.5]], zoom: 1.05 }, CAP.fit],
   ['05-friends', { grid: [['shiro', 0.5, 0.53], ['kuro', 0.5, 0.5], ['oishii', 0.5, 0.5], ['tama', 0.6, 0.5]] }, CAP.friends],

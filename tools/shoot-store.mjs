@@ -35,6 +35,22 @@ async function faceCam(api, key, d, r, y, lift = 0) {
 const hideFieldUi = api => api.ev(`{ document.querySelectorAll('.fd-zone, .fd-title, .fd-toasts, .fd-quest, .fd-team').forEach(e => e.style.visibility = 'hidden');
   const st = document.createElement('style'); st.textContent = '.fd-qmark { visibility: hidden !important; }'; document.head.appendChild(st);
   const q = Game.activeField.quest; if (q && q.g) q.g.visible = false; } true`);
+// 探索で、カメラの向き（camYaw）を yaw に止めたまま、4 匹をカメラのほうへ n コマ歩かせ、歩いているところを撮る（後ろ姿ではなく、顔が写る）。
+// スティックの入力で、まっすぐより少しだけ横（sx。- で左・+ で右）へ歩かせる。真横に近いと横顔になり、立ち止まると記念撮影のようになる。
+// ふだんの並びではタマがミケの真後ろに隠れるので、撮るときだけ仲間の並び（先頭からの間 gap・横のずれ side）を変える。
+// 画面の横の位置 x（先頭の子から。- が左）で、左から クロ・タマ・ミケ・シロ。タマは少し後ろにして、ミケの肩ごしに顔が見えるように。
+// 仲間は歩いた跡の gap 後ろにつくので、ななめに歩くと跡のぶん横へずれる。そのずれを side で打ち消す
+const SPREAD = { kuro: { gap: 0.7, x: -1.4 }, tama: { gap: 1.1, x: -0.72 }, shiro: { gap: 0.6, x: 0.85 } };
+async function comeBack(api, yaw, n, sx) {
+  await api.ev(`{ const S = ${JSON.stringify(SPREAD)}, a = Math.atan2(${sx}, 0.8);
+    Game.activeField.followers.forEach(f => { const s = S[f.mem.key]; if (s) { f.gap = s.gap; f.side = (s.x + s.gap * Math.sin(a)) / Math.cos(a); } }); } true`);
+  for (let i = 0; i < n; i++) {
+    // 撮る少し前から、まばたきで目を閉じないようにする
+    const open = i === n - 6 ? `[v.player, ...v.followers].forEach(c => { c.m.face.closed = false; c.m.face.blinkT = 99; c.m.face.apply(); });` : '';
+    await api.ev(`{ const v = Game.activeField; v.camYaw = ${yaw}; v.keys.clear(); v.stick = { x: ${sx}, y: 0.8 }; ${open} } true`);
+    await step(api, 1);
+  }
+}
 // 会話を始める（左上の場面名と、右上の AUTO・スキップのボタンは隠す。3 枚を並べて切り抜くと、場面名が半分だけ残るため）
 const scene = (api, id) => api.ev(`App.go(DialogueScreen, '${id}', () => {}); document.querySelectorAll('.dl-title, .dl-ctrl').forEach(e => e.style.visibility = 'hidden'); true`);
 
@@ -74,15 +90,14 @@ const SHOTS = {
     await step(api, 70);
   },
 
-  // 02：冒険。ミャオ街道・丘のふもとから、頂上の風車（羽まで）と小麦畑へ向かって道を歩いていくところ（目的は「宿場の北、ごろごろ切り通しへ」）。
-  // 立ち止まると仲間がこちらを向くので、歩きながら撮る。カメラはふだんより低く・遠く
+  // 02：冒険。ミャオ街道の丘で、頂上の風車（羽まで）と小麦畑を背に、4 匹がこちらへ歩いてくるところ（顔を見せる）。
+  // カメラはふだんより低く
   async field(api) {
-    const [x0, z0, x1, z1] = [-2, 16, -2, -21];
-    await api.ev(`P.prep(1, 11, 17); P.field('road1_hill', ${x0}, ${z0}, ${Math.atan2(-(x1 - x0), -(z1 - z0))}); true`);
+    await api.ev(`P.prep(1, 11, 17); P.field('road1_hill', -2, 6, 0); true`);
     await api.run(1.5);
     await hideFieldUi(api);
-    await api.ev(`P.noFoes(); Game.activeField.camPitch = 0.12; Game.activeField.camDist = 7; Game.activeField.camYaw = ${Math.atan2(-(x1 - x0), -(z1 - z0))}; true`);
-    for (let i = 0; i < 60; i++) { await api.ev(`P.steer(${x1}, ${z1}, false)`); await step(api, 1); }
+    await api.ev(`P.noFoes(); Game.activeField.camPitch = 0.12; Game.activeField.camDist = 5.5; true`);
+    await comeBack(api, 0, 60, -0.22);
   },
 
   // 02：冒険（風車の街道・まどろみの林・笑顔の塔を縦に 3 つ並べる）。まどろみの林の綿毛の丘で、みんなで綿毛につかまって、ねむり川を越えるところ
@@ -99,13 +114,13 @@ const SHOTS = {
     await step(api, 25);   // 川の上にさしかかったところ
   },
 
-  // 02：冒険。笑顔の塔 1F の大ロビーで、玉のりの玉のあいだを、むすっと幕の舞台へ歩いていくところ
+  // 02：冒険。笑顔の塔 1F の大ロビーで、むすっと幕の舞台を背に、玉のりの玉のあいだを 4 匹がこちらへ歩いてくるところ
   async tower(api) {
-    await api.ev(`P.prep(2, 3, 20); P.field('tower', 0, 8, 0); true`);   // むすっと幕が大きく写る近さから
+    await api.ev(`P.prep(2, 3, 20); P.field('tower', -1.2, -5, 0); true`);
     await api.run(1.5);
-    await api.ev(`P.noFoes(); { const v = Game.activeField; v.camPitch = 0.2; v.camDist = 7; v.camYaw = 0; } true`);
+    await api.ev(`P.noFoes(); { const v = Game.activeField; v.camPitch = 0.2; v.camDist = 5.5; } true`);
     await hideFieldUi(api);
-    for (let i = 0; i < 60; i++) { await api.ev(`P.steer(0, -14, false)`); await step(api, 1); }
+    await comeBack(api, 0, 60, 0.15);
   },
 
   // 05：会話（4 匹を 2×2 で 1 枚に並べる）。第二章「綿毛の上の子猫」で、大きなたんぽぽの綿毛のてっぺんで、タマが丸くなって眠っているところ（「……すぴー……。」）
@@ -191,6 +206,33 @@ for (const [key, fits] of Object.entries(FITS)) SHOTS[`fit-${key}`] = async api 
   await api.until(`(f => !f.closed && f.expr !== 'joy')(GFX.view.model.face)`, 8);
   await api.ev(`GFX.view.model.face.blinkT = 99; true`);
   await step(api, 3);
+};
+
+// 06：タイトル。樹とロゴの構図はそのままで、5 匹をふり向かせて、こちら（カメラ）へ顔を向けたところ（ストアのスクショだけの画。ゲームのタイトルは後ろ姿のまま）。
+// 表情とポーズで性格を見せる：ミケは笑って手をあげる、クロはむすっとそっぽ、シロは杖をかかげて得意げ、タマはまくらを抱いて立ったまま居眠り、
+// マオウはあごを上げて見くだす（必殺技の決めポーズ ULT_POSES から）。「タップして はじめる」と右上の言語ボタンは隠す
+const TITLE_LOOK = {
+  mike:  { face: 'joy', pose: { headX: -0.15, headY: 0.1, armRx: -2.7, armRz: -0.35, elbowR: -0.2, armLz: 0.3, elbowL: -0.4 } },
+  kuro:  { face: 'serious', pose: { headY: -0.45, twist: -0.1, armLz: 0.15, armRz: -0.15, elbowL: -0.3, elbowR: -0.3 } },
+  shiro: { face: 'smug', pose: { lean: -0.08, headX: -0.15, headY: 0.15, armRx: -2.9, armRz: -0.2, elbowR: -0.15, armLx: 0.2, armLz: 0.6, elbowL: -1.9 } },
+  tama:  { sleep: true, pose: { headX: 0.4, headY: 0.15, lean: 0.06, armLx: -0.9, armLz: 0.45, elbowL: -1.5, armRx: -0.9, armRz: -0.45, elbowR: -1.5 } },
+  maou:  { face: 'smug', pose: 'ULT_POSE_MAOU' },   // あごを上げすぎると顔が見えないので、決めポーズより少し下げる（下の headX・lean）
+};
+SHOTS.title = async api => {
+  await api.ev(`document.querySelectorAll('.t-start, .t-lang').forEach(e => e.style.visibility = 'hidden'); true`);
+  await api.run(2);
+  await api.ev(`{ const v = GFX.view, cx = 0, cz = 8.1, L = ${JSON.stringify(TITLE_LOOK).replace('"ULT_POSE_MAOU"', '{ ...ULT_POSES.maou.pose, headX: -0.18, lean: -0.15 }')};
+    const keys = ['mike', 'kuro', 'shiro', 'tama', 'maou'];
+    v.cats.forEach((m, i) => { const p = m.group.position, c = L[keys[i]]; m.group.rotation.y = Math.atan2(cx - p.x, cz - p.z);
+      Object.assign(m.look, { t: 1e9, y: 0, tw: 0, up: 0 });
+      if (c.sleep) { m.face.set('sleepy'); m.face.shut = true; } else { m.face.set(c.face); m.face.closed = false; m.face.blinkT = 99; } });
+    // タイトルの update は腕をふったり顔を向けたりするので、毎コマそのあとにポーズを決めなおす。
+    // カメラは樹を見上げたところから下りてきて、下りたあとも左右にゆれ、追いつくまでの長さが読みこみの速さでぶれる（英語版で下りきらずに撮れた）。
+    // 下りきった位置（ゆれのまん中）に置いて、日本語版・英語版で同じ構図にする
+    const up = v.update.bind(v);
+    v.update = (...a) => { up(...a); v.cats.forEach((m, i) => { for (const k of POSE_KEYS) m.pose[k] = (POSES.idle[k] || 0); Object.assign(m.pose, L[keys[i]].pose); });
+      v.camPos.set(0, 1.3, 8.1); v.camera.position.copy(v.camPos); v.curLook.copy(v.camLook); v.camera.lookAt(v.curLook); }; } true`);
+  await step(api, 45);
 };
 
 const [name, out, sizeArg = '1280x720', scaleArg = '3'] = process.argv.slice(2);
