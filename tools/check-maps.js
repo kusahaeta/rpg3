@@ -19,7 +19,7 @@ const spots = {};
 const add = (z, o) => (spots[z] = spots[z] || []).push(o);
 const rot = (ox, oz, face, lx, lz) => { const th = face * Math.PI / 180, F = [Math.sin(th), -Math.cos(th)], R = [Math.cos(th), Math.sin(th)]; return [ox + R[0] * lx + F[0] * lz, oz + R[1] * lx + F[1] * lz]; };
 for (const [id, Z] of Object.entries(FIELD_ZONES)) {
-  add(id, { k: 'anchor', p: Z.anchor, r: 1.2 });
+  add(id, { k: 'anchor', p: Z.anchor, r: Z.anchorFrom ? 0.4 : 1.2 });   // anchorFrom の anchor は出入口から入ってきて立つ所（体が入ればよい）
   if (Z.spawn) add(id, { k: 'spawn', p: Z.spawn, r: 0.6 });
   (Z.npcs || []).forEach(n => add(id, { k: 'npc ' + n.key, p: n.at, r: 0.5 }));
   (Z.notes || []).forEach(n => add(id, { k: 'note ' + n.title, p: n.at, r: 0.5 }));
@@ -70,6 +70,12 @@ for (const [id, Z] of Object.entries(FIELD_ZONES)) {
   if (Z.w !== T.cols * 2 || Z.d !== T.rows * 2) bad.push(`size ${Z.w}x${Z.d} != map ${T.cols * 2}x${T.rows * 2}`);
   T.computeReach(Z.anchor[0], Z.anchor[1]);
   if (Z.map.some(r => r.length !== T.cols)) bad.push('rows have different lengths');
+  // anchorFrom：ひとっとびはその出入口から入ってきたように立つ。anchor（負けたときの戻り先・行ける範囲の起点）も、そこ（出入口から 3.5m 内側）に合わせる
+  if (Z.anchorFrom) {
+    const e = Z.exits.find(x => x.to === Z.anchorFrom), E = e && T.exits[e.key];
+    if (!E) bad.push(`anchorFrom ${Z.anchorFrom}: no exit`);
+    else { const x = E.outer.x + E.nx * 3.5, z = E.outer.z + E.nz * 3.5; if (Math.hypot(Z.anchor[0] - x, Z.anchor[1] - z) > 0.5) bad.push(`anchor should be [${x}, ${z}] (anchorFrom ${Z.anchorFrom})`); }
+  }
   // 樹の地下の光る実：実を運んで置き、根の扉をすべて開いて、下の階の出口まで行けるか。行ける場所は、たどった状態のどれかで行けるマス
   if (Z.roots) {
     const r = solveRoots(T, Z, bad);

@@ -114,7 +114,8 @@ class FieldView extends BaseView {
     // 前回の位置（地形が変わって立てない場所になっていたら、ひとっとびの着く場所から）
     if (a.pos && this.rootObj) this.primeRoots(a.pos);
     if (a.pos && (!this.T || this.T.fits(a.pos.x, a.pos.z, this.bodyR(), undefined, this.moveOpts()))) return a.pos;
-    // ひとっとびの着く場所（anchor）のそばに、区画の中ほどを向いて立つ
+    // ひとっとびの着く場所（anchor）のそばに、区画の中ほどを向いて立つ。anchorFrom があれば、その出入口から入ってきたように
+    if (a.anchor && Z.anchorFrom && this.gates.some(g => g.exit.to === Z.anchorFrom)) return this.arrivalPoint({ from: Z.anchorFrom });
     if (a.anchor) {
       const [ax, az] = Z.anchor, l = Math.hypot(ax, az), dx = l > 1 ? -ax / l : 0, dz = l > 1 ? -az / l : 1;
       const x = ax + dx * 5 + dz * 0.6, z = az + dz * 5 - dx * 0.6;
@@ -2728,8 +2729,10 @@ class FieldView extends BaseView {
       this.moveBody(this.player.pos, away.x, away.z, 0.4);
     } else {
       this.team.forEach(m => { m.hpRatio = 1; m.energy = null; });
-      const a = this.zone.anchor, sp = this.T ? this.T.nearestStandable(a[0], a[1] + 2, 0.5) : { x: a[0], z: a[1] + 2 };
+      const a = this.zone.anchor, gate = this.zone.anchorFrom && this.arrivalPoint({ from: this.zone.anchorFrom });
+      const sp = gate || (this.T ? this.T.nearestStandable(a[0], a[1] + 2, 0.5) : { x: a[0], z: a[1] + 2 });
       this.player.pos.set(sp.x, 0, sp.z);
+      if (gate) { this.player.yaw = gate.yaw; this.camYaw = gate.yaw + Math.PI; }
       setTimeout(() => this.toast('やられちゃった……ひと休みして、目を覚ました'), 400);
     }
     this.s.keep(); Save.save();
