@@ -3775,7 +3775,7 @@ class ZoneKit {
     return (this.batches[key] = this.batches[key] || { acc: new GeoAcc(4), mat: this.M(mat) }).acc;
   }
   flush() {
-    this.flushTrees();
+    this.flushTrees(); this.flushToon();
     for (const b of Object.values(this.batches || {})) { const m = b.acc.mesh(b.mat); if (m) { m.castShadow = true; this.scene.add(m); } }
     this.batches = {};
     // 形の違う部品（町の建物など）は、材質ごとに一つのジオメトリにまとめて描く
@@ -3855,6 +3855,8 @@ class ZoneKit {
         break;
       case 'mush': {
         const cap = pick(o.caps || ['#e05a6a', '#ffb84a', '#b88aff']);
+        // 豊かな森：作り直したトゥーンのきのこ（区画の乱数は、もとと同じ数だけ進める。あとに置く木・小物の位置を変えないため）
+        if (this.v.canopy) { for (let i = 0; i < 6; i++) r(); this.shroom(x, y, z, { H: 1.45 * s, R: 1.2 * s, rs: 0.26 * s, cap, kids: true }); break; }
         this.put('stick', x, y, z, [0.28 * s, 1.5 * s, 0.28 * s], null, this.tint('#fff0dc', 0.04));
         this.put('cap', x, y + 1.35 * s, z, [1.3 * s, 0.85 * s, 1.3 * s], null, this.tint(cap));
         for (let i = 0; i < 4; i++) { const a = i * 1.6 + r(); this.put('ball', x + Math.cos(a) * 0.7 * s, y + 1.35 * s + 0.62 * s, z + Math.sin(a) * 0.7 * s, 0.13 * s, null, '#fff8f0'); }
@@ -5918,9 +5920,266 @@ class ZoneKit {
   }
   rock(x, z, s = 1, mat = 'rock') { const m = this.mesh(new THREE.DodecahedronGeometry(s, 0), mat, x, s * 0.45, z, { ry: this.r() * 3 }); m.scale.y = 0.7; this.col(x, z, s * 0.9, s); return m; }
   mushroom(x, z, s = 1, cap = '#e05a6a', glowCol) {
+    if (this.v.canopy) {   // 豊かな森（テーマの lush）：作り直したトゥーンのきのこ
+      this.shroom(x, this.gy(x, z), z, { H: 0.55 * s, R: 0.4 * s, rs: 0.1 * s, cap: cap || '#e05a6a', glow: glowCol, kids: true, ground: true });
+      if (s > 1.5) this.col(x, z, 0.12 * s, 0.6 * s);
+      return;
+    }
     this.cyl(x, z, 0.12 * s, 0.6 * s, 'cream', { col: s > 1.5, seg: 8 });
     const m = this.mesh(new THREE.SphereGeometry(0.4 * s, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), glowCol ? this.glow(glowCol, 1.2) : cap, x, 0.55 * s, z); m.scale.y = 0.7;
     if (!glowCol) for (let i = 0; i < 3; i++) { const a = i * 2.1; this.mesh(new THREE.SphereGeometry(0.06 * s, 6, 4), 'white', x + Math.cos(a) * 0.22 * s, 0.75 * s, z + Math.sin(a) * 0.22 * s, { noShadow: true }); }
+  }
+  // ---------------- 森のトゥーンの小物（テーマの lush。きのこ・どんぐり・どんぐりの家） ----------------
+  //   輪郭を軸のまわりに回して作る（toonLathe）。色は頂点の色で、色の変わり目は同じ位置に頂点を二重にして、くっきり分ける。
+  //   法線は輪郭にそってなめらかにする（裏返して少しふくらませた外殻＝ふち取りの線が、ふちで切れないように）。
+  //   形は位置から決まる乱数（treeRand）で決める（区画の乱数を使うと、あとに置く小物が変わる）。
+  //   INST_CELL 四方ごとに一つの形にまとめ（toonBin）、トゥーンの面（影も落とす）と、ふち取りの 2 回で描く（flushToon）。
+  //   ふち取りは同じ頂点を、b.H に入れた三角形（水玉・扉など面にはりつけたものは入れない）で
+  toonBin(x, z) {
+    const key = Math.floor(x / INST_CELL) + ',' + Math.floor(z / INST_CELL);
+    this.toons = this.toons || new Map();
+    return this.toons.get(key) || this.toons.set(key, { P: [], N: [], C: [], G: [], I: [], H: [] }).get(key);
+  }
+  // 輪郭 prof（[半径, 高さ, 色, 光]。[r, y, 色, 光, 次の色, 次の光] の点で色を変える）を seg 等分で回した面を b にためる。
+  //   法線は輪郭の前後の点を結ぶ向きに直角（外向き）。半径 0 の点は先端（はじめなら下向き、おわりなら上向き）。
+  //   out(lx, ly, lz, nx, ny, nz, 色, 光)：小物の中の位置・法線を、区画の位置にして b に書く。ふち取りは、輪郭の hull 番めの点から先だけ
+  toonLathe(b, prof, seg, out, hull = 0) {
+    const n = prof.length, ring = [];
+    for (let i = 0; i < n; i++) {
+      const p = prof[i], a = prof[Math.max(0, i - 1)], c = prof[Math.min(n - 1, i + 1)];
+      let nr = c[1] - a[1], ny = a[0] - c[0]; const l = Math.sqrt(nr * nr + ny * ny) || 1; nr /= l; ny /= l;
+      if (p[0] < 1e-6) { nr = 0; ny = i ? 1 : -1; }
+      const vs = [];
+      for (let v = 0; v < (p[4] ? 2 : 1); v++) {
+        vs.push(b.P.length / 3);
+        for (let j = 0; j < seg; j++) { const t = j / seg * 6.2832, cs = Math.cos(t), sn = Math.sin(t); out(cs * p[0], p[1], sn * p[0], cs * nr, ny, sn * nr, v ? p[4] : p[2], v ? p[5] : p[3]); }
+      }
+      ring.push(vs);
+    }
+    for (let i = 0; i + 1 < n; i++) {
+      const A = ring[i][ring[i].length - 1], B = ring[i + 1][0], tip0 = prof[i][0] < 1e-6, tip1 = prof[i + 1][0] < 1e-6, h = i >= hull;
+      for (let j = 0; j < seg; j++) {
+        const j1 = (j + 1) % seg;
+        if (!tip0) { b.I.push(A + j, B + j, A + j1); if (h) b.H.push(A + j, B + j, A + j1); }
+        if (!tip1) { b.I.push(A + j1, B + j, B + j1); if (h) b.H.push(A + j1, B + j, B + j1); }
+      }
+    }
+  }
+  // 輪郭 prof（高さが下から上へ並ぶところ）の、高さ y での [半径, 法線の外向き, 法線の上向き]
+  toonLatheAt(prof, y) {
+    let i = 0; while (i < prof.length - 2 && prof[i + 1][1] < y) i++;
+    const p = prof[i], q = prof[i + 1], t = Math.max(0, Math.min(1, (y - p[1]) / (q[1] - p[1] || 1)));
+    let nr = q[1] - p[1], ny = p[0] - q[0]; const l = Math.sqrt(nr * nr + ny * ny) || 1;
+    return [p[0] + (q[0] - p[0]) * t, nr / l, ny / l];
+  }
+  // 森のきのこ：茎と傘（裏のひだ・表・水玉）。
+  //   o：H 茎の高さ・R 傘の半径・rs 茎の太さ（m）、cap 傘の色、glow 光るきのこの色（cap の代わり）、kids 根もとに子どものきのこ、ground 子どもを地面の高さに
+  shroom(x, y, z, o) {
+    const r = this.treeRand(x, z, 5), b = this.toonBin(x, z);
+    this.shroomOne(b, x, y, z, o, r);
+    if (!o.kids || r() < 0.45) return;
+    for (let i = 0, n = r() < 0.25 ? 2 : 1, a0 = r() * 6.2832; i < n; i++) {
+      const a = a0 + i * 2.4, d = o.R * (0.8 + r() * 0.4) + o.rs, f = 0.32 + r() * 0.22, kx = x + Math.cos(a) * d, kz = z + Math.sin(a) * d;
+      this.shroomOne(b, kx, o.ground ? this.gy(kx, kz) : y, kz, { ...o, H: o.H * f * 1.15, R: o.R * f, rs: o.rs * f * 1.25 }, r);
+    }
+  }
+  shroomOne(b, x, y, z, o, r) {
+    const { H, R, rs } = o, seg = R > 0.6 ? 12 : R > 0.2 ? 10 : 8, bell = r() < 0.3, Hc = R * (bell ? 0.9 : 0.58);
+    // 茎は x の向きへ曲げ（高さの二乗で）、傘はその先の向きへ傾ける。全体を yaw だけまわす
+    const yaw = r() * 6.2832, bd = (r() - 0.25) * 0.3 * H, tilt = -Math.atan(2 * bd / H) * 0.6, cy = Math.cos(yaw), sy = Math.sin(yaw), ct = Math.cos(tilt), st = Math.sin(tilt);
+    const C = c => new THREE.Color(c), gl = o.glow ? 0.45 : 0, base = C(o.glow || o.cap).multiplyScalar(o.glow ? 0.8 : 0.94 + r() * 0.12);
+    const top = base.clone().lerp(C('#ffffff'), 0.12), rim = base.clone().multiplyScalar(0.82);
+    const gill = o.glow ? base.clone().lerp(C('#ffffff'), 0.55) : C('#f2dec0'), gillIn = o.glow ? gill.clone().multiplyScalar(0.8) : C('#d4bc98');
+    const stemT = o.glow ? C('#f2fff8') : C('#fff3e0'), stemB = o.glow ? C('#c4e2d4') : C('#dccaa8');
+    const out = (cap) => (lx, ly, lz, nx, ny, nz, col, g) => {
+      if (cap) { const qx = lx, qy = ly - H, mx = nx; lx = qx * ct - qy * st + bd; ly = qx * st + qy * ct + H; nx = mx * ct - ny * st; ny = mx * st + ny * ct; }
+      else lx += bd * (Math.max(0, ly) / H) ** 2;
+      b.P.push(x + lx * cy - lz * sy, y + ly, z + lx * sy + lz * cy); b.N.push(nx * cy - nz * sy, ny, nx * sy + nz * cy); b.C.push(col.r, col.g, col.b); b.G.push(g);
+    };
+    const sg = gl * 0.3, ug = gl * 2.8;   // 光るきのこは、傘の裏（ひだ）と水玉をいちばん強く光らせる
+    this.toonLathe(b, [[rs * 1.45, -0.08 * H, stemB, sg], [rs * 1.2, 0.1 * H, stemB, sg], [rs * 0.95, 0.5 * H, stemT, sg], [rs * 0.92, H, stemT, sg]], seg, out(false));
+    // 傘：裏（ひだ）を茎からふちへ、ふちで色を変えて、表をてっぺんまで。bell は、ふちの下がった釣り鐘の形
+    const capP = bell
+      ? [[rs * 0.9, H - 0.04 * R, gillIn, ug], [0.84 * R, H - 0.16 * R, gill, ug, rim, gl], [0.88 * R, H - 0.1 * R, rim, gl], [0.82 * R, H + 0.3 * Hc, base, gl], [0.62 * R, H + 0.72 * Hc, base, gl], [0.32 * R, H + 0.95 * Hc, top, gl], [0, H + Hc, top, gl]]
+      : [[rs * 0.9, H - 0.03 * R, gillIn, ug], [0.95 * R, H - 0.04 * R, gill, ug, rim, gl], [R, H + 0.06 * R, rim, gl], [0.92 * R, H + 0.36 * Hc, base, gl], [0.72 * R, H + 0.74 * Hc, base, gl], [0.4 * R, H + 0.95 * Hc, top, gl], [0, H + Hc, top, gl]];
+    this.toonLathe(b, capP, seg, out(true), 1);   // 傘の裏は、ふちより内がわなので輪郭にならない（ふち取りしない）
+    // 水玉：傘の表に、面にそった六角の小さな板（まん中を少し盛る）。ふち取りはしない
+    const T = capP.slice(2), ns = bell ? 4 + (r() * 2 | 0) : (R > 0.6 ? 7 : R > 0.2 ? 5 : 3) + (r() * 3 | 0), a0 = r() * 6.2832, off = 0.012 * R;
+    const sc = o.glow ? C(o.glow).lerp(C('#ffffff'), 0.6) : C('#fff8ee');
+    for (let k = 0; k < ns; k++) {
+      const u = 0.12 + (k * 0.37 + r() * 0.15) % 0.72, a = a0 + k * 2.4, sr = R * (0.11 + r() * 0.07) * (bell ? 0.85 : 1);
+      const f = u * (T.length - 1), i = Math.min(T.length - 2, f | 0), t = f - i, p = T[i], q = T[i + 1];
+      const pr = p[0] + (q[0] - p[0]) * t, py = p[1] + (q[1] - p[1]) * t;
+      let nr = q[1] - p[1], ny = p[0] - q[0]; const l = Math.sqrt(nr * nr + ny * ny) || 1; nr /= l; ny /= l;
+      const ca = Math.cos(a), sa = Math.sin(a), nx = ca * nr, nz = sa * nr, px = ca * pr, pz = sa * pr;
+      const t1 = [-sa, 0, ca], t2 = [ny * ca, -nz * sa - nx * ca, ny * sa], c0 = b.P.length / 3, put = out(true);   // 面にそった向き（t1 × t2 が法線）
+      put(px + nx * (off + sr * 0.12), py + ny * (off + sr * 0.12), pz + nz * (off + sr * 0.12), nx, ny, nz, sc, gl * 3.6);
+      for (let j = 0; j < 6; j++) {
+        const th = j / 6 * 6.2832, u1 = Math.cos(th) * sr, u2 = Math.sin(th) * sr;
+        put(px + t1[0] * u1 + t2[0] * u2 + nx * off, py + t2[1] * u2 + ny * off, pz + t1[2] * u1 + t2[2] * u2 + nz * off, nx, ny, nz, sc, gl * 3.6);
+        b.I.push(c0, c0 + 1 + j, c0 + 1 + (j + 1) % 6);
+      }
+    }
+  }
+  // どんぐりの山：たいていは横に寝かせ、まん中ほど高く積む（ときどき、先を土にさして立つ）
+  //   y0：山の下の高さ（なければ地面）
+  toonAcorns(x, z, n, y0) {
+    const r = this.treeRand(x, z, 6), b = this.toonBin(x, z), R0 = 0.35 + Math.sqrt(n) * 0.22, pileH = n > 6 ? 0.16 : 0.06, chests = this.zone.chestAt || [];
+    for (let i = 0; i < n; i++) {
+      const a = r() * 6.2832, d = R0 * Math.sqrt(r()), s = 0.85 + r() * 0.3;
+      let px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d;
+      for (const [cx, cz] of chests) {   // 宝箱にめりこまないよう、箱のまわりへ押し出す
+        const dx = px - cx, dz = pz - cz, l = Math.sqrt(dx * dx + dz * dz);
+        if (l < 0.95) { const k = 0.95 / (l || 1); px = cx + (l ? dx * k : 0.95); pz = cz + dz * k; }
+      }
+      this.toonAcorn(b, px, (y0 ?? this.gy(px, pz)) + (1 - d / R0) * pileH * (0.6 + r() * 0.4), pz, s, r);
+    }
+  }
+  // どんぐり一つ（先から上へ高さ 0.53s）。実は先が濃く、上に明るい帯。帽子（殻斗）は濃淡の段でうろこに見せ、てっぺんに小さな柄
+  //   stand：true なら必ず立てる（玉座のわきの大きなどんぐり）
+  toonAcorn(b, x, y, z, s, r, stand) {
+    const up = r() < 0.2 || !!stand, tx = up ? (r() - 0.5) * 0.3 : Math.PI / 2 + (r() - 0.5) * 0.5, lift = up ? -0.05 * s : 0.17 * s, yaw = r() * 6.2832;
+    const cx = Math.cos(tx), sx = Math.sin(tx), cy = Math.cos(yaw), sy = Math.sin(yaw), C = c => new THREE.Color(c), k = 0.92 + r() * 0.16;
+    // 小物の中で：x の軸のまわりに tx だけ倒し（横に寝かせる）、yaw だけまわして、(x, y + lift, z) へ
+    const out = (lx, ly, lz, nx, ny, nz, col, g) => {
+      const ry = ly * cx - lz * sx, rz = ly * sx + lz * cx, qy = ny * cx - nz * sx, qz = ny * sx + nz * cx;
+      b.P.push(x + lx * cy - rz * sy, y + lift + ry, z + lx * sy + rz * cy); b.N.push(nx * cy - qz * sy, qy, nx * sy + qz * cy); b.C.push(col.r, col.g, col.b); b.G.push(g);
+    };
+    const tip = C('#8a5428'), nut = C('#b8743a').multiplyScalar(k), band = C('#d8a25e').multiplyScalar(k), cap = C('#86603a'), capD = C('#654528'), stem = C('#55391f');
+    this.toonLathe(b, [[0, 0, tip, 0], [0.11 * s, 0.07 * s, tip, 0, nut, 0], [0.185 * s, 0.19 * s, nut, 0], [0.172 * s, 0.28 * s, nut, 0, band, 0], [0.155 * s, 0.32 * s, band, 0]], 7, out);
+    this.toonLathe(b, [[0.13 * s, 0.3 * s, capD, 0], [0.205 * s, 0.305 * s, capD, 0, cap, 0], [0.2 * s, 0.375 * s, cap, 0, capD, 0], [0.11 * s, 0.44 * s, capD, 0, cap, 0], [0, 0.46 * s, cap, 0]], 7, out, 1);
+    this.toonLathe(b, [[0.03 * s, 0.43 * s, stem, 0], [0, 0.53 * s, stem, 0]], 5, out, 9);   // 柄は細いので、ふち取りしない
+  }
+  // どんぐりの家（ネズミの家）：実の形の家に、うろこの段の帽子の屋根と柄。正面（ry の向き）に丸い扉、その上に明かりのともる丸窓。
+  //   扉と窓は、家の面にそって曲げてはりつける
+  toonRatHouse(x, z, s, ry) {
+    const r = this.treeRand(x, z, 7), b = this.toonBin(x, z), y0 = this.gy(x, z), C = c => new THREE.Color(c), k = 0.94 + r() * 0.12;
+    const out = (lx, ly, lz, nx, ny, nz, col, g) => { b.P.push(x + lx, y0 + ly, z + lz); b.N.push(nx, ny, nz); b.C.push(col.r, col.g, col.b); b.G.push(g); };
+    const wall = C('#c88a4a').multiplyScalar(k), band = C('#e2b070').multiplyScalar(k), cap = C('#86603a'), capD = C('#654528'), stem = C('#55391f');
+    const body = [[0.52 * s, -0.05 * s, wall, 0], [0.8 * s, 0.4 * s, wall, 0], [0.8 * s, 0.86 * s, wall, 0, band, 0], [0.72 * s, 1.08 * s, band, 0]];
+    this.toonLathe(b, body, 14, out);
+    this.toonLathe(b, [[0.66 * s, 1.03 * s, capD, 0], [0.9 * s, 1.05 * s, capD, 0], [0.95 * s, 1.15 * s, capD, 0, cap, 0], [0.87 * s, 1.32 * s, cap, 0, capD, 0], [0.62 * s, 1.5 * s, capD, 0, cap, 0], [0, 1.65 * s, cap, 0]], 14, out, 1);
+    this.toonLathe(b, [[0.08 * s, 1.6 * s, stem, 0], [0.06 * s, 1.92 * s, stem, 0], [0, 1.95 * s, stem, 0]], 7, out);
+    // 面にはりつける板：中心の横 cu・高さ cy、横の半径 w・縦の半径 h（下は vb で平らに切る）、off だけ浮かせる。横は、扉の向き t0 から家のまわりの角度で
+    const t0 = Math.PI / 2 - ry;
+    const patch = (cu, cy, w, h, vb, off, col, g) => {
+      const c0 = b.P.length / 3, N = 12, put = (u, v) => { const [rad, nr, ny] = this.toonLatheAt(body, v), t = t0 + u / rad, ct = Math.cos(t), st = Math.sin(t); out(ct * (rad + off), v, st * (rad + off), ct * nr, ny, st * nr, col, g); };
+      put(cu, cy);
+      for (let i = 0; i < N; i++) { const f = i / N * 6.2832; put(cu + Math.cos(f) * w, Math.max(vb, cy + Math.sin(f) * h)); }
+      for (let i = 0; i < N; i++) b.I.push(c0, c0 + 1 + (i + 1) % N, c0 + 1 + i);   // 家の外から見て表になる向き
+    };
+    const wu = (r() < 0.5 ? -1 : 1) * 0.5 * s;   // 丸窓は、扉の右か左の上に
+    patch(0, 0.4 * s, 0.31 * s, 0.4 * s, 0.06 * s, 0.012 * s, C('#4e2e16'), 0);       // 扉のわく
+    patch(0, 0.4 * s, 0.24 * s, 0.33 * s, 0.07 * s, 0.024 * s, C('#8a5630'), 0);      // 扉
+    patch(wu, 0.68 * s, 0.14 * s, 0.14 * s, -9, 0.012 * s, C('#4e2e16'), 0);          // 丸窓のわく
+    patch(wu, 0.68 * s, 0.095 * s, 0.095 * s, -9, 0.024 * s, C('#ffd88a'), 0.9);      // 明かりのともる丸窓
+    this.col(x, z, 0.9 * s, 1.8 * s);
+  }
+  // 角のある小物（チーズなど）：面ごとに平らな法線で描く。ふち取りは、同じ位置の頂点を一つにまとめ、中心 c から外向きの法線にする
+  //   （面ごとの法線のままふくらませると、角で外殻が切れてすき間ができる）。
+  //   polys：[{ p: [[x, y, z], …]（凸の多角形）, n: [nx, ny, nz]（外向き）, col, ns: 頂点ごとの法線（丸い面）, hull: false でふち取りしない }]。三角形の向きは n に合わせる
+  toonSolid(b, polys, c) {
+    const hv = new Map();
+    const hullV = (p, col) => {
+      const k = p[0].toFixed(3) + ',' + p[1].toFixed(3) + ',' + p[2].toFixed(3);
+      if (!hv.has(k)) { const dx = p[0] - c[0], dy = p[1] - c[1], dz = p[2] - c[2], l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1; hv.set(k, b.P.length / 3); b.P.push(p[0], p[1], p[2]); b.N.push(dx / l, dy / l, dz / l); b.C.push(col.r, col.g, col.b); b.G.push(0); }
+      return hv.get(k);
+    };
+    for (const q of polys) {
+      const P = q.p, n = q.n, i0 = b.P.length / 3;
+      P.forEach((p, k) => { const m = q.ns ? q.ns[k] : n; b.P.push(p[0], p[1], p[2]); b.N.push(m[0], m[1], m[2]); b.C.push(q.col.r, q.col.g, q.col.b); b.G.push(q.g || 0); });
+      const ax = P[1][0] - P[0][0], ay = P[1][1] - P[0][1], az = P[1][2] - P[0][2], bx = P[2][0] - P[0][0], by = P[2][1] - P[0][1], bz = P[2][2] - P[0][2];
+      const flip = (ay * bz - az * by) * n[0] + (az * bx - ax * bz) * n[1] + (ax * by - ay * bx) * n[2] < 0;
+      const H = q.hull === false ? null : P.map(p => hullV(p, q.col));
+      for (let k = 1; k + 1 < P.length; k++) {
+        const [u, v] = flip ? [k + 1, k] : [k, k + 1];
+        b.I.push(i0, i0 + u, i0 + v); if (H) b.H.push(H[0], H[u], H[v]);
+      }
+    }
+  }
+  // 面にはりつける丸（チーズの穴など）：中心 p、外向きの法線 n、半径 rr。off だけ浮かせる。ふち取りしない
+  toonDisc(b, p, n, rr, col, off = 0.008, N = 9) {
+    const ref = Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    let t1 = [ref[1] * n[2] - ref[2] * n[1], ref[2] * n[0] - ref[0] * n[2], ref[0] * n[1] - ref[1] * n[0]]; const l = Math.hypot(...t1); t1 = t1.map(v => v / l);
+    const t2 = [n[1] * t1[2] - n[2] * t1[1], n[2] * t1[0] - n[0] * t1[2], n[0] * t1[1] - n[1] * t1[0]];   // t1 × t2 = n
+    const c0 = b.P.length / 3, put = (u, v) => { b.P.push(p[0] + t1[0] * u + t2[0] * v + n[0] * off, p[1] + t1[1] * u + t2[1] * v + n[1] * off, p[2] + t1[2] * u + t2[2] * v + n[2] * off); b.N.push(n[0], n[1], n[2]); b.C.push(col.r, col.g, col.b); b.G.push(0); };
+    put(0, 0);
+    for (let i = 0; i < N; i++) { const f = i / N * 6.2832; put(Math.cos(f) * rr, Math.sin(f) * rr); b.I.push(c0, c0 + 1 + i, c0 + 1 + (i + 1) % N); }
+  }
+  // チーズ：扇形の柱。切り口は黄色で穴があき、外がわ（皮）は濃い橙。半分は一切れ（細い扇）、半分は一切れ欠けた丸ごと（ry：向き）
+  toonCheese(x, z, s, ry) {
+    const r = this.treeRand(x, z, 8), b = this.toonBin(x, z), y0 = this.gy(x, z), C = c => new THREE.Color(c);
+    const whole = r() < 0.5, R = (whole ? 0.75 : 0.95) * s, h = (whole ? 0.5 : 0.55) * s, span = whole ? 5.2 : 1.15, a0 = -span / 2, segs = whole ? 16 : 4;
+    const cy = Math.cos(ry), sy = Math.sin(ry);
+    const W = (lx, ly, lz) => [x + lx * cy + lz * sy, y0 + ly, z - lx * sy + lz * cy], Nv = (nx, ny, nz) => [nx * cy + nz * sy, ny, -nx * sy + nz * cy];
+    const face = C('#ffd65a'), rind = C('#f0a83a'), hole = C('#e6a52c'), polys = [], arc = [];
+    for (let i = 0; i <= segs; i++) { const a = a0 + span * i / segs; arc.push([Math.cos(a), Math.sin(a)]); }
+    // 上の面（扇。まん中から）・皮（丸い外がわ）・二つの切り口
+    polys.push({ p: [W(0, h, 0), ...arc.map(([c, sn]) => W(c * R, h, sn * R))], n: Nv(0, 1, 0), col: face });
+    for (let i = 0; i < segs; i++) {
+      const [c0, s0] = arc[i], [c1, s1] = arc[i + 1], cm = (c0 + c1) / 2, sm = (s0 + s1) / 2;
+      polys.push({ p: [W(c0 * R, 0, s0 * R), W(c1 * R, 0, s1 * R), W(c1 * R, h, s1 * R), W(c0 * R, h, s0 * R)], n: Nv(cm, 0, sm), ns: [Nv(c0, 0, s0), Nv(c1, 0, s1), Nv(c1, 0, s1), Nv(c0, 0, s0)], col: rind });
+    }
+    const cut = (ca, sa, nx, nz) => polys.push({ p: [W(0, 0, 0), W(ca * R, 0, sa * R), W(ca * R, h, sa * R), W(0, h, 0)], n: Nv(nx, 0, nz), col: face });
+    const [cA, sA] = arc[0], [cB, sB] = arc[segs];
+    cut(cA, sA, sA, -cA); cut(cB, sB, -sB, cB);
+    const mid = a0 + span / 2, k = whole ? 0 : 0.45;
+    this.toonSolid(b, polys, W(Math.cos(mid) * R * k, h / 2, Math.sin(mid) * R * k));
+    // 穴：上の面に 2〜3 個、切り口に 1〜2 個ずつ
+    for (let i = 0, n = 2 + (r() * 2 | 0); i < n; i++) {
+      const a = a0 + span * (0.2 + r() * 0.6), d = R * (0.35 + r() * 0.4), rr = Math.min(R * (0.07 + r() * 0.06), d * Math.sin(span * 0.2));
+      this.toonDisc(b, W(Math.cos(a) * d, h, Math.sin(a) * d), Nv(0, 1, 0), rr, hole);
+    }
+    for (const [ca, sa, nx, nz] of [[cA, sA, sA, -cA], [cB, sB, -sB, cB]]) {
+      for (let i = 0, n = 1 + (r() < 0.5 ? 1 : 0); i < n; i++) {
+        const u = R * (0.3 + r() * 0.5), v = h * (0.3 + r() * 0.4), rr = Math.min(h * 0.22, R * (0.06 + r() * 0.05));
+        this.toonDisc(b, W(ca * u, v, sa * u), Nv(nx, 0, nz), rr, hole);
+      }
+    }
+  }
+  // ネズミの王の玉座。豊かな森（テーマの lush）ではトゥーンの toonThrone（区画の乱数は、もとの台のどんぐり 12 個と同じ 24 回進める）
+  ratThrone(x, z) {
+    if (this.v.canopy) { for (let i = 0; i < 24; i++) this.r(); return this.toonThrone(x, z); }
+    this.box(x, z, 3, 1.4, 2, 'wood2', { round: true }); this.acorns(x, z - 0.5, 12);
+    this.mesh(new THREE.CylinderGeometry(1.2, 1.4, 2.4, 12, 1, true, Math.PI * 0.2, Math.PI * 0.6), 'wood', x, 1.6, z - 0.8, { ry: Math.PI });
+  }
+  // ネズミの王の玉座（どんぐりの玉座）：切り株の台に赤いざぶとん、うしろに大きなどんぐりの帽子の背もたれ（内がわを前へ向けて、少しうしろへ倒す）。
+  //   わきに立てた大きなどんぐりと、足もとのどんぐりの山。座面の高さ・当たり判定は、もとの台（3×2m、高さ 1.4m）に近く
+  toonThrone(x, z) {
+    const r = this.treeRand(x, z, 9), b = this.toonBin(x, z), y0 = this.gy(x, z), C = c => new THREE.Color(c);
+    const put = (lx, ly, lz, nx, ny, nz, col, g) => { b.P.push(x + lx, y0 + ly, z + lz); b.N.push(nx, ny, nz); b.C.push(col.r, col.g, col.b); b.G.push(g); };
+    const bark = C('#7a5232'), barkD = C('#5e3c22'), wood = C('#e2b47a'), ringC = C('#c49058'), red = C('#c83a4c'), gold = C('#ffc84a');
+    // 切り株：根もとが広がり、上の切り口に年輪
+    this.toonLathe(b, [[1.38, -0.05, barkD, 0], [1.22, 0.22, barkD, 0, bark, 0], [1.12, 0.6, bark, 0], [1.14, 1.08, bark, 0, wood, 0], [1.06, 1.15, wood, 0], [0.96, 1.16, wood, 0, ringC, 0], [0.9, 1.16, ringC, 0, wood, 0], [0, 1.17, wood, 0]], 22, put);
+    // ざぶとん：ふちに金のふち
+    this.toonLathe(b, [[0.86, 1.14, red, 0], [0.97, 1.24, red, 0, gold, 0], [0.95, 1.31, gold, 0, red, 0], [0.62, 1.42, red, 0], [0, 1.45, red, 0]], 22, put);
+    // 背もたれ：どんぐりの帽子の殻。軸 a はうしろ下向き（帽子のてっぺんがうしろ）、口は前の少し上を向く
+    const R = 1.55, th = 0.32, bc = Math.cos(th), bs = Math.sin(th), O = [0, 1.95, -0.95];
+    const back = (lx, ly, lz, nx, ny, nz, col, g) => put(O[0] + lx, O[1] - ly * bs + lz * bc, O[2] - ly * bc - lz * bs, nx, -ny * bs + nz * bc, -ny * bc - nz * bs, col, g);
+    const capC = C('#8a6038'), capD = C('#654528'), inner = C('#d4a66e'), innerD = C('#b07e4a');   // 内がわは、なめらかな明るい木の色（奥ほど濃い）
+    this.toonLathe(b, [[0, 0.62 * R, innerD, 0], [0.62 * R, 0.42 * R, inner, 0], [0.92 * R, 0.02 * R, inner, 0, capD, 0], [1.03 * R, -0.04 * R, capD, 0], [1.08 * R, 0.08 * R, capD, 0, capC, 0],
+      [1.02 * R, 0.3 * R, capC, 0, capD, 0], [0.86 * R, 0.52 * R, capD, 0, capC, 0], [0.62 * R, 0.68 * R, capC, 0, capD, 0], [0.34 * R, 0.77 * R, capD, 0, capC, 0], [0, 0.8 * R, capC, 0]], 22, back, 3);
+    this.toonLathe(b, [[0.12, 0.78 * R, capD, 0], [0.1, 0.78 * R + 0.35, capD, 0], [0, 0.78 * R + 0.38, capD, 0]], 8, back);   // 帽子の軸
+    // わきの大きなどんぐり（立てる）と、足もとのどんぐりの山
+    for (const sx of [-1, 1]) this.toonAcorn(b, x + sx * 1.62, y0, z - 0.35, 2.1, r, true);
+    this.toonAcorns(x - 1.95, z + 0.55, 6); this.toonAcorns(x + 1.95, z + 0.55, 6);
+    this.col(x, z, 1.35, 1.45);
+  }
+  flushToon() {
+    if (!this.toons) return;
+    const body = this.mc.shroomToon || (this.mc.shroomToon = shroomToonMat()), line = this.mc.shroomLine || (this.mc.shroomLine = shroomLineMat());
+    for (const b of this.toons.values()) {
+      if (!b.I.length) continue;
+      const g = new THREE.BufferGeometry(), h = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(b.P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(b.N, 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(b.C, 3)); g.setAttribute('aGlow', new THREE.Float32BufferAttribute(b.G, 1));
+      g.setIndex(b.I); g.computeBoundingSphere();
+      for (const a of ['position', 'normal', 'color', 'aGlow']) h.setAttribute(a, g.getAttribute(a));   // ふち取りは同じ頂点を使う（面にはりつけたものの三角形をのぞく）
+      h.setIndex(b.H); h.boundingSphere = g.boundingSphere;
+      const m = new THREE.Mesh(g, body); m.castShadow = true; m.receiveShadow = true; this.scene.add(m);
+      const ol = new THREE.Mesh(h, line); ol.castShadow = false; this.scene.add(ol);
+    }
+    this.toons = null;
   }
   log(x, z, len = 3, ry = 0) { this.mesh(new THREE.CylinderGeometry(0.35, 0.38, len, 10), 'bark', x, 0.35, z, { rz: Math.PI / 2, ry }); this.col(x, z, len * 0.4, 0.7); }
   water(x, z, w, d, o = {}) {
@@ -7803,6 +8062,7 @@ class ZoneKit {
   }
   // 小さなネズミの家（どんぐり型）
   ratHouse(x, z, s = 1, ry = 0) {
+    if (this.v.canopy) return this.toonRatHouse(x, z, s, ry);   // 豊かな森（テーマの lush）：作り直したトゥーンの家
     const b = this.mesh(new THREE.SphereGeometry(0.8 * s, 14, 10), 'wood', x, 0.7 * s, z); b.scale.y = 1.1;
     const cap = this.mesh(new THREE.SphereGeometry(0.88 * s, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), 'bark', x, 1.1 * s, z); cap.scale.y = 0.6;
     this.mesh(new THREE.CylinderGeometry(0.06 * s, 0.06 * s, 0.35 * s, 6), 'bark', x, 1.7 * s, z);
@@ -7810,11 +8070,16 @@ class ZoneKit {
     this.col(x, z, 0.9 * s, 1.8 * s);
   }
   cheese(x, z, s = 1) {
+    // 豊かな森（テーマの lush）：作り直したトゥーンのチーズ（区画の乱数は、もとと同じ 7 回進める）
+    if (this.v.canopy) { const ry = this.r() * 3; for (let i = 0; i < 6; i++) this.r(); this.toonCheese(x, z, s, ry); this.col(x, z, 0.6 * s, 0.6 * s); return; }
     const g = new THREE.CylinderGeometry(0.8 * s, 0.8 * s, 0.6 * s, 3, 1); const m = this.mesh(g, 'cheese', x, 0.3 * s, z, { ry: this.r() * 3 });
     for (let i = 0; i < 3; i++) this.mesh(new THREE.SphereGeometry(0.1 * s, 6, 4), '#e8b830', x + (this.r() - 0.5) * 0.6 * s, 0.61 * s, z + (this.r() - 0.5) * 0.4 * s, { noShadow: true });
     this.col(x, z, 0.6 * s, 0.6 * s);
   }
-  acorns(x, z, n = 8) {
+  //   y0：山の下の高さ（豊かな森だけ。なければ地面）
+  acorns(x, z, n = 8, y0) {
+    // 豊かな森（テーマの lush）：作り直したトゥーンのどんぐり（区画の乱数は、もとと同じ数だけ進める）
+    if (this.v.canopy) { for (let i = 0; i < n * 2; i++) this.r(); return this.toonAcorns(x, z, n, y0); }
     for (let i = 0; i < n; i++) { const a = this.r() * 6, d = this.r() * 0.9, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; const m = this.mesh(new THREE.SphereGeometry(0.18, 8, 6), 'wood', px, 0.2 + (i > 5 ? 0.25 : 0), pz); m.scale.y = 1.2; this.mesh(new THREE.SphereGeometry(0.19, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), 'bark', px, 0.33 + (i > 5 ? 0.25 : 0), pz); }
   }
   // 柱（遺跡・城）
@@ -8918,8 +9183,7 @@ const ZONE_BUILD = {
   ratNest(K) {
     K.flora({ trees: [['round', 2], ['mush', 1]], leaf: ['#3f8a3a', '#4a9a3e'], caps: ['#ffb84a', '#e05a6a'], bush: 0.9 });
     K.root(-14, -24, 14, -24, 1.6, 9); K.root(-20, -16, -6, -26, 1.1, 6); K.root(20, -16, 6, -26, 1.1, 6); K.root(-6, 6, 8, 4, 1.0, 7);
-    K.box(0, -20, 3, 1.4, 2, 'wood2', { round: true }); K.acorns(0, -20.5, 12);
-    K.mesh(new THREE.CylinderGeometry(1.2, 1.4, 2.4, 12, 1, true, Math.PI * 0.2, Math.PI * 0.6), 'wood', 0, 1.6, -20.8, { ry: Math.PI });
+    K.ratThrone(0, -20);
     for (const [x, z, sz] of [[-10, -16, 1], [10, -16, 1], [-12, -2, 0.9], [12, -2, 0.9], [20, -14, 0.8], [22, -10, 0.8]]) K.ratHouse(x, z, sz, Math.atan2(-x, -z));
     for (const [x, z] of [[-20, -8], [-22, -6], [-24, -14], [-8, -12]]) K.cheese(x, z, 0.8 + K.r() * 0.5);
     for (const [x, z] of [[-6, -18], [6, -18], [-15, -14], [16, -12]]) K.mushroom(x, z, 1.2, null, '#ffd27a');
