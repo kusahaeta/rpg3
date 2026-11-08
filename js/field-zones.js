@@ -3568,9 +3568,19 @@ function puffTex() {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return (TexCache.puff = t);
 }
-function makePuff(s = 1) {
+// front：板を、見た目の大きさと位置はそのまま、玉の手前のはしまで寄せて描く（たんぽぽの茎は玉のまん中まで通るので、
+//   まん中の板のままだと、板より手前の茎が綿毛の上に描かれて綿毛を隠す）
+function makePuff(s = 1, front = false) {
   const g = new THREE.Group();
   const puff = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex(), color: '#fffdf4', transparent: true, depthWrite: false }));
+  if (front) {
+    // 視線にそってカメラへ近づける（xyz をそろって縮めるので、画面の上の位置と大きさは変わらない）。玉の半径は板の大きさの 0.47 倍
+    puff.material.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('mvPosition.xy += rotatedPosition;',
+        'float pz = min( scale.x * 0.45, - mvPosition.z * 0.5 ), kz = ( mvPosition.z + pz ) / mvPosition.z;\n  mvPosition.xyz *= kz; mvPosition.xy += rotatedPosition * kz;');
+    };
+    puff.material.customProgramCacheKey = () => 'puffFront';
+  }
   // 深度を書かないので、川の流れの筋・道の塗り（renderOrder 1〜5）より後に描く。先に描くと、奥の川で上書きされる
   puff.renderOrder = OVER_PAINT; puff.scale.setScalar(1.5); g.add(puff); g.scale.setScalar(s);
   return g;
@@ -5823,18 +5833,106 @@ class ZoneKit {
     this.light(x, 3.2, z - 1, '#ffd8a0', 7, 12);
   }
   // ---------------- 仕掛け：まどろみの林（綿毛・ねむり花） ----------------
-  // たんぽぽ：葉のロゼットと細い茎、てっぺんに綿毛の玉（makePuff）。s で大きさ、bald で綿毛の抜けたあと
+  // たんぽぽ：しなる茎と、てっぺんに綿毛の玉（makePuff）。葉はない。s で大きさ、bald で綿毛の抜けたあと
+  //   茎は根もとから先へ、高さの二乗で曲がる一本の筒（dandelionStem）。風のゆれも茎ごとしなり、てっぺん（花托・反り返った総苞・綿毛）は茎の先についていく。
+  //   茎とてっぺんは森のきのこと同じトゥーンの材質（頂点の色）。大きいもの（s ≥ 1）は、ふち取りと影も。
+  //   曲がりの向き・大きさ・総苞の形は位置から決まる乱数（treeRand）で。区画の乱数は、もとと同じだけ（葉 7 回・ゆれ 1 回）進める
   dandelion(x, z, s = 1, o = {}) {
     const y = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y + (o.y || 0), z); this.scene.add(g);
-    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2 + this.r(), lf = new THREE.Mesh(new THREE.ConeGeometry(0.16 * s, 0.9 * s, 4), this.M('#5aa84a')); lf.scale.z = 0.25; lf.position.set(Math.cos(a) * 0.38 * s, 0.08 * s, Math.sin(a) * 0.38 * s); lf.rotation.set(0, -a, Math.PI / 2 - 0.25); lf.rotation.order = 'YZX'; g.add(lf); }
-    const h = 1.7 * s, stem = new THREE.Mesh(new THREE.CylinderGeometry(0.045 * s, 0.07 * s, h, 6), this.M('#6ab050')); stem.position.y = h / 2; g.add(stem);
-    const top = new THREE.Group(); top.position.y = h; g.add(top);
-    const cup = new THREE.Mesh(new THREE.SphereGeometry(0.12 * s, 10, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), this.M('#6ab050')); top.add(cup);
+    for (let i = 0; i < 7; i++) this.r();   // 葉はなし。もとの葉（円すい 7 枚）の向きのぶん、区画の乱数を進める
+    const h = 1.7 * s, big = s >= 1, tr = this.treeRand(x, z, 11);
+    const body = this.mc.shroomToon || (this.mc.shroomToon = shroomToonMat()), line = this.mc.shroomLine || (this.mc.shroomLine = shroomLineMat());
+    // 曲がり：大たんぽぽ（物語で、てっぺんの綿毛にタマが眠る）はまっすぐ立てる。小さいものほど、ななめにかしぐ
+    const la = tr() * 6.2832, lk = (s >= 1.6 ? 0 : big ? 0.05 : 0.07 + tr() * 0.09) * h, rx = Math.cos(la) * lk, rz = Math.sin(la) * lk;
+    // 茎は綿毛の玉のまん中（花托）まで通す（もとは茎の先から 0.55s 上に玉が浮いていた）。玉の高さはもとと同じ
+    const S = this.dandelionStem(s, h + 0.5 * s, big), top = new THREE.Group(); g.add(top);
+    const stem = new THREE.Mesh(S.geo, body); g.add(stem);
+    const cap = new THREE.Mesh(this.dandelionTop(s, big, tr), body); top.add(cap);
+    if (big) { stem.castShadow = cap.castShadow = stem.receiveShadow = cap.receiveShadow = true; g.add(new THREE.Mesh(S.geo, line)); top.add(new THREE.Mesh(cap.geometry.userData.hull, line)); }
     let head = null;
-    if (!o.bald) { head = makePuff(s); head.position.y = 0.55 * s; top.add(head); }
+    if (!o.bald) { head = makePuff(s, true); head.position.y = 0.05 * s; top.add(head); }
     if (o.col !== false) this.col(x, z, 0.25 * s, h);
-    const ph = this.r() * 6; this.tick((dt, t) => { top.rotation.z = Math.sin(t * 0.9 + ph) * 0.05; top.rotation.x = Math.sin(t * 0.7 + ph * 2) * 0.04; if (head) head.rotation.y += dt * 0.15; });
+    // ゆれ：茎の先が A m ほど、二つの向きに、ちがう速さでゆれる（もとの、てっぺんだけ 0.05 rad かたむけたのと同じくらい）
+    const ph = this.r() * 6, A = 0.025 * h;
+    S.bend(rx, rz, top);
+    this.tick((dt, t) => { S.bend(rx + Math.sin(t * 0.9 + ph) * A, rz + Math.sin(t * 0.7 + ph * 2) * A * 0.8, top); if (head) head.rotation.y += dt * 0.15; });
     return { g, top, head, h };
+  }
+  // たんぽぽの茎：根もと（地面に少しもぐる）から高さ h（花托）まで。太さは根もとが太く、先へ細くなり、花托の下で少しふくらむ。
+  //   色は根もとが赤み、先ほど明るい緑。縦にうすい筋（ひとつおきの頂点を明るく）。
+  //   bend(bx, bz, top)：先が (bx, bz) だけずれるように、高さの二乗で曲げる。輪は茎の向きに直角。top を茎の先へ、茎の向きに立てて置く
+  dandelionStem(s, h, big) {
+    const NR = big ? 12 : 7, RS = big ? 10 : 6, nv = (NR + 1) * RS, y0 = -0.04 * s, L = h - y0;
+    const tab = (T, t) => { let i = 0; while (i < T.length - 2 && T[i + 1][0] < t) i++; const [ta, a] = T[i], [tb, b] = T[i + 1]; return a + (b - a) * Math.max(0, Math.min(1, (t - ta) / (tb - ta))); };
+    const RAD = [[0, 0.078], [0.06, 0.062], [0.5, 0.052], [0.86, 0.044], [0.95, 0.05], [1, 0.06]];
+    const COL = [[0, '#9a5e54'], [0.1, '#8c8e5a'], [0.22, '#8ab462'], [0.7, '#a0c676'], [0.93, '#aacc7c'], [1, '#90b866']].map(([t, c]) => [t, new THREE.Color(c)]);
+    const ts = [], rr = [], P = new Float32Array(nv * 3), N = new Float32Array(nv * 3), C = new Float32Array(nv * 3), G = new Float32Array(nv), I = [], cs = [], sn = [];
+    for (let j = 0; j < RS; j++) { const a = j / RS * 6.2832; cs.push(Math.cos(a)); sn.push(Math.sin(a)); }
+    for (let i = 0; i <= NR; i++) {
+      const t = 0.5 - 0.5 * Math.cos(Math.PI * i / NR);   // 輪は根もとと先にこまかく
+      ts.push(t); rr.push(tab(RAD, t) * s);
+      let k = 0; while (k < COL.length - 2 && COL[k + 1][0] < t) k++;
+      const c = COL[k][1].clone().lerp(COL[k + 1][1], Math.max(0, Math.min(1, (t - COL[k][0]) / (COL[k + 1][0] - COL[k][0]))));
+      for (let j = 0; j < RS; j++) { const f = j % 2 ? 0.93 : 1.04, v = (i * RS + j) * 3; C[v] = c.r * f; C[v + 1] = c.g * f; C[v + 2] = c.b * f; }
+    }
+    for (let i = 0; i < NR; i++) for (let j = 0; j < RS; j++) { const a = i * RS + j, b = i * RS + (j + 1) % RS; I.push(a, b, a + RS, b, b + RS, a + RS); }
+    const geo = new THREE.BufferGeometry(), pa = new THREE.BufferAttribute(P, 3), na = new THREE.BufferAttribute(N, 3);
+    pa.setUsage(THREE.DynamicDrawUsage); na.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('position', pa); geo.setAttribute('normal', na); geo.setAttribute('color', new THREE.BufferAttribute(C, 3)); geo.setAttribute('aGlow', new THREE.BufferAttribute(G, 1));
+    geo.setIndex(I); geo.boundingSphere = new THREE.Sphere(V3(0, h / 2, 0), h * 0.62 + 0.3 * s);
+    const tip = V3(), UP = V3(0, 1, 0);
+    const bend = (bx, bz, top) => {
+      for (let i = 0; i <= NR; i++) {
+        const t = ts[i], r = rr[i], cx = bx * t * t, cy = y0 + L * t, cz = bz * t * t;
+        // 茎の向き T、輪の向き u（x を T に直角にしたもの）と v = T × u
+        let Tx = 2 * bx * t, Ty = L, Tz = 2 * bz * t; const tl = 1 / Math.sqrt(Tx * Tx + Ty * Ty + Tz * Tz); Tx *= tl; Ty *= tl; Tz *= tl;
+        let ux = 1 - Tx * Tx, uy = -Tx * Ty, uz = -Tx * Tz; const ul = 1 / Math.sqrt(ux * ux + uy * uy + uz * uz); ux *= ul; uy *= ul; uz *= ul;
+        const vx = Ty * uz - Tz * uy, vy = Tz * ux - Tx * uz, vz = Tx * uy - Ty * ux;
+        for (let j = 0; j < RS; j++) {
+          const v = (i * RS + j) * 3, nx = cs[j] * ux + sn[j] * vx, ny = cs[j] * uy + sn[j] * vy, nz = cs[j] * uz + sn[j] * vz;
+          N[v] = nx; N[v + 1] = ny; N[v + 2] = nz; P[v] = cx + nx * r; P[v + 1] = cy + ny * r; P[v + 2] = cz + nz * r;
+        }
+        if (i === NR) { top.position.set(cx, cy, cz); top.quaternion.setFromUnitVectors(UP, tip.set(Tx, Ty, Tz)); }
+      }
+      pa.needsUpdate = na.needsUpdate = true;
+    };
+    return { geo, bend };
+  }
+  // たんぽぽのてっぺん（top の中、y が茎の向き）：綿毛の玉のまん中の花托と、下へ反り返った総苞。
+  //   花托は、下が緑で、上は種のついていた（綿毛の抜けたあとは、種の落ちた）うす茶の丸屋根。綿毛の玉の絵のまん中の花托と重なる
+  //   総苞は細い葉を、花托のふちから外へ出して、茎にそって下へ垂らす（表と裏に面）。ふち取りは花托だけ（geo.userData.hull）
+  dandelionTop(s, big, tr) {
+    const b = { P: [], N: [], C: [], G: [], I: [], H: [] }, C = c => new THREE.Color(c);
+    const out = (lx, ly, lz, nx, ny, nz, col, gl) => { b.P.push(lx, ly, lz); b.N.push(nx, ny, nz); b.C.push(col.r, col.g, col.b); b.G.push(gl); };
+    const gA = C('#86b85c'), gB = C('#98c668'), tan = C('#dccaa0'), tanD = C('#b09468'), seg = big ? 14 : 8;
+    this.toonLathe(b, [[0.058 * s, -0.01 * s, gA, 0], [0.09 * s, 0.03 * s, gA, 0], [0.106 * s, 0.058 * s, gB, 0, tanD, 0], [0.1 * s, 0.072 * s, tanD, 0], [0.072 * s, 0.108 * s, tan, 0], [0, 0.124 * s, tan, 0]], seg, out);
+    // 総苞：ふち（半径 0.085s）から外へ出て、下へ反り返る二次の曲線。幅は根もと 0.03s から先へ細く
+    const n = big ? 13 : 8, a0 = tr() * 6.2832, bA = C('#8cbc5e'), bB = C('#a4cc72'), bBack = C('#74a852');
+    for (let k = 0; k < n; k++) {
+      const a = a0 + (k + (tr() - 0.5) * 0.4) / n * 6.2832, ca = Math.cos(a), sa = Math.sin(a), len = (0.13 + tr() * 0.06) * s, flare = (0.04 + tr() * 0.03) * s, w0 = 0.03 * s * (0.8 + tr() * 0.4);
+      const P0 = [0.084 * s, 0.03 * s], P1 = [0.084 * s + flare * 1.6, 0.04 * s], P2 = [0.084 * s + flare, 0.03 * s - len];
+      const base = b.P.length / 3, SG = 4;
+      for (let face = 0; face < 2; face++) for (let i = 0; i <= SG; i++) {
+        const u = i / SG, iu = 1 - u, rho = iu * iu * P0[0] + 2 * iu * u * P1[0] + u * u * P2[0], yy = iu * iu * P0[1] + 2 * iu * u * P1[1] + u * u * P2[1];
+        const dr = 2 * iu * (P1[0] - P0[0]) + 2 * u * (P2[0] - P1[0]), dy = 2 * iu * (P1[1] - P0[1]) + 2 * u * (P2[1] - P1[1]), dl = 1 / Math.sqrt(dr * dr + dy * dy);
+        // 面の向き：曲線の向き (dr, dy) に直角で外向き (dy, -dr)。裏は逆向き
+        const fn = face ? -1 : 1, nr = dy * dl * fn, ny = -dr * dl * fn, w = w0 * Math.pow(iu, 0.8) + 0.002 * s, col = face ? bBack : bA.clone().lerp(bB, u);
+        for (const side of [-1, 1]) out(ca * rho - sa * w * side, yy, sa * rho + ca * w * side, ca * nr, ny, sa * nr, col, 0);
+      }
+      for (let i = 0; i < SG; i++) {
+        const f = base + i * 2, k2 = base + (SG + 1) * 2 + i * 2;
+        b.I.push(f, f + 2, f + 1, f + 1, f + 2, f + 3);   // 表
+        b.I.push(k2, k2 + 1, k2 + 2, k2 + 1, k2 + 3, k2 + 2);   // 裏
+      }
+    }
+    const geo = new THREE.BufferGeometry(), hull = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(b.P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(b.N, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(b.C, 3)); geo.setAttribute('aGlow', new THREE.Float32BufferAttribute(b.G, 1));
+    geo.setIndex(b.I); geo.computeBoundingSphere();
+    for (const k of ['position', 'normal', 'color', 'aGlow']) hull.setAttribute(k, geo.getAttribute(k));
+    hull.setIndex(b.H); hull.boundingSphere = geo.boundingSphere;
+    geo.userData.hull = hull;
+    return geo;
   }
   // zone.fluff：[{ at: [x, z], to: [x, z], h }]：綿毛（大きなたんぽぽ。F でつかまると、風に乗って to へ飛ぶ。FieldView.glide）
   //   綿毛は飛ぶたびに抜けて、しばらくすると、また生えてくる。跳ぶ先には白い輪
