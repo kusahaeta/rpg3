@@ -694,9 +694,10 @@ const FIELD_ZONES = {
     notes: [{ at: [-1, -11], face: 0.2, post: ['↑ 林の奥', '→ 高台　← 小川'], title: '道しるべ', text: '「北　林の奥／東　高台／西　小川」……「ねむり花がふくらんだら、息をとめて、しぼむまで待つこと」と書いてある。' },
       { at: [9, 12], when: 'scene:c2_03g', mark: [0, 1.6, -3], title: '大きなねむり花', text: '人の背たけほどもある、大きなねむり花。……花びらの上に、綿毛がひとつ引っかかっている。' }],
     map2d: [610, 236] },
-  woods_deep: { ci: 1, name: 'まどろみの林・大樹のうろ', bgm: 'drowsy', floor: '奥', parent: 'woods', w: 60, d: 72, stage: '2-2', after: 'c2_03g', arenas: [[1, -20, 0], [-3, 8, 0]], build: 'woodsDeep', bg: 'forest', groups: 5, chests: 3, crystals: 3,
+  woods_deep: { ci: 1, name: 'まどろみの林・大樹のうろ', bgm: 'drowsy', floor: '奥', parent: 'woods', w: 60, d: 72, stage: '2-2', after: 'c2_03g', arenas: [[1, -20, 0], [-3, 8, 180]], build: 'woodsDeep', bg: 'forest', groups: 5, chests: 3, crystals: 3,
     world: true, arch: 'woods', chestAt: [[-25, -11], [25, -11], [-11, 25]], foes: ['risu', 'kinoko', 'noraInu'],
     th: { fog: '#c8d8b8', fogD: 0.03 },
+    // 光るきのこの広場の戦場 (-3, 8) は南を向く（北を向くと、肩越しのカメラが小川の丸木橋の上に来て、欄干の柱が画面の下をふさぐ）
     // 南の入口から丸木橋で小川を渡ると、光るきのこの輪の広場。北の分かれ道から、ねむり花の小道を抜けると、林のいちばん奥の大樹の広場
     // （大樹のうろは、リスたちのどんぐり倉）。西はリスの村（行き止まり）、東の石段の高台には、大樹の広場へ飛べる綿毛
     map: [
@@ -3905,53 +3906,56 @@ class ZoneKit {
     //   ほしふる森のほかは、区画の乱数を、もとの木と同じだけ進める（あとに置く茂み・岩・小物の位置を変えない）。
     //   o.thin：森の木は枝と葉が多いので、奥の木をもっとまばらに（乱数だけ進めて植えない）。
     //   o.plain：もとの丸い葉の玉の木のまま（ねこ神の夢のお菓子の森。木ではなく、お菓子の飾り）
+    //   o.hide：乱数だけ進めて植えない（戦闘の背景で、カメラのそばの木。nearBattleCam）
     if (!o.plain && (kind === 'pine' || !['dead', 'spooky', 'mush', 'candy', 'crystal'].includes(kind))) {
       if (!this.v.canopy) { this.burn(kind === 'pine' ? 7 : 21); if (kind !== 'pine' && o.fruit && this.r() < 0.3) this.burn(8); }
-      if (o.thin) return;
+      if (o.thin || o.hide) return;
       return kind === 'pine' ? this.lushFir(x, y, z, s, o) : this.lushTree(x, y, z, s, o);
     }
+    const put = o.hide ? () => {} : this.put.bind(this);
     const r = this.r, leaf = () => this.tint(pick(o.leaf || ['#5ab04a', '#4a9a3e', '#6abf52']), 0.1), bark = this.tint(o.bark || '#7a5a3a');
     switch (kind) {
       case 'pine':
-        this.put('trunk', x, y, z, [0.2 * s, 1.3 * s, 0.2 * s], null, bark);
-        for (let i = 0; i < 3; i++) this.put('cone', x, y + (1.0 + i * 0.9) * s, z, [(1.4 - i * 0.36) * s, 1.8 * s, (1.4 - i * 0.36) * s], [0, r() * 3, 0], this.tint(pick(o.pine || ['#3a7a44', '#2e6a3a', '#447e48']), 0.08));
+        put('trunk', x, y, z, [0.2 * s, 1.3 * s, 0.2 * s], null, bark);
+        for (let i = 0; i < 3; i++) put('cone', x, y + (1.0 + i * 0.9) * s, z, [(1.4 - i * 0.36) * s, 1.8 * s, (1.4 - i * 0.36) * s], [0, r() * 3, 0], this.tint(pick(o.pine || ['#3a7a44', '#2e6a3a', '#447e48']), 0.08));
         break;
       case 'dead':   // 枝分かれから作り直した枯れ木（区画の乱数は、もとの幹と枝 4 本と同じだけ進める）
         this.burn(9);
+        if (o.hide) break;
         if (o.deadFar) this.farDead(x, y, z, s);   // 崖の上：十字の板
         else this.lushDead(x, y, z, s, { lod: o.lod });
         break;
       case 'spooky':
-        this.put('trunk', x, y, z, [0.22 * s, 2.6 * s, 0.22 * s], null, this.tint('#3a3048'));
-        for (let i = 0; i < 3; i++) { const a = i * 2.1 + r(); this.put('stick', x, y + (1.6 + i * 0.3) * s, z, [0.05 * s, 1.1 * s, 0.05 * s], [Math.sin(a) * 1.0, 0, Math.cos(a) * 1.0], '#3a3048'); }
-        this.put('blob', x, y + 3.0 * s, z, [1.2 * s, 0.95 * s, 1.2 * s], [0, r() * 3, 0], this.tint(pick(o.leaf || ['#7a4a9a', '#6a3a8a', '#8a5aa8'])));
-        for (let i = 0; i < 3; i++) { const a = r() * 6; this.put('dot', x + Math.cos(a) * 1.0 * s, y + (2.6 + r() * 0.6) * s, z + Math.sin(a) * 1.0 * s, 0.1 * s, null, '#ff8ad8'); }
+        put('trunk', x, y, z, [0.22 * s, 2.6 * s, 0.22 * s], null, this.tint('#3a3048'));
+        for (let i = 0; i < 3; i++) { const a = i * 2.1 + r(); put('stick', x, y + (1.6 + i * 0.3) * s, z, [0.05 * s, 1.1 * s, 0.05 * s], [Math.sin(a) * 1.0, 0, Math.cos(a) * 1.0], '#3a3048'); }
+        put('blob', x, y + 3.0 * s, z, [1.2 * s, 0.95 * s, 1.2 * s], [0, r() * 3, 0], this.tint(pick(o.leaf || ['#7a4a9a', '#6a3a8a', '#8a5aa8'])));
+        for (let i = 0; i < 3; i++) { const a = r() * 6; put('dot', x + Math.cos(a) * 1.0 * s, y + (2.6 + r() * 0.6) * s, z + Math.sin(a) * 1.0 * s, 0.1 * s, null, '#ff8ad8'); }
         break;
       case 'mush': {
         const cap = pick(o.caps || ['#e05a6a', '#ffb84a', '#b88aff']);
         // 豊かな森：作り直したトゥーンのきのこ（区画の乱数は、もとと同じ数だけ進める。あとに置く木・小物の位置を変えないため）
-        if (this.v.canopy) { for (let i = 0; i < 6; i++) r(); this.shroom(x, y, z, { H: 1.45 * s, R: 1.2 * s, rs: 0.26 * s, cap, kids: true }); break; }
-        this.put('stick', x, y, z, [0.28 * s, 1.5 * s, 0.28 * s], null, this.tint('#fff0dc', 0.04));
-        this.put('cap', x, y + 1.35 * s, z, [1.3 * s, 0.85 * s, 1.3 * s], null, this.tint(cap));
-        for (let i = 0; i < 4; i++) { const a = i * 1.6 + r(); this.put('ball', x + Math.cos(a) * 0.7 * s, y + 1.35 * s + 0.62 * s, z + Math.sin(a) * 0.7 * s, 0.13 * s, null, '#fff8f0'); }
+        if (this.v.canopy) { for (let i = 0; i < 6; i++) r(); if (!o.hide) this.shroom(x, y, z, { H: 1.45 * s, R: 1.2 * s, rs: 0.26 * s, cap, kids: true }); break; }
+        put('stick', x, y, z, [0.28 * s, 1.5 * s, 0.28 * s], null, this.tint('#fff0dc', 0.04));
+        put('cap', x, y + 1.35 * s, z, [1.3 * s, 0.85 * s, 1.3 * s], null, this.tint(cap));
+        for (let i = 0; i < 4; i++) { const a = i * 1.6 + r(); put('ball', x + Math.cos(a) * 0.7 * s, y + 1.35 * s + 0.62 * s, z + Math.sin(a) * 0.7 * s, 0.13 * s, null, '#fff8f0'); }
         break;
       }
       case 'candy': {
         const c = pick(['#ffb8d8', '#b8e0ff', '#fff0a8', '#c8ffc8']);
-        this.put('stick', x, y, z, [0.12 * s, 2.4 * s, 0.12 * s], null, '#fff8ec');
-        if (r() < 0.5) this.put('ring', x, y + 2.9 * s, z, 0.75 * s, [0, r() * 3, 0], c);
-        else this.put('ball', x, y + 2.8 * s, z, 0.95 * s, null, c);
+        put('stick', x, y, z, [0.12 * s, 2.4 * s, 0.12 * s], null, '#fff8ec');
+        if (r() < 0.5) put('ring', x, y + 2.9 * s, z, 0.75 * s, [0, r() * 3, 0], c);
+        else put('ball', x, y + 2.8 * s, z, 0.95 * s, null, c);
         break;
       }
       case 'crystal':
-        for (let i = 0; i < 4; i++) { const h = (0.6 + r() * 1.0) * s; this.put('gem', x + (r() - 0.5) * s, y + h * 0.4, z + (r() - 0.5) * s, [0.3 * s, h * 1.1, 0.3 * s], [(r() - 0.5) * 0.7, r() * 3, (r() - 0.5) * 0.7], o.gem || '#a07bff'); }
-        this.put('rock', x, y + 0.2 * s, z, [0.8 * s, 0.5 * s, 0.8 * s], [0, r() * 3, 0], this.tint(o.rock || '#4a4450'));
+        for (let i = 0; i < 4; i++) { const h = (0.6 + r() * 1.0) * s; put('gem', x + (r() - 0.5) * s, y + h * 0.4, z + (r() - 0.5) * s, [0.3 * s, h * 1.1, 0.3 * s], [(r() - 0.5) * 0.7, r() * 3, (r() - 0.5) * 0.7], o.gem || '#a07bff'); }
+        put('rock', x, y + 0.2 * s, z, [0.8 * s, 0.5 * s, 0.8 * s], [0, r() * 3, 0], this.tint(o.rock || '#4a4450'));
         break;
       default: {   // round
-        this.put('trunk', x, y, z, [0.2 * s, 1.9 * s, 0.2 * s], null, bark);
-        for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + r(); this.put('blob', x + Math.cos(a) * 0.55 * s, y + (2.2 + r() * 0.45) * s, z + Math.sin(a) * 0.55 * s, [(0.95 + r() * 0.3) * s, 0.82 * s, (0.95 + r() * 0.3) * s], [0, r() * 3, 0], leaf()); }
-        this.put('blob', x, y + 2.85 * s, z, [1.05 * s, 0.92 * s, 1.05 * s], [0, r() * 3, 0], leaf());
-        if (o.fruit && r() < 0.3) for (let i = 0; i < 4; i++) { const a = r() * 6; this.put('dot', x + Math.cos(a) * 1.0 * s, y + (2.3 + r() * 0.6) * s, z + Math.sin(a) * 1.0 * s, 0.12 * s, null, o.fruit); }
+        put('trunk', x, y, z, [0.2 * s, 1.9 * s, 0.2 * s], null, bark);
+        for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2 + r(); put('blob', x + Math.cos(a) * 0.55 * s, y + (2.2 + r() * 0.45) * s, z + Math.sin(a) * 0.55 * s, [(0.95 + r() * 0.3) * s, 0.82 * s, (0.95 + r() * 0.3) * s], [0, r() * 3, 0], leaf()); }
+        put('blob', x, y + 2.85 * s, z, [1.05 * s, 0.92 * s, 1.05 * s], [0, r() * 3, 0], leaf());
+        if (o.fruit && r() < 0.3) for (let i = 0; i < 4; i++) { const a = r() * 6; put('dot', x + Math.cos(a) * 1.0 * s, y + (2.3 + r() * 0.6) * s, z + Math.sin(a) * 1.0 * s, 0.12 * s, null, o.fruit); }
       }
     }
   }
@@ -3962,8 +3966,10 @@ class ZoneKit {
   shrub(x, y, z, s = 1, o = {}) {
     if (!o.plain) {
       if (!this.v.canopy) { this.burn(9); if (o.flower && this.r() < 0.5) this.burn(6); }
+      if (o.hide) return;
       return this.lushShrub(x, y, z, s, o);
     }
+    if (o.hide) { this.burn(9); if (o.flower && this.r() < 0.5) this.burn(6); return; }
     for (let i = 0; i < 3; i++) this.put('blob', x + (i - 1) * 0.45 * s, y + 0.35 * s, z + (this.r() - 0.5) * 0.4 * s, [0.55 * s, 0.42 * s, 0.55 * s], [0, this.r() * 3, 0], this.tint(pick(o.bushLeaf || o.leaf || ['#4a9a3e', '#5aa848'])));
     if (o.flower && this.r() < 0.5) for (let i = 0; i < 3; i++) this.put('dot', x + (this.r() - 0.5) * 1.1 * s, y + 0.62 * s, z + (this.r() - 0.5) * 0.6 * s, 0.08 * s, null, pick(o.flower));
   }
@@ -3981,12 +3987,14 @@ class ZoneKit {
       const s = (o.size || 1) * (0.85 + r() * 0.45) * (d >= 3 ? 1.25 : 1);
       // 奥の木は、森の木の枝分かれを一段へらす。ほしふる森のほかの奥の木は、位置で決めて 3 分の 1 をさらに省く（区画の乱数の進み方を変えずに、ほしふる森と同じ 6 割に）
       const thin = !this.v.canopy && !o.plain && d >= 4 && posHash(x * 3.1, z * 3.1) % 1000 < 333;
-      this.plant(kindOf(), x + (r() - 0.5) * 0.9, y, z + (r() - 0.5) * 0.9, s, d >= 3 ? { ...o, lod: true, thin } : o);
+      // 戦闘の背景では、カメラのそばの木・茂みは植えない（乱数は同じだけ進める）
+      const kind = kindOf(), px = x + (r() - 0.5) * 0.9, pz = z + (r() - 0.5) * 0.9, hide = this.nearBattleCam(px, pz, 3.5);
+      this.plant(kind, px, y, pz, s, d >= 3 ? { ...o, lod: true, thin, hide } : hide ? { ...o, hide } : o);
       if (d !== 1) continue;
       DIR4.forEach(([dc, dr]) => {
         const j = T.idx(c + dc, rw + dr); if (j < 0 || !T.isWalkKind(T.kind[j]) || Math.abs(T.h[j] - y) > 0.3) return;
         const bx = x + dc * 0.55 + dr * (r() - 0.5) * 1.2, bz = z + dr * 0.55 + dc * (r() - 0.5) * 1.2;
-        if (r() < (o.bush ?? 0.75)) this.shrub(bx, y, bz, 0.8 + r() * 0.5, o);
+        if (r() < (o.bush ?? 0.75)) { const bs = 0.8 + r() * 0.5; this.shrub(bx, y, bz, bs, this.nearBattleCam(bx, bz, 2.5) ? { ...o, hide: true } : o); }
         else if (r() < (o.rocks ?? 0.35)) this.put('rock', bx, y + 0.2, bz, [0.5 + r() * 0.3, 0.35 + r() * 0.2, 0.5 + r() * 0.3], [0, r() * 3, 0], this.tint(o.rock || '#9a9488'));
       });
     }
@@ -4048,6 +4056,27 @@ class ZoneKit {
   //   カメラが樹冠の中や木立のきわに入り、前が見えにくかった。広場に立つ木（目印の巨木・手で置いた茂み）は省かない。
   //   木の乱数を使うとほかの葉の形まで変わるので、位置だけで決める
   inWall(x, z) { const T = this.T, i = T ? T.at(x, z) : -1; return i >= 0 && !T.isWalkKind(T.kind[i]); }
+  // 戦闘の背景（v.arena）で、カメラのそば（R m の中）か。森の木は樹冠が広く低いので、戦場が木立のきわにあると、
+  //   肩越しのカメラのすぐ横に葉が来て画面をふさぐ（まどろみの林の入口の戦場）。切り取りはキャラとのあいだしか切らない。
+  //   カメラの場所は戦場から見て（味方のうしろが +z）：肩越し（BattleView.shoulder）は 4 匹ぶんで (-1.2, 6.6)〜(5, 5.2)、引き（wide）は (0, 8.2)〜(0, 11)
+  battleLocal(x, z) {
+    const A = this.v.arena, c = Math.cos(A.face || 0), s = Math.sin(A.face || 0), dx = x - A.x, dz = z - A.z;
+    return [dx * c + dz * s, -dx * s + dz * c];
+  }
+  nearBattleCam(x, z, R) {
+    if (!this.v.arena) return false;
+    const [lx, lz] = this.battleLocal(x, z);
+    const seg = (ax, az, bx, bz) => { const ux = bx - ax, uz = bz - az, t = clamp(((lx - ax) * ux + (lz - az) * uz) / (ux * ux + uz * uz), 0, 1); return Math.hypot(lx - ax - ux * t, lz - az - uz * t); };
+    return seg(-1.2, 6.6, 5, 5.2) < R || seg(0, 8.2, 0, 11) < R;
+  }
+  // 戦闘の背景で、キャラの立つ戦場（左右 5m・奥 6m〜手前 3.5m）か、カメラのそばか（rad：飾りの半径）。
+  //   ここに立つ大きな飾りは、味方の横から敵の前までをふさぐ（石畳の丘の高台の戦場の、タマのすぐ横の崩れた柱）。
+  //   切り取りは手前の味方より奥を切れないので、戦場の中の飾りは切られない
+  inBattleView(x, z, rad = 0) {
+    if (!this.v.arena) return false;
+    const [lx, lz] = this.battleLocal(x, z);
+    return (Math.abs(lx) < 5 + rad && lz > -6 - rad && lz < 3.5 + rad) || this.nearBattleCam(x, z, rad + 1.5);
+  }
   openThin(x, z) { const T = this.T, i = T ? T.at(x, z) : -1; return i >= 0 && T.dist[i] >= 0 && T.dist[i] <= 1 && posHash(x * 7.3, z * 7.3) % 1000 < 700; }
   // 太さの変わる枝・幹：P0・P1・P2 を通る曲線（lushCurve）にそって。o.flare：根もとの張り出し（まわりに 5 つのふくらみ）。o.y・o.h：木の根もとの高さと高さ（ゆれの大きさ）。
   //   区画に入るたびに数百本の木を作るので、計算はふつうの数で（three.js の曲線は長さを測りなおすので、非力なスマホで数秒かかった）
@@ -6159,24 +6188,24 @@ class ZoneKit {
   // 手で置く木と茂み：ほしふる森で作り直した森の木で（実・花はつけない）。区画の乱数は、もとの部品と同じだけ進める（ほしふる森も。前からそうだった）
   roundTree(x, z, s = 1, leaf = 'leaf', o = {}) {
     this.burn((o.lush ? 5 : 3) * 3 + (o.fruit ? 8 : 0));
-    this.lushTree(x, this.gy(x, z), z, s, { leaf: [this.leafCol(leaf)] });
+    if (!this.nearBattleCam(x, z, 3.5)) this.lushTree(x, this.gy(x, z), z, s, { leaf: [this.leafCol(leaf)] });
     if (o.col !== false) this.col(x, z, 0.22 * s, 1.8 * s);
   }
   //   o.far：遠景の木（十字の板の絵。farTree）
   pine(x, z, s = 1, leaf = 'leafDark', o = {}) {
     if (o.far) { this.farTree(x, this.gy(x, z), z, s * 1.15, true, this.leafCol(leaf)); this.col(x, z, 0.2 * s, 1.2 * s); return; }
-    this.lushFir(x, this.gy(x, z), z, s, { pine: [this.leafCol(leaf)] });
+    if (!this.nearBattleCam(x, z, 3.5)) this.lushFir(x, this.gy(x, z), z, s, { pine: [this.leafCol(leaf)] });
     this.col(x, z, 0.2 * s, 1.2 * s);
   }
   bush(x, z, s = 1, leaf = 'leaf2', flower) {
     this.burn(3 + (flower ? 8 : 0));
-    this.lushShrub(x, this.gy(x, z), z, s, { bushLeaf: [this.leafCol(leaf)] });
+    if (!this.nearBattleCam(x, z, 2.5)) this.lushShrub(x, this.gy(x, z), z, s, { bushLeaf: [this.leafCol(leaf)] });
     this.col(x, z, 0.8 * s, 0.8 * s);
   }
   // 枯れ木（枝分かれから作る lushDead）。区画の乱数は、もとの枝 4 本と同じだけ進める。当たり判定はもとの幹と同じ
   deadTree(x, z, s = 1) {
     this.burn(4);
-    this.lushDead(x, this.gy(x, z), z, s);
+    if (!this.nearBattleCam(x, z, 3)) this.lushDead(x, this.gy(x, z), z, s);
     this.col(x, z, 0.2 * s, 2.6 * s);
   }
   // 花：細い茎に葉を一、二枚、花は花びらの絵を貼った板（透けるところは抜く）。花の向きと傾きは一本ずつばらばら
@@ -8377,6 +8406,7 @@ class ZoneKit {
     this.col(x, z, r * 1.3, h);
   }
   pillarBroken(x, z, h, fallen = false, mat = 'stone') {
+    if (this.inBattleView(x, z, fallen ? Math.min(h / 2, 2) : 0.75)) { this.r(); return; }   // 戦闘の背景で戦場・カメラにかかる柱は立てない（乱数は同じだけ進める）
     if (fallen) { this.mesh(new THREE.CylinderGeometry(0.55, 0.6, h, 12), mat, x, 0.55, z, { rz: Math.PI / 2, ry: this.r() * 3 }); this.col(x, z, Math.min(h / 2, 2)); return; }
     this.cyl(x, z, 0.6, h, mat, { r2: 0.55, seg: 12 });
     this.box(x, z, 1.5, 0.4, 1.5, 'stone2', { col: false });
