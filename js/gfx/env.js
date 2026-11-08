@@ -944,7 +944,7 @@ function lushTuftGeo() {
   g.setAttribute('aT', new THREE.Float32BufferAttribute(at, 1)); g.setIndex(idx);
   return (TexCache.lushTuft = g);
 }
-// 区画の森の木の形（ZoneKit.flushTrees）：`${区画}|${軽量}` → [[BufferGeometry, 葉か], …]。最近の二区画だけ取っておく
+// 区画の森の木の形（ZoneKit.flushTrees）：`${区画}|${軽量}|${木の数}|${植える木の一覧のハッシュ}` → [[BufferGeometry, 葉か], …]。最近の二つだけ取っておく
 const LUSH_TREE_CACHE = new Map();
 const lushPick = (a, r) => a[Math.floor(r() * a.length)];
 const lushTint = (c, k, r) => new THREE.Color(c).multiplyScalar(1 + (r() - 0.5) * k * 2);   // 色を少しだけばらつかせる（ZoneKit.tint の、乱数を選べるもの）
@@ -1102,19 +1102,21 @@ function lushRootMat() {
 //   光の当たり方は板の向きではなく、樹冠のまるみ（頂点の法線）で決めるので、なめらかに変わる。そこで光の計算は頂点ごとにして
 //   （画素ごとの計算は、絵を読んで透けるところを抜き、色をかけるだけ）、葉が何枚も重なる森でも軽くする（非力なスマホで葉がいちばん重かった）。
 //   光は、場面の平行光・半球光・環境光と、空の映り込みの代わりの分（sky）。葉は影を受けない（奥の葉の暗さは頂点の色に焼きこみ済み）。
+//   envUp・envDown：空の照り返し（場面の環境マップ）の代わり。上向き・下向きの面が受ける色（ZoneKit.flushTrees が区画の空の色から決める。ほしふる森は 0）。
+//   ふつうの材質は環境マップで空の明るさを受けるので、空の明るい区画（遺跡・村）ほど、これがないと葉だけ暗く灰色がかって見えた
 //   風で枝ごとゆれ（aWind は lushBarkMat と同じ）、葉先（絵の上の辺）はこまかくそよぐ。日が透けたように、少しだけ自分で光る。
 //   遠くで絵が小さくなっても葉がやせないよう、透けるところのふちを画面の細かさに合わせてくっきりさせる。
 //   影を落とすときは、map と alphaTest から three.js が葉の形で抜く
 function lushLeafMat() {
   const tex = leafSprayTex();
   const m = new THREE.ShaderMaterial({
-    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.lights, THREE.UniformsLib.fog, { leafMap: { value: null }, lushTime: { value: 0 }, sky: { value: 0.35 } }]),
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.lights, THREE.UniformsLib.fog, { leafMap: { value: null }, lushTime: { value: 0 }, sky: { value: 0.35 }, envUp: { value: new THREE.Color(0) }, envDown: { value: new THREE.Color(0) } }]),
     lights: true, fog: true, vertexColors: true, side: THREE.DoubleSide,
     vertexShader: `
       #include <common>
       #include <lights_pars_begin>
       #include <fog_pars_vertex>
-      attribute vec2 aWind; uniform float lushTime, sky; varying vec2 vUv; varying vec3 vCol;
+      attribute vec2 aWind; uniform float lushTime, sky; uniform vec3 envUp, envDown; varying vec2 vUv; varying vec3 vCol;
       void main() {
         vec3 transformed = position;
         float ph = aWind.x * 6.2832, q = ph * 5.3 + position.x * 2.1 + position.z * 1.7;
@@ -1130,7 +1132,7 @@ function lushLeafMat() {
         #if NUM_HEMI_LIGHTS > 0
           for (int i = 0; i < NUM_HEMI_LIGHTS; i++) { irr += getHemisphereLightIrradiance(hemisphereLights[i], n); irr += getHemisphereLightIrradiance(hemisphereLights[i], n) * sky; }
         #endif
-        vCol = color * irr * RECIPROCAL_PI + color * 0.16;
+        vCol = color * irr * RECIPROCAL_PI + color * 0.16 + color * mix(envDown, envUp, normalize(mat3(modelMatrix) * normal).y * 0.5 + 0.5);
         vUv = uv;
         #include <fog_vertex>
       }`,
