@@ -5833,13 +5833,13 @@ class ZoneKit {
     this.light(x, 3.2, z - 1, '#ffd8a0', 7, 12);
   }
   // ---------------- 仕掛け：まどろみの林（綿毛・ねむり花） ----------------
-  // たんぽぽ：葉のロゼットと、しなる茎、てっぺんに綿毛の玉（makePuff）。s で大きさ、bald で綿毛の抜けたあと
+  // たんぽぽ：しなる茎と、てっぺんに綿毛の玉（makePuff）。葉はない。s で大きさ、bald で綿毛の抜けたあと
   //   茎は根もとから先へ、高さの二乗で曲がる一本の筒（dandelionStem）。風のゆれも茎ごとしなり、てっぺん（花托・反り返った総苞・綿毛）は茎の先についていく。
   //   茎とてっぺんは森のきのこと同じトゥーンの材質（頂点の色）。大きいもの（s ≥ 1）は、ふち取りと影も。
   //   曲がりの向き・大きさ・総苞の形は位置から決まる乱数（treeRand）で。区画の乱数は、もとと同じだけ（葉 7 回・ゆれ 1 回）進める
   dandelion(x, z, s = 1, o = {}) {
     const y = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y + (o.y || 0), z); this.scene.add(g);
-    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2 + this.r(), lf = new THREE.Mesh(new THREE.ConeGeometry(0.16 * s, 0.9 * s, 4), this.M('#5aa84a')); lf.scale.z = 0.25; lf.position.set(Math.cos(a) * 0.38 * s, 0.08 * s, Math.sin(a) * 0.38 * s); lf.rotation.set(0, -a, Math.PI / 2 - 0.25); lf.rotation.order = 'YZX'; g.add(lf); }
+    for (let i = 0; i < 7; i++) this.r();   // 葉はなし。もとの葉（円すい 7 枚）の向きのぶん、区画の乱数を進める
     const h = 1.7 * s, big = s >= 1, tr = this.treeRand(x, z, 11);
     const body = this.mc.shroomToon || (this.mc.shroomToon = shroomToonMat()), line = this.mc.shroomLine || (this.mc.shroomLine = shroomLineMat());
     // 曲がり：大たんぽぽ（物語で、てっぺんの綿毛にタマが眠る）はまっすぐ立てる。小さいものほど、ななめにかしぐ
