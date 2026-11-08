@@ -515,6 +515,7 @@ function disposeTree(obj) {
     if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
       for (const k in m) if (m[k] && m[k].isTexture) texs.add(m[k]);
       if (m.uniforms) for (const k in m.uniforms) { const v = m.uniforms[k].value; if (v && v.isTexture && !v.isRenderTargetTexture) texs.add(v); }
+      for (const k in m.userData) if (m.userData[k] && m.userData[k].isTexture) texs.add(m.userData[k]);   // onBeforeCompile で渡す画像（森の木立の濃さの地図など）
       m.dispose();
     });
     // 影の画像（ライトごとに 1024〜2048 四方）

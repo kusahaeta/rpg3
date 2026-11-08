@@ -1276,6 +1276,9 @@ function buildArchitecture(view, T) {
   const [fmap, femap] = floorTextures(th, view.ch.bg);
   for (const t of [fmap, femap]) t.repeat.set(1, 1);
   mats.floor = new THREE.MeshStandardMaterial({ map: fmap, emissiveMap: femap, emissive: new THREE.Color('#ffffff'), emissiveIntensity: th.floorGlow ?? 0.9, metalness: style === 'station' ? 0.3 : 0.05, roughness: style === 'station' ? 0.5 : 0.85 });
+  // 豊かな森（テーマの lush）：地面に色むら・木立のきわの影だまり・こもれび。木立の濃さの地図は、草むら（ZoneKit.lushGrass）でも使う
+  view.canopy = lushZone(view) ? canopyMap(T) : null;
+  if (view.canopy) lushGround(mats.floor, view.canopy);
   const { cols, rows, kind } = T, K = TK;
   const X = c => c * CELL - T.hw, Zc = r => r * CELL - T.hd;
   const walk = i => i >= 0 && kind[i] >= K.FLOOR;
@@ -1755,6 +1758,7 @@ function buildArchitecture(view, T) {
     }
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
     const pm = new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    if (view.canopy) lushGround(pm, view.canopy);
     const G = new GeoAcc(), W = cols * CELL, D = rows * CELL, uv = (x, z) => [(x + T.hw) / W, 1 - (z + T.hd) / D];
     for (let i = 0; i < kind.length; i++) {
       if (!(kind[i] === K.FLOOR || kind[i] === K.EXIT) || T.bridge[i]) continue;

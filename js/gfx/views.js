@@ -276,7 +276,7 @@ class TitleView extends BaseView {
       const k2 = 1 - Math.exp(-2.5 * rdt);
       m.pose.headY += (L.y - m.pose.headY) * k2; m.pose.twist += (L.tw - m.pose.twist) * k2; m.pose.headX += ((L.up || 0) - m.pose.headX) * k2;
     });
-    this.fruits.forEach((f, i) => f.scale.setScalar(1 + Math.sin(t * 2 + i) * 0.2));
+    fruitGlowSync(this.fruits); this.fruits.forEach((f, i) => f.scale.setScalar(1 + Math.sin(t * 2 + i) * 0.2));
   }
 }
 // タイトルの丘の草花：5匹のまわりに、風にゆれる草（三角の葉を一つの InstancedMesh で）と小さな花。
