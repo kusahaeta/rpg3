@@ -12,7 +12,7 @@ const THEMES = {
     floor: '#3a5a3a', floor2: '#34503a', line: '#ffe08a', key: '#b8c8ff', sky: '#6a7ab8', ground: '#1a2a2a', rim: '#8aa8ff', metal: 0, pattern: 'grass', floorGlow: 0, rough: 0.95, light: 0.8 },
   // ほしふる森：こもれびと、降ってくる星の粒
   forest: { top: '#3a7ab8', horizon: '#b8e0c8', bottom: '#4a7a3a', nebA: '#c8ffd8', nebB: '#fff0a8', fog: '#8ab8a0', fogD: 0.014, clouds: 0.6, sun: '#fff0c0', stars: 0.2,
-    floor: '#5a8a44', floor2: '#4e7a3a', line: '#fff0a8', key: '#fff0d0', sky: '#b8e0c8', ground: '#3a5a2a', rim: '#d8ffb8', metal: 0, pattern: 'moss', floorGlow: 0, rough: 0.95, light: 1.0 },
+    floor: '#5a8a44', floor2: '#4e7a3a', line: '#fff0a8', key: '#fff0d0', sky: '#b8e0c8', ground: '#3a5a2a', rim: '#d8ffb8', metal: 0, pattern: 'moss', floorGlow: 0, rough: 0.95, light: 1.0, lush: true },
   // ミャオ街道：金色の午後
   road: { top: '#4a9ae8', horizon: '#ffe0b0', bottom: '#b8a870', nebA: '#ffffff', nebB: '#ffd8a8', fog: '#f0dcc0', fogD: 0.005, clouds: 0.9, sun: '#ffe8b0', stars: 0,
     floor: '#9ac068', floor2: '#8ab058', line: '#ffd27a', key: '#fff0d0', sky: '#ffe8c8', ground: '#8a8a5a', rim: '#ffd8a8', metal: 0, pattern: 'grass', floorGlow: 0, rough: 0.95, light: 1.1 },
@@ -232,10 +232,21 @@ function buildEnvironment(scene, theme, renderer, opts = {}) {
   return {
     particles, key, colliders: T.colliders, root, focus: T.focus, floor, farTree: T.farTree || null,
     update(dt, t) {
-      sky.material.uniforms.time.value = t;
+      sky.material.uniforms.time.value = t; LUSH.time.value = t; LUSH.dap.value = GFX.low ? 0 : 1;
       for (const f of updaters) f(dt, t);
     },
   };
+}
+
+// 光の柱の材質（足し算で光る）。面を正面から見るまん中ほど濃く、上下の端へうすれる
+function lightShaftMat(col, k) {
+  return new THREE.ShaderMaterial({
+    uniforms: { color: { value: hdr(col, k) }, op: { value: 0.15 } }, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    vertexShader: `varying vec2 vUv; varying float vF;
+      void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0); vF = abs(dot(normalize(normalMatrix * normal), normalize(-mv.xyz))); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform vec3 color; uniform float op; varying vec2 vUv; varying float vF;
+      void main(){ float a = smoothstep(0.03, 0.3, vUv.y) * smoothstep(1.0, 0.45, vUv.y) * vF * vF * op; gl_FragColor = vec4(color, a); }`,
+  });
 }
 
 // ---------- 遠景の部品 ----------
@@ -306,6 +317,19 @@ function barkTileTex() {
 //   glow：自分で光る分 [樹皮, 葉]（暗い空の前でも沈まないように）
 // 感情の実の色：笑い・友情・思い出・優しさ
 const TREE_FRUIT_COLS = ['#ffd24a', '#ff4f9a', '#5ac8ff', '#9aff6a'];
+// 軽量の画質（光のにじみなし）でも、樹の感情の実だけは光って見せる：実の玉（白っぽく明るい芯）のまわりに、足し算の小さな色の光の輪。
+//   にじみがある画質の見え方（明るい芯に、すぐまわりだけ色がにじむ）に合わせる。にじみがあるときは輪を出さない。
+//   実の玉 f に光の輪を子として足す。fruitGlowSync(fruits)：いまの画質に合わせる（毎コマ。画質はとちゅうで変わる）
+function fruitHalo(f, c, r) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr(c, 2.0 * lumaBoost(c)), blending: THREE.AdditiveBlending, depthWrite: false, fog: false, transparent: true }));
+  s.scale.setScalar(r * 4.6 / Math.max(1e-3, f.scale.x)); s.visible = false; s.raycast = () => {}; f.add(s);
+  f.userData.glow = s;
+  return f;
+}
+function fruitGlowSync(fruits) {
+  const on = !(GFX.bloom && GFX.bloom.enabled);
+  for (const f of fruits) if (f.userData.glow) f.userData.glow.visible = on;
+}
 const TITLE_TREE_LOOK = { sun: [0.55, 0.07, -0.83], rim: ['#ff9a5a', '#ffc27a', '#e0a870'], rimK: 1.5, haze: ['#e8a088', '#8a86c0'], hz: [0.3, 0.0022, 0.08, 0.32], glow: [0.05, 0.55] };
 // 値ノイズ（0〜1）：茂みのでこぼこと、樹皮のうねり
 const treeHash = (x, y, z) => { const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return s - Math.floor(s); };
@@ -555,6 +579,7 @@ function worldTree(health = 0.8, fruit = 0, eye = null, o = {}) {
       placed.push([sx, sy]);
       const i = fruits.length, c = fruitCols[i % 4], r = 1.1 * fruit * (0.8 + 0.4 * rnd());   // 大きさも少しずつちがう
       const f = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), glowMat(c, 4 * lumaBoost(c), { fog: false }));
+      if (!far) fruitHalo(f, c, r);   // 遠景の絵の実は、あとで farTree が作りなおす
       // 葉の房（面から 0.7 ほど浮く）にうもれないよう、面から少し前へ
       f.position.set(x + nx * LIFT, y + ny * LIFT, z + nz * LIFT); g.add(f); fruits.push(f); n++;
     }
@@ -639,7 +664,7 @@ function farTree(T) {
   const board = new THREE.Mesh(new THREE.PlaneGeometry(side, side), m); board.position.set(fx, fy, 0); g.add(board);
   board.onBeforeRender = (rr, s, cam) => { g.rotation.y = Math.atan2(cam.position.x - P.x, cam.position.z - P.z); };
   // 感情の実：絵のすぐ前に
-  const fruits = I.fruits.map(([x, fy2, rad], i) => { const c = TREE_FRUIT_COLS[i % 4], f = new THREE.Mesh(new THREE.SphereGeometry(rad, 10, 8), glowMat(c, 4 * lumaBoost(c), { fog: false })); f.position.set(x, fy2, 2); g.add(f); return f; });
+  const fruits = I.fruits.map(([x, fy2, rad], i) => { const c = TREE_FRUIT_COLS[i % 4], f = new THREE.Mesh(new THREE.SphereGeometry(rad, 10, 8), glowMat(c, 4 * lumaBoost(c), { fog: false })); f.position.set(x, fy2, 2); g.add(f); return fruitHalo(f, c, rad); });
   // うしろの光：樹冠のうしろに（光るのは輪郭のまわりだけ）
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#fff0c8', 0.3 * h + 0.08), blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
   halo.scale.setScalar(120); halo.position.set(0, 52, -40); g.add(halo);
@@ -647,7 +672,7 @@ function farTree(T) {
   g.scale.setScalar(sc); g.position.copy(P);
   g.rotation.y = Math.atan2(-P.x, -P.z);   // はじめは、区画のまん中のほうへ
   T.root.add(g);
-  T.updaters.push((dt, t) => fruits.forEach((f, i) => { f.scale.setScalar((f.userData.s ?? 1) * (1 + Math.sin(t * 2 + i) * 0.15)); }));
+  T.updaters.push((dt, t) => { fruitGlowSync(fruits); fruits.forEach((f, i) => { f.scale.setScalar((f.userData.s ?? 1) * (1 + Math.sin(t * 2 + i) * 0.15)); }); });
 }
 // なだらかな丘の遠景
 // 区画が遠景の小物をよけてほしいところ（zone.envSkip(x, z)：遠くに見せたいものの手前など）
@@ -699,13 +724,13 @@ const ENV_PROPS = {
   forest(T) {
     hills(T, '#4a7a3a', 130, 16, 24);
     motes(T, '#fff4a8', 30, { fall: true, size: 0.07, life: 6, k: 2.6, drift: 0.2 });   // ほしふる：光の粒が降る
-    // こもれびの光の柱
+    // こもれびの光の柱：ふち（面を斜めに見るところ）と上下の端は、ぼかして消す（筒の形が見えないように）
     const rays = [];
-    for (let i = 0; i < (T.bare ? 4 : 8); i++) {
-      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 2.4, 26, 12, 1, true), new THREE.MeshBasicMaterial({ color: hdr('#fff6c8', 0.4), transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    for (let i = 0; i < (T.bare ? 4 : GFX.low ? 3 : 8); i++) {   // 軽量の画質では少なく（足し算の大きな面は、非力なスマホで重い）
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 2.4, 26, 16, 1, true), lightShaftMat('#fff6c8', 0.5));
       const a = Math.random() * Math.PI * 2, r = 8 + Math.random() * 30; m.position.set(Math.cos(a) * r, 12, Math.sin(a) * r); m.rotation.z = 0.3; T.root.add(m); rays.push([m, Math.random() * 6]);
     }
-    T.updaters.push((dt, t) => rays.forEach(([m, p]) => { m.material.opacity = 0.08 + Math.sin(t * 0.5 + p) * 0.05; }));
+    T.updaters.push((dt, t) => rays.forEach(([m, p]) => { m.material.uniforms.op.value = 0.2 + Math.sin(t * 0.5 + p) * 0.08; }));
   },
   road(T) { hills(T, '#9ab868', 150, 18, 20); puffClouds(T, 14, '#fff6ec'); motes(T, '#ffe8b8', 8, { size: 0.05, life: 5 }); },
   kingdom(T) {
@@ -773,3 +798,293 @@ const ENV_PROPS = {
     motes(T, '#ffffff', 20, { size: 0.08, life: 6, k: 2 });
   },
 };
+
+// ============================================================
+//  森の豊かな見た目（テーマの lush。いまは ほしふる森 の forest だけ）
+//   地面：大きな色むら・木立のきわの影だまり・こもれびのまだら（lushGround）
+//   木：幹から枝分かれした枝に、小枝の葉（葉の絵の板）をつける（ZoneKit.lushTree・lushFir・lushShrub。材質は lushBarkMat・lushLeafMat）
+//   草むら：風にゆれる草の束（ZoneKit.lushGrass。材質は lushGrassMat）
+// ============================================================
+const LUSH = { time: { value: 0 }, dap: { value: 1 } };   // dap：こもれびのまだらを描くか（軽量の画質では描かない。画質はとちゅうで変わるので毎コマ）
+// 値ノイズ（格子の点に乱数、あいだはなめらかにつなぐ）を、くり返す画像に焼いたもの。4 つの色の段に、別々のノイズ。
+//   LUSH_NZ_P 格子でひとまわり（1 格子 8 画素）。シェーダーでは格子の座標 p を 1 / LUSH_NZ_P 倍して読む
+const LUSH_NZ_P = 32;
+function lushNoiseTex() {
+  if (TexCache.lushNz) return TexCache.lushNz;
+  const P = LUSH_NZ_P, K = 8, N = P * K, data = new Uint8Array(N * N * 4), H = new Float32Array(P * P * 4), rnd = seeded(5);
+  for (let i = 0; i < H.length; i++) H[i] = rnd();
+  const h = (x, y, c) => H[(((y % P) * P) + (x % P)) * 4 + c];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const px = (x + 0.5) / K, py = (y + 0.5) / K, ix = Math.floor(px), iy = Math.floor(py);
+    let fx = px - ix, fy = py - iy; fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    for (let c = 0; c < 4; c++) {
+      const a = h(ix, iy, c) + (h(ix + 1, iy, c) - h(ix, iy, c)) * fx, b = h(ix, iy + 1, c) + (h(ix + 1, iy + 1, c) - h(ix, iy + 1, c)) * fx;
+      data[(y * N + x) * 4 + c] = Math.round((a + (b - a) * fy) * 255);
+    }
+  }
+  const t = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.needsUpdate = true;
+  return (TexCache.lushNz = t);
+}   // 草のゆれ・こもれびの動きの時計（buildEnvironment の update で進める）
+// 区画のテーマが lush で、木立（flora）の区画か。地面の模様は章の bg、空と光は区画の bg なので、区画の bg を見る
+function lushZone(v) {
+  const th = v.zone && THEMES[v.zone.bg || (v.ch && v.ch.bg)];
+  return !!(th && th.lush && v.T && v.T.outdoor === 'flora');
+}
+// ノイズは画像（lushNoiseTex）から読む。1 画素ごとに sin のハッシュでノイズを作ると、非力なスマホでは地面だけで 1 コマ 20ms ほど重かった（Galaxy A21）
+const LUSH_GLSL = `
+  uniform sampler2D lushNz;
+  vec4 lushN(vec2 p){ return texture2D(lushNz, p * ${(1 / LUSH_NZ_P).toFixed(6)}); }
+  // 地面の色：大きな色むら（日なたは黄みに明るく、ところどころ青みに沈む）と、木立のきわの影だまり（o：木立の濃さ）
+  vec3 lushTint(vec2 w, float o){
+    float n = lushN(w * 0.07).r * 0.65 + lushN(w * 0.23 + 7.0).g * 0.35;
+    return mix(vec3(0.82, 0.9, 0.86), vec3(1.12, 1.1, 0.9), n) * mix(vec3(1.0), vec3(0.5, 0.62, 0.6), o);
+  }
+  // こもれび：木立のそばほど、ゆっくり流れる光のまだら（1 が日なた）
+  uniform float lushDap;
+  float lushDapple(vec2 w, float o, float t){
+    if (lushDap < 0.5) return mix(1.0, 0.66, smoothstep(0.06, 0.42, o) * 0.9);   // 軽量の画質：まだらの平均の暗さだけ
+    vec2 q = w * 0.45 + vec2(t * 0.06, t * 0.035);
+    float d = smoothstep(0.4, 0.62, lushN(q).b * 0.6 + lushN(q * 2.3 + 3.1).a * 0.4);
+    return mix(1.0, 0.28 + d * 1.25, smoothstep(0.06, 0.42, o) * 0.9);
+  }`;
+
+// 木立の濃さの地図：地図の木立（#）を 1、ほかを 0 にして、ぼかす（1 マス 4 画素）。
+//   地面・草のシェーダーで使う画像（tex）と、置き場所を決めるための at(x, z)
+function canopyMap(T) {
+  const P = 4, W = T.cols * P, H = T.rows * P;
+  let a = new Float32Array(W * H), b = new Float32Array(W * H);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = T.idx((x / P) | 0, (y / P) | 0);
+    a[y * W + x] = i >= 0 && T.kind[i] <= TK.WINDOW && !T.water[i] ? 1 : 0;
+  }
+  // 箱のぼかしを縦横に 3 回（ほぼガウスのぼかし）。地図の外は木立とみなす
+  const R = 5, blur = (src, dst, dx, dy, n, len) => {
+    for (let o = 0; o < n; o++) for (let k = 0; k < len; k++) {
+      let s = 0;
+      for (let d = -R; d <= R; d++) { const q = k + d; s += q < 0 || q >= len ? 1 : src[dx ? o * W + q : q * W + o]; }
+      dst[dx ? o * W + k : k * W + o] = s / (R * 2 + 1);
+    }
+  };
+  for (let p = 0; p < 3; p++) { blur(a, b, 1, 0, H, W); blur(b, a, 0, 1, W, H); }
+  const data = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) data[i] = Math.round(a[i] * 255);
+  const tex = new THREE.DataTexture(data, W, H, THREE.RedFormat);
+  tex.magFilter = tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
+  const x0 = -T.hw, z0 = -T.hd, w = T.cols * CELL, d = T.rows * CELL;
+  return {
+    tex, rect: new THREE.Vector4(x0, z0, 1 / w, 1 / d),
+    at(x, z) { const px = clamp(Math.floor((x - x0) / w * W), 0, W - 1), py = clamp(Math.floor((z - z0) / d * H), 0, H - 1); return a[py * W + px]; },
+  };
+}
+// ワールド座標を、シェーダーの vLushW に渡す（instanced なら instanceMatrix もかける）
+const LUSH_VERT = sh => {
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vLushW;')
+    .replace('#include <project_vertex>', `#include <project_vertex>
+      #ifdef USE_INSTANCING
+        vLushW = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+      #else
+        vLushW = (modelMatrix * vec4(transformed, 1.0)).xyz;
+      #endif`);
+};
+const lushFragHead = sh => sh.fragmentShader.replace('#include <common>', `#include <common>
+  uniform sampler2D lushOcc; uniform vec4 lushRect; uniform float lushTime; varying vec3 vLushW;${LUSH_GLSL}`);
+// 地面（床・土の道）の材質に、色むら・影だまり・こもれびを足す
+function lushGround(mat, cm) {
+  mat.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, { lushOcc: { value: cm.tex }, lushRect: { value: cm.rect }, lushTime: LUSH.time, lushNz: { value: lushNoiseTex() }, lushDap: LUSH.dap });
+    LUSH_VERT(sh);
+    sh.fragmentShader = lushFragHead(sh)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        float lushO = texture2D(lushOcc, (vLushW.xz - lushRect.xy) * lushRect.zw).r;
+        diffuseColor.rgb *= lushTint(vLushW.xz, lushO);`)
+      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+        reflectedLight.directDiffuse *= lushDapple(vLushW.xz, lushO, lushTime);`);
+  };
+  mat.customProgramCacheKey = () => 'lushGround'; mat.userData.lushOcc = cm.tex;   // 場面を片付けるときに手放す（disposeTree）
+  mat.needsUpdate = true;
+}
+// 草の束の材質：根もとは暗く先は明るい。地面と同じ色むら・影だまり・こもれびで、地面になじませる。
+//   面の向きは上向き（地面と同じ光の当たり方）にして、裏から見ても暗くしない。風で先をゆらす
+function lushGrassMat(cm) {
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1, metalness: 0, side: THREE.DoubleSide });
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, { lushOcc: { value: cm.tex }, lushRect: { value: cm.rect }, lushTime: LUSH.time, lushNz: { value: lushNoiseTex() }, lushDap: LUSH.dap });
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aT; uniform float lushTime; varying float vT;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vT = aT;
+        { vec2 ip = vec2(instanceMatrix[3].x, instanceMatrix[3].z);
+          float w = sin(lushTime * 1.6 + ip.x * 0.35 + ip.y * 0.22) * 0.6 + sin(lushTime * 2.7 + ip.x * 0.9 - ip.y * 0.5) * 0.4;
+          transformed.xz += vec2(0.1, 0.05) * w * aT * aT; }`);
+    LUSH_VERT(sh);
+    sh.fragmentShader = lushFragHead(sh).replace('#include <common>', '#include <common>\nvarying float vT;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float lushO = texture2D(lushOcc, (vLushW.xz - lushRect.xy) * lushRect.zw).r;
+        diffuseColor.rgb *= lushTint(vLushW.xz, lushO) * mix(0.68, 1.2, vT);`)
+      .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize(vNormal);')
+      .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
+        reflectedLight.directDiffuse *= lushDapple(vLushW.xz, lushO, lushTime);`);
+  };
+  m.customProgramCacheKey = () => 'lushGrass'; m.userData.lushOcc = cm.tex;
+  return m;
+}
+// 草の束の形：細い葉を 6 枚、まわりへ少しずつ倒して。aT は根もと 0・先 1。法線はすべて上向き
+function lushTuftGeo() {
+  if (TexCache.lushTuft) return TexCache.lushTuft;
+  const pos = [], nrm = [], at = [], idx = [], rnd = seeded(11);
+  for (let b = 0; b < 6; b++) {
+    const a = b / 6 * Math.PI * 2 + rnd() * 0.8, r0 = 0.02 + rnd() * 0.06, h = 0.16 + rnd() * 0.18, lean = 0.1 + rnd() * 0.12, w = 0.045 + rnd() * 0.02;
+    const cx = Math.cos(a), cz = Math.sin(a), px = -cz, pz = cx, n = pos.length / 3;
+    const P = (t, side) => { const o = r0 + lean * t * t, ww = w * (1 - t) * side; pos.push(cx * o + px * ww, h * t, cz * o + pz * ww); nrm.push(0, 1, 0); at.push(t); };
+    P(0, -1); P(0, 1); P(0.55, -1); P(0.55, 1); P(1, 0);
+    idx.push(n, n + 1, n + 3, n, n + 3, n + 2, n + 2, n + 3, n + 4);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  g.setAttribute('aT', new THREE.Float32BufferAttribute(at, 1)); g.setIndex(idx);
+  return (TexCache.lushTuft = g);
+}
+// 区画の森の木の形（ZoneKit.flushTrees）：`${区画}|${軽量}` → [[BufferGeometry, 葉か], …]。最近の二区画だけ取っておく
+const LUSH_TREE_CACHE = new Map();
+const lushPick = (a, r) => a[Math.floor(r() * a.length)];
+const lushTint = (c, k, r) => new THREE.Color(c).multiplyScalar(1 + (r() - 0.5) * k * 2);   // 色を少しだけばらつかせる（ZoneKit.tint の、乱数を選べるもの）
+// のびる型つき配列（森の木の形を、ふつうの配列を通さずに直接ためる。非力なスマホで、大きなふつうの配列に数を足していくのと、
+//   あとで型つき配列へ写すのが重かった）。room(k)：k 個ぶんの空きを用意して配列を返す（書いたら n を進める）。out()：ちょうどの長さに切った写し
+class LushBuf {
+  constructor(T, n = 1 << 14) { this.T = T; this.a = new T(n); this.n = 0; }
+  room(k) { if (this.n + k > this.a.length) { const b = new this.T(Math.max(this.a.length * 2, this.n + k)); b.set(this.a); this.a = b; } return this.a; }
+  out() { return this.a.slice(0, this.n); }
+}
+const lushU16 = v => v <= 0 ? 0 : v >= 1 ? 65535 : (v * 65535 + 0.5) | 0;   // 0〜1 を 16 ビットに
+const lushI8 = v => Math.round(Math.max(-1, Math.min(1, v)) * 127);         // -1〜1 を 8 ビットに（法線）
+// 三点 P0・P1・P2 を通る曲線（P1 を t = 0.5 で通る二次ベジェ）。返す関数 (t, out) は、out に [x, y, z, 接線 x, y, z] を書く（長さを測りなおさないので速い）
+function lushCurve(P0, P1, P2) {
+  const cx = 2 * P1.x - (P0.x + P2.x) / 2, cy = 2 * P1.y - (P0.y + P2.y) / 2, cz = 2 * P1.z - (P0.z + P2.z) / 2;
+  return (t, out) => {
+    const u = 1 - t, a = u * u, b = 2 * u * t, c = t * t;
+    out[0] = a * P0.x + b * cx + c * P2.x; out[1] = a * P0.y + b * cy + c * P2.y; out[2] = a * P0.z + b * cz + c * P2.z;
+    out[3] = 2 * u * (cx - P0.x) + 2 * t * (P2.x - cx); out[4] = 2 * u * (cy - P0.y) + 2 * t * (P2.y - cy); out[5] = 2 * u * (cz - P0.z) + 2 * t * (P2.z - cz);
+    return out;
+  };
+}
+// 小枝の葉の絵（白黒。色は頂点の色をかける）。左半分は広葉樹の小枝（下のまん中から上へのびる茎に、葉が互い違いに 9 枚と先に 1 枚）、
+//   右半分は針葉樹の小枝（まっすぐな茎に、針の葉が両がわへ斜め前にびっしり。横へ小さな枝も）。
+//   板の下のまん中を枝につけ、上へのばして使う（uv の v が 0 の辺が枝のがわ）。遠くで葉がやせないよう、葉は太めに
+function leafSprayTex() {
+  if (TexCache.leafSpray) return TexCache.leafSpray;
+  const W = 512, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'); let sd = 21; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  const gray = v => `rgb(${v | 0},${v | 0},${v | 0})`;
+  // 広葉樹：葉は先のとがった卵形。葉脈と、半分だけ少し暗く（葉の折れ目）
+  const leaf = (x, y, ang, L, w, v) => {
+    g.save(); g.translate(x, y); g.rotate(ang);
+    g.fillStyle = gray(v); g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(L * 0.2, -w * 1.1, L * 0.7, -w * 0.9, L, 0); g.bezierCurveTo(L * 0.7, w * 0.9, L * 0.2, w * 1.1, 0, 0); g.fill();
+    g.fillStyle = 'rgba(0,0,0,.13)'; g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(L * 0.2, w * 1.1, L * 0.7, w * 0.9, L, 0); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(2, 0); g.lineTo(L * 0.86, 0); g.stroke();
+    g.lineWidth = 0.9; for (let k = 1; k <= 3; k++) { const t = k / 4.2; g.beginPath(); g.moveTo(L * t, 0); g.lineTo(L * (t + 0.12), -w * 0.55); g.moveTo(L * t, 0); g.lineTo(L * (t + 0.12), w * 0.55); g.stroke(); }
+    g.restore();
+  };
+  const stem = (pts, w0, w1, v) => { g.strokeStyle = gray(v); g.lineCap = 'round'; for (let i = 1; i < pts.length; i++) { g.lineWidth = lerp(w0, w1, i / (pts.length - 1)); g.beginPath(); g.moveTo(...pts[i - 1]); g.lineTo(...pts[i]); g.stroke(); } };
+  const bend = (x0, y0, x1, y1, k, n = 8) => [...Array(n + 1)].map((_, i) => { const t = i / n; return [lerp(x0, x1, t) + Math.sin(t * Math.PI) * k, lerp(y0, y1, t)]; });
+  {
+    const S = bend(128, 252, 124, 44, 10); stem(S, 7, 3, 120);
+    const at = t => { const f = t * (S.length - 1), i = Math.min(S.length - 2, f | 0), u = f - i; return [lerp(S[i][0], S[i + 1][0], u), lerp(S[i][1], S[i + 1][1], u)]; };
+    for (let i = 0; i < 9; i++) {
+      const t = 0.12 + i * 0.095, [x, y] = at(t), side = i % 2 ? 1 : -1, L = 66 + Math.sin(t * Math.PI) * 18 + rnd() * 8;
+      leaf(x, y, -Math.PI / 2 + side * (1.05 - t * 0.45 + (rnd() - 0.5) * 0.2), L, L * 0.36, 170 + t * 70 + rnd() * 15);
+    }
+    const [tx, ty] = at(1); leaf(tx, ty + 4, -Math.PI / 2 - 0.05, 64, 23, 245);
+  }
+  // 針葉樹：針は細い線を、茎の両がわへ。先へいくほど短く
+  {
+    const ox = 256, S = bend(ox + 128, 252, ox + 128, 22, 6); stem(S, 6, 2.5, 110);
+    const needles = (x0, y0, x1, y1, len, dir, n, v) => {
+      g.lineCap = 'round';
+      for (let i = 0; i < n; i++) {
+        const t = i / n, x = lerp(x0, x1, t), y = lerp(y0, y1, t), a = Math.atan2(y1 - y0, x1 - x0), l = len * (1 - t * 0.45) * (0.85 + rnd() * 0.3);
+        for (const sdn of [-1, 1]) { const b = a + sdn * (0.95 + rnd() * 0.25); g.strokeStyle = gray(v + rnd() * 50); g.lineWidth = 5; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(b) * l, y + Math.sin(b) * l); g.stroke(); }
+      }
+    };
+    needles(ox + 128, 240, ox + 128, 24, 46, 1, 46, 150);
+    for (const [y, sdn] of [[190, -1], [150, 1], [110, -1], [78, 1]]) {
+      const x1 = ox + 128 + sdn * (56 - (190 - y) * 0.15), y1 = y - 40; stem([[ox + 128, y], [x1, y1]], 3.5, 2, 110);
+      needles(ox + 128 + sdn * 6, y - 4, x1, y1, 26, sdn, 16, 160);
+    }
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (TexCache.leafSpray = t);
+}
+// 枝・幹の材質（区切りごとにまとめた形）：頂点の色に陰を焼きこみ済み。樹皮の模様を三方向から。
+//   風でゆらす（aWind：16 ビットの 0〜1。x：ゆれの位相（木ごと。2π 倍）、y：枝全体のゆれの大きさ（0.5 倍））
+function lushBarkMat() {
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, { lushTime: LUSH.time, lushBark: { value: barkTileTex() } });
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec2 aWind; uniform float lushTime; varying vec3 vTP, vTN;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vTP = position; vTN = normal;
+        { float ph = aWind.x * 6.2832;
+          transformed.xz += vec2(sin(lushTime * 1.1 + ph) + 0.4 * sin(lushTime * 2.3 + ph * 1.7), 0.6 * cos(lushTime * 0.9 + ph)) * aWind.y * 0.0225; }`);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D lushBark; varying vec3 vTP, vTN;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        { vec3 bw = pow(abs(normalize(vTN)), vec3(4.0)); bw /= bw.x + bw.y + bw.z;
+          float bk = texture2D(lushBark, vTP.zy * vec2(2.2, 0.7)).r * bw.x + texture2D(lushBark, vTP.xz * 2.2).r * bw.y + texture2D(lushBark, vTP.xy * vec2(2.2, 0.7)).r * bw.z;
+          diffuseColor.rgb *= mix(0.55, 1.15, bk); }`);
+  };
+  m.customProgramCacheKey = () => 'lushBark';
+  return m;
+}
+// 小枝の葉の材質：葉の絵（leafSprayTex）の板を、両面で。
+//   光の当たり方は板の向きではなく、樹冠のまるみ（頂点の法線）で決めるので、なめらかに変わる。そこで光の計算は頂点ごとにして
+//   （画素ごとの計算は、絵を読んで透けるところを抜き、色をかけるだけ）、葉が何枚も重なる森でも軽くする（非力なスマホで葉がいちばん重かった）。
+//   光は、場面の平行光・半球光・環境光と、空の映り込みの代わりの分（sky）。葉は影を受けない（奥の葉の暗さは頂点の色に焼きこみ済み）。
+//   風で枝ごとゆれ（aWind は lushBarkMat と同じ）、葉先（絵の上の辺）はこまかくそよぐ。日が透けたように、少しだけ自分で光る。
+//   遠くで絵が小さくなっても葉がやせないよう、透けるところのふちを画面の細かさに合わせてくっきりさせる。
+//   影を落とすときは、map と alphaTest から three.js が葉の形で抜く
+function lushLeafMat() {
+  const tex = leafSprayTex();
+  const m = new THREE.ShaderMaterial({
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.lights, THREE.UniformsLib.fog, { leafMap: { value: null }, lushTime: { value: 0 }, sky: { value: 0.35 } }]),
+    lights: true, fog: true, vertexColors: true, side: THREE.DoubleSide,
+    vertexShader: `
+      #include <common>
+      #include <lights_pars_begin>
+      #include <fog_pars_vertex>
+      attribute vec2 aWind; uniform float lushTime, sky; varying vec2 vUv; varying vec3 vCol;
+      void main() {
+        vec3 transformed = position;
+        float ph = aWind.x * 6.2832, q = ph * 5.3 + position.x * 2.1 + position.z * 1.7;
+        transformed.xz += vec2(sin(lushTime * 1.1 + ph) + 0.4 * sin(lushTime * 2.3 + ph * 1.7), 0.6 * cos(lushTime * 0.9 + ph)) * aWind.y * 0.0225;
+        transformed += vec3(sin(lushTime * 4.1 + q), 0.6 * sin(lushTime * 5.3 + q * 1.3), cos(lushTime * 3.7 + q)) * mix(0.25, 1.0, uv.y) * 0.025;
+        vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+        vec3 n = normalize(normalMatrix * normal);
+        vec3 irr = ambientLightColor;
+        #if NUM_DIR_LIGHTS > 0
+          for (int i = 0; i < NUM_DIR_LIGHTS; i++) irr += directionalLights[i].color * max(dot(n, directionalLights[i].direction), 0.0);
+        #endif
+        #if NUM_HEMI_LIGHTS > 0
+          for (int i = 0; i < NUM_HEMI_LIGHTS; i++) { irr += getHemisphereLightIrradiance(hemisphereLights[i], n); irr += getHemisphereLightIrradiance(hemisphereLights[i], n) * sky; }
+        #endif
+        vCol = color * irr * RECIPROCAL_PI + color * 0.16;
+        vUv = uv;
+        #include <fog_vertex>
+      }`,
+    fragmentShader: `
+      #include <common>
+      #include <fog_pars_fragment>
+      uniform sampler2D leafMap; varying vec2 vUv; varying vec3 vCol;
+      void main() {
+        vec4 t = texture2D(leafMap, vUv);
+        float a = clamp((t.a - 0.5) / max(fwidth(t.a), 0.0001) + 0.5, 0.0, 1.0);
+        if (a < 0.5) discard;
+        gl_FragColor = vec4(vCol * t.rgb, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+        #include <fog_fragment>
+      }`,
+  });
+  m.uniforms.leafMap.value = tex; m.uniforms.lushTime = LUSH.time;
+  m.map = tex; m.alphaTest = 0.5;   // 影を落とすときの、葉の形の抜き（three.js の影の材質が使う）
+  return m;
+}
