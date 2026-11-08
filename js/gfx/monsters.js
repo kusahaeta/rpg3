@@ -213,7 +213,17 @@ function buildEnemy(key, look = {}) {
       const fur = new THREE.Color(col), furDark = new THREE.Color('#b8703a'), cream = new THREE.Color('#fff0dc');
       const tailC = new THREE.Color('#c97a3e'), tailLight = new THREE.Color('#f6cf98'), browC = '#6a3a1e', ocFur = dark(col);
       // どんぐりの殻斗（帽子）：うろこが互いちがいに並んで、ぽこぽこ盛りあがる半球
-      const cupule = (r, c0, c1) => {
+      //   band：うろこを形の凹凸でなく、濃淡の段（横の帯 5 本）で見せる軽い帽子（抱えたどんぐり。面ごとに色をつけて段の境をくっきり）
+      const cupule = (r, c0, c1, band) => {
+        if (band) {
+          const g = new THREE.SphereGeometry(r, 14, 5, 0, Math.PI * 2, 0, Math.PI / 2).toNonIndexed(), q = g.attributes.position, a = new Float32Array(q.count * 3), A = new THREE.Color(c0), B = new THREE.Color(c1);
+          for (let k = 0; k < q.count; k += 3) {
+            const y = (q.getY(k) + q.getY(k + 1) + q.getY(k + 2)) / 3, row = Math.floor(Math.acos(clamp(y / r, -1, 1)) / (Math.PI / 2) * 5);
+            for (let j = 0; j < 3; j++) (row % 2 ? B : A).toArray(a, (k + j) * 3);
+          }
+          g.setAttribute('color', new THREE.BufferAttribute(a, 3)); g.deleteAttribute('uv');
+          return [g, tint(new THREE.TorusGeometry(r * 1.02, r * 0.1, 4, 14).rotateX(Math.PI / 2).toNonIndexed(), c1)];
+        }
         const g = new THREE.SphereGeometry(r, 56, 16, 0, Math.PI * 2, 0, Math.PI / 2), q = g.attributes.position, v = V3(), a = new Float32Array(q.count * 3), c = new THREE.Color(), A = new THREE.Color(c0), B = new THREE.Color(c1);
         for (let k = 0; k < q.count; k++) {
           v.fromBufferAttribute(q, k); const ph = Math.acos(clamp(v.y / r, -1, 1)), az = Math.atan2(v.x, v.z);
@@ -260,10 +270,10 @@ function buildEnemy(key, look = {}) {
         // どんぐり：つやのある実（先が少し明るい）と、うろこの帽子、ちょこんと軸
         const nut = paint(new THREE.SphereGeometry(0.085, 16, 12), (n, c) => c.set('#b06a2a').lerp(new THREE.Color('#d89a50'), ss(-n.y, 0.3, 1) * 0.6));
         nut.scale(1, 1.22, 1);
-        const [cg, rim] = cupule(0.09, '#8a5a30', '#5e3a1c');
+        const [cg, rim] = cupule(0.09, '#8a5a30', '#5e3a1c', true);   // 帽子は濃淡の段（形の凹凸のうろこは 1700 三角形あって重かった）
         cg.scale(1, 0.75, 1); cg.translate(0, 0.035, 0); rim.translate(0, 0.035, 0);
         const stem = tint(new THREE.CylinderGeometry(0.012, 0.016, 0.05, 6).translate(0, 0.12, 0), '#5e3a1c');
-        merged([nut, cg, rim, stem], acorn, '#2a1a10');
+        merged([nut, cg, rim, stem].map(g => g.index ? g.toNonIndexed() : g), acorn, '#2a1a10');   // 段の帽子は面ごとの色なので、みな頂点を共有しない形にそろえてまとめる
         acorn.rotation.z = 0.25;
       }
       // ---- 頭：大きな丸い頭に、ぱんぱんのほお袋と鼻づら

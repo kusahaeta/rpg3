@@ -1088,3 +1088,54 @@ function lushLeafMat() {
   m.map = tex; m.alphaTest = 0.5;   // 影を落とすときの、葉の形の抜き（three.js の影の材質が使う）
   return m;
 }
+// 森のきのこ（ZoneKit.shroom）の材質：トゥーン。色は頂点の色。陰は日なたと日かげの二段でくっきり分け（SHROOM_GRAD）、
+//   まわりからの光（半球光・環境光）は弱めて、二段の差が見えるようにする。ふちに、くっきりした輪郭光。
+//   aGlow：自分で光る強さ（光るきのこ。傘 0.45・ひだ 1.26・水玉 1.62）。光は、ゆっくり息をするように強まり弱まる（位置で、一本ずつ間をずらす）
+const SHROOM_GRAD = (() => {
+  const t = new THREE.DataTexture(new Uint8Array([90, 255]), 2, 1, THREE.RedFormat);
+  t.minFilter = t.magFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true;
+  return t;
+})();
+function shroomToonMat() {
+  const m = new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: SHROOM_GRAD });
+  m.onBeforeCompile = sh => {
+    sh.uniforms.lushTime = LUSH.time;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aGlow; uniform float lushTime; varying float vGlow;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vGlow = aGlow * (0.8 + 0.2 * sin(lushTime * 1.7 + position.x * 1.9 + position.z * 1.3));');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vGlow;')
+      .replace('#include <aomap_fragment>', 'reflectedLight.indirectDiffuse *= 0.6;\n#include <aomap_fragment>')
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        { float rimF = 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
+          totalEmissiveRadiance += diffuseColor.rgb * (step(0.68, rimF) * 0.22 + vGlow * 0.5); }`);
+  };
+  m.customProgramCacheKey = () => 'shroomToon';
+  return m;
+}
+// 森のきのこのふち取り：裏返した外殻を、法線の向きに画面でほぼ同じ太さだけふくらませる。色は面の色を暗くしたもの（光るきのこは明るめ）
+function shroomLineMat() {
+  return new THREE.ShaderMaterial({
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { thick: { value: 0.0024 } }]),
+    fog: true, vertexColors: true, side: THREE.BackSide,
+    vertexShader: `
+      #include <common>
+      #include <fog_pars_vertex>
+      attribute float aGlow; uniform float thick; varying vec3 vCol;
+      void main() {
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        mvPosition.xyz += normalize(normalMatrix * normal) * thick * max(1.0, -mvPosition.z);
+        gl_Position = projectionMatrix * mvPosition;
+        vCol = color * mix(0.2, 0.55, min(aGlow, 1.0));
+        #include <fog_vertex>
+      }`,
+    fragmentShader: `
+      #include <common>
+      #include <fog_pars_fragment>
+      varying vec3 vCol;
+      void main() {
+        gl_FragColor = vec4(vCol, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+        #include <fog_fragment>
+      }`,
+  });
+}
