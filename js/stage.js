@@ -1522,8 +1522,8 @@ function buildBattleSet(view, loc) {
   const pv = Object.create(view);
   Object.assign(pv, { scene: root, p: lp });
   const flags = typeof loc.flags === 'function' ? loc.flags() : loc.flags;
-  // arena：戦場の範囲（戦場の中に立つ飾り、昔の猫の面影などは作らない）
-  const arena = { x: cx, z: cz, r: 9 };
+  // arena：戦場の範囲（戦場の中に立つ飾り、昔の猫の面影などは作らない）。face：戦場の向き（カメラのそばの木を植えない ZoneKit.nearBattleCam が使う）
+  const arena = { x: cx, z: cz, r: 9, face: (loc.face || 0) * Math.PI / 180 };
   buildZoneSet(pv, loc.zone, { flags, reserved: [arena], arena, light: view });
   const h = pv.T ? pv.T.groundAt(cx, cz) : 0, a = loc.face * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
   root.rotation.y = a;
