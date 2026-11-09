@@ -1307,9 +1307,9 @@ const FIELD_ZONES = {
     cushions: [[-14, 15], [14, -5], [23, -27]],
     notes: [{ at: [-12.5, 8], face: 0.5, board: ['玉のりのリング', '本日 休演'], title: '玉のりのリング', text: '「玉のりのリング　本日休演」……リングの大玉には、うっすらほこりがつもっている。' },
       { at: [-21, -3], mark: [-0.7, 2.9, 0], title: '古いポスター', text: '「笑顔の塔　大サーカス！　主演：ピエロ」……色あせて、涙のしみがある。' },
-      { at: [-33, -9], mark: 2.0, title: 'びっくり鏡', text: '鏡の中のミケは、横にびろーんと広がっている。……のびたおもちみたいだ。' },
-      { at: [-31, 7], mark: 2.0, title: 'びっくり鏡', text: '鏡の中のクロは、頭が大きくて足が短い。……クロは、そっと目をそらした。' },
-      { at: [-37, -17], mark: 2.0, title: 'びっくり鏡', text: '鏡の中のシロは、ひょろひょろに長い。「……ちょっと、足長に見えていいかも」' },
+      { at: [-33, -9], mark: 3.3, title: 'びっくり鏡', text: '鏡の中のミケは、横にびろーんと広がっている。……のびたおもちみたいだ。' },
+      { at: [-31, 7], mark: 3.3, title: 'びっくり鏡', text: '鏡の中のクロは、頭が大きくて足が短い。……クロは、そっと目をそらした。' },
+      { at: [-37, -17], mark: 3.3, title: 'びっくり鏡', text: '鏡の中のシロは、ひょろひょろに長い。「……ちょっと、足長に見えていいかも」' },
       { at: [-21, -30], mark: 1.8, title: 'きっぷ売り場の値札', text: '「入場料：にこにこ笑顔 ひとつ」「こども：にっこり ひとつ」「ねこ：ごろごろ ひとつ」' },
       { at: [29, -31], mark: 1.6, title: '楽団の譜面', text: '「笑いの行進曲」……最後のページに「ここで、みんなで大笑い（三回）」と書いてある。' }],
     map2d: [470, 30] },
@@ -9282,30 +9282,291 @@ function clownBoard(K, x, z, ry) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   K.box(x, z, 1.6, 2.4, 0.1, new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }), { ry });
 }
-// びっくり鏡：迷路の床のマス (x, z) のとなりの壁に、ゆがんだ姿がうつる鏡（kind：'wide' 横に広がる／'tall' 縦にのびる／'big' 頭でっかち）
+// ---------------- びっくり鏡の回廊（笑顔の塔 1F） ----------------
+// びっくり鏡に、本当に一行がゆがんで映る。
+//   映し方：鏡の面をはさんで目と反対の位置（目の鏡像）にカメラを置き、鏡の枠にぴったり合わせた視野で、小さな画像に場面を描く。
+//   ゆがみは、その画像を引く位置をシェーダーでずらしてつける（画像に描くのは、ゆがみで引く範囲だけ。鏡の種類ごとの FUNHOUSE_RANGE）。
+//   描くのは、カメラから近く、こちらを向いた鏡だけ。1 コマに描く枚数は画質しだい（なめらか 2・省エネ 1 コマおきに 1）。
+//   どの鏡を描くかは、前のコマの候補から、しばらく描いていない・近い鏡を選ぶ。軽量の画質では描かず、絵（ゆがんだねこの影）のまま
+const FUNHOUSE = {
+  rts: [], cands: [], allow: new Set(), frame: -1, busy: false, cam: null,
+  POOL: 3, FAR: 15,
+  // 画像の大きさ：なめらか 512・省エネ 384 四方
+  size() { return GFX.eco ? 384 : 512; },
+  // 画像は使い回す（鏡ごとには持たない）。ほかの鏡に取られたら、その鏡は絵にもどす
+  take(d, f) {
+    if (d.rt && d.rt.owner === d) return d.rt;
+    let rt = this.rts.find(r => !r.owner);
+    if (!rt && this.rts.length < this.POOL) {
+      rt = new THREE.WebGLRenderTarget(this.size(), this.size(), { type: THREE.HalfFloatType, depthBuffer: true });
+      rt.texture.generateMipmaps = false; this.rts.push(rt);
+    }
+    if (!rt) rt = this.rts.reduce((a, b) => (a.used < b.used ? a : b));
+    if (rt.owner) this.drop(rt.owner);
+    if (rt.width !== this.size()) rt.setSize(this.size(), this.size());
+    rt.owner = d; rt.used = f; d.rt = rt;
+    return rt;
+  },
+  // 目から鏡の前まで、壁のマスをはさまずに見えるか（迷路の壁ごしの鏡は描かない）
+  seen(d, eye) {
+    const T = d.T, tx = d.c.x + d.n.x * 0.4, tz = d.c.z + d.n.z * 0.4, L = Math.hypot(tx - eye.x, tz - eye.z), n = Math.ceil(L / 0.5);
+    for (let k = 1; k < n; k++) { const j = T.at(eye.x + (tx - eye.x) * k / n, eye.z + (tz - eye.z) * k / n); if (j >= 0 && T.kind[j] === TK.SOLID) return false; }
+    return true;
+  },
+  drop(d) { if (d.rt && d.rt.owner === d) d.rt.owner = null; d.rt = null; d.live = 0; d.u.live.value = 0; d.u.tMirror.value = d.u.tStatic.value; },
+  // 鏡の onBeforeRender（場面を描くとちゅうに呼ばれる。camera はいま描いているカメラ）
+  render(d, renderer, scene, camera) {
+    const u = d.u, f = GFX.frameNo;
+    u.time.value = GFX.time;
+    if (this.busy) return;   // 鏡に映った鏡は、前に描いた画像のまま
+    const now = performance.now(), dt = Math.min(0.1, (now - (d.t || now)) / 1000); d.t = now;
+    const N = GFX.low ? 0 : GFX.eco ? f & 1 : 2;   // このコマに描く枚数（省エネは 1 コマおきに 1 枚。映る姿は 15fps）
+    if (f !== this.frame) {
+      this.frame = f;
+      this.allow = new Set(this.cands.sort((a, b) => b.s - a.s).slice(0, N).map(c => c.d));
+      this.cands = [];
+    }
+    const eye = this.eye || (this.eye = V3()), tmp = this.tmp || (this.tmp = V3());
+    eye.setFromMatrixPosition(camera.matrixWorld);
+    const dn = tmp.subVectors(eye, d.c).dot(d.n);
+    const dist = eye.distanceTo(d.c), want = !GFX.low && dn > 0.25 && dist < this.FAR && this.seen(d, eye);
+    if (want) {
+      this.cands.push({ d, s: (f - (d.f ?? -1e6)) / (1 + dist * 0.3) });
+      if (this.allow.has(d)) this.draw(d, renderer, scene, eye, dn, camera, f);
+    }
+    if (!(d.rt && d.rt.owner === d)) { if (d.live) this.drop(d); return; }
+    if (f - d.f >= 20) { this.drop(d); return; }   // 古い画像（しばらく見ていなかった鏡）は映さず、絵にもどす
+    const on = want;
+    d.live = clamp(d.live + (on ? dt : -dt) * 6, 0, 1);
+    u.live.value = d.live * d.live * (3 - 2 * d.live);
+    if (!d.live && !on) this.drop(d);
+  },
+  draw(d, renderer, scene, eye, dn, camera, f) {
+    const rt = this.take(d, f), cam = this.cam || (this.cam = new THREE.PerspectiveCamera());
+    // 目の鏡像から、鏡の面のほうを向く（右は鏡の左右と逆）
+    const E = V3().copy(eye).addScaledVector(d.n, -2 * dn);
+    const X = d.r.clone().negate(), Y = d.up, Z = d.n.clone().negate();
+    cam.matrix.makeBasis(X, Y, Z).setPosition(E); cam.matrix.decompose(cam.position, cam.quaternion, cam.scale); cam.updateMatrixWorld(true);
+    // 視野は鏡の面（を広げた範囲）にぴったり。枠と電球は手前の面で切る
+    const C = V3().subVectors(d.c, E), xc = C.dot(X), yc = C.dot(Y);
+    const near = dn + 0.2, k = near / dn, W = d.W, H = d.H, rmin = d.u.rmin.value, rmax = d.u.rmax.value;
+    const aMin = (rmin.x - 0.5) * W, aMax = (rmax.x - 0.5) * W, bMin = (rmin.y - 0.5) * H, bMax = (rmax.y - 0.5) * H;
+    cam.projectionMatrix.makePerspective((xc - aMax) * k, (xc - aMin) * k, (yc + bMax) * k, (yc + bMin) * k, near, dn + d.depth);
+    cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
+    const prevRT = renderer.getRenderTarget(), prevShadow = renderer.shadowMap.autoUpdate, prevMW = scene.matrixWorldAutoUpdate;
+    // 調べる目印（光の玉）は映さない。ねこの輪郭線も描かない（鏡の中はやわらかく見えて、ねこを描く回数が半分ほどになる）
+    const marks = (GFX.view && GFX.view.notes || []).map(n => n.mark).filter(m => m && m.visible), lines = Object.values(OutlineCache);
+    this.busy = true; d.mesh.visible = false; marks.forEach(m => { m.visible = false; }); lines.forEach(m => { m.visible = false; });
+    renderer.shadowMap.autoUpdate = false; scene.matrixWorldAutoUpdate = false;   // 影と位置は、このコマの本番でもう計算した
+    try {
+      renderer.setRenderTarget(rt);
+      renderer.state.buffers.depth.setMask(true);
+      if (renderer.autoClear === false) renderer.clear();
+      renderer.render(scene, cam);
+    } finally {
+      renderer.shadowMap.autoUpdate = prevShadow; scene.matrixWorldAutoUpdate = prevMW;
+      renderer.setRenderTarget(prevRT);
+      if (camera.viewport !== undefined) renderer.state.viewport(camera.viewport);
+      d.mesh.visible = true; marks.forEach(m => { m.visible = true; }); lines.forEach(m => { m.visible = true; }); this.busy = false;
+    }
+    d.f = f; rt.used = f; d.u.tMirror.value = rt.texture;
+  },
+};
+const FUNHOUSE_KINDS = { wide: 0, tall: 1, big: 2, wave: 3 };
+// 鏡の種類ごとに、ゆがみで引く範囲（鏡の uv の [左, 下, 右, 上]。ゆらゆらの分を少し足す）。狭いほど細かく映る
+const FUNHOUSE_RANGE = { wide: [0.12, -0.03, 0.88, 1.19], tall: [-0.25, -0.04, 1.25, 0.5], big: [-0.03, 0, 1.03, 0.47], wave: [-0.16, -0.03, 1.16, 1.0] };
+const FUNHOUSE_VERT = `varying vec2 vUv;
+void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+// m：鏡の面の上の点（x は鏡のまん中からの左右、y は床からの高さ。m）→ そこに映して見せる点
+const FUNHOUSE_FRAG = `uniform sampler2D tMirror, tStatic;
+uniform float live, time, W, H, y0;
+uniform int kind;
+uniform vec2 rmin, rmax;
+varying vec2 vUv;
+vec2 warp(vec2 m) {
+  if (kind == 0) {          // 横にびろーん：まん中ほど広く、背は少し低く
+    float e = m.x / (0.5 * W);
+    m.x *= 0.5 + 0.18 * e * e;
+    m.y *= 1.15;
+  } else if (kind == 1) {   // ひょろひょろ：細く、背は倍
+    m.x *= 1.45;
+    m.y *= 0.5;
+  } else if (kind == 2) {   // 頭でっかち：足もとは縮めて、上ほど大きく
+    float s = m.y;
+    m.y = s < 0.3 ? s * 1.5 : 0.45 + (s - 0.3) * 0.33;
+    m.x *= mix(1.0, 0.45, smoothstep(0.15, 0.7, s));
+  } else {                  // くねくね：高さで左右に波打つ
+    m.x += 0.17 * sin(m.y * 4.2 - time * 1.8);
+    m.y *= 0.95;
+  }
+  m.x += 0.015 * sin(time * 1.3 + m.y * 3.0);   // ゆらゆら
+  return m;
+}
+void main() {
+  vec2 m = vec2((vUv.x - 0.5) * W, y0 + vUv.y * H);
+  vec2 a = vec2(m.x, m.y - (y0 + H - 0.5 * W));   // 上はアーチ
+  if (a.y > 0.0 && length(a) > 0.5 * W) discard;
+  vec2 q = warp(m);
+  vec2 uq = vec2(q.x / W + 0.5, (q.y - y0) / H);
+  vec2 st = clamp(vec2((rmax.x - uq.x) / (rmax.x - rmin.x), (uq.y - rmin.y) / (rmax.y - rmin.y)), 0.002, 0.998);
+  vec3 c = mix(texture2D(tStatic, vUv).rgb, texture2D(tMirror, st).rgb * vec3(0.93, 0.92, 1.0), live);
+  // ガラスのつや：ななめの帯と、ふちのくもり
+  float b = vUv.x * 0.55 + vUv.y;
+  c += vec3(0.03, 0.03, 0.04) * (smoothstep(0.64, 0.67, b) - smoothstep(0.7, 0.76, b));
+  c += vec3(0.02, 0.02, 0.03) * (smoothstep(0.86, 0.88, b) - smoothstep(0.9, 0.93, b));
+  float edge = min(min(vUv.x, 1.0 - vUv.x) * W, length(a) > 0.0 && a.y > 0.0 ? 0.5 * W - length(a) : 1.0);
+  c *= mix(0.78, 1.0, smoothstep(0.0, 0.12, edge));
+  gl_FragColor = vec4(c, 1.0);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`;
+// 映さないとき（軽量の画質・遠く）の絵：銀の鏡に、ゆがんだねこの影
+function funnyMirrorTex(kind) {
+  const k = 'funMirror' + kind;
+  if (TexCache[k]) return TexCache[k];
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 256; const g = cv.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#e8e4f4'); gr.addColorStop(0.55, '#b8b0d0'); gr.addColorStop(1, '#8a7aa0'); g.fillStyle = gr; g.fillRect(0, 0, 128, 256);
+  // 向かいの壁の色がうっすら映る
+  g.fillStyle = 'rgba(90,40,90,.35)'; g.fillRect(0, 150, 128, 106);
+  g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 5; for (let s = -2; s < 4; s++) { g.beginPath(); g.moveTo(s * 50, 256); g.lineTo(s * 50 + 120, 0); g.stroke(); }
+  const [bw, bh, hr, hy] = kind === 'wide' ? [58, 34, 40, 172] : kind === 'tall' ? [16, 90, 18, 110] : kind === 'big' ? [18, 22, 52, 150] : [26, 40, 30, 160];
+  g.fillStyle = 'rgba(70,50,90,.5)';
+  if (kind === 'wave') { for (let y = 0; y < 90; y += 2) { const w = (y < 40 ? 30 : 22) * (1 - Math.abs(y - 45) / 120); const x = 64 + Math.sin(y / 12) * 14; g.fillRect(x - w, 246 - y - 90, w * 2, 3); } }
+  else {
+    g.beginPath(); g.ellipse(64, 250 - bh, bw, bh, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(64, hy, hr * (kind === 'wide' ? 1.5 : 1), hr * (kind === 'tall' ? 1.3 : 1), 0, 0, Math.PI * 2); g.fill();
+    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(64 + s * hr * 0.4, hy - hr * 0.7); g.lineTo(64 + s * hr * 0.95, hy - hr * 1.35); g.lineTo(64 + s * hr * 0.95, hy - hr * 0.3); g.fill(); }
+  }
+  const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
+  return (TexCache[k] = tx);
+}
+// 鏡の枠の形：下が平ら、上が半円のアーチ（hw：半分の幅、yb：下、yc：半円の中心の高さ）
+function archShape(hw, yb, yc) {
+  const s = new THREE.Shape(); s.moveTo(-hw, yb); s.lineTo(hw, yb); s.lineTo(hw, yc); s.absarc(0, yc, hw, 0, Math.PI, false); s.lineTo(-hw, yb); return s;
+}
+function starShape(r) {
+  const s = new THREE.Shape();
+  for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; s[i ? 'lineTo' : 'moveTo'](Math.cos(a) * rr, Math.sin(a) * rr); }
+  return s;
+}
+// びっくり鏡：迷路の床のマス (x, z) のとなりの壁の前に立つ、アーチの大きな鏡。電球が枠をぐるりと回って光る
+//   kind：'wide' 横に広がる／'tall' 縦にのびる／'big' 頭でっかち／'wave' くねくね
 function funnyMirror(K, x, z, kind) {
   const T = K.T, i = T.at(x, z);
   if (i < 0 || !T.isWalkKind(T.kind[i])) return;
   const c0 = T.colOf(i), r0 = T.rowOf(i), cx = T.cx(c0), cz = T.cz(r0);
   const d = DIR4.find(([dc, dr]) => { const j = T.idx(c0 + dc, r0 + dr); return j >= 0 && T.kind[j] === TK.SOLID; });
   if (!d) return;
-  const px = cx + d[0] * (CELL / 2 - 0.08), pz = cz + d[1] * (CELL / 2 - 0.08), ry = Math.atan2(-d[0], -d[1]);
-  const k = 'mirror' + kind;
-  if (!TexCache[k]) {
-    const cv = document.createElement('canvas'); cv.width = 128; cv.height = 256; const g = cv.getContext('2d');
-    const gr = g.createLinearGradient(0, 0, 128, 256); gr.addColorStop(0, '#f4f8ff'); gr.addColorStop(0.5, '#c8d4f0'); gr.addColorStop(1, '#eef0ff'); g.fillStyle = gr; g.fillRect(0, 0, 128, 256);
-    g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 6; for (let s = -2; s < 4; s++) { g.beginPath(); g.moveTo(s * 50, 256); g.lineTo(s * 50 + 120, 0); g.stroke(); }
-    // ゆがんだねこの影
-    const [bw, bh, hr, hy] = kind === 'wide' ? [58, 40, 40, 118] : kind === 'tall' ? [16, 96, 18, 62] : [18, 30, 52, 110];
-    g.fillStyle = 'rgba(90,70,110,.55)';
-    g.beginPath(); g.ellipse(64, 200 - bh / 2, bw, bh, 0, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.ellipse(64, hy, hr * (kind === 'wide' ? 1.5 : 1), hr * (kind === 'tall' ? 1.3 : 1), 0, 0, Math.PI * 2); g.fill();
-    for (const s of [-1, 1]) { g.beginPath(); g.moveTo(64 + s * hr * 0.4, hy - hr * 0.7); g.lineTo(64 + s * hr * 0.95, hy - hr * 1.35); g.lineTo(64 + s * hr * 0.95, hy - hr * 0.3); g.fill(); }
-    const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; TexCache[k] = tx;
+  const W = 1.3, H = 2.4, y0 = 0.12, fw = 0.16, yc = y0 + H - W / 2, gy = K.gy(x, z);
+  // 付け柱（壁の 4 マスごと、マスの低いほうの端）をよけて、左右にずらす
+  const along = d[1] ? c0 : r0, side = d[1] ? [1, 0] : [0, 1];
+  const shift = (along % 4 === 0 ? 0.24 : 0) - ((along + 1) % 4 === 0 ? 0.24 : 0);
+  const n = V3(-d[0], 0, -d[1]), up = V3(0, 1, 0), r = V3().crossVectors(up, n), ry = Math.atan2(n.x, n.z);
+  const off = CELL / 2 - 0.2;   // 壁（腰板が 0.12 出ている）から少しはなして立てる
+  const px = cx + d[0] * off + side[0] * shift, pz = cz + d[1] * off + side[1] * shift;
+  // 枠：アーチの板（色は鏡ごと）と、内側の金のふち、てっぺんの金の星、足もとの台
+  const col = { wide: '#ff8ac8', tall: '#ffc85a', big: '#6ac8f4', wave: '#7ad8a8' }[kind];
+  const frame = archShape(W / 2 + fw, 0, yc); frame.holes.push(archShape(W / 2, y0, yc));
+  K.mg(K.M(col), new THREE.ExtrudeGeometry(frame, { depth: 0.08, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 2, curveSegments: 20 }), px, gy, pz, [0, ry, 0]);
+  const rim = archShape(W / 2 + 0.05, y0 - 0.05, yc); rim.holes.push(archShape(W / 2 - 0.005, y0, yc));
+  K.mg('gold', new THREE.ExtrudeGeometry(rim, { depth: 0.13, bevelEnabled: false, curveSegments: 20 }), px, gy, pz, [0, ry, 0]);
+  K.mg('gold', new THREE.ExtrudeGeometry(starShape(0.22), { depth: 0.06, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 1 }), px, gy + yc + W / 2 + fw + 0.12, pz, [0, ry, 0]);
+  K.mg(K.M('#5a2a5a'), new THREE.BoxGeometry(W + 2 * fw + 0.2, 0.14, 0.42), px + n.x * 0.06, gy + 0.07, pz + n.z * 0.06, [0, ry, 0]);
+  // 鏡の面
+  const u = {
+    tMirror: { value: funnyMirrorTex(kind) }, tStatic: { value: funnyMirrorTex(kind) }, live: { value: 0 }, time: { value: 0 },
+    W: { value: W }, H: { value: H }, y0: { value: y0 }, kind: { value: FUNHOUSE_KINDS[kind] },
+    rmin: { value: new THREE.Vector2(...FUNHOUSE_RANGE[kind].slice(0, 2)) }, rmax: { value: new THREE.Vector2(...FUNHOUSE_RANGE[kind].slice(2)) },
+  };
+  const mat = new THREE.ShaderMaterial({ uniforms: u, vertexShader: FUNHOUSE_VERT, fragmentShader: FUNHOUSE_FRAG });
+  const geo = new THREE.PlaneGeometry(W, H); geo.translate(0, y0 + H / 2, 0);
+  const mesh = new THREE.Mesh(geo, mat); mesh.position.set(px + n.x * 0.04, gy, pz + n.z * 0.04); mesh.rotation.y = ry;
+  K.scene.add(mesh);
+  // 映る奥行き：鏡の前の扇（±75°）で、壁のマスに当たるまでの深さのいちばん遠いところ。その先は描かない
+  //   （壁の向こうのロビーの小物まで描くと、本番の画面より描く回数が多くなった）
+  let depth = 2;
+  for (let a = -75; a <= 75; a += 7.5) {
+    const ca = Math.cos(a * Math.PI / 180), sa = Math.sin(a * Math.PI / 180), dx = n.x * ca + r.x * sa, dz = n.z * ca + r.z * sa;
+    for (let t = 0.3; t < 30; t += 0.25) { const j = T.at(px + dx * t, pz + dz * t); if (j < 0 || T.kind[j] === TK.SOLID) { depth = Math.max(depth, t * ca); break; } }
   }
-  K.mesh(new THREE.PlaneGeometry(1.2, 2.3), new THREE.MeshStandardMaterial({ map: TexCache[k], metalness: 0.3, roughness: 0.15, emissive: '#6a6a8a', emissiveIntensity: 0.25 }), px, 1.45, pz, { ry, noShadow: true });
-  const fr = K.M(kind === 'tall' ? '#ffd27a' : kind === 'wide' ? '#ff9ad8' : '#8ad8ff');
-  for (const [w, h, ox, oy] of [[1.4, 0.12, 0, 2.62], [1.4, 0.12, 0, 0.28], [0.12, 2.4, -0.64, 1.45], [0.12, 2.4, 0.64, 1.45]]) K.mesh(new THREE.BoxGeometry(w, h, 0.08), fr, px + Math.cos(ry) * ox, oy, pz - Math.sin(ry) * ox, { ry });
+  const md = { mesh, u, n, r, up, W, H, c: V3(mesh.position.x, gy + y0 + H / 2, mesh.position.z), depth: depth + 1, T, live: 0, f: undefined };
+  mesh.userData.funMirror = md; mesh.onBeforeRender = (renderer, scene, camera) => FUNHOUSE.render(md, renderer, scene, camera);
+  // 枠の電球（区画の電球にまとめて、順に点いて回る）
+  const bulbs = K.funBulbs || (K.funBulbs = []), hw = W / 2 + fw / 2, sideL = yc - 0.14, arc = Math.PI * hw, per = 2 * sideL + arc, nb = Math.round(per / 0.21);
+  for (let b = 0; b < nb; b++) {
+    const s = (b + 0.5) / nb * per;
+    let lx, ly;
+    if (s < sideL) { lx = -hw; ly = 0.14 + s; }
+    else if (s < sideL + arc) { const a = Math.PI - (s - sideL) / hw; lx = Math.cos(a) * hw; ly = yc + Math.sin(a) * hw; }
+    else { lx = hw; ly = yc - (s - sideL - arc); }
+    bulbs.push([px + r.x * lx + n.x * 0.13, gy + ly, pz + r.z * lx + n.z * 0.13, b]);
+  }
+  K.col(px + n.x * 0.06, pz + n.z * 0.06, 0.5, 2.6);
+}
+// 回廊の電球：鏡の枠の電球を一つの InstancedMesh にして、三つおきに点く光が回る
+function funhouseBulbs(K) {
+  const list = K.funBulbs; if (!list || !list.length) return;
+  const m = new THREE.InstancedMesh(new THREE.SphereGeometry(0.055, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffffff' }), list.length);
+  const M4 = new THREE.Matrix4(), on = hdr('#ffe6a8', 2.6), off = hdr('#ffd8a0', 0.55);
+  list.forEach(([x, y, z], i) => { m.setMatrixAt(i, M4.makeTranslation(x, y, z)); m.setColorAt(i, off); });
+  m.castShadow = false; m.computeBoundingSphere(); K.scene.add(m);
+  let last = -1;
+  K.tick((dt, t) => {
+    const ph = Math.floor(t * 6) % 3;
+    if (ph === last) return;
+    last = ph;
+    list.forEach((b, i) => m.setColorAt(i, (b[3] + ph) % 3 === 0 ? on : off));
+    m.instanceColor.needsUpdate = true;
+  });
+}
+// 回廊の壁紙と床：腰板の上から天井の梁まで、深い紫に金の菱形の壁紙。床は紫と藤色のひし形（ロビーの市松と分ける）
+//   rect：[x0, z0, x1, z1]（迷路のマスの範囲）
+function funhouseHall(K, rect) {
+  const T = K.T, [x0, z0, x1, z1] = rect;
+  if (!TexCache.funWall) {
+    const cv = document.createElement('canvas'); cv.width = 128; cv.height = 256; const g = cv.getContext('2d');
+    g.fillStyle = '#4a1e4e'; g.fillRect(0, 0, 128, 256);
+    // 菱形：濃淡のちがう紫を交互に、金の細い線でふちどる
+    for (let j = -1; j < 5; j++) for (let i2 = -1; i2 < 3; i2++) {
+      const cx = i2 * 64 + (j % 2 ? 32 : 0), cy = j * 64;
+      g.fillStyle = (i2 + j) % 2 ? '#6a2e70' : '#381438';
+      g.beginPath(); g.moveTo(cx, cy - 64); g.lineTo(cx + 32, cy); g.lineTo(cx, cy + 64); g.lineTo(cx - 32, cy); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(232,192,96,.28)'; g.lineWidth = 1.5; g.stroke();
+      g.fillStyle = 'rgba(255,214,120,.75)'; g.beginPath(); g.arc(cx + 32, cy, 2.2, 0, Math.PI * 2); g.fill();
+    }
+    const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.anisotropy = 4;
+    TexCache.funWall = tx;
+  }
+  if (!TexCache.funFloor) {
+    const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128; const g = cv.getContext('2d');
+    g.fillStyle = '#2e1634'; g.fillRect(0, 0, 128, 128);
+    for (const [cx, cy] of [[64, 0], [0, 64], [128, 64], [64, 128]]) { g.fillStyle = '#8a6aa8'; g.beginPath(); g.moveTo(cx, cy - 64); g.lineTo(cx + 64, cy); g.lineTo(cx, cy + 64); g.lineTo(cx - 64, cy); g.closePath(); g.fill(); }
+    g.strokeStyle = 'rgba(255,210,122,.6)'; g.lineWidth = 2;
+    for (const [ax, ay, bx, by] of [[0, 64, 64, 0], [64, 0, 128, 64], [128, 64, 64, 128], [64, 128, 0, 64]]) { g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke(); }
+    const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.anisotropy = 4;
+    TexCache.funFloor = tx;
+  }
+  const wallM = K.mc.funWall || (K.mc.funWall = new THREE.MeshStandardMaterial({ map: TexCache.funWall, roughness: 0.75, metalness: 0.05 }));
+  const floorM = K.mc.funFloor || (K.mc.funFloor = new THREE.MeshStandardMaterial({ map: TexCache.funFloor, roughness: 0.4, metalness: 0.1 }));
+  const yb = 0.6, yt = 6.2;
+  for (let z = z0 + 1; z < z1; z += CELL) for (let x = x0 + 1; x < x1; x += CELL) {
+    const i = T.at(x, z);
+    if (i < 0 || !T.isWalkKind(T.kind[i])) continue;
+    const c = T.colOf(i), r = T.rowOf(i), cx = T.cx(c), cz = T.cz(r), gy = K.gy(cx, cz);
+    // 床：マスごとの板（壁のマスの下には敷かない）
+    const fg = new THREE.PlaneGeometry(CELL, CELL); fg.rotateX(-Math.PI / 2);
+    const uv = fg.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) + (cx - 1) / CELL, uv.getY(k) - (cz + 1) / CELL);
+    K.mg(floorM, fg, cx, gy + 0.012, cz);
+    for (const [dc, dr] of DIR4) {
+      const j = T.idx(c + dc, r + dr);
+      if (j >= 0 && T.kind[j] !== TK.SOLID) continue;
+      // 壁紙（表は部屋の内側。模様は壁ぞいにつながるよう、位置で uv をずらす）
+      const n = [-dc, -dr], ry = Math.atan2(n[0], n[1]), g = new THREE.PlaneGeometry(CELL, yt - yb);
+      const along = cx * n[1] - cz * n[0], uvw = g.attributes.uv;   // 面の右向き (n.z, -n.x) にそった位置
+      for (let k = 0; k < uvw.count; k++) uvw.setXY(k, (uvw.getX(k) + along / CELL) * 2, uvw.getY(k) * (yt - yb) / 2);
+      K.mg(wallM, g, cx + dc * (CELL / 2 - 0.015), gy + (yb + yt) / 2, cz + dr * (CELL / 2 - 0.015), [0, ry, 0]);
+    }
+  }
 }
 // 鏡台：机と、電球でふちどった鏡（ry = 机の正面）。big でピエロの大きな鏡台
 function vanity(K, x, z, ry, w = 1.8, big) {
@@ -10765,8 +11026,10 @@ const ZONE_BUILD = {
     K.paper(-21.9, -3, Math.PI / 2, '大サーカス！', ['笑顔の塔', '主演：ピエロ'], { bg: '#e8d0d6', ink: '#a0607a', stain: true, w: 1.3 });
     for (const [x, ry] of [[-11.9, Math.PI / 2], [11.9, -Math.PI / 2]]) K.paper(x, 30, ry, happy ? '再開！' : '休演中', happy ? ['笑顔の塔', 'ただいま大笑い中'] : ['笑顔の塔', '……しばらく'], { bg: happy ? '#fff0c8' : '#d8d0d6', ink: happy ? '#c8304a' : '#7a6a7a', w: 1.2 });
     clownBoard(K, 8, 36, -0.4);
-    // びっくり鏡の回廊：迷路の壁にゆがんだ鏡（のびる・広がる・頭でっかち）
-    for (const [x, z, k] of [[-33, -9, 'wide'], [-31, 7, 'big'], [-37, -17, 'tall'], [-39, 1, 'wide'], [-27, -13, 'tall'], [-39, 13, 'big'], [-25, -1, 'wide'], [-33, 5, 'tall']]) funnyMirror(K, x, z, k);
+    // びっくり鏡の回廊：紫の壁紙とひし形の床の迷路に、一行がゆがんで映る鏡（のびる・広がる・頭でっかち・くねくね）
+    funhouseHall(K, [-40, -20, -24, 14]);
+    for (const [x, z, k] of [[-33, -9, 'wide'], [-31, 7, 'big'], [-37, -17, 'tall'], [-39, 1, 'wave'], [-27, -13, 'tall'], [-39, 13, 'big'], [-25, -1, 'wide'], [-33, 5, 'wave']]) funnyMirror(K, x, z, k);
+    funhouseBulbs(K);
     // 風船の間：天井いっぱいの風船と、まん中の小さな舞台
     for (let i = 0; i < 46; i++) { const x = 23 + K.r() * 16, z = -17 + K.r() * 34; balloon(K, x, z, 2.2 + K.r() * 3.6, 1); }
     K.mesh(new THREE.RingGeometry(3.2, 3.5, 40), K.glow('#ff9ad8', 1.2), 32, 0.03, -3, { rx: -Math.PI / 2, noShadow: true });

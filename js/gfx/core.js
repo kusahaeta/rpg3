@@ -82,7 +82,7 @@ const GFX_TIERS = [
 const GFX = {
   ok: false, renderer: null, composer: null, view: null, tweens: [], time: 0, timeScale: 1, pixelRatio: 1,
   // tier：画質の段階（GFX_TIERS の番号）。eco は省エネ以下（30fps）、low は軽量
-  tier: 0, Q: GFX_TIERS[0], eco: false, low: false, appScale: 1, lastFrame: 0,
+  tier: 0, Q: GFX_TIERS[0], eco: false, low: false, appScale: 1, lastFrame: 0, frameNo: 0,
   // 診断（?debug のとき画面に出す）：3D 描画が止められた・戻った・作り直した回数、描いたコマ数
   diag: { lost: 0, restored: 0, rebuilt: 0, rebuildFail: '', frames: 0 },
   shakeAmt: 0,
@@ -261,6 +261,7 @@ const GFX = {
   },
 
   frame() {
+    this.frameNo++;   // 描いたコマの番号（場面の中で、このコマに何をしたかを覚えるのに使う。びっくり鏡など）
     const rdt = Math.min(0.05, this.clock.getDelta());
     const speed = (typeof Game !== 'undefined' ? Game.speed : 1);
     const dt = rdt * speed * this.timeScale;
