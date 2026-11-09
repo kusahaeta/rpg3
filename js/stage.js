@@ -350,9 +350,10 @@ function shadeModel(m, col) {
   return mats;
 }
 // しっぽをからめる形（演出 tailWrap）：となりに並ぶ間、しっぽの節の長さ、からめたしっぽの長さ、らせんの半径・ひと巻きの長さ、
-//   らせんの始まり（根もとのあいだから上・うしろへ）、軸のうしろへのかたむき（上 1 に対して）、根もとから出る向き [うしろ, 上]・らせんへ入る手前の長さ（m）
+//   らせんの始まり（根もとのあいだから上・うしろへ）、軸のうしろへのかたむき（上 1 に対して）、根もとから出る向き [うしろ, 上]・らせんへ入る手前の長さ（m）、
+//   からめる・ほどくのにかかる秒数、寄っていく子のしっぽが相手よりおくれて動きだす割合（からめる時間のうち）
 //   ・tieTube：しっぽの代わりに出す、曲線に沿った筒。節のしっぽと同じ毛の材質・輪郭線で、先は丸める。形は毎フレーム、頂点を書きかえる
-const TIE = { gap: 0.7, seg: 0.075, len: 0.72, r: 0.058, turn: 0.19, up: 0.12, back: 0.18, lean: 1.5, c1: [0.12, 0.08], c2: 0.1 };
+const TIE = { gap: 0.7, seg: 0.075, len: 0.64, r: 0.055, turn: 0.3, up: 0.12, back: 0.18, lean: 1.5, c1: [0.12, 0.08], c2: 0.1, dur: [2.0, 1.0], lag: 0.45 };
 function tieTube(src, scene, N = 40, S = 10) {
   const pos = new Float32Array(N * S * 3), nor = new Float32Array(N * S * 3), idx = [];
   for (let i = 0; i < N - 1; i++) for (let j = 0; j < S; j++) { const a = i * S + j, b = i * S + (j + 1) % S; idx.push(a, b, a + S, b, b + S, a + S); }
@@ -797,15 +798,17 @@ class StageView extends BaseView {
     // 着いたら、からめはじめる
     if (!T.go && !A.path) { T.go = true; if (T.want) this.tieShot(); }
     const want = T.go ? T.want : 0;
-    T.k = clamp(T.k + Math.sign(want - T.k) * dt / (want ? 1.3 : 0.6), 0, 1);
-    const e = Ease.inOut(T.k), on = T.k > 0;
+    T.k = clamp(T.k + Math.sign(want - T.k) * dt / (want ? C.dur[0] : C.dur[1]), 0, 1);
+    // 相手（タマ）のしっぽが先に、寄っていく子のほうへのびて、少しおくれて寄っていく子（ミケ）のしっぽが巻きつきに行く
+    //   （ほどくときは、その逆。寄っていく子のしっぽが先にはなれる）
+    const part = (k0, k1) => Ease.inOut(clamp((T.k - k0) / (k1 - k0), 0, 1)), eA = part(C.lag, 1), eB = part(0, 1 - C.lag), on = T.k > 0;
     A.m.group.updateMatrixWorld(true); B.m.group.updateMatrixWorld(true);
     const rA = A.m.tail[0].getWorldPosition(V3()), rB = B.m.tail[0].getWorldPosition(V3());
     const up = V3(0, 1, 0), back = this.F.clone().negate(), u = V3().subVectors(rB, rA).setY(0).normalize();
     const D = up.clone().addScaledVector(back, C.lean).normalize(), w = V3().crossVectors(D, u).normalize();
     const S0 = rA.clone().add(rB).multiplyScalar(0.5).addScaledVector(back, C.back).addScaledVector(up, C.up), om = Math.PI * 2 / C.turn;
     const helix = (sx, ph) => S0.clone().addScaledVector(D, sx).addScaledVector(u, Math.cos(ph + om * sx) * C.r).addScaledVector(w, Math.sin(ph + om * sx) * C.r);
-    for (const [a, r0, ph, key] of [[A, rA, Math.PI, 'ta'], [B, rB, 0, 'tb']]) {
+    for (const [a, r0, ph, key, e] of [[A, rA, Math.PI, 'ta', eA], [B, rB, 0, 'tb', eB]]) {
       const tail = a.m.tail, ws = tail[0].getWorldScale(V3()).y;
       tail.forEach(g => { if (g.children[0]) g.children[0].visible = !on; });
       if (!on) { if (T[key]) T[key].mesh.visible = false; continue; }
