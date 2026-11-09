@@ -136,9 +136,10 @@ Object.assign(SCENES, {
       ['tama', '……みんな……いっしょ？', { f: 'worry', g: 'tilt' }],
       { c: [
         ['当たり前じゃん！', [['tama', '……えへへ。', { f: 'smile', g: 'nod' }]], { f: 'joy', g: 'cheer', r: { tama: 'smile' }, bond: ['mike', 'tama', 4] }],
-        ['……（タマのしっぽに、自分のしっぽを、くるんと巻きつける）', [['tama', '……えへへ。……これで、ほどけないね。', { f: 'gentle', g: 'nod' }]], { f: 'gentle', g: 'reach', to: 'tama', bond: ['mike', 'tama', 7] }],
+        // となりへ行って、しっぽをからめる。次の行でほどいて、もとの場所へもどる
+        ['……（タマのしっぽに、自分のしっぽを、くるんと巻きつける）', [['tama', '……えへへ。……これで、ほどけないね。', { f: 'gentle', g: 'nod', cam: 'keep' }]], { f: 'gentle', fx: 'tailWrap:mike,tama', cam: 'keep', bond: ['mike', 'tama', 7] }],
       ] },
-      ['mike', '……でも、きょうはもう、へとへと……。', { f: 'worry', g: 'lookDown' }],
+      ['mike', '……でも、きょうはもう、へとへと……。', { f: 'worry', g: 'lookDown', fx: 'tailWrap:off' }],
       ['kuro', '……もう日が暮れるころだ。今夜は、外庭で野宿だな。', { f: 'serious', g: 'nod' }],
       ['n', '【目的】遺跡を出て、外庭で野宿をしよう。', { cam: 'wide', dur: 5 }],
     ] },

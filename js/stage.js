@@ -171,7 +171,9 @@ class Actor {
     }
     // 向き：向き先へ体を回し、見ている相手へ少しだけ体をひねる
     if (!moving) {
-      let yaw = this.targetYaw(this.faceLock ?? this.faceT);   // faceLock：小道具が決めた向き（ふとんで眠っているあいだ）。話し相手より強く、話し手も見ない
+      // faceLock：小道具が決めた向き（ふとんで眠っているあいだ）。話し相手より強く、話し手も見ない
+      // bodyLock：体の向きだけを決める（しっぽをからめて、となりに並んでいるあいだ）。頭は話し手を見る
+      let yaw = this.targetYaw(this.faceLock ?? this.bodyLock ?? this.faceT);
       const lp = this.lookPoint();
       if (lp) { const dy = ((Math.atan2(lp.x - this.pos.x, lp.z - this.pos.z) - yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI; yaw += clamp(dy * 0.35, -0.5, 0.5); }
       this.yaw = lerpAngle(this.yaw, yaw, 1 - Math.exp(-5 * dt));
@@ -346,6 +348,41 @@ function shadeModel(m, col) {
     mats.push(mt);
   });
   return mats;
+}
+// しっぽをからめる形（演出 tailWrap）：となりに並ぶ間、しっぽの節の長さ、からめたしっぽの長さ、らせんの半径・ひと巻きの長さ、
+//   らせんの始まり（根もとのあいだから上・うしろへ）、軸のうしろへのかたむき（上 1 に対して）、根もとから出る向き [うしろ, 上]・らせんへ入る手前の長さ（m）
+//   ・tieTube：しっぽの代わりに出す、曲線に沿った筒。節のしっぽと同じ毛の材質・輪郭線で、先は丸める。形は毎フレーム、頂点を書きかえる
+const TIE = { gap: 0.7, seg: 0.075, len: 0.72, r: 0.058, turn: 0.19, up: 0.12, back: 0.18, lean: 1.5, c1: [0.12, 0.08], c2: 0.1 };
+function tieTube(src, scene, N = 40, S = 10) {
+  const pos = new Float32Array(N * S * 3), nor = new Float32Array(N * S * 3), idx = [];
+  for (let i = 0; i < N - 1; i++) for (let j = 0; j < S; j++) { const a = i * S + j, b = i * S + (j + 1) % S; idx.push(a, b, a + S, b, b + S, a + S); }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setIndex(idx);
+  const mesh = new THREE.Mesh(geo, src.material); mesh.castShadow = true; mesh.frustumCulled = false; scene.add(mesh);
+  const ol = src.children.find(o => o.userData.outline);
+  if (ol) { const o = new THREE.Mesh(geo, ol.material); o.userData.outline = true; o.frustumCulled = false; mesh.add(o); }
+  const n = V3(), b = V3(), t = V3(), d = V3();
+  return { mesh, N,
+    // 曲線の点（N 個）と根もとの太さ。先へ行くほど細く、先は半球に丸める
+    set(P, r0) {
+      let L = 0; const acc = [0]; for (let i = 1; i < N; i++) acc.push(L += P[i].distanceTo(P[i - 1]));
+      const tip = r0 * 0.75;
+      for (let i = 0; i < N; i++) {
+        t.subVectors(P[Math.min(N - 1, i + 1)], P[Math.max(0, i - 1)]).normalize();
+        if (i === 0) { n.crossVectors(t, Math.abs(t.y) < 0.9 ? V3(0, 1, 0) : V3(1, 0, 0)).normalize(); }
+        else { n.addScaledVector(t, -n.dot(t)).normalize(); }   // 前の輪の向きを引きつぐ（ねじれない枠）
+        b.crossVectors(t, n);
+        const s = acc[i], k = s / L, left = L - s;
+        let r = r0 * (1 - 0.25 * k); if (left < tip) r *= Math.sqrt(Math.max(0, 1 - ((tip - left) / tip) ** 2));
+        for (let j = 0; j < S; j++) {
+          const a = j / S * Math.PI * 2; d.copy(n).multiplyScalar(Math.cos(a)).addScaledVector(b, Math.sin(a));
+          const o = (i * S + j) * 3; pos[o] = P[i].x + d.x * r; pos[o + 1] = P[i].y + d.y * r; pos[o + 2] = P[i].z + d.z * r; nor[o] = d.x; nor[o + 1] = d.y; nor[o + 2] = d.z;
+        }
+      }
+      geo.attributes.position.needsUpdate = true; geo.attributes.normal.needsUpdate = true;
+    },
+    dispose() { mesh.removeFromParent(); geo.dispose(); },
+  };
 }
 class StageView extends BaseView {
   constructor(scene, id, set = null) {
@@ -647,6 +684,8 @@ class StageView extends BaseView {
   camFor(sp, A, d) {
     // keep：前の行のカメラのまま（切りかえは later の cam で）
     if (d.cam === 'keep') { this.lastShot = 'keep'; return; }
+    // 演出がカメラを決めた行（しっぽをほどいて、もどっていく）
+    if (this.skipCam) { this.skipCam = false; return; }
     if (d.cam) { this.shot(d.cam, { to: this.addr, drift: d.drift ?? 0.3, dur: d.dur || 5, close: d.close }); this.lastShot = d.cam; return; }
     // 姿のない話し手は、その小物を映す（shots に同じ名前の画があれば、その画）。続けて話すあいだは切りかえない
     if (!A && (this.st.voices || {})[sp]) { const v = this.st.voices[sp], k = (this.st.shots || {})[v] ? v : 'look:' + v; if (this.lastShot !== k) this.shot(k, { drift: 0.3, dur: 6 }); this.lastShot = k; return; }
@@ -748,6 +787,59 @@ class StageView extends BaseView {
     ph.g.traverse(o => { if (o.isMesh && o.material && o.material.isMeshBasicMaterial && !o.material.map) o.material.color.copy(hdr(line, 2.4)); });
     Sfx.door(); Sfx.slam();
   }
+  // ---------- しっぽをからめる（演出 tailWrap） ----------
+  //   二本のしっぽを、ねじった縄のようにからめる。二匹のしっぽの根もとのあいだから、うしろへのびる軸のまわりを、
+  //   二本が向かい合ってらせんに回る。それぞれのしっぽは、根もとからその軸の始まりへ曲がってわたり、らせんに入る
+  //   からめているあいだは、節のしっぽをかくして、なめらかな筒（tieTube）を出す（節のままだと、らせんがかくかくに折れる）。
+  //   筒は、ふだんのしっぽの線から、からめた形へ、少しずつ形を変える
+  tieTails(dt) {
+    const T = this.tie, { A, B } = T, C = TIE;
+    // 着いたら、からめはじめる
+    if (!T.go && !A.path) { T.go = true; if (T.want) this.tieShot(); }
+    const want = T.go ? T.want : 0;
+    T.k = clamp(T.k + Math.sign(want - T.k) * dt / (want ? 1.3 : 0.6), 0, 1);
+    const e = Ease.inOut(T.k), on = T.k > 0;
+    A.m.group.updateMatrixWorld(true); B.m.group.updateMatrixWorld(true);
+    const rA = A.m.tail[0].getWorldPosition(V3()), rB = B.m.tail[0].getWorldPosition(V3());
+    const up = V3(0, 1, 0), back = this.F.clone().negate(), u = V3().subVectors(rB, rA).setY(0).normalize();
+    const D = up.clone().addScaledVector(back, C.lean).normalize(), w = V3().crossVectors(D, u).normalize();
+    const S0 = rA.clone().add(rB).multiplyScalar(0.5).addScaledVector(back, C.back).addScaledVector(up, C.up), om = Math.PI * 2 / C.turn;
+    const helix = (sx, ph) => S0.clone().addScaledVector(D, sx).addScaledVector(u, Math.cos(ph + om * sx) * C.r).addScaledVector(w, Math.sin(ph + om * sx) * C.r);
+    for (const [a, r0, ph, key] of [[A, rA, Math.PI, 'ta'], [B, rB, 0, 'tb']]) {
+      const tail = a.m.tail, ws = tail[0].getWorldScale(V3()).y;
+      tail.forEach(g => { if (g.children[0]) g.children[0].visible = !on; });
+      if (!on) { if (T[key]) T[key].mesh.visible = false; continue; }
+      const tube = T[key] || (T[key] = tieTube(tail[0].children[0], this.scene));
+      tube.mesh.visible = true;
+      // ふだんのしっぽ：節の根もとを結んだ線（先は、最後の節の先まで）
+      const anim = tail.map(g => g.getWorldPosition(V3())); anim.push(tail[tail.length - 1].localToWorld(V3(0, C.seg, 0)));
+      // からめた形：根もとから、らせんの始まりへわたる曲線（3 次ベジェ）と、らせん。長さ C.len で切る
+      const h0 = helix(0, ph), tan = D.clone().addScaledVector(u, -Math.sin(ph) * C.r * om).addScaledVector(w, Math.cos(ph) * C.r * om).normalize();
+      const c1 = r0.clone().addScaledVector(back, C.c1[0]).addScaledVector(up, C.c1[1]), c2 = h0.clone().addScaledVector(tan, -C.c2), wrap = [];
+      for (let i = 0; i <= 16; i++) { const t = i / 16, m = 1 - t; wrap.push(r0.clone().multiplyScalar(m * m * m).addScaledVector(c1, 3 * m * m * t).addScaledVector(c2, 3 * m * t * t).addScaledVector(h0, t * t * t)); }
+      for (let i = 1, len = 0; len < C.len * ws && i < 400; i++) { const p = helix(i * 0.01, ph); len += p.distanceTo(wrap[wrap.length - 1]); wrap.push(p); }
+      // 根もとは、体の中へ少しもぐらせる（筒の切り口を見せない）
+      for (const L of [anim, wrap]) L.unshift(L[0].clone().addScaledVector(V3().subVectors(L[0], L[1]).normalize(), 0.03 * ws));
+      const N = tube.N, P0 = new THREE.CatmullRomCurve3(anim).getSpacedPoints(N - 1), P1 = new THREE.CatmullRomCurve3(wrap).getSpacedPoints(N - 1);
+      tube.set(P0.map((p, i) => p.lerp(P1[i], e)), 0.048 * ws);
+    }
+    if (!T.go || want || T.k > 0) return;
+    // ほどけきったら、筒をしまって、もとの場所へ
+    for (const key of ['ta', 'tb']) if (T[key]) T[key].dispose();
+    this.tie = null; A.bodyLock = B.bodyLock = null; A.walkTo(this.tieRoute(A.pos, T.home), 1.4);
+    this.tieBack = { A, li: T.liOff };
+  }
+  // となりへ行く道：まっすぐ行くと、あいだに立っている子をすりぬけるので、一行のうしろへ下がって回る
+  tieRoute(from, to) { return [V3().lerpVectors(from, to, 0.5).addScaledVector(this.F, -0.7), to.clone()]; }
+  // しっぽが映るよう、二匹のななめうしろ（寄っていく子の反対の、相手の側）から撮る。からめたしっぽが、寄っていく子の背中の前に映る
+  //   （もう次の行へ進んでいたら撮らない）
+  tieShot(bk = 1.9, sd = 1.4, y = 0.95) {
+    const T = this.tie; if (this.lineIdx > T.li + 1) return;
+    const mid = V3().addVectors(T.A.path ? T.A.path[T.A.path.length - 1] : T.A.pos, T.B.pos).multiplyScalar(0.5);
+    const pos = mid.clone().addScaledVector(this.F, -bk).addScaledVector(this.R, -T.side * sd); pos.y += y;
+    const look = mid.clone(); look.y += 0.45;
+    this.cut(pos, look, { drift: 0.1, dur: 6 }); this.lastShot = 'tie';
+  }
   // ---------- 毎フレーム ----------
   update(dt, t, rdt) {
     const d = Math.min(rdt, 0.05);
@@ -761,6 +853,9 @@ class StageView extends BaseView {
       if (tm.d.cam) { this.shot(tm.d.cam, { dur: tm.d.dur || 4, drift: 0.3, close: tm.d.close }); this.lastShot = tm.d.cam; }
     }
     for (const a of Object.values(this.actors)) a.update(d, t);
+    if (this.tie) this.tieTails(d);
+    // しっぽをほどいて、もとの場所へもどった子を映す（着いて、話し相手のほうへ向きなおってから）
+    if (this.tieBack && !this.tieBack.A.path && (this.tieBack.t = (this.tieBack.t || 0) + d) > 0.7) { const b = this.tieBack; this.tieBack = null; if (this.lineIdx === b.li) { this.single(b.A, { dur: 5 }); this.lastShot = 'sp:' + b.A.key; } }
     // 自動扉は近くに誰かいれば開く
     if (this.arch) for (const D of this.arch.doors) {
       const near = Object.values(this.actors).some(a => a.visible() && Math.abs(a.pos.x - D.x) < D.w / 2 + 3 && Math.abs(a.pos.z - D.z) < D.d / 2 + 3 && Math.abs(a.pos.y - D.h) < 2);
@@ -1114,6 +1209,20 @@ const STAGE_ITEMS = {
 
 // ---------- 物語の出来事の演出（台本の fx: '名前:引数' で呼ぶ。this は StageView） ----------
 const STAGE_FX = {
+  // しっぽをからめる：'tailWrap:ミケ,タマ' で、ミケがタマのとなりへ行って並び、二本のしっぽをねじった縄のようにからめる
+  //   'tailWrap:off' で、ほどいて、もとの場所へもどる（からめていなければ何もしない）
+  //   からめているあいだ、二匹は前を向いたまま（頭は話し手を見る）。行の cam: 'keep' と組み合わせると、からめるところをうしろから撮る
+  tailWrap(arg) {
+    // ほどく行は、もどっていくところが映るよう引きの画にする（その行のふだんのカメラは使わない。もどったら、その子を映す）
+    if (arg === 'off') { if (!this.tie) return; this.tie.want = 0; this.tie.liOff = this.lineIdx; this.skipCam = true; this.shot('wide', { drift: 0.3, dur: 5 }); this.lastShot = 'wide'; return; }
+    const [ka, kb] = (arg || '').split(','), A = this.actors[ka], B = this.actors[kb];
+    if (!A || !B || !A.m.tail || !B.m.tail || this.tie) return;
+    const side = Math.sign(V3().subVectors(A.pos, B.pos).dot(this.R)) || 1, to = B.pos.clone().addScaledVector(this.R, side * TIE.gap);
+    A.bodyLock = B.bodyLock = Math.atan2(this.F.x, this.F.z);
+    this.tie = { A, B, k: 0, want: 1, go: false, side, home: A.pos.clone(), li: this.lineIdx };
+    A.walkTo(this.tieRoute(A.pos, to), 1.4);   // あいだに立っている子は、うしろを回ってよける
+    this.tieShot(2.5, 1.7, 1.15);   // 歩いていくところも、同じ向きから少し引いて
+  },
   // 流れ星が落ちる（夜の丘）
   meteor(arg) {
     // 一行の後ろから見て、左上の空の奥から飛んでくる（look: のカメラの画に、はじめから入るように）
