@@ -6435,7 +6435,8 @@ class ZoneKit {
       plate(heads[i % cols.length], V3(px, y + h, pz), nrm, 0.08 + this.r() * 0.03, this.r() * Math.PI * 2);
     }
   }
-  rock(x, z, s = 1, mat = 'rock') { const m = this.mesh(new THREE.DodecahedronGeometry(s, 0), mat, x, s * 0.45, z, { ry: this.r() * 3 }); m.scale.y = 0.7; this.col(x, z, s * 0.9, s); return m; }
+  // 小さな岩：材質ごとに一つの形にまとめて描く（一つずつだと、岩の多い区画で描く回数がふえて、非力なスマホで重い）
+  rock(x, z, s = 1, mat = 'rock') { this.mg(mat, new THREE.DodecahedronGeometry(s, 0), x, s * 0.45 + this.gy(x, z), z, [0, this.r() * 3, 0], [1, 0.7, 1]); this.col(x, z, s * 0.9, s); }
   mushroom(x, z, s = 1, cap = '#e05a6a', glowCol) {
     if (this.v.canopy) {   // 豊かな森（テーマの lush）：作り直したトゥーンのきのこ
       this.shroom(x, this.gy(x, z), z, { H: 0.55 * s, R: 0.4 * s, rs: 0.1 * s, cap: cap || '#e05a6a', glow: glowCol, kids: true, ground: true });
@@ -10016,9 +10017,15 @@ const ZONE_BUILD = {
     // ごろごろ岩の通り道：土がすれて、すじになっている。行ったり来たりの岩は、両はしに、ぶつかって欠けた岩のかけら。
     //   流れる車線（lane）は、谷の壁から壁まで。両はしの岩壁に、ごろごろ団がほったトンネルの口（暗い穴と、まわりの石の縁）
     //   坂の特攻隊長（charge の lane）は、坂の上の持ち場から、突っこむ先の壁まで
-    const stripe = (ax, az, bx, bz, w, op = 0.55) => K.mesh(new THREE.PlaneGeometry(Math.hypot(bx - ax, bz - az) + 2, w), new THREE.MeshStandardMaterial({ color: '#8a7458', roughness: 1, transparent: true, opacity: op, depthWrite: false }), (ax + bx) / 2, 0.04, (az + bz) / 2, { rx: -Math.PI / 2, rz: -Math.atan2(bz - az, bx - ax), noShadow: true });
-    const chips = (x, z) => { for (let i = 0; i < 3; i++) K.mesh(new THREE.DodecahedronGeometry(0.25 + K.r() * 0.2, 0), 'rock', x + (K.r() - 0.5) * 2, 0.15, z + (K.r() - 0.5) * 2, { ry: K.r() * 3 }); };
-    const holeM = new THREE.MeshBasicMaterial({ color: '#140e0a' });
+    //   すじ・かけら・トンネルの口は、材質ごとに一つの形にまとめて描く（K.mg。一つずつだと、谷を見わたしたとき描く回数が 100 回ほどふえる）
+    const stripeM = {}, noShadow = m => { m.userData.noShadow = true; return m; };
+    const stripe = (ax, az, bx, bz, w, op = 0.55) => {
+      const M = stripeM[op] || (stripeM[op] = noShadow(new THREE.MeshStandardMaterial({ color: '#8a7458', roughness: 1, transparent: true, opacity: op, depthWrite: false })));
+      const x = (ax + bx) / 2, z = (az + bz) / 2;
+      K.mg(M, new THREE.PlaneGeometry(Math.hypot(bx - ax, bz - az) + 2, w), x, 0.04 + K.gy(x, z), z, [-Math.PI / 2, 0, -Math.atan2(bz - az, bx - ax)]);
+    };
+    const chips = (x, z) => { for (let i = 0; i < 3; i++) { const g = new THREE.DodecahedronGeometry(0.25 + K.r() * 0.2, 0), cx = x + (K.r() - 0.5) * 2, cz = z + (K.r() - 0.5) * 2; K.mg('rock', g, cx, 0.15 + K.gy(cx, cz), cz, [0, K.r() * 3, 0]); } };
+    const holeM = noShadow(new THREE.MeshBasicMaterial({ color: '#140e0a' }));
     for (const R of K.zone.rollers || []) {
       if (R.kind === 'charge') {
         if (!R.lane) continue;
@@ -10030,9 +10037,9 @@ const ZONE_BUILD = {
       const len = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / len, uz = (bz - az) / len, rr = (R.r || 1.1) + 0.45;
       for (const [x, z, s] of [[ax, az, 1], [bx, bz, -1]]) {
         const y = K.gy(x + ux * s, z + uz * s), ry = Math.atan2(ux * s, uz * s);
-        K.mesh(new THREE.CircleGeometry(rr, 18, 0, Math.PI), holeM, x + ux * s * 0.04, y - 0.05, z + uz * s * 0.04, { abs: true, ry, noShadow: true });
-        K.mesh(new THREE.TorusGeometry(rr + 0.2, 0.32, 5, 14, Math.PI), 'rockDark', x + ux * s * 0.05, y - 0.05, z + uz * s * 0.05, { abs: true, ry });
-        for (let i = 0; i < 2; i++) K.mesh(new THREE.DodecahedronGeometry(0.3 + K.r() * 0.2, 0), 'rock', x + ux * s * 0.5, 0.15, z + (i ? 1 : -1) * (rr + 0.6), { ry: K.r() * 3 });
+        K.mg(holeM, new THREE.CircleGeometry(rr, 18, 0, Math.PI), x + ux * s * 0.04, y - 0.05, z + uz * s * 0.04, [0, ry, 0]);
+        K.mg('rockDark', new THREE.TorusGeometry(rr + 0.2, 0.32, 5, 14, Math.PI), x + ux * s * 0.05, y - 0.05, z + uz * s * 0.05, [0, ry, 0]);
+        for (let i = 0; i < 2; i++) { const g = new THREE.DodecahedronGeometry(0.3 + K.r() * 0.2, 0), cx = x + ux * s * 0.5, cz = z + (i ? 1 : -1) * (rr + 0.6); K.mg('rock', g, cx, 0.15 + K.gy(cx, cz), cz, [0, K.r() * 3, 0]); }
       }
     }
     // ひび割れた大岩（rubble の ram）

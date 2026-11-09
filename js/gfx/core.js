@@ -75,7 +75,8 @@ function fuseGrade(output, grade) {
 const GFX_TIERS = [
   { name: 'なめらか（60fps）', fps: 60, prMax: 2, smaa: true, shadow: 2048, bloom: true, trim: false, cheap: false },
   { name: '省エネ（30fps）', fps: 30, prMax: 1, smaa: false, shadow: 1024, bloom: true, trim: false, cheap: false },
-  { name: '軽量（30fps・画面を粗く）', fps: 30, prMax: 0.75, smaa: false, shadow: 1024, bloom: false, trim: true, cheap: true },
+  // 軽量の細かさ 0.65（832x468）：A21 のごろごろ切り通しの北向きで 0.75 の 16.6fps → 20.9fps。見た目は輪郭が少しやわらかくなる程度（2026-11）
+  { name: '軽量（30fps・画面を粗く）', fps: 30, prMax: 0.65, smaa: false, shadow: 1024, bloom: false, trim: true, cheap: true },
 ];
 
 const GFX = {

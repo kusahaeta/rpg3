@@ -757,7 +757,10 @@ function puffClouds(T, n = 10, col = '#ffffff', y0 = 30) {
   const list = [];
   for (let i = 0; i < n; i++) {
     const g = new THREE.Group(), a = Math.random() * Math.PI * 2, r = 90 + Math.random() * 80;
-    for (let k = 0; k < 5; k++) { const p = new THREE.Mesh(new THREE.SphereGeometry(4 + Math.random() * 4, 12, 8), m); p.position.set(k * 5 - 10, Math.random() * 3, Math.random() * 3); p.scale.y = 0.7; g.add(p); }
+    // 雲ひとつ（玉 5 つ）を一つの形にまとめる（玉ごとに描くと、雲 14 個で 70 回。非力なスマホでは描く回数が重い）
+    const puffs = [];
+    for (let k = 0; k < 5; k++) { const p = new THREE.SphereGeometry(4 + Math.random() * 4, 12, 8); p.scale(1, 0.7, 1); p.translate(k * 5 - 10, Math.random() * 3, Math.random() * 3); puffs.push(p); }
+    g.add(new THREE.Mesh(THREEX.BufferGeometryUtils.mergeGeometries(puffs), m)); puffs.forEach(p => p.dispose());
     g.position.set(Math.cos(a) * r, y0 + Math.random() * 25, Math.sin(a) * r); g.lookAt(0, g.position.y, 0);
     T.root.add(g); list.push([g, a, r, Math.random() * 0.5 + 0.2]);
   }
