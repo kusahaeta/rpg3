@@ -28,6 +28,8 @@ const WHEAT_HILL = [[-1.5, -23, 18, -14], [11, -28, 21, -23]], WHEAT_HILL_AVOID 
 function rollerLane(z, x0, x1, n, o) {
   return Array.from({ length: n }, (_, i) => ({ a: [x0 + (x1 - x0) * i / n, z], b: [x0 + (x1 - x0) * (i + 1) / n, z], r: o.r, speed: o.speed, ph: ((o.ph || 0) + i * 0.5) % 1, back: o.back }));
 }
+// ごろごろ切り通しの床：乾いた土と砂利、ところどころに草（env.js の floorTextures の 'canyon'）
+const CANYON_FLOOR = { pattern: 'canyon', floor: '#cbb38c', floor2: '#bea37a', grass: '#8aa45e', mesa: {} };
 const FIELD_ZONES = {
   // ---------------- 第一章 ぽかぽか村・ほしふる森 ----------------
   pokapoka: { ci: 0, name: 'ぽかぽか村', bgm: 'village', w: 72, d: 64, stage: '1-1', arenas: [[0, 12, 0]], build: 'village', town: true, groups: 0, chests: 3, crystals: 0, treeLook: [150, 1.4, -8],
@@ -757,10 +759,10 @@ const FIELD_ZONES = {
   // ごろごろ切り通し：宿場の北、ニャハハ王国関所の手前の長い岩山。暴走族のような「ごろごろ団」（ごろごろ岩の一団と、総長のばくそうイノシシ）の走り場
   //   二つの区画に分かれる：入口からごろごろ団のたまり場まで（road2）と、その北の、こわれた外門の手前の広場から見晴らし台まで（road2_gate）
   road2: { ci: 1, name: 'ごろごろ切り通し', bgm: 'pass', floor: '入口', w: 96, d: 142, stage: '2-4', arenas: [[0, 51, 0], [6, -25, 0]], build: 'checkpoint', groups: 4, chests: 4, crystals: 2,
-    world: true, arch: 'crag', chestAt: [[31, -62], [-38, -23.5], [29, 26], [17, -64]],
+    world: true, arch: 'canyon', chestAt: [[31, -62], [-38, -23.5], [29, 26], [17, -64]],
     // 高さは 2 倍（数字 1 = 2m）。崖は 13m まで（となりの区画の見晴らし台（高さ 14）より低く）
     hScale: 2, rockCap: 13,
-    th: { fogD: 0.0018 },   // 霧は、となりの区画（見晴らし台から遠くのお城を見せる）と同じうすさ
+    th: { fogD: 0.0018, ...CANYON_FLOOR },   // 霧は、となりの区画（見晴らし台から遠くのお城を見せる）と同じうすさ。床は乾いた土と砂利
     // 南から北へ、岩のよけ方が三つ：
     //   入口（ねこ地蔵。広場を横切る岩が一つ、行ったり来たり。西に泉、東に石段で上る見晴らし）
     //   → ごろごろ坂（幅3の長い一本道。必ず通る）：坂の上の持ち場で、特攻隊長の大岩が見張っている。坂に出ると見つかって、空ぶかしのあと一直線に突っこんでくる。
@@ -892,10 +894,10 @@ const FIELD_ZONES = {
 
   // ごろごろ切り通し・外門：たまり場の北の、高い崖にかこまれた広場（総長と戦う。c2_04）から、崖の石段を上った見晴らし台（c2_05b）を通って関所へ
   road2_gate: { ci: 1, name: 'ごろごろ切り通し・外門', bgm: 'pass', floor: '外門', parent: 'road2', w: 80, d: 64, stage: '2-4', arenas: [[0, 23, 0]], build: 'checkpointGate', groups: 2, chests: 1, crystals: 1,
-    world: true, arch: 'crag', chestAt: [[-31, -27]],
+    world: true, arch: 'canyon', chestAt: [[-31, -27]],
     // 高さは 2 倍（数字 1 = 2m）：見晴らし台（高さ 14）を、区画でいちばん高いところにする（崖のてっぺんも、それより低い）
     hScale: 2, rockCap: 13,
-    th: { fogD: 0.0018 },   // 霧はうすめ：見晴らし台から、遠く（300m ほど先）のニャハハ王国のお城がはっきり見える
+    th: { fogD: 0.0018, ...CANYON_FLOOR },   // 霧はうすめ：見晴らし台から、遠く（300m ほど先）のニャハハ王国のお城がはっきり見える
     // 北の遠景（関所の砦・お城・笑顔の塔）の手前には、空の遠景の丘や木を置かない（区画の組み立てで、お城のうしろに丘を置く）
     envSkip: (x, z) => z < -18,
     // 南から北へ：
@@ -3821,7 +3823,7 @@ class ZoneKit {
   P(c, r) { return this.T.point(c, r); }
   mat(key) {
     if (this.mc[key]) return this.mc[key];
-    const [c, m, r] = ZMAT[key];
+    const [c0, m, r] = ZMAT[key], zm = (ARCH_STYLES[this.zone.arch] || {}).zmat, c = (zm && zm[key]) || c0;   // 区画の岩山の色（ARCH_STYLES の zmat）
     const flat = ['rock', 'rockDark', 'stone', 'stone2', 'obsidian', 'darkStone'].includes(key);
     return (this.mc[key] = new THREE.MeshStandardMaterial({ color: c, metalness: m, roughness: r, flatShading: flat }));
   }
@@ -3923,6 +3925,7 @@ class ZoneKit {
       ball: [new THREE.SphereGeometry(1, 12, 10), std({ roughness: 0.45 })],
       gem: [new THREE.OctahedronGeometry(1, 0), glow(), true],
       dot: [new THREE.SphereGeometry(1, 8, 6), glow(), true],
+      tuft: [lushTuftGeo(), std({ roughness: 1, side: THREE.DoubleSide }), true],
     }[key];
     return (this.insts[key] = { geo: def[0], mat: def[1], list: [], noShadow: !!def[2] });
   }
@@ -4054,6 +4057,70 @@ class ZoneKit {
       part.forEach(([x, y, z, s, a, c], i) => { M4.compose(V3(x, y, z), q.setFromAxisAngle(up, a), V3(s, s * (0.8 + (a % 1) * 0.5), s)); m.setMatrixAt(i, M4); m.setColorAt(i, col.copy(c).multiplyScalar(0.92 + (a % 0.5) * 0.3)); });
       m.castShadow = false; m.receiveShadow = true; m.computeBoundingSphere();
       this.scene.add(m);
+    }
+  }
+  // ---------------- 地層の岩山のしたく（ごろごろ切り通し） ----------------
+  // 崖の根もと（まわりの床より 1.2m 以上高い岩に面した床のふち）に、崩れ落ちた石のかたまりと、ときどき大岩（半分崖にうまる）、枯れ草の束。
+  //   床のところどころにも、枯れ草の束と小石。土の道（,）・ごろごろ岩の通り道・宝箱・立て札・戦場・ひび割れた大岩のまわりには置かない。
+  //   乱数は区画の乱数とは別（区画の乱数を使うと、あとに置く小物の位置が変わる）。当たり判定はつけない（小さく、崖のきわだけ）
+  canyonDressing(o = {}) {
+    const T = this.T; if (!T) return;
+    const Z = this.zone, r = seeded(hashStr((this.v.zoneId || Z.name) + ':canyon')), pk = a => a[Math.floor(r() * a.length)];
+    const segD = (x, z, ax, az, bx, bz) => { const ux = bx - ax, uz = bz - az, t = clamp(((x - ax) * ux + (z - az) * uz) / (ux * ux + uz * uz || 1), 0, 1); return Math.hypot(x - ax - ux * t, z - az - uz * t); };
+    const keep = [];   // [x, z, 半径] と、[ax, az, bx, bz, 半幅] の帯
+    for (const R of Z.rollers || []) {
+      if (R.kind === 'charge') { const [hx, hz] = R.home, [fx, fz] = R.face; keep.push(R.lane ? [hx, hz, hx + fx * 34, hz + fz * 34, R.lane + 0.6] : [hx, hz, 0, 0, (R.r || 1.4) + 2, true]); }
+      else keep.push([...R.a, ...R.b, (R.r || 1.1) + 0.6]);
+    }
+    for (const R of Z.rubble || []) keep.push([...R.at, 0, 0, (R.r || 1.6) + 1.2, true]);
+    for (const c of Z.chestAt || []) keep.push([...c, 0, 0, 1.8, true]);
+    for (const n of Z.notes || []) keep.push([...n.at, 0, 0, 1.6, true]);
+    for (const a of Z.arenas || []) keep.push([a[0], a[1], 0, 0, 6, true]);
+    for (const q of this.v.reserved || []) keep.push([q.x, q.z, 0, 0, q.r + 0.4, true]);
+    for (const q of o.keep || []) keep.push([q[0], q[1], 0, 0, q[2], true]);
+    // よける判定は候補ごとに何千回も呼ぶので、配列を作らずに（円と帯に分けて）調べる
+    const keepC = keep.filter(k => k[5]), keepS = keep.filter(k => !k[5]);
+    const free = (x, z, pad = 0) => {
+      for (const k of keepC) { const dx = x - k[0], dz = z - k[1], r = k[4] + pad; if (dx * dx + dz * dz < r * r) return false; }
+      for (const k of keepS) if (segD(x, z, k[0], k[1], k[2], k[3]) < k[4] + pad) return false;
+      return !(o.skip && o.skip(x, z));
+    };
+    const floorAt = i => i >= 0 && T.kind[i] === TK.FLOOR && !T.paint[i] && !T.bridge[i] && !T.water[i];
+    const stones = ['#c8a07a', '#b48a64', '#d6b48c', '#a87e5c', '#bf9670'], grass = ['#9aa860', '#b0aa66', '#8a9a58', '#c0b070', '#a4b06a'];
+    // 置く所の地面の高さ。床のマスでなければ（壁の中・地図の外は高さが NaN）置かない
+    const onFloor = (x, z) => { const i = T.at(x, z); return i >= 0 && T.isWalkKind(T.kind[i]) && Number.isFinite(T.soilAt(x, z)); };
+    const rock = (x, z, s, sink = 0.3, y0) => { if (y0 == null) { if (!onFloor(x, z)) return; y0 = T.soilAt(x, z); } this.put('rock', x, y0 - s * sink, z, [s * (1 + r() * 0.5), s * (0.55 + r() * 0.35), s * (0.9 + r() * 0.4)], [r() * 0.6, r() * 6.28, r() * 0.6], new THREE.Color(pk(stones)).multiplyScalar(0.9 + r() * 0.2).getStyle()); };
+    const tuft = (x, z, s) => onFloor(x, z) && this.put('tuft', x, T.soilAt(x, z) - 0.02, z, [s, s * (0.8 + r() * 0.6), s], [0, r() * 6.28, 0], pk(grass));
+    const dens = GFX.low ? 0.6 : 1;
+    for (let i = 0; i < T.kind.length; i++) {
+      if (!floorAt(i)) continue;
+      const c = T.colOf(i), rr = T.rowOf(i), cx = T.cx(c), cz = T.cz(rr), y = T.h[i];
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const j = T.idx(c + dc, rr + dr);
+        if (j < 0 || T.kind[j] > TK.WINDOW || T.top[j] - y < 1.2) continue;
+        const ex = cx + dc * CELL / 2, ez = cz + dr * CELL / 2, ax = -dr, az = dc;   // 辺のまん中と、辺にそった向き（床の内側は -dc, -dr）
+        // 崩れた石のかたまり
+        if (r() < 0.6 * dens) {
+          const t0 = (r() - 0.5) * 1.6, n = 1 + Math.floor(r() * 3);
+          for (let k = 0; k < n; k++) {
+            const t = t0 + (r() - 0.5) * 0.9, d = 0.05 + r() * 0.5, x = ex + ax * t - dc * d, z = ez + az * t - dr * d, sz = 0.2 + r() * r() * 0.5;
+            if (free(x, z, sz)) rock(x, z, sz);
+          }
+        }
+        // 大岩：半分は崖にうまる
+        if (r() < 0.09 && T.top[j] - y > 3) {
+          const t = (r() - 0.5) * 1.2, sz = 0.7 + r() * 0.6, x = ex + ax * t + dc * 0.15, z = ez + az * t + dr * 0.15;
+          if (free(x, z, sz + 0.6)) rock(x, z, sz, 0.25, y);
+        }
+        // 枯れ草の束
+        if (r() < 0.5 * dens) {
+          const t0 = (r() - 0.5) * 1.6, n = 2 + Math.floor(r() * 4);
+          for (let k = 0; k < n; k++) { const x = ex + ax * (t0 + (r() - 0.5) * 1.1) - dc * (0.1 + r() * 0.6), z = ez + az * (t0 + (r() - 0.5) * 1.1) - dr * (0.1 + r() * 0.6); if (free(x, z)) tuft(x, z, 1.3 + r() * 1.3); }
+        }
+      }
+      // 床のところどころ：枯れ草の束と小石
+      if (r() < 0.35 * dens) { const x = cx + (r() - 0.5) * CELL, z = cz + (r() - 0.5) * CELL, n = 1 + Math.floor(r() * 3); for (let k = 0; k < n; k++) { const xx = x + (r() - 0.5) * 0.8, zz = z + (r() - 0.5) * 0.8; if (free(xx, zz)) tuft(xx, zz, 1 + r() * 1.2); } }
+      if (r() < 0.25 * dens) { const x = cx + (r() - 0.5) * CELL, z = cz + (r() - 0.5) * CELL, sz = 0.08 + r() * 0.14; if (free(x, z, 0.3)) rock(x, z, sz, 0.35); }
     }
   }
   // ---------------- 森の木（テーマの lush） ----------------
@@ -4411,11 +4478,13 @@ class ZoneKit {
       if (T.kind[i] !== TK.SOLID || T.water[i] || r() > (o.density ?? 0.3)) continue;
       const x = T.cx(T.colOf(i)) + (r() - 0.5), z = T.cz(T.rowOf(i)) + (r() - 0.5);
       if (o.skip && o.skip(x, z)) continue;
-      if (r() < (o.rockShare ?? 0.3)) this.put('rock', x, T.cap[i] + 0.2, z, [0.6 + r() * 0.6, 0.4 + r() * 0.4, 0.6 + r() * 0.6], [0, r() * 3, 0], this.tint(o.rock || '#8a8478'));
+      // 彫った岩山（地層の岩山）は、てっぺんのふちが下がっている。その高さに（少しうめる）
+      const y = T.cap[i] + (T.carve ? Math.min(0, T.carve(x, T.cap[i], z)[1] - 0.1) : 0);
+      if (r() < (o.rockShare ?? 0.3)) this.put('rock', x, y + 0.2, z, [0.6 + r() * 0.6, 0.4 + r() * 0.4, 0.6 + r() * 0.6], [0, r() * 3, 0], this.tint(o.rock || '#8a8478'));
       else {
         // 崖の上の枯れ木は、十字の板に枯れ木の絵（下から見上げるか、遠くから見るだけ）
         const kind = kindOf();
-        this.plant(kind, x, T.cap[i], z, (o.size || 0.9) * (0.8 + r() * 0.4), kind === 'dead' ? { ...o, deadFar: true } : o);
+        this.plant(kind, x, y, z, (o.size || 0.9) * (0.8 + r() * 0.4), kind === 'dead' ? { ...o, deadFar: true } : o);
       }
     }
   }
@@ -9941,7 +10010,9 @@ const ZONE_BUILD = {
   // ごろごろ切り通し：岩山の切り通し、ごろごろ岩の通り道、西のたまり場の野営
   checkpoint(K) {
     // 高い崖の上には、木を生やさない（となりの区画の見晴らし台より高く見えないように）。たまり場の低い岩の出っぱりの上にも
-    K.cragTop({ trees: [['dead', 1], ['round', 1]], leaf: ['#8aa860', '#7a9a58'], density: 0.25, skip: (x, z) => { const c = K.T.cap[K.T.at(x, z)]; return c > 10.5 || (c < 6 && Math.abs(x) < 40 && z > -54 && z < 4); } });
+    K.cragTop({ trees: [['dead', 1], ['round', 1]], leaf: ['#8aa860', '#7a9a58'], density: 0.25, rock: '#b8946e', skip: (x, z) => { const c = K.T.cap[K.T.at(x, z)]; return c > 10.5 || (c < 6 && Math.abs(x) < 40 && z > -54 && z < 4); } });
+    // 崖の根もとの崩れた石・大岩・枯れ草（たまり場の野営は、のぼり旗とテントのまわりをあける）
+    K.canyonDressing({ keep: [[-31, -25, 7.5]] });
     // ごろごろ岩の通り道：土がすれて、すじになっている。行ったり来たりの岩は、両はしに、ぶつかって欠けた岩のかけら。
     //   流れる車線（lane）は、谷の壁から壁まで。両はしの岩壁に、ごろごろ団がほったトンネルの口（暗い穴と、まわりの石の縁）
     //   坂の特攻隊長（charge の lane）は、坂の上の持ち場から、突っこむ先の壁まで
@@ -9987,7 +10058,8 @@ const ZONE_BUILD = {
   // ごろごろ切り通し・外門：こわれた外門、崖くずれ、見晴らし台から見える北の遠景（関所の砦・城下町・お城と笑顔の塔）
   checkpointGate(K) {
     // 見晴らし台の北の岩と、高い崖の上には、木を生やさない（お城と関所の砦が木にかくれないように。見晴らし台より高く見えないように）
-    K.cragTop({ trees: [['dead', 1], ['round', 1]], leaf: ['#8aa860', '#7a9a58'], density: 0.25, skip: (x, z) => (z < -27 && x < -8) || K.T.cap[K.T.at(x, z)] > 10.5 });
+    K.cragTop({ trees: [['dead', 1], ['round', 1]], leaf: ['#8aa860', '#7a9a58'], density: 0.25, rock: '#b8946e', skip: (x, z) => (z < -27 && x < -8) || K.T.cap[K.T.at(x, z)] > 10.5 });
+    K.canyonDressing({ keep: [[0, 14, 6], [-12, 22, 2.5]] });   // こわれた外門と、倒れた札のまわりはあける
     // こわれた外門（ニャハハ王国関所の手前）：二本の柱、倒れた横木、割れた板
     for (const x of [-3.5, 3.5]) K.box(x, 13, 0.6, 4.4, 0.6, 'wood2');
     K.mesh(new THREE.BoxGeometry(8.5, 0.5, 0.6), 'wood2', 1.5, 0.4, 14.4, { rz: 0.25, ry: 0.2 });
@@ -10025,7 +10097,10 @@ const ZONE_BUILD = {
     for (let j = 0; j < zs.length - 1; j++) for (let i = 0; i < NX - 1; i++) { const a = j * NX + i, b = a + 1, c = a + NX, d = c + 1; gidx.push(a, c, b, b, c, d); }
     const ground = new THREE.BufferGeometry();
     ground.setAttribute('position', new THREE.Float32BufferAttribute(gpos, 3)); ground.setAttribute('uv', new THREE.Float32BufferAttribute(guv, 2)); ground.setIndex(gidx); ground.computeVertexNormals();
-    const floorM = K.v.arch ? K.v.arch.mats.floor : K.stdM('#8ab060', 1), groundM = floorM.clone(); groundM.userData = { noShadow: true };
+    // 谷の野は草地（区画の床は切り通しの土と砂利なので、街道の草の模様を別に作る）
+    const floorM = K.v.arch ? K.v.arch.mats.floor : K.stdM('#8ab060', 1), [gmap] = floorTextures({ ...THEMES.road }, 'road');
+    gmap.repeat.set(1, 1);
+    const groundM = new THREE.MeshStandardMaterial({ map: gmap, roughness: 0.95, metalness: 0.05 }); groundM.userData = { noShadow: true };
     K.mg(groundM, ground, 0, 0, 0);
     // 出口から野へ下る坂：区画の床と同じ模様。道は、区画の土の道（,）と同じく、ふちをぼかした土の色と小石を重ねる
     const tiled = (geo, w, d) => { const uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * w / 16, uv.getY(k) * d / 16); return geo; };
@@ -10033,7 +10108,7 @@ const ZONE_BUILD = {
     K.mg(floorM, tiled(new THREE.BoxGeometry(8, 0.6, rampLen), 8, rampLen), 10, 2 - drop / 2 - 0.3, -32 - rampL / 2, [-ang, 0, 0]);
     const pathTex = (() => {
       const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d'), rnd = seeded(7);
-      g.filter = 'blur(5px)'; g.fillStyle = (ARCH_STYLES.crag || {}).path || '#b89a70'; g.fillRect(16, -20, 32, 296); g.filter = 'none';
+      g.filter = 'blur(5px)'; g.fillStyle = (ARCH_STYLES.canyon || {}).path || '#b89a70'; g.fillRect(16, -20, 32, 296); g.filter = 'none';
       for (let n = 0; n < 60; n++) { g.fillStyle = rnd() < 0.5 ? 'rgba(255,245,220,.35)' : 'rgba(70,50,30,.3)'; g.beginPath(); g.arc(18 + rnd() * 28, rnd() * 256, 0.6 + rnd() * 1.2, 0, Math.PI * 2); g.fill(); }
       const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
     })();
@@ -10046,7 +10121,7 @@ const ZONE_BUILD = {
     road(-45, BZ + BL / 2 - 0.5); road(BZ - BL / 2 + 0.5, FZ);
     // 崖のふもと：くずれ落ちた岩と、茂み
     const rockG = new THREE.DodecahedronGeometry(1, 0), blob = new THREE.IcosahedronGeometry(1, 1);
-    const screeM = farM('#a29c90'), bushM = farM('#5a9a48');
+    const screeM = farM('#c4a07c'), bushM = farM('#5a9a48');
     for (let i = 0; i < 46; i++) {
       const x = -46 + K.r() * 96, z = -33 - K.r() * 11 * K.r(), s = 0.5 + K.r() * 1.6 * (1 - (-33 - z) / 12);
       if (Math.abs(x - FX) < 6) continue;
