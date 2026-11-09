@@ -114,7 +114,15 @@ function floorTextures(th, theme) {
   g.fillStyle = th.floor; g.fillRect(0, 0, S, S);
   e.fillStyle = '#000'; e.fillRect(0, 0, S, S);
   const noise = (n, a) => { for (let i = 0; i < n; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${Math.random() * a})`; g.fillRect(Math.random() * S, Math.random() * S, 2 + Math.random() * 14, 2 + Math.random() * 3); } };
-  const blobs = (n, cols, r0, r1) => { for (let i = 0; i < n; i++) { g.fillStyle = cols[i % cols.length]; g.beginPath(); g.arc(Math.random() * S, Math.random() * S, r0 + Math.random() * (r1 - r0), 0, Math.PI * 2); g.fill(); } };
+  const blobs = (n, cols, r0, r1, c = g) => { for (let i = 0; i < n; i++) { c.fillStyle = cols[i % cols.length]; c.beginPath(); c.arc(Math.random() * S, Math.random() * S, r0 + Math.random() * (r1 - r0), 0, Math.PI * 2); c.fill(); } };
+  // ぼかす絵は、別の canvas にまとめて描いてから、一度だけぼかして重ねる（図形ごとに filter をかけると、とても重い）
+  //   ぼかす層はやわらかい形だけなので、4 分の 1 の大きさで描いて、ぼかしながら引きのばす（大きな canvas のぼかしは重い）
+  const layer = (px, draw, alpha = 1) => {
+    const q = 4, small = () => { const c = document.createElement('canvas'); c.width = c.height = S / q; return c; }, lc = small(), bc = small(), lg = lc.getContext('2d'), bg = bc.getContext('2d');
+    lg.scale(1 / q, 1 / q); draw(lg);
+    bg.filter = `blur(${px / q}px)`; bg.drawImage(lc, 0, 0);
+    g.globalAlpha = alpha; g.imageSmoothingEnabled = true; g.drawImage(bc, 0, 0, S, S); g.globalAlpha = 1; lc.width = lc.height = bc.width = bc.height = 0;
+  };
   switch (th.pattern || 'grid') {
     case 'grass': case 'moss': {
       blobs(220, [th.floor2, th.floor], 30, 90);
@@ -124,6 +132,36 @@ function floorTextures(th, theme) {
       if (th.pattern === 'grass') for (let i = 0; i < 90; i++) { const x = Math.random() * S, y = Math.random() * S, c = ['#ffffff', '#ffe07a', '#ffb8d8', '#b8d8ff'][i % 4]; for (let k = 0; k < 5; k++) { g.fillStyle = c; g.beginPath(); g.arc(x + Math.cos(k * 1.26) * 3, y + Math.sin(k * 1.26) * 3, 2.4, 0, Math.PI * 2); g.fill(); } g.fillStyle = '#ffcf4a'; g.beginPath(); g.arc(x, y, 1.6, 0, Math.PI * 2); g.fill(); }
       else { blobs(60, ['rgba(160,210,120,.35)'], 20, 50); for (let i = 0; i < 40; i++) { e.fillStyle = `rgba(255,240,160,${0.2 + Math.random() * 0.4})`; e.beginPath(); e.arc(Math.random() * S, Math.random() * S, 1.5 + Math.random() * 2, 0, Math.PI * 2); e.fill(); } }
       break;
+    }
+    // 乾いた土と砂利（ごろごろ切り通し）：土の色むら、小石、地面のひび、ところどころに草の生えた所（草の色 th.grass）
+    case 'canyon': {
+      layer(8, lg => blobs(240, [th.floor2, th.floor], 24, 80, lg));
+      layer(10, lg => blobs(50, ['rgba(255,240,210,.18)', 'rgba(110,80,50,.14)'], 40, 110, lg));
+      // 草の生えた所：ぼかした緑の島と、草の線
+      const isl = []; for (let i = 0; i < 6; i++) isl.push([Math.random() * S, Math.random() * S, 50 + Math.random() * 80]);
+      layer(28, lg => { lg.fillStyle = th.grass || '#8aa860'; lg.beginPath(); for (const [x, y, r] of isl) for (const ox of [0, -S, S]) for (const oy of [0, -S, S]) { lg.moveTo(x + ox + r, y + oy); lg.ellipse(x + ox, y + oy, r, r * 0.7, 0, 0, 7); } lg.fill(); }, 0.55);
+      // 草の線・小石は、色ごとに一つの path にまとめて描く（一本ずつ stroke・fill すると重い）
+      g.lineWidth = 1.5;
+      for (const col of ['rgba(60,90,35,.55)', 'rgba(200,230,140,.4)']) {
+        g.strokeStyle = col; g.beginPath();
+        for (let i = 0; i < 1500; i++) {
+          const [ix, iy, ir] = isl[i % isl.length], a = Math.random() * 6.28, d = Math.pow(Math.random(), 0.8) * ir * 1.1, x = (ix + Math.cos(a) * d + S) % S, y = (iy + Math.sin(a) * d * 0.7 + S) % S;
+          g.moveTo(x, y); g.lineTo(x + (Math.random() - 0.5) * 4, y - 5 - Math.random() * 6);
+        }
+        g.stroke();
+      }
+      // 小石（影と、明るい上の面。上の面の明るさは 5 段）
+      const peb = []; for (let i = 0; i < 700; i++) peb.push([Math.random() * S, Math.random() * S, 1.5 + Math.random() * Math.random() * 7, Math.random() * 3, Math.floor(Math.random() * 5)]);
+      g.fillStyle = 'rgba(70,50,32,.35)'; g.beginPath(); for (const [x, y, r] of peb) { g.moveTo(x + 1 + r, y + 1.5); g.ellipse(x + 1, y + 1.5, r, r * 0.7, 0, 0, 7); } g.fill();
+      for (let b = 0; b < 5; b++) {
+        const v = 176 + b * 12; g.fillStyle = `rgb(${v},${v - 14},${v - 34})`; g.beginPath();
+        for (const [x, y, r, rot, k] of peb) if (k === b) { g.moveTo(x + Math.cos(rot) * r, y + Math.sin(rot) * r); g.ellipse(x, y, r, r * 0.7, rot, 0, 7); }
+        g.fill();
+      }
+      // 乾いた地面のひび
+      g.strokeStyle = 'rgba(90,64,40,.3)'; g.lineWidth = 1.2;
+      for (let k = 0; k < 40; k++) { let x = Math.random() * S, y = Math.random() * S; g.beginPath(); g.moveTo(x, y); for (let j = 0; j < 4; j++) { x += (Math.random() - 0.5) * 50; y += (Math.random() - 0.5) * 50; g.lineTo(x, y); } g.stroke(); }
+      noise(5000, 0.07); break;
     }
     case 'dirt': blobs(260, [th.floor2, th.floor], 20, 70); noise(6000, 0.08); for (let i = 0; i < 120; i++) { g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.ellipse(Math.random() * S, Math.random() * S, 4 + Math.random() * 6, 3 + Math.random() * 4, Math.random() * 3, 0, Math.PI * 2); g.fill(); } break;
     case 'cobble': {
@@ -690,6 +728,29 @@ function hills(T, col, r = 140, n = 16, hgt = 18, y0 = -4, o = {}) {
     h.position.set(x, y0 - 10, z); h.scale.y = (hgt + rnd() * hgt) / 45; T.root.add(h);
   }
 }
+// 地層の岩山の遠景（ごろごろ切り通し。zone.th.mesa）：なだらかな丘の代わりに、上が平らな岩山（側面は区画の崖と同じ地層、上は草）。
+//   o.r：置く半径、o.n：数、o.skip(x, z)：置かない所（緑の林を見せたい方角など）
+function mesas(T, o = {}) {
+  const push = envPush(T), rnd = seeded(23), r0 = o.r || 150, n = o.n || 16;
+  const side = new THREE.MeshStandardMaterial({ color: '#f0e0cc', roughness: 1, flatShading: true }), top = new THREE.MeshStandardMaterial({ color: '#9ab068', roughness: 1, flatShading: true });
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2 + rnd() * 0.25, rr = r0 + push + rnd() * 50, rad = 22 + rnd() * 26, h = 10 + rnd() * 14, x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+    if (envSkip(T, x, z) || (o.skip && o.skip(x, z))) continue;
+    // 上が少しせまい 9 角の柱。側面を 3 段に割り、角の位置をずらしてごつごつに
+    const geo = new THREE.CylinderGeometry(rad * (0.62 + rnd() * 0.18), rad, h, 11, 3), p = geo.attributes.position;
+    for (let k = 0; k < p.count; k++) {
+      const px = p.getX(k), py = p.getY(k), pz = p.getZ(k), q = Math.hypot(px, pz);
+      if (q < 1e-3) continue;
+      const j = 1 + Math.sin(px * 0.21 + py * 0.13 + i) * 0.12 + Math.sin(pz * 0.17 - py * 0.31 + i * 2) * 0.08 + Math.sin(Math.atan2(pz, px) * 3 + i) * 0.1;
+      p.setXYZ(k, px * j, py + (py > h / 2 - 0.01 ? Math.sin(px * 0.3 + pz * 0.2) * 1.2 : 0), pz * j);
+    }
+    geo.computeVertexNormals();
+    const tex = strataTex().clone(); tex.needsUpdate = true; tex.repeat.set(Math.round(rad * 2 * Math.PI / 16), h / 16);
+    const sm = side.clone(); sm.map = tex;
+    const m = new THREE.Mesh(geo, [sm, top, top]);
+    m.position.set(x, h / 2 - 6, z); m.rotation.y = rnd() * 6; T.root.add(m);
+  }
+}
 // 浮かぶ島・雲のかたまり
 function puffClouds(T, n = 10, col = '#ffffff', y0 = 30) {
   const m = new THREE.MeshStandardMaterial({ color: col, roughness: 1, emissive: col, emissiveIntensity: 0.25, fog: false });
@@ -732,7 +793,7 @@ const ENV_PROPS = {
     }
     T.updaters.push((dt, t) => rays.forEach(([m, p]) => { m.material.uniforms.op.value = 0.2 + Math.sin(t * 0.5 + p) * 0.08; }));
   },
-  road(T) { hills(T, '#9ab868', 150, 18, 20); puffClouds(T, 14, '#fff6ec'); motes(T, '#ffe8b8', 8, { size: 0.05, life: 5 }); },
+  road(T) { if (T.zone && T.zone.th && T.zone.th.mesa) mesas(T, T.zone.th.mesa); else hills(T, '#9ab868', 150, 18, 20); puffClouds(T, 14, '#fff6ec'); motes(T, '#ffe8b8', 8, { size: 0.05, life: 5 }); },
   kingdom(T) {
     hills(T, '#8ab870', 160, 14, 14); puffClouds(T, 14, '#ffffff', 26);
     motes(T, '#ffb8d8', 12, { fall: true, drift: 1.2, size: 0.07, life: 7 });   // 紙ふぶき・花びら

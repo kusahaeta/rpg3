@@ -555,7 +555,8 @@ class StageView extends BaseView {
     const d = V3().subVectors(look, pos), far = d.length() - 0.35;
     if (far <= 0) return false;
     this.rc.set(pos, d.normalize()); this.rc.near = 0.05; this.rc.far = far; this.rc.camera = this.camera;
-    return this.rc.intersectObjects(this.blockers, false).length > 0;
+    // 当たりの距離が数でないもの（高さが NaN の部品など）は、さえぎりに数えない（数えると、どの候補もさえぎられて、カメラ選びがとても重くなる）
+    return this.rc.intersectObjects(this.blockers, false).some(h => Number.isFinite(h.distance));
   }
   // 話し手の寄り：顔の正面寄りから、聞き手のいる側に少しずらす
   single(a, o = {}) {

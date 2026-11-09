@@ -808,6 +808,7 @@ class GeoAcc {
     // 面積のない面は作らない（長さ 0 の法線は、iPhone の GPU で光の計算が NaN になり、光のにじみで画面全体に広がる）
     if (l < 1e-9) return;
     nx /= l; ny /= l; nz /= l;
+    if (this.share && !uv) return this.sharedQuad(a, b, c, d, nx, ny, nz);
     for (const q of [a, b, c, d]) {
       this.p.push(q[0], q[1], q[2]); this.n.push(nx, ny, nz);
       if (!uv) {
@@ -818,6 +819,27 @@ class GeoAcc {
     }
     if (uv) for (const t of uv) this.u.push(t[0], t[1]);
     this.ix.push(i0, i0 + 1, i0 + 2, i0, i0 + 2, i0 + 3);
+  }
+  // 頂点を共有する面（share を Map にした束。彫る岩山の岩肌と上面）：同じ位置・同じ向きの種類（上・下・±x・±z。絵の貼り方が同じ）の頂点は一つにする。
+  //   面ごとに 4 頂点を持つと、同じ位置の頂点が 4 倍ほどになり、頂点を動かす計算や区切りが重かった。法線は最初の面のもの（材質は flatShading）
+  sharedQuad(a, b, c, d, nx, ny, nz) {
+    const cls = Math.abs(ny) > 0.5 ? (ny > 0 ? 0 : 5) : Math.abs(nx) > Math.abs(nz) ? (nx > 0 ? 1 : 2) : (nz > 0 ? 3 : 4);
+    const ia = this.vid(a, cls, nx, ny, nz), ib = this.vid(b, cls, nx, ny, nz), ic = this.vid(c, cls, nx, ny, nz), id = this.vid(d, cls, nx, ny, nz);
+    this.ix.push(ia, ib, ic, ia, ic, id);
+  }
+  // 頂点の番号：頂点は 0.5m の格子の上にあるので、格子の柱（小さな整数）ごとに、[高さと向きの種類, 番号] の短い一覧から探す
+  //   （位置をまるごと一つの大きな数のキーにすると、Map が遅かった）
+  vid(q, cls, nx, ny, nz) {
+    const col = (Math.round(q[0] * 2) + 2048) * 4096 + Math.round(q[2] * 2) + 2048, yk = Math.round(q[1] * 64) * 8 + cls;
+    let L = this.share.get(col);
+    if (!L) { L = []; this.share.set(col, L); }
+    for (let k = 0; k < L.length; k += 2) if (L[k] === yk) return L[k + 1];
+    const i = this.p.length / 3; L.push(yk, i);
+    this.p.push(q[0], q[1], q[2]); this.n.push(nx, ny, nz);
+    if (cls === 0 || cls === 5) this.u.push(q[0] / this.s, -q[2] / this.s);
+    else if (cls < 3) this.u.push(-q[2] * Math.sign(nx) / this.s, q[1] / this.s);
+    else this.u.push(q[0] * Math.sign(nz) / this.s, q[1] / this.s);
+    return i;
   }
   // 軸平行の箱。skip = 省く面（'b' 底, 't' 上, 'n' 's' 'e' 'w'）
   box(x0, y0, z0, x1, y1, z1, skip = 'b') {
@@ -844,12 +866,38 @@ class GeoAcc {
     this.quad([bx - hx, y0, bz - hz], [fx - hx, y0, fz - hz], [fx - hx, y1, fz - hz], [bx - hx, y1, bz - hz]);
     this.quad([fx + hx, y0, fz + hz], [bx + hx, y0, bz + hz], [bx + hx, y1, bz + hz], [fx + hx, y1, fz + hz]);
   }
+  // tile m 四方ごとに分けた形（面のまん中の位置で分ける）。大きな形を一つにすると、画面の外の分まで描き、
+  //   光線の当たり（会話シーンのカメラ選び StageView.sceneryBlocks）も全部の三角形を調べることになる
+  meshes(mat, o = {}, tile = 24) {
+    const p = this.p, n = this.n, u = this.u, c = this.c, ix = this.ix, nq = ix.length / 6, nv = p.length / 3, keyOf = new Map(), bin = new Int32Array(nq), quads = [];
+    for (let q = 0; q < nq; q++) {   // 面ごとの区切り（面の 1 番目と 3 番目の頂点は向かい合う角）
+      const v0 = ix[q * 6], v2 = ix[q * 6 + 2], k = Math.floor((p[v0 * 3] + p[v2 * 3]) / 2 / tile) * 4096 + Math.floor((p[v0 * 3 + 2] + p[v2 * 3 + 2]) / 2 / tile);
+      let b = keyOf.get(k); if (b === undefined) { b = quads.length; keyOf.set(k, b); quads.push([]); }
+      quads[b].push(q);
+    }
+    // 区切りごとに、使う頂点だけを番号をつけなおして、型つき配列へじかに書く
+    const stamp = new Int32Array(nv).fill(-1), remap = new Int32Array(nv);
+    return quads.map((qs, t) => {
+      const used = [];
+      for (const q of qs) for (let e = 0; e < 6; e++) { const v = ix[q * 6 + e]; if (stamp[v] !== t) { stamp[v] = t; remap[v] = used.length; used.push(v); } }
+      const m = used.length, P = new Float32Array(m * 3), N = new Float32Array(m * 3), U = new Float32Array(m * 2), C = c ? new Float32Array(m * 3) : null, I = new Uint32Array(qs.length * 6);
+      used.forEach((v, w) => { for (let k = 0; k < 3; k++) { P[w * 3 + k] = p[v * 3 + k]; N[w * 3 + k] = n[v * 3 + k]; if (C) C[w * 3 + k] = c[v * 3 + k]; } U[w * 2] = u[v * 2]; U[w * 2 + 1] = u[v * 2 + 1]; });
+      qs.forEach((q, j) => { for (let e = 0; e < 6; e++) I[j * 6 + e] = remap[ix[q * 6 + e]]; });
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.BufferAttribute(N, 3)); g.setAttribute('uv', new THREE.BufferAttribute(U, 2));
+      if (C) g.setAttribute('color', new THREE.BufferAttribute(C, 3));
+      g.setIndex(new THREE.BufferAttribute(I, 1)); g.computeBoundingSphere();
+      const mesh = new THREE.Mesh(g, mat); mesh.receiveShadow = o.receive !== false; mesh.castShadow = !!o.cast;
+      return mesh;
+    });
+  }
   mesh(mat, o = {}) {
     if (!this.ix.length) return null;
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(this.p, 3));
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.n, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(this.u, 2));
+    if (this.c) g.setAttribute('color', new THREE.Float32BufferAttribute(this.c, 3));
     g.setIndex(this.ix);
     g.computeBoundingSphere();
     const m = new THREE.Mesh(g, mat);
@@ -885,6 +933,8 @@ const ARCH_STYLES = {
   woods: { look: 'cliff', outdoor: 'flora', roof: false, canopy: 3.2, rock: '#8a7458', cap: '#6aa048', path: '#c2a070', trim: '#5a3a22', step: '#b0a288', glass: '#bfe8ff', glow: '#ffd27a', rail: 'wood', door: 'swing', lift: 'cage', exit: 'arch' },
   // capFloor：崖のてっぺんを、歩ける地面と同じ床の模様に（単色の緑だと、地面のそばで浮いて見える）。崖のふちの緑の縁（snowLip）もつけない
   crag: { look: 'cliff', outdoor: 'cliff', roof: false, skyline: 'rock', wallH: 5, rock: '#8a8478', cap: '#7aa858', capFloor: true, path: '#b89a70', trim: '#5a3a22', step: '#aaa294', glass: '#bfe8ff', glow: '#ffd27a', rail: 'wood', door: 'swing', lift: 'cage', exit: 'arch' },
+  // 地層の岩山（ごろごろ切り通し）：明るい砂岩の地層の岩肌（strata）。崖の面を岩の中へでこぼこにへこませ、角を丸める（carve：へこみの最大 m。carveStep・carveRow：面を横・縦に割る間隔 m。細かいほど重い）。崖の上は草
+  canyon: { look: 'cliff', outdoor: 'cliff', roof: false, skyline: 'rock', wallH: 5, rock: '#ffffff', strata: true, carve: 1.3, carveRow: 2, carveStep: 1, zmat: { rock: '#c49c78', rockDark: '#8a6648' }, cap: '#7aa858', capFloor: true, path: '#a8865e', trim: '#5a3a22', step: '#e0c49c', glass: '#bfe8ff', glow: '#ffd27a', rail: 'wood', door: 'swing', lift: 'cage', exit: 'arch' },
   // 世界の果て：奈落に浮かぶ石の道（手すりなし）。# は浮かぶ岩
   // 魔王領：紫の岩の崖に、暗い紫の苔
   demoncrag: { look: 'cliff', outdoor: 'cliff', roof: false, skyline: 'rock', wallH: 5, rock: '#5e5072', cap: '#4a3a5e', path: '#8a7090', trim: '#2a1a3a', step: '#7a6a90', glass: '#d8b0ff', glow: '#ff8ad8', rail: 'iron', door: 'swing', lift: 'cage', exit: 'arch' },
@@ -1105,6 +1155,70 @@ function rockTex() {
   noiseCanvas(g, S, 3000, 0.1, '20,20,30');
   return (TexCache.rock = texOf(c));
 }
+// 地層の岩肌（ARCH_STYLES の strata。ごろごろ切り通し）：幅 16m × 高さ 16m で一枚（1m = 32px × 64px）。
+//   厚い層（0.6〜2.6m）。層の上のふちは明るく張り出し、下のふちは影。層の中は、角ばった欠けのかたまり（明るい面・暗い面）と、短いひび。
+//   細い横すじは描かない（木目に見える）。横（u）と縦（v）のどちらも、ふちでつながる
+function strataTex() {
+  if (TexCache.strata) return TexCache.strata;
+  const W = 512, H = 1024, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), rnd = seeded(41);
+  const pal = ['#d6b08a', '#caa07a', '#dfbf98', '#c2946e', '#d2aa82', '#b98c68', '#e2c6a0'];
+  const wrap = (fn) => { for (const ox of [0, -W, W]) for (const oy of [0, -H, H]) fn(ox, oy); };
+  // 層：下から上へ（canvas の y は上が 0）
+  const bands = []; let y = 0, last = -1;
+  while (y < H - 30) { let k; do k = Math.floor(rnd() * pal.length); while (k === last); last = k; const t = 40 + rnd() * 125; bands.push([y, Math.min(H, y + t), pal[k]]); y += t; }
+  bands[bands.length - 1][1] = H;
+  const wave = (x, k) => Math.sin(x / W * Math.PI * 2 * (1 + k % 3) + k * 1.7) * (4 + k % 5) + Math.sin(x / W * Math.PI * 2 * 5 + k) * 2;
+  const edge = (k, off = 0) => { g.beginPath(); for (let x = 0; x <= W; x += 8) g[x ? 'lineTo' : 'moveTo'](x, H - bands[k][0] - (k ? wave(x, k) : 0) + off); };
+  for (let k = bands.length - 1; k >= 0; k--) { edge(k); g.lineTo(W, H); g.lineTo(0, H); g.closePath(); g.fillStyle = bands[k][2]; g.fill(); }
+  // 層の中：角ばった欠け（4〜6 角形）。明るい欠けは上の面、暗い欠けは影
+  //   図形は、色と濃さ（3 段）ごとに一つの path にまとめて描く（一つずつ fill すると重い）
+  const chips = Array.from({ length: 6 }, () => []);
+  for (let i = 0; i < 420; i++) {
+    const cx = rnd() * W, cy = rnd() * H, r = 6 + rnd() * rnd() * 30, n = 4 + Math.floor(rnd() * 3), a0 = rnd() * 6, flat = 0.45 + rnd() * 0.4;
+    const pts = []; for (let j = 0; j < n; j++) { const a = a0 + j / n * Math.PI * 2 + (rnd() - 0.5) * 0.6, rr = r * (0.6 + rnd() * 0.5); pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * flat]); }
+    chips[(rnd() < 0.5 ? 0 : 3) + Math.floor(rnd() * 3)].push(pts);
+  }
+  chips.forEach((list, b) => {
+    g.fillStyle = b < 3 ? `rgba(255,236,205,${0.12 + b % 3 * 0.05})` : `rgba(95,60,38,${0.1 + b % 3 * 0.05})`; g.beginPath();
+    for (const pts of list) wrap((ox, oy) => { pts.forEach(([px, py], j) => g[j ? 'lineTo' : 'moveTo'](px + ox, py + oy)); g.closePath(); });
+    g.fill();
+  });
+  // ぼかす絵は、別の canvas にまとめて描いてから、一度だけぼかして重ねる（図形ごとに filter をかけると、とても重い）
+  const layer = (px, draw) => {
+    const lc = document.createElement('canvas'); lc.width = W; lc.height = H; draw(lc.getContext('2d'));
+    g.filter = `blur(${px}px)`; g.drawImage(lc, 0, 0); g.filter = 'none'; lc.width = lc.height = 0;
+  };
+  // 層の上のふち（明るい張り出し）と、下のふちの影：ぼかして
+  const edgeOn = (lg, k, off) => { lg.beginPath(); for (let x = 0; x <= W; x += 8) lg[x ? 'lineTo' : 'moveTo'](x, H - bands[k][0] - (k ? wave(x, k) : 0) + off); };
+  layer(3, lg => {
+    for (let k = 1; k < bands.length; k++) {
+      lg.lineWidth = 7; lg.strokeStyle = 'rgba(110,70,45,.32)'; edgeOn(lg, k, 4); lg.stroke();   // 上の層の、下のふちの影
+      lg.lineWidth = 4; lg.strokeStyle = 'rgba(255,240,215,.35)'; edgeOn(lg, k, -3); lg.stroke();   // 下の層の、上のふち（日の当たる張り出し）
+    }
+  });
+  // 大きな明暗のむら（風化）
+  layer(14, lg => {
+    for (let i = 0; i < 40; i++) { const x = rnd() * W, yy = rnd() * H, rx = 30 + rnd() * 70, ry = 20 + rnd() * 60; lg.fillStyle = rnd() < 0.5 ? 'rgba(255,232,200,.14)' : 'rgba(100,62,40,.12)'; wrap((ox, oy) => { lg.beginPath(); lg.ellipse(x + ox, yy + oy, rx, ry, 0, 0, 7); lg.fill(); }); }
+  });
+  // 短いひび：角ばって折れる 2〜4 本の線（暗い線と、その横の明るい線）
+  const cracks = [];
+  for (let k = 0; k < 34; k++) {
+    let x = rnd() * W, yy = rnd() * H; const pts = [[x, yy]], n = 2 + Math.floor(rnd() * 3), vert = rnd() < 0.7;
+    for (let j = 0; j < n; j++) { x += vert ? (rnd() - 0.5) * 16 : (rnd() - 0.5) * 40; yy += vert ? 12 + rnd() * 24 : (rnd() - 0.5) * 14; pts.push([x, yy]); }
+    cracks.push([pts, rnd() < 0.5 ? 0 : 1]);
+  }
+  const crackPath = (sel, dx, dy) => { g.beginPath(); for (const [pts, w] of cracks) if (sel(w)) wrap((ox, oy) => pts.forEach(([px, py], j) => g[j ? 'lineTo' : 'moveTo'](px + ox + dx, py + oy + dy))); };
+  g.strokeStyle = 'rgba(80,48,30,.42)';
+  for (const w of [0, 1]) { g.lineWidth = w ? 2 : 1.3; crackPath(v => v === w, 0, 0); g.stroke(); }
+  g.strokeStyle = 'rgba(255,238,212,.3)'; g.lineWidth = 1; crackPath(() => true, 1.5, 1); g.stroke();
+  // こまかい粒
+  for (let b = 0; b < 8; b++) {
+    g.fillStyle = b < 4 ? `rgba(255,245,225,${0.03 + b * 0.05})` : `rgba(70,42,26,${0.03 + (b - 4) * 0.05})`; g.beginPath();
+    for (let i = 0; i < 1100; i++) g.rect(rnd() * W, rnd() * H, 1 + rnd() * 2, 1 + rnd() * 2);
+    g.fill();
+  }
+  return (TexCache.strata = texOf(ecoShrink(c), [0.25, 0.25]));
+}
 // 大理石（宮殿の壁）
 function marbleTex() {
   if (TexCache.marble) return TexCache.marble;
@@ -1231,6 +1345,18 @@ function vnoise(x, y, z) {
   return L(L(L(h(0, 0, 0), h(1, 0, 0), u), L(h(0, 1, 0), h(1, 1, 0), u), v), L(L(h(0, 0, 1), h(1, 0, 1), u), L(h(0, 1, 1), h(1, 1, 1), u), v), w);
 }
 
+// 速い値ノイズ（彫る岩山用）：32 × 32 × 32 の乱数の表を、くり返して引く（Math.sin を使わない）。値は 0〜1
+const FNOISE = (() => { let h = 97; const a = new Float32Array(32768); for (let i = 0; i < a.length; i++) { h = (h * 16807) % 2147483647; a[i] = (h - 1) / 2147483646; } return a; })();   // 決まった乱数（seeded は、あとで読む field.js にある）
+function fnoise(x, y, z) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z), xf = x - xi, yf = y - yi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = zf * zf * (3 - 2 * zf);
+  const x0 = xi & 31, x1 = (xi + 1) & 31, y0 = (yi & 31) << 5, y1 = ((yi + 1) & 31) << 5, z0 = (zi & 31) << 10, z1 = ((zi + 1) & 31) << 10, A = FNOISE;
+  const a = A[x0 + y0 + z0] + (A[x1 + y0 + z0] - A[x0 + y0 + z0]) * u, b = A[x0 + y1 + z0] + (A[x1 + y1 + z0] - A[x0 + y1 + z0]) * u;
+  const c = A[x0 + y0 + z1] + (A[x1 + y0 + z1] - A[x0 + y0 + z1]) * u, d = A[x0 + y1 + z1] + (A[x1 + y1 + z1] - A[x0 + y1 + z1]) * u;
+  const e = a + (b - a) * v, f = c + (d - c) * v;
+  return e + (f - e) * w;
+}
+
 // ============================================================
 //  地形から建物（床・壁・窓・天井・段差・手すり・階段）を組み立てる
 //  戻り値：動く部品（扉・昇降機）
@@ -1240,8 +1366,14 @@ function buildArchitecture(view, T) {
   const line = S.glow || th.line, scene = view.scene, open = T.open, wallH = zone.wallH || S.wallH || 6;
   const A = {};                       // マテリアルごとの GeoAcc
   const acc = (k, s) => A[k] || (A[k] = new GeoAcc(s));
+  // 彫る岩山の岩肌と上面は、頂点を共有する（GeoAcc.sharedQuad）
+  if (S.carve) for (const [k, sc] of [['rock', 4], ['top', 16]]) { A[k] = new GeoAcc(sc); A[k].share = new Map(); }
+  // 彫った形は地図だけで決まるので、取っておいたものがあれば、作らずに使う（CARVE_CACHE。戦闘の背景・区画の行き来）
+  const carveKey = S.carve ? carveSig(T, S) : null, carveHit = carveKey && CARVE_CACHE.get(carveKey);
+  if (carveHit) { CARVE_CACHE.delete(carveKey); CARVE_CACHE.set(carveKey, carveHit); }   // 最近使ったものを、うしろへ
   const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, metalness: 0.15, roughness: 0.75, ...o });
-  const rockM = std(S.rock || '#8a8e9a', { map: rockTex(), roughness: 0.95, metalness: 0.03, flatShading: true });
+  const rockM = S.strata ? std(S.rock, { map: strataTex(), vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true })
+    : std(S.rock || '#8a8e9a', { map: rockTex(), roughness: 0.95, metalness: 0.03, flatShading: true });
   const [fac, facE] = style === 'town' && !S.facade ? facadeTex() : [null, null];
   const mats = {
     wall: style === 'station' ? std(S.wall, { map: panelTex('station'), metalness: 0.2, roughness: 0.55 })
@@ -1277,6 +1409,8 @@ function buildArchitecture(view, T) {
   for (const t of [fmap, femap]) t.repeat.set(1, 1);
   mats.floor = new THREE.MeshStandardMaterial({ map: fmap, emissiveMap: femap, emissive: new THREE.Color('#ffffff'), emissiveIntensity: th.floorGlow ?? 0.9, metalness: style === 'station' ? 0.3 : 0.05, roughness: style === 'station' ? 0.5 : 0.85 });
   // 豊かな森（テーマの lush）：地面に色むら・木立のきわの影だまり・こもれび。木立の濃さの地図は、草むら（ZoneKit.lushGrass）でも使う
+  // 地層の岩山の、塊の上面：床と同じ土の模様に、頂点の色で、崖のふちから離れるほど草の色をかける（carveRock）
+  if (S.strata) mats.top = new THREE.MeshStandardMaterial({ map: fmap, vertexColors: true, metalness: 0, roughness: 0.95, flatShading: true });
   view.canopy = lushZone(view) ? canopyMap(T) : null;
   if (view.canopy) lushGround(mats.floor, view.canopy);
   const { cols, rows, kind } = T, K = TK;
@@ -1314,6 +1448,8 @@ function buildArchitecture(view, T) {
 
   // 岩肌：面を細かく割り、ワールド座標のノイズで内側の頂点を凹凸させる（隣の面とつながる）
   function rockFace(key, ex, ez, nx, nz, w, ya, yb, amp = 0.4) {
+    // 彫る岩山（carve）：あとで頂点を位置の関数で動かすので、となりの面と頂点がそろうように、横は carveStep m ごと、縦は世界の高さ carveRow m ごとの段に割る（面の中の凹凸はつけない）
+    if (S.carve && key === 'rock') return carvedFace(ex, ez, nx, nz, w, ya, yb);
     const G = acc(key, 4), rx = nz, rz = -nx, nu = 3, h = Math.max(ya[1] - ya[0], yb[1] - yb[0]), nv = Math.max(1, Math.ceil(h / 1.3));
     const P = (u, v) => {
       const f = u / nu, y0 = lerp(ya[0], yb[0], f), y1 = lerp(ya[1], yb[1], f), y = lerp(y0, y1, v / nv);
@@ -1323,6 +1459,27 @@ function buildArchitecture(view, T) {
     };
     for (let u = 0; u < nu; u++) for (let v = 0; v < nv; v++) G.quad(P(u, v), P(u + 1, v), P(u + 1, v + 1), P(u, v + 1));
   }
+  function carvedFace(ex, ez, nx, nz, w, ya, yb) {
+    if (carveHit) return;
+    const G = acc('rock', 4), rx = nz, rz = -nx, nu = Math.max(1, Math.round(w / (S.carveStep || 0.5))), ROW = S.carveRow || 1;
+    const level = (y0, y1) => { const v = [y0]; for (let y = Math.floor(y0 / ROW) * ROW + ROW; y < y1 - 0.2; y += ROW) if (y > y0 + 0.2) v.push(y); v.push(y1); return v; };
+    const same = Math.abs(ya[0] - yb[0]) < 0.01 && Math.abs(ya[1] - yb[1]) < 0.01;
+    // 左右で高さが同じ面は、世界の高さ ROW m ごとの段（となりの面とそろう）。斜めの面（階段のわき）は、等分
+    const rows = same ? level(ya[0], ya[1]).map(y => [y, y]) : (() => { const n = Math.max(1, Math.ceil(Math.max(ya[1] - ya[0], yb[1] - yb[0]) / 1)); return Array.from({ length: n + 1 }, (_, v) => [lerp(ya[0], ya[1], v / n), lerp(yb[0], yb[1], v / n)]); })();
+    const P = (u, v) => { const f = u / nu, x = ex + rx * (f - 0.5) * w, z = ez + rz * (f - 0.5) * w; return [x, lerp(rows[v][0], rows[v][1], f), z]; };
+    for (let u = 0; u < nu; u++) for (let v = 0; v < rows.length - 1; v++) G.quad(P(u, v), P(u + 1, v), P(u + 1, v + 1), P(u, v + 1));
+  }
+  // 彫る岩山の、塊の上面（carveStep m ごとに割る。ふちは崖の面の頂点とそろう）
+  //   まわり 2 マスがみな同じ高さの塊のマス（ふちから遠く、ほとんど動かない）は、割らずに 1 枚
+  const plainTop = (c, r, y) => { for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) { const j = T.idx(c + dc, r + dr); if (j >= 0 && (kind[j] > K.WINDOW || Math.abs(T.top[j] - y) > 0.01)) return false; } return true; };
+  const carvedTop = (y, x0, z0, x1, z1, c, r) => {
+    if (carveHit) return;
+    const st = S.carveStep || 0.5, G = acc('top', 16), one = plainTop(c, r, y), n = one ? 1 : Math.round((x1 - x0) / st), m = one ? 1 : Math.round((z1 - z0) / st);
+    for (let a = 0; a < n; a++) for (let b = 0; b < m; b++) {
+      const xa = lerp(x0, x1, a / n), xb = lerp(x0, x1, (a + 1) / n), za = lerp(z0, z1, b / m), zb = lerp(z0, z1, (b + 1) / m);
+      G.quad([xa, y, zb], [xb, y, zb], [xb, y, za], [xa, y, za]);
+    }
+  };
   // 屋外の壁の上端：雪が張り出す
   const snowLip = (ex, ez, nx, nz, w, y) => acc('cap').slab(ex, ez, nx, nz, w, y - 0.08, y + 0.14, 0.26);
 
@@ -1392,7 +1549,8 @@ function buildArchitecture(view, T) {
     // 屋外の壁の塊：上面の雪と、隣の塊より高い部分の側面
     if (open && k <= K.WINDOW) {
       const y = T.top[i];
-      (S.capFloor ? acc('floor', 16) : acc('cap', 4)).quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]);
+      if (S.carve) carvedTop(y, x0, z0, x1, z1, c, r);
+      else (S.capFloor ? acc('floor', 16) : acc('cap', 4)).quad([x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]);
       DIR4.forEach(([dc, dr]) => {
         const j = T.idx(c + dc, r + dr), lo = j < 0 ? y - wallH - 6 : T.top[j];   // 地図の外側は下まで
         if (j >= 0 && (kind[j] > K.WINDOW || lo >= y - 0.01)) return;
@@ -1488,6 +1646,15 @@ function buildArchitecture(view, T) {
     });
   }
 
+  // 彫る岩山：崖の根もとの床を、崖の中へ 1.4m のばす（崖の面がへこんでも、根もとに地面が見える）。法線 (nx, nz) は床の側
+  function skirt(ex, ez, nx, nz, yA, yB) {
+    const rx = nz, rz = -nx, h = CELL / 2, d = 1.4;
+    const a = [ex - rx * h, yA - 0.01, ez - rz * h], b = [ex + rx * h, yB - 0.01, ez + rz * h];
+    const b2 = [b[0] - nx * d, yB - 0.01, b[2] - nz * d], a2 = [a[0] - nx * d, yA - 0.01, a[2] - nz * d];
+    // 上向きになる順に（quad の法線は対角線どうしの外積）
+    const ny = (b2[2] - a[2]) * (a2[0] - b[0]) - (b2[0] - a[0]) * (a2[2] - b[2]);
+    if (ny > 0) acc('floor', 16).quad(a, b, b2, a2); else acc('floor', 16).quad(a2, b2, b, a);
+  }
   // 段差の面（低い側を向く）と上端の縁
   function cliffFace(ex, ez, nx, nz, yA, yB, yA2, yB2) {
     const flat = Math.abs(yA - yB) < 0.01, top = Math.max(yA, yB);
@@ -1511,7 +1678,10 @@ function buildArchitecture(view, T) {
     if (style === 'station') return wallPanel(ex, ez, nx, nz, y0, top, c, r, dc, dr, k, yA, yB);
     const lo = slope ? T.h[T.idx(c, r)] - 0.02 : y0;
     if (style === 'cliff' || style === 'mine') {
+      // 彫る岩山で、となりの岩が床より低いとき（見晴らし台のふちなど）：床のふちから下の岩の上まで、外を向いた崖の面
+      if (S.carve && top < Math.min(yA, yB) - 0.05) { rockFace('rock', ex, ez, -nx, -nz, CELL, [top, yB], [top, yA]); return; }
       rockFace('rock', ex, ez, nx, nz, CELL, [lo - 0.3, top], [lo - 0.3, top], style === 'mine' ? 0.45 : 0.55);
+      if (S.carve && !slope && top > Math.max(yA, yB) + 0.3) skirt(ex, ez, nx, nz, yA, yB);   // 床より低い岩（見晴らし台のふちなど）にはのばさない（浮いた板になる）
       if (style === 'cliff' && !S.capFloor) snowLip(ex, ez, nx, nz, CELL, top);
       if (style === 'mine' && straight && along % 3 === 0) {      // 坑木の柱と、壁のランタン
         acc('wood').slab(px, pz, nx, nz, 0.4, y0, top, 0.42);
@@ -1776,10 +1946,167 @@ function buildArchitecture(view, T) {
   // 水面のきらめき
   if (A.water && view.zoneTicks) view.zoneTicks.push((dt, t) => { mats.water.emissiveIntensity = 0.26 + Math.sin(t * 1.3) * 0.06; });
 
+  // 彫る岩山：岩肌と上面の頂点を動かし、色（根もとのかげり・層のむら）をつける
+  if (S.carve && !carveHit) carveRock(T, [A.rock, A.top], S.carve);
+
   // まとめて追加
   const noRecv = ['glow', 'glowSoft', 'lamp', 'glass', 'rail', 'water'];
-  for (const [k, G] of Object.entries(A)) { const m = G.mesh(mats[k], { receive: !noRecv.includes(k) }); if (m) { if (k === 'glass' || k === 'rail' || k === 'water') m.renderOrder = 2; scene.add(m); } }
+  for (const [k, G] of Object.entries(A)) {
+    if (S.carve && (k === 'rock' || k === 'top')) continue;
+    const m = G.mesh(mats[k], { receive: !noRecv.includes(k) }); if (m) { if (k === 'glass' || k === 'rail' || k === 'water') m.renderOrder = 2; scene.add(m); } }
+  // 彫る岩山の岩肌と上面は、細かいので 24m 四方ごとに区切って（GeoAcc.meshes）。形は取っておく
+  if (S.carve) {
+    let hit = carveHit;
+    if (!hit) {
+      hit = { carve: T.carve, geos: ['rock', 'top'].flatMap(k => A[k].meshes(null).map(m => [k, m.geometry])) };
+      CARVE_CACHE.set(carveKey, hit);
+      while (CARVE_CACHE.size > 2) CARVE_CACHE.delete(CARVE_CACHE.keys().next().value);
+    }
+    T.carve = hit.carve;
+    //   形は使い回すので、場面を片付けて GPU から消えても（disposeTree）、次に描くときにまた載る
+    for (const [k, geo] of hit.geos) { const m = new THREE.Mesh(geo, mats[k]); m.receiveShadow = true; scene.add(m); }
+  }
   return { doors, lifts, mats };
+}
+// 彫る岩山の形の取りおき：地図の署名 → { carve：頂点を動かす関数（崖の上の木の高さに使う）, geos：[[材質の名前, 形], …] }。最近の二区画ぶん
+const CARVE_CACHE = new Map();
+function carveSig(T, S) {
+  let h = 2166136261;
+  const mix = v => { h = Math.imul(h ^ v, 16777619); };
+  mix(T.cols); mix(T.rows); mix(Math.round(S.carve * 100)); mix(S.carveRow || 1);
+  for (let i = 0; i < T.kind.length; i++) { mix(T.kind[i]); mix(Math.round(T.top[i] * 16)); mix(Math.round(T.h[i] * 16)); mix(T.water[i] ? 1 : 0); }
+  return (h >>> 0).toString(36) + ':' + T.kind.length;
+}
+
+// 彫る岩山（ARCH_STYLES の carve）：崖の面と塊の上面の頂点を、位置だけで決まる量だけ動かす（同じ位置の頂点は同じだけ動くので、面と面のあいだにすきまができない）。
+//   向き：マスの高さ（壁の塊は上面・歩ける所は床）を 0.5m の格子でぼかした地図の、高い側＝岩の中へ。ぼかすので、出っぱった角は丸く、へこんだ角は深くなる。
+//   量：ぼかした地図の傾き（崖の高さ）に比例し、ノイズでばらつく（最大 amp）。低い出っぱり（1.8m）は少しだけ。岩の中へしか動かさないので、歩ける所へははみ出さない。
+//   崖のふち（まわりの床より 0.6m 以上高い所）は、上下にもでこぼこ。
+//   色：根もとほど暗く（まわりの床からの高さ）、低い周波数のノイズで、少し赤い・黄色い所をまぜる
+function carveRock(T, accs, amp) {
+  const K = TK, R = 4, s = CELL / R, NX = T.cols * R, NZ = T.rows * R, N = NX * NZ, kind = T.kind;
+  const cellH = i => kind[i] <= K.WINDOW ? T.top[i] : T.water[i] ? T.cap[i] - 0.8 : T.h[i];
+  // 0.5m の格子の地図：高さ（raw）と岩らしさ（sraw：壁のマス 1・歩ける所 0）
+  const raw = new Float32Array(N), sraw = new Float32Array(N);
+  for (let b = 0; b < NZ; b++) for (let a = 0; a < NX; a++) { const i = Math.floor(b / R) * T.cols + Math.floor(a / R); raw[b * NX + a] = cellH(i); sraw[b * NX + a] = kind[i] <= K.WINDOW ? 1 : 0; }
+  // 横・縦に分けた平均のぼかし（半径 r。窓を引きずって足していく。地図のはしは、はしの値をくり返す）
+  const blur = (src, r) => {
+    const tmp = new Float32Array(N), out = new Float32Array(N), n = 2 * r + 1;
+    for (let b = 0; b < NZ; b++) {
+      const o = b * NX; let acc = 0;
+      for (let k = -r; k <= r; k++) acc += src[o + clamp(k, 0, NX - 1)];
+      for (let a = 0; a < NX; a++) { tmp[o + a] = acc / n; acc += src[o + Math.min(a + r + 1, NX - 1)] - src[o + Math.max(a - r, 0)]; }
+    }
+    for (let a = 0; a < NX; a++) {
+      let acc = 0;
+      for (let k = -r; k <= r; k++) acc += tmp[clamp(k, 0, NZ - 1) * NX + a];
+      for (let b = 0; b < NZ; b++) { out[b * NX + a] = acc / n; acc += tmp[Math.min(b + r + 1, NZ - 1) * NX + a] - tmp[Math.max(b - r, 0) * NX + a]; }
+    }
+    return out;
+  };
+  // 横・縦に分けた、半径 r の中の最小・最大
+  const extreme = (src, r, max) => {
+    const tmp = new Float32Array(N), out = new Float32Array(N), pick = max ? Math.max : Math.min;
+    for (let b = 0; b < NZ; b++) for (let a = 0; a < NX; a++) { let v = src[b * NX + a]; for (let k = 1; k <= r; k++) v = pick(v, src[b * NX + Math.max(a - k, 0)], src[b * NX + Math.min(a + k, NX - 1)]); tmp[b * NX + a] = v; }
+    for (let b = 0; b < NZ; b++) for (let a = 0; a < NX; a++) { let v = tmp[b * NX + a]; for (let k = 1; k <= r; k++) v = pick(v, tmp[Math.max(b - k, 0) * NX + a], tmp[Math.min(b + k, NZ - 1) * NX + a]); out[b * NX + a] = v; }
+    return out;
+  };
+  const Hs = blur(blur(raw, 3), 3), Hlo = blur(extreme(raw, 3, false), 2), Hhi = extreme(raw, 1, true);
+  // へこませる向きは、岩らしさのぼかしの傾き（歩ける所から離れる向き）を強く。高さの傾きだけだと、床より低い岩（見晴らし台のふちの下）では、床の下へ向いてしまう
+  const Ss = blur(blur(sraw, 3), 3);
+  // 岩の塊の幅（マスごと：横と縦に続く壁のマスの数の、少ないほう × 2m）。細い出っぱり・柱は、へこませすぎない（幅の 3 割まで）
+  const solid = i => i >= 0 && kind[i] <= K.WINDOW, wid = new Float32Array(kind.length);
+  for (let i = 0; i < kind.length; i++) if (solid(i)) {
+    const c = i % T.cols, r = Math.floor(i / T.cols), run = (dc, dr) => { let n = 0; for (let k = 1; k < 8 && solid(T.idx(c + dc * k, r + dr * k)); k++) n++; return n; };
+    wid[i] = (Math.min(run(1, 0) + run(-1, 0), run(0, 1) + run(0, -1)) + 1) * CELL;
+  }
+  const widAt = (x, z) => { const i = T.idx(Math.floor((x + T.hw) / CELL), Math.floor((z + T.hd) / CELL)); return i >= 0 && solid(i) ? wid[i] : 99; };
+  const samp = (F, x, z) => {
+    const fa = clamp((x + T.hw) / s - 0.5, 0, NX - 1.001), fb = clamp((z + T.hd) / s - 0.5, 0, NZ - 1.001), a = Math.floor(fa), b = Math.floor(fb), u = fa - a, v = fb - b;
+    const a1 = Math.min(a + 1, NX - 1), b1 = Math.min(b + 1, NZ - 1);
+    return lerp(lerp(F[b * NX + a], F[b * NX + a1], u), lerp(F[b1 * NX + a], F[b1 * NX + a1], u), v);
+  };
+  const ss = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+  // 柱（同じ x, z の頂点）ごとに決まる値は、0.5m の格子の点ごとに一度だけ計算する（崖の面は、同じ柱に高さ 1m ごとの頂点が並ぶ）。
+  //   格子の外の点（崖の上に置く木など）は、最後の空きに毎回計算する
+  const LX = NX + 1, LZ = NZ + 1, LN = LX * LZ + 1, SCR = LN - 1;
+  // 格子の点での地図の値は、地図全体で一度に出しておく（点は 4 つの標本のまん中なので、その平均。samp と同じ値）
+  const nodes = F => {
+    const out = new Float32Array(LX * LZ);
+    for (let ib = 0; ib < LZ; ib++) {
+      const b0 = Math.max(ib - 1, 0) * NX, b1 = Math.min(ib, NZ - 1) * NX;
+      for (let ia = 0; ia < LX; ia++) { const a0 = Math.max(ia - 1, 0), a1 = Math.min(ia, NX - 1); out[ib * LX + ia] = (F[b0 + a0] + F[b0 + a1] + F[b1 + a0] + F[b1 + a1]) * 0.25; }
+    }
+    return out;
+  };
+  const NHs = nodes(Hs), NSs = nodes(Ss), NHlo = nodes(Hlo), NHhi = nodes(Hhi);
+  const cDone = new Uint8Array(LN), cWm = new Float32Array(LN), cLo = new Float32Array(LN), cHi = new Float32Array(LN), cDx = new Float32Array(LN), cDz = new Float32Array(LN), cF = new Float32Array(LN);
+  const cBev = new Float32Array(LN), cSy = new Float32Array(LN), cGn = new Float32Array(LN);
+  const column = (x, z) => {
+    const fa = (x + T.hw) * 2, fb = (z + T.hd) * 2, ia = Math.round(fa), ib = Math.round(fb);
+    const j = Math.abs(fa - ia) < 1e-3 && Math.abs(fb - ib) < 1e-3 && ia >= 0 && ib >= 0 && ia < LX && ib < LZ ? ib * LX + ia : SCR;
+    if (j !== SCR && cDone[j]) return j;
+    // そばの（0.3m 以内にかかる）歩ける床のいちばん高い所。床のふちより低い頂点は動かさない：
+    //   床より低い岩に面した面（見晴らし台のふちの下）を動かすと、床の下へもぐって、台のふちが浮いた板に見えた
+    let wm = -1e9, hx, hz, sx, sz;
+    for (const ox of [-0.3, 0.3]) for (const oz of [-0.3, 0.3]) { const i = T.at(x + ox, z + oz); if (i >= 0 && T.isWalkKind(kind[i]) && !T.water[i]) wm = Math.max(wm, T.h[i]); }
+    if (j !== SCR) {   // 格子の点：となりの点（0.5m 先）との差が傾き
+      const L = ia > 0 ? j - 1 : j, Rr = ia < LX - 1 ? j + 1 : j, U = ib > 0 ? j - LX : j, D = ib < LZ - 1 ? j + LX : j;
+      hx = NHs[Rr] - NHs[L]; hz = NHs[D] - NHs[U]; sx = NSs[Rr] - NSs[L]; sz = NSs[D] - NSs[U];
+      cLo[j] = NHlo[j]; cHi[j] = NHhi[j];
+    } else {
+      hx = samp(Hs, x + 0.5, z) - samp(Hs, x - 0.5, z); hz = samp(Hs, x, z + 0.5) - samp(Hs, x, z - 0.5); sx = samp(Ss, x + 0.5, z) - samp(Ss, x - 0.5, z); sz = samp(Ss, x, z + 0.5) - samp(Ss, x, z - 0.5);
+      cLo[j] = samp(Hlo, x, z); cHi[j] = samp(Hhi, x, z);
+    }
+    const gl = Math.hypot(hx, hz), gx = hx + 20 * sx, gz = hz + 20 * sz, gn = Math.hypot(gx, gz);
+    cWm[j] = wm; cF[j] = 0;
+    if (gl > 1e-4 && gn > 1e-4) { const dx = gx / gn, dz = gz / gn; cDx[j] = dx; cDz[j] = dz; cF[j] = Math.min(1, gl / 0.7, widAt(x + dx * 0.3, z + dz * 0.3) * 0.3 / amp); }
+    cBev[j] = fnoise(x * 0.6 + 71.3, 1.3, z * 0.6); cSy[j] = fnoise(x * 0.42 + 53.1, 2.7, z * 0.42); cGn[j] = fnoise(x * 0.4 + 9.1, 0.5, z * 0.4);
+    if (j !== SCR) cDone[j] = 1;
+    return j;
+  };
+  // 位置 (x, y, z) の頂点を動かす量 [dx, dy, dz, まわりの床からの高さ]（区画の組み立てでも使う：崖の上に置く木・岩の高さ。T.carve）
+  const shiftAt = (j, x, y, z) => {
+    const rise = y - cLo[j];
+    if (y <= cWm[j] + 0.05) return [0, 0, 0, rise];
+    let sx = 0, sz = 0, sy = 0;
+    const f = cF[j];
+    // 横：岩の中へ（歩ける所から離れる向き）と、それに直角に少し
+    if (f > 0) {
+      const dx = cDx[j], dz = cDz[j], nearTop = ss(-1.6, 0, y - cHi[j]);   // nearTop：その塊のてっぺんから 1.6m の中ほど 1
+      // 大きなうねり（3m ほど）・こまかな欠け（1m ほど）・地層の張り出し（高さだけで変わる。横に長くつづく）
+      const m = amp * f * (0.08 + 0.42 * fnoise(x * 0.3 + 7.3, y * 0.24, z * 0.3) + 0.3 * fnoise(x * 1.1, y * 0.9 + 11.1, z * 1.1) + 0.2 * fnoise(x * 0.05 + 2.1, y * 0.85, z * 0.05));
+      const t = amp * f * 0.35 * (fnoise(x * 0.38 + 31.7, y * 0.3, z * 0.38) - 0.5);
+      // てっぺんのふち：もう少し中へ、下へ（角を丸める）
+      const bev = amp * f * nearTop * ss(0.6, 2.2, rise) * (0.35 + 0.4 * cBev[j]);
+      sx = dx * (m + bev * 0.7) - dz * t; sz = dz * (m + bev * 0.7) + dx * t; sy = -bev * 0.8;
+    }
+    // 縦：崖のふちだけ（位置の x, z だけで決める。同じ柱の頂点は同じだけ動くので、段が入れかわらない）
+    sy += (cSy[j] - 0.42) * 0.9 * ss(0.6, 2.2, rise);
+    return [sx, sy, sz, rise];
+  };
+  T.carve = (x, y, z) => shiftAt(column(x, z), x, y, z);
+  // 同じ位置の頂点（面の角は 4〜8 枚で共有）は一度だけ計算する。値：[dx, dy, dz, 高さ, 色のむら, 明るさ]
+  const memo = new Map();
+  accs.forEach((G, gi) => {
+    if (!G) return;
+    const p = G.p, col = G.c = new Array(p.length);
+    for (let k = 0; k < p.length; k += 3) {
+      const x = p[k], y = p[k + 1], z = p[k + 2], j = column(x, z), key = j * 8192 + Math.round((y + 40) * 16);
+      let e = j !== SCR && memo.get(key);
+      if (!e) { e = shiftAt(j, x, y, z); e.push(fnoise(x * 0.07 + 3.3, y * 0.05, z * 0.07) - 0.5, 0.92 + 0.16 * fnoise(x * 0.21, y * 0.17 + 5.5, z * 0.21)); if (j !== SCR) memo.set(key, e); }
+      const [sx, sy, sz, rise, hue, br] = e;
+      p[k] += sx; p[k + 1] += sy; p[k + 2] += sz;
+      // 色：根もとのかげり（床から 3m で消える）と、むら
+      if (gi) {   // 上面：ふち（まわりの床より高い所）は土と岩のまま、内側ほど草の色
+        const gr = (1 - ss(0.4, 2.2, rise)) * (0.75 + 0.5 * cGn[j]);
+        col[k] = br * lerp(1.02, 0.6, gr); col[k + 1] = br * lerp(0.98, 0.84, gr); col[k + 2] = br * lerp(0.93, 0.42, gr);
+        continue;
+      }
+      const ao = 0.58 + 0.42 * ss(-0.3, 3.2, rise);
+      col[k] = ao * br * (1 + hue * 0.12); col[k + 1] = ao * br; col[k + 2] = ao * br * (1 - hue * 0.16);
+    }
+  });
 }
 
 // 屋内：空の映り込みを弱め、環境光を明るく白っぽく（探索と会話シーンで共用）
