@@ -5,6 +5,8 @@
 // 深度を書かない半透明（シールド・足もとの印など）の描く順。戦闘の背景は区画の地形なので、
 // 土の道や水たまりの塗り（renderOrder 1〜2）、滝の幕（〜5）より後に描かないと塗りで上書きされる
 const OVER_PAINT = 6;
+// 持続ダメージの演出が起きてから、ダメージが入る（数字が出る）までの秒数
+const DOT_LEAD = 0.38;
 class BaseView {
   constructor(theme, fov = 38, envOpts = {}) {
     this.scene = new THREE.Scene();
@@ -820,11 +822,163 @@ class BattleView extends BaseView {
     this.fx.sprite(p, col, 5, 0.6, { k: 3 });
     this.p.burst(p, col, 90, { speed: 10, life: 0.9, size: 0.1, drag: 3 });
   }
-  dotFx(t, elem) {
-    const e = this.ent(t); if (!e) return;
-    const p = this.hitPoint(t);
-    this.p.burst(p, ELEMENTS[elem].color, 26, { speed: 2, up: 2, life: 0.8, size: 0.12 });
-    e.model.flash(ELEMENTS[elem].color, 0.8);
+  // 持続ダメージ・凍結が入るときの演出（kind：burn・shock・bleed・freeze・entangle）。
+  //   まず体の上で燃えあがる・氷が突き出る……が起きて、DOT_LEAD 秒後に「当たり」（光る・粒が散る）。
+  //   ダメージの数字はそこで出すので、待つ秒数を返す
+  dotFx(t, kind) {
+    const e = this.ent(t); if (!e) return 0;
+    const m = e.model, p = this.hitPoint(t), L = DOT_LEAD;
+    const hit = (col, fn) => GFX.delay(L).then(() => { m.flash(col, 1.1); fn && fn(); });
+    if (kind === 'burn') {
+      Sfx.fire();
+      this.flames(e);
+      hit('#ff7a2a', () => {
+        this.p.burst(p, hdr('#ffb040', 2.6), 34, { speed: 3.5, up: 1.5, life: 0.7, size: 0.1, drag: 3 });
+        this.fx.sprite(p, '#ff7a2a', 1.6 * Math.max(1, m.height * 0.6), 0.3, { k: 2.5 });
+      });
+    } else if (kind === 'freeze') {
+      Sfx.tone(1560, 0.35, 'sine', 0.04, -300);
+      this.iceBurst(e, L);
+      hit('#bff4ff', () => {
+        Sfx.shatter();
+        this.fx.shards(p, '#9fe6ff', 10, 4);
+        this.fx.sprite(p, '#dff7ff', 1.4 * Math.max(1, m.height * 0.6), 0.25, { k: 2.5 });
+      });
+    } else if (kind === 'shock') {
+      this.sparks(e, L + 0.15);
+      hit('#ffe066', () => this.p.burst(p, hdr('#fff2a0', 3), 30, { speed: 5, life: 0.4, size: 0.07, drag: 4 }));
+    } else if (kind === 'bleed') {
+      this.cuts(e, L);
+      hit('#ff4060', () => this.drops(p, 14));
+    } else if (kind === 'entangle') {
+      this.gloom(e, L);
+      hit('#a07bff', () => this.p.burst(p, hdr('#b48cff', 2.6), 30, { speed: 4, life: 0.5, size: 0.1, drag: 3 }));
+    }
+    return L;
+  }
+  // 燃えあがる炎：絵は使わず、炎の粒をたくさん立ちのぼらせる。粒は生まれたときは白っぽい黄、のぼるにつれて
+  //   橙・赤になって小さく消える。明るい草原でも見えるよう、粒は光の足し算でなく、ふつうに重ねて塗る
+  //   （一回の Points で描く）。芯の明るさは、ふだんの光の粒を少し混ぜて出す
+  flames(e, life = 1.1) {
+    const m = e.model, r = m.radius, h = m.height, hs = Math.max(0.8, h * 0.8), N = 260;
+    const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), size = new Float32Array(N), alpha = new Float32Array(N);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('size', new THREE.BufferAttribute(size, 1).setUsage(THREE.DynamicDrawUsage));
+    geo.setAttribute('alpha', new THREE.BufferAttribute(alpha, 1).setUsage(THREE.DynamicDrawUsage));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { scale: { value: 380 } },
+      vertexShader: `attribute float size; attribute float alpha; attribute vec3 color; varying vec3 vC; varying float vA; uniform float scale;
+        void main(){ vC = color; vA = alpha; vec4 mv = modelViewMatrix * vec4(position,1.0); gl_PointSize = size * scale / max(0.1, -mv.z); gl_Position = projectionMatrix * mv; }`,
+      fragmentShader: `varying vec3 vC; varying float vA;
+        void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; gl_FragColor = vec4(vC, (1.0 - smoothstep(0.25, 1.0, d)) * vA); }`,
+      transparent: true, depthWrite: false,
+    });
+    const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; pts.renderOrder = 9;
+    const ramp = [[0, '#ffe680'], [0.16, '#ffaa2a'], [0.5, '#ff5a14'], [1, '#b81e0c']].map(([t, c]) => [t, new THREE.Color(c)]);
+    const colAt = (t, out) => { let i = 0; while (i < ramp.length - 2 && t > ramp[i + 1][0]) i++; const [t0, c0] = ramp[i], [t1, c1] = ramp[i + 1]; return out.copy(c0).lerp(c1, Math.min(1, (t - t0) / (t1 - t0))); };
+    const P = [], tmp = new THREE.Color(), glow = hdr('#ffc850', 2.2), ember = hdr('#ffb040', 2.6);
+    const rate = 240 * Math.min(2, Math.max(1, r)), spawnEnd = life * 0.62;
+    let T = 0, acc = 0;
+    const spawn = gp => {
+      // 輪の粒の多くは、カメラに向いた側に出す（うしろの粒は体にかくれる）
+      const c = this.camera.position, ca = Math.atan2(c.z - gp.z, c.x - gp.x);
+      const top = Math.random() < 0.25, a = Math.random() < 0.75 ? ca + (Math.random() - 0.5) * Math.PI * 1.3 : Math.random() * Math.PI * 2;
+      const q = top ? Math.random() * r * 0.45 : r * (0.7 + Math.random() * 0.3);
+      const p = V3(gp.x + Math.cos(a) * q, top ? h * (0.7 + Math.random() * 0.2) : Math.random() * h * 0.6, gp.z + Math.sin(a) * q * 0.85);
+      const v = V3((Math.random() - 0.5) * 0.4, (0.9 + Math.random() * 0.8) * hs, (Math.random() - 0.5) * 0.4);
+      P.push({ p, v, age: 0, life: 0.4 + Math.random() * 0.3, s: (0.6 + Math.random() * 0.5) * hs });
+      if (Math.random() < 0.3) this.p.emit(p, v, glow, { life: 0.3, size: 0.18 * hs, drag: 0.5 });
+    };
+    this.fx.add(pts, life, (k, o, dt) => {
+      T += dt;
+      const gp = m.group.position; o.visible = m.group.visible;
+      if (T < spawnEnd) for (acc += dt * rate; acc >= 1 && P.length < N; acc--) spawn(gp);
+      let n = 0;
+      for (let i = 0; i < P.length; i++) {
+        const q = P[i]; q.age += dt;
+        if (q.age >= q.life) { P.splice(i--, 1); continue; }
+        const t = q.age / q.life;
+        // 上へ浮きながら、体のまんなかの柱へ寄って、炎の先がすぼまる
+        q.v.y += 1.2 * hs * dt; q.v.x += (gp.x - q.p.x) * (1.5 + t * 3) * dt; q.v.z += (gp.z - q.p.z) * (1.5 + t * 3) * dt;
+        q.p.addScaledVector(q.v, dt);
+        pos[n * 3] = q.p.x; pos[n * 3 + 1] = q.p.y; pos[n * 3 + 2] = q.p.z;
+        colAt(t, tmp); col[n * 3] = tmp.r; col[n * 3 + 1] = tmp.g; col[n * 3 + 2] = tmp.b;
+        size[n] = q.s * (t < 0.15 ? 0.6 + t / 0.15 * 0.4 : 1 - (t - 0.15) / 0.85 * 0.85);
+        alpha[n] = (t < 0.08 ? t / 0.08 : 1) * (1 - t * t) * 0.9;
+        n++;
+      }
+      geo.setDrawRange(0, n);
+      for (const at of ['position', 'color', 'size', 'alpha']) geo.attributes[at].needsUpdate = true;
+      if (o.visible && T < spawnEnd + 0.2) for (let i = Math.floor(dt * 30 + Math.random()); i > 0; i--) {
+        const a = Math.random() * Math.PI * 2, q = Math.random() * r;
+        this.p.emit(V3(gp.x + Math.cos(a) * q, h * (0.3 + Math.random() * 0.7), gp.z + Math.sin(a) * q * 0.8), V3((Math.random() - 0.5) * 0.6, (2 + Math.random() * 1.5) * hs, (Math.random() - 0.5) * 0.6), ember, { life: 0.6, size: 0.06, drag: 1.5 });
+      }
+    });
+  }
+  // 凍える：足もとから氷のとげが外へ向かって突き出し、lead 秒で砕ける
+  iceBurst(e, lead) {
+    const m = e.model, r = m.radius, h = m.height, gp = m.group.position;
+    this.fx.sigil(V3(gp.x, 0.06, gp.z), '#9fe6ff', { r: r * 1.9, life: lead + 0.35, k: 2 });
+    const n = Math.min(10, 6 + Math.round(r * 2));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + Math.random() * 0.4, q = r * (0.75 + Math.random() * 0.3);
+      this.fx.iceSpike(V3(gp.x + Math.cos(a) * q, 0, gp.z + Math.sin(a) * q * 0.8),
+        { h: h * (0.5 + Math.random() * 0.35), r: 0.12 + r * 0.14, life: lead / 0.85, tilt: 0.45, dir: a, grow: 0.1 });
+    }
+    for (let i = 0; i < 20; i++) {
+      const a = Math.random() * Math.PI * 2;
+      this.p.emit(V3(gp.x + Math.cos(a) * r * 1.4, 0.1 + Math.random() * h, gp.z + Math.sin(a) * r * 1.2), V3(-Math.cos(a) * 1.5, -0.2, -Math.sin(a) * 1.2), hdr('#dff7ff', 2.4), { life: lead, size: 0.06, drag: 1 });
+    }
+  }
+  // 体の、カメラに向いた側の点（演出が体にかくれないように）
+  frontPoint(e, spread = 1, y = Math.random()) {
+    const m = e.model, gp = m.group.position, c = this.camera.position;
+    const a = Math.atan2(c.z - gp.z, c.x - gp.x) + (Math.random() - 0.5) * Math.PI * spread;
+    return V3(gp.x + Math.cos(a) * m.radius * 1.05, m.height * (0.1 + y * 0.85), gp.z + Math.sin(a) * m.radius * 0.9);
+  }
+  // しびれる：体の前を、黄色い稲妻がばちばちと走る
+  sparks(e, life) {
+    for (let i = 0; i < 9; i++) GFX.delay(i * (life / 9)).then(() => {
+      if (!e.model.group.visible) return;
+      const a = this.frontPoint(e, 1.2), b = this.frontPoint(e, 1.2);
+      this.fx.bolt(a, b, '#ffe23a', { life: 0.16, jag: 0.14, r: 0.042, solid: true });
+      this.fx.bolt(a, b, '#ffffff', { life: 0.1, jag: 0.1, r: 0.012, k: 3 });
+      if (i % 3 === 0) Sfx.zap();
+    });
+  }
+  // 傷がひらく：赤い切りあとが走る
+  cuts(e, lead) {
+    for (let i = 0; i < 3; i++) GFX.delay(i * lead * 0.28).then(() => {
+      Sfx.swing();
+      const p = this.frontPoint(e, 0.3, 0.45 + (Math.random() - 0.5) * 0.3);
+      const o = { cam: this.camera, size: 1.1 * Math.max(1, e.model.height * 0.5), angle: 0.6 + i * 0.95 + Math.random() * 0.3, life: 0.32, solid: true, top: true };
+      // 斬撃の絵は細く、ふちが透けるので、少し太らせて二枚重ねる
+      for (let j = 0; j < 2; j++) this.fx.slash(p, '#d8183a', o).geometry.scale(1, 1.8, 1);
+    });
+  }
+  // 赤いしずく：光でない色の粒が、はねて落ちる
+  drops(p, n) {
+    for (let i = 0; i < n; i++) {
+      const mat = new THREE.MeshBasicMaterial({ color: i % 3 ? '#d81e3a' : '#ff5068', transparent: true });
+      const o = new THREE.Mesh(new THREE.SphereGeometry(0.035 + Math.random() * 0.035, 6, 4), mat);
+      o.position.copy(p); o.renderOrder = 11;
+      const v = V3(Math.random() - 0.5, 0.4 + Math.random() * 0.8, Math.random() - 0.5).normalize().multiplyScalar(2 + Math.random() * 2.5);
+      this.fx.add(o, 0.6 + Math.random() * 0.3, (t, ob, dt) => { v.y -= 9 * dt; ob.position.addScaledVector(v, dt); if (ob.position.y < 0.03) { ob.position.y = 0.03; v.set(0, 0, 0); } mat.opacity = 1 - t * t; });
+    }
+  }
+  // やみがしめつける：紫の帯が体を巻いて縮み、暗い粒が吸いこまれる
+  gloom(e, lead) {
+    const m = e.model, r = m.radius, h = m.height, gp = m.group.position;
+    const c = V3(gp.x, h * 0.3, gp.z);
+    for (let i = 0; i < 2; i++) this.fx.swirl(c, i ? '#7c4ae0' : '#4a2390', { r: r * (1.3 - i * 0.25), life: lead + 0.1, tilt: 0.15, speed: -(9 + i * 4), arc: 3.6, width: 0.06, y0: 0, y1: h * 0.4, solid: true });
+    const p = this.hitPoint(e.u);
+    for (let i = 0; i < 24; i++) {
+      const a = Math.random() * Math.PI * 2, d = V3(Math.cos(a), (Math.random() - 0.5) * 0.8, Math.sin(a)).multiplyScalar(r * 1.6);
+      this.p.emit(p.clone().add(d), d.clone().multiplyScalar(-1 / lead), hdr('#7a4cff', 2.2), { life: lead, size: 0.1, drag: 0 });
+    }
   }
   healFx(t) {
     const e = this.ent(t); if (!e) return;

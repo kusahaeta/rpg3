@@ -304,7 +304,7 @@ html[lang=en] .ck-face.inteam::after { content: 'Team'; }
 .float.crit::after { content: ' 会心'; font-size: 14px; }
 .float.brk { font-size: 30px; }
 .float.brk::before { content: '撃破 '; font-size: 14px; }
-.float.dotf { font-size: 20px; }
+.float.dotf { font-size: 22px; }
 .float.heal { color: #6dff9e; font-size: 24px; }
 .float.shieldf { color: #a0dcff; font-size: 18px; }
 .float.info { font-size: 16px; color: #fff; background: rgba(0, 0, 0, .55); padding: 1px 8px; border-radius: 3px; text-shadow: none; }

@@ -745,8 +745,9 @@ class FX {
     });
   }
   // sym：光を真ん中に（十字のきらり）。ないときは斬撃らしく、進む先の側が明るい。top は sprite と同じ
-  slash(pos, color, { size = 2.2, angle = Math.random() * Math.PI, life = 0.32, cam, sym = false, top = false } = {}) {
-    const mat = new THREE.MeshBasicMaterial({ map: sym ? flareTex() : streakTex(), color: hdr(color, 4), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, depthTest: !top, side: THREE.DoubleSide });
+  // solid：光の足し算でなく、その色のまま描く（明るい草原でも見える）。bolt・swirl も同じ
+  slash(pos, color, { size = 2.2, angle = Math.random() * Math.PI, life = 0.32, cam, sym = false, top = false, solid = false } = {}) {
+    const mat = new THREE.MeshBasicMaterial({ map: sym ? flareTex() : streakTex(), color: solid ? color : hdr(color, 4), blending: solid ? THREE.NormalBlending : THREE.AdditiveBlending, transparent: true, depthWrite: false, depthTest: !top, side: THREE.DoubleSide });
     const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 0.14), mat);
     m.position.copy(pos);
     if (cam) m.quaternion.copy(cam.quaternion);
@@ -783,9 +784,9 @@ class FX {
     return this.add(m, life, t => { mat.opacity = 1 - t; m.scale.set(1 - t, 1, 1 - t); });
   }
   // 稲妻：a→b をギザギザの管で結ぶ（a・b は関数でもよい＝動く武器に沿わせる）
-  bolt(a, b, color, { life = 0.2, segs = 9, jag = 0.08, r = 0.012, k = 5, refresh = 0.045 } = {}) {
+  bolt(a, b, color, { life = 0.2, segs = 9, jag = 0.08, r = 0.012, k = 5, refresh = 0.045, solid = false } = {}) {
     const A = typeof a === 'function' ? a : () => a, B = typeof b === 'function' ? b : () => b;
-    const mat = new THREE.MeshBasicMaterial({ color: hdr(color, k), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false });
+    const mat = new THREE.MeshBasicMaterial({ color: solid ? color : hdr(color, k), blending: solid ? THREE.NormalBlending : THREE.AdditiveBlending, transparent: true, depthWrite: false, fog: false });
     const make = () => {
       const p0 = A(), p1 = B(), pts = [];
       for (let i = 0; i <= segs; i++) {
@@ -804,8 +805,8 @@ class FX {
     });
   }
   // 渦：中心のまわりを回る光の帯
-  swirl(center, color, { r = 0.8, life = 0.8, tilt = 0.3, speed = 9, arc = 2.2, width = 0.035, k = 4, y0 = 0, y1 = 0 } = {}) {
-    const mat = new THREE.MeshBasicMaterial({ color: hdr(color, k), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  swirl(center, color, { r = 0.8, life = 0.8, tilt = 0.3, speed = 9, arc = 2.2, width = 0.035, k = 4, y0 = 0, y1 = 0, solid = false } = {}) {
+    const mat = new THREE.MeshBasicMaterial({ color: solid ? color : hdr(color, k), blending: solid ? THREE.NormalBlending : THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false });
     const m = new THREE.Mesh(new THREE.TorusGeometry(r, width, 6, 48, arc), mat);
     const g = new THREE.Group(); g.add(m); g.position.copy(center); g.rotation.x = Math.PI / 2 + tilt; g.rotation.y = (Math.random() - 0.5) * 0.6;
     m.rotation.z = Math.random() * Math.PI * 2; m.renderOrder = 12;

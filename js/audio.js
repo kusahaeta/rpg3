@@ -67,6 +67,7 @@ const Sfx = {
   // ニャハハ王国関所：番犬の声、タマのこもりうた、のろし台の火
   bark() { [0, 0.22].forEach(t => { this.noise(0.09, 0.22, 900, t); this.tone(420, 0.1, 'square', 0.06, -160, t); }); },
   lullaby() { [523, 440, 392, 440, 523, 392].forEach((f, i) => this.tone(f, 0.45, 'sine', 0.05, 0, i * 0.32)); },
+  shatter() { this.noise(0.35, 0.22, 6000); [2400, 3100, 1900].forEach((f, i) => this.tone(f, 0.18, 'triangle', 0.035, -400, i * 0.03)); },   // 氷が砕ける
   fire() { this.noise(0.8, 0.14, 700); this.tone(180, 0.5, 'sawtooth', 0.04, 220); },
   // ごろごろ切り通し：ごろごろ団のラッパ（パラリラパラリラ）と、空ぶかし（ブォンブォン）
   horn(vol = 1) { [659, 784, 988, 784, 659, 784, 988, 784].forEach((f, i) => this.tone(f, 0.11, 'square', 0.035 * vol, 0, i * 0.12)); },

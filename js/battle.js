@@ -305,7 +305,7 @@ class Battle {
   // ============================================================
   float(u, text, cls = '') {
     const host = u.anchor || u.el;
-    if (!host) return;
+    if (!host) return null;
     const f = document.createElement('div');
     u.floatN = ((u.floatN || 0) + 1) % 5;
     f.className = 'float ' + cls;
@@ -314,6 +314,7 @@ class Battle {
     f.style.top = (u.side === 'enemy' ? 30 : 10) + u.floatN * 9 + '%';
     host.querySelector('.fx').appendChild(f);
     setTimeout(() => f.remove(), 1500);
+    return f;
   }
   impact(u, elem, big) {
     if (this.v) { this.v.hit(u, elem, big, false); return; }
@@ -512,8 +513,8 @@ class Battle {
       if (!u.alive || this.battleBlocked()) return;
       if (u.frozen) {
         const v = u.frozen.raw * this.defResMult(u.frozen.srcLv, u, 'ice');
-        this.applyDamage(u, v, null, 'ice');
-        this.float(u, '凍結', 'info'); u.frozen = null;
+        if (this.v) await wait(this.v.dotFx(u, 'freeze') * 1000);
+        this.applyDamage(u, v, null, 'ice', 'dotf'); u.frozen = null;
         await this.resolveDeaths(null);
         u.gauge = 5000; await wait(600); return;
       }
@@ -1113,8 +1114,10 @@ class Battle {
       if (ab > 0) this.float(t, '-' + fmt(ab), 'shieldf');
     }
     t.hp -= v;
-    if (v > 0 || t.side === 'enemy') this.float(t, fmt(v), `dmg ${cls}`.trim());
-    if (elem) { const f = t.el && t.el.querySelector('.fx .float:last-child'); if (f) f.style.color = cls.includes('crit') ? '' : ELEMENTS[elem].color; }
+    if (v > 0 || t.side === 'enemy') {
+      const f = this.float(t, fmt(v), `dmg ${cls}`.trim());
+      if (f && elem) f.style.color = cls.includes('crit') ? '' : ELEMENTS[elem].color;
+    }
     if (t.side === 'ally' && t.hp <= 0) {
       for (const a of this.aliveAllies()) if (a.def.talent.onAllyLethal && a.def.talent.onAllyLethal(this, a, t)) break;
     }
@@ -1284,20 +1287,22 @@ class Battle {
     if (!quiet) this.float(t, DOT_INFO[type][0], 'info');
     return true;
   }
-  dotDamage(t, d, ratio = 1) {
+  // 燃えあがる・しびれる……の演出が先に起きて、少し遅れてダメージが入る
+  async dotDamage(t, d, ratio = 1) {
     const v = d.raw * ratio * this.defResMult(d.srcLv, t, d.elem, d.src) * (t.side === 'enemy' && !t.broken ? 0.9 : 1);
-    if (this.v) this.v.dotFx(t, d.elem); else this.impact(t, d.elem, false);
+    if (this.v) await wait(this.v.dotFx(t, d.type) * 1000); else this.impact(t, d.elem, false);
+    if (!t.alive) return;
     this.applyDamage(t, v, d.src, d.elem, 'dotf');
   }
   async tickDots(u) {
     if (!u.dots.length) return;
-    for (const d of u.dots) { if (!u.alive) break; this.dotDamage(u, d); d.turns--; Sfx.hit(); await wait(250); }
+    for (const d of u.dots) { if (!u.alive) break; await this.dotDamage(u, d); d.turns--; Sfx.hit(); await wait(250); }
     u.dots = u.dots.filter(d => d.turns > 0);
     this.updateUnit(u);
     await this.resolveDeaths(null);
   }
   async detonate(t, ratio) {
-    for (const d of t.dots) { if (!t.alive) break; this.dotDamage(t, d, ratio); await wait(150); }
+    for (const d of t.dots) { if (!t.alive) break; await this.dotDamage(t, d, ratio); await wait(150); }
   }
   freeze(src, t, chance, raw) {
     if (!t.alive) return false;
@@ -1487,13 +1492,16 @@ class Battle {
     if (e.regen) { this.heal(e, e, e.maxHp * e.regen); await wait(400); }
     if (e.entangle) {
       const v = e.entangle.raw * e.entangle.stacks * this.defResMult(e.entangle.srcLv, e, 'quantum');
-      e.entangle = null; this.applyDamage(e, v, null, 'quantum', 'dotf'); this.impact(e, 'quantum');
+      e.entangle = null;
+      if (this.v) await wait(this.v.dotFx(e, 'entangle') * 1000); else this.impact(e, 'quantum');
+      this.applyDamage(e, v, null, 'quantum', 'dotf');
       await wait(300); await this.resolveDeaths(null);
       if (!e.alive || this.battleBlocked()) return;
     }
     if (e.frozen) {
       const v = e.frozen.raw * this.defResMult(e.frozen.srcLv, e, 'ice');
-      e.frozen = null; this.applyDamage(e, v, null, 'ice', 'dotf'); this.float(e, '凍結中', 'info');
+      if (this.v) await wait(this.v.dotFx(e, 'freeze') * 1000);
+      e.frozen = null; this.applyDamage(e, v, null, 'ice', 'dotf');
       await wait(500); await this.resolveDeaths(null);
       e.gauge = 5000; this.updateUnit(e);
       return;
