@@ -351,7 +351,7 @@ function shadeModel(m, col) {
 }
 // しっぽをからめる形（演出 tailWrap）：となりに並ぶ間、しっぽの節の長さ、からめたしっぽの長さ、らせんの半径・ひと巻きの長さ、
 //   らせんの始まり（根もとのあいだから上・うしろへ）、軸のうしろへのかたむき（上 1 に対して）、根もとから出る向き [うしろ, 上]・らせんへ入る手前の長さ（m）、
-//   からめる・ほどくのにかかる秒数、寄っていく子のしっぽが相手よりおくれて動きだす割合（からめる時間のうち）
+//   からめる・ほどくのにかかる秒数、相手のしっぽが寄っていく子よりおくれて動きだす割合（からめる時間のうち）
 //   ・tieTube：しっぽの代わりに出す、曲線に沿った筒。節のしっぽと同じ毛の材質・輪郭線で、先は丸める。形は毎フレーム、頂点を書きかえる
 const TIE = { gap: 0.7, seg: 0.075, len: 0.64, r: 0.055, turn: 0.3, up: 0.12, back: 0.18, lean: 1.5, c1: [0.12, 0.08], c2: 0.1, dur: [2.0, 1.0], lag: 0.45 };
 function tieTube(src, scene, N = 40, S = 10) {
@@ -799,9 +799,9 @@ class StageView extends BaseView {
     if (!T.go && !A.path) { T.go = true; if (T.want) this.tieShot(); }
     const want = T.go ? T.want : 0;
     T.k = clamp(T.k + Math.sign(want - T.k) * dt / (want ? C.dur[0] : C.dur[1]), 0, 1);
-    // 相手（タマ）のしっぽが先に、寄っていく子のほうへのびて、少しおくれて寄っていく子（ミケ）のしっぽが巻きつきに行く
-    //   （ほどくときは、その逆。寄っていく子のしっぽが先にはなれる）
-    const part = (k0, k1) => Ease.inOut(clamp((T.k - k0) / (k1 - k0), 0, 1)), eA = part(C.lag, 1), eB = part(0, 1 - C.lag), on = T.k > 0;
+    // 寄っていく子（ミケ）のしっぽが先に、相手のほうへのびて、少しおくれて相手（タマ）のしっぽが巻きつきに行く
+    //   （ほどくときは、その逆。相手のしっぽが先にはなれる）
+    const part = (k0, k1) => Ease.inOut(clamp((T.k - k0) / (k1 - k0), 0, 1)), eA = part(0, 1 - C.lag), eB = part(C.lag, 1), on = T.k > 0;
     A.m.group.updateMatrixWorld(true); B.m.group.updateMatrixWorld(true);
     const rA = A.m.tail[0].getWorldPosition(V3()), rB = B.m.tail[0].getWorldPosition(V3());
     const up = V3(0, 1, 0), back = this.F.clone().negate(), u = V3().subVectors(rB, rA).setY(0).normalize();
