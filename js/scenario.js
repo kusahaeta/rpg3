@@ -1351,8 +1351,10 @@ const SCENES = {
       ['kuro', '……だから、もう仲間は作らない。……失うのは、もうたくさんだ。', { f: 'sad', g: 'turnAway' }],
       ['mike', '……ぼくも、ちっちゃいころに、お父さんとお母さんがいなくなった。', { f: 'sad', g: 'lookDown', r: { kuro: 'surprise' } }],
       ['mike', 'だから、失うのがこわいの、ちょっとわかるよ。', { f: 'sad', g: 'handChest' }],
-      ['mike', '……でも、ぼくたち、もう仲間じゃん。', { f: 'sad', g: 'offer' }],
-      ['kuro', '…………。', { f: 'serious', g: 'lookDown' }],
+      { c: [
+        ['……でも、ぼくたち、もう仲間じゃん。', [['kuro', '…………。', { f: 'serious', g: 'lookDown' }]], { f: 'sad', g: 'offer', bond: ['mike', 'kuro', 4] }],
+        ['……（だまって、クロのとなりで、いっしょにお墓を見る）', [['kuro', '……。……勝手にしろ。', { f: 'sad', g: 'lookDown', look: { kuro: 'graves' } }]], { f: 'gentle', look: { mike: 'graves' }, bond: ['mike', 'kuro', 6] }],
+      ] },
       ['n', 'そのとき、墓のまわりに、黒い影がわき上がった。', { fx: 'shadow:graves', enter: 'e:kageneko', shake: 0.3, cam: 'wide' }],
       ['kuro', '……影ども。ここを荒らすな！', { f: 'angry', stance: { all: 'ready' }, face: { kuro: 'e:kageneko' } }],
     ] },
@@ -1581,6 +1583,10 @@ const SCENES = {
       ['kuro', '……今度は、こいつらと行ってくる。', { f: 'smile', g: 'nod', look: { kuro: 'graves' } }],
       ['tama', '……みんな、わらってる……きがする。', { f: 'smile', g: 'lookUp' }],
       ['shiro', '……そうね。', { f: 'gentle', g: 'handChest' }],
+      { c: [
+        ['ハヤテ、リン、ゴロウ！　クロのことは、ぼくたちにまかせてね！', [['kuro', '……勝手に、まかされるな。', { f: 'shy', g: 'turnAway' }], ['tama', '……クロ、てれてる。', { f: 'smile', r: { kuro: 'shy' } }]], { f: 'joy', g: 'wave', look: { mike: 'graves' }, bond: ['mike', 'kuro', 4] }],
+        ['……（お墓の前で、ぺこりと頭を下げる）', [['kuro', '……ああ。……あいつらも、喜ぶ。', { f: 'gentle', g: 'nod', to: 'mike' }]], { f: 'gentle', g: 'bow', look: { mike: 'graves' }, bond: ['mike', 'kuro', 6] }],
+      ] },
       ['n', '夕焼けの谷を、風がわたっていく。', { cam: 'wide', dur: 6 }],
       ['mike', 'よーし！　次は古代遺跡だよ！　シロ、天才の出番でしょ？', { f: 'joy', g: 'point', to: 'shiro' }],
       ['shiro', 'と、当然でしょ！　……って、ちょっと、引っぱらないでよ！', { f: 'smug', g: 'hipHand' }],
