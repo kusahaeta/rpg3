@@ -1041,7 +1041,7 @@ class FieldView extends BaseView {
       p.atk -= d;
       if (!p.hitDone && p.atk <= 0.29) { p.hitDone = true; this.attackHit(); }
     }
-    this.animatePlayer(d, sprint);
+    p.sprint = sprint;   // 歩きのポーズは update でまとめて一度だけ（二度進めると、先頭の子だけ足が倍速になる）
     // 地形のある区画の出入口（隔壁扉は近づくと開き、くぐると次の区画へ）
     if (this.T) {
       for (const ph of this.exitsPhys) {
@@ -3272,10 +3272,11 @@ class FieldView extends BaseView {
     for (const f of this.zoneTicks) f(d, t);
     for (const f of this.emitters) f(d);
     if (this.T) this.updateMapParts(d, t);
-    if (this.flight) { this.updateFlight(d); this.animatePlayer(d, false); }
+    this.player.sprint = false;
+    if (this.flight) this.updateFlight(d);
     else if (!this.busy) { this.updatePlayer(d); if (!this.busy) this.updateGags(d); }
     if (this.enterQuest && !this.busy && (this.enterQuest -= d) <= 0) this.enterArrive();
-    else { this.animatePlayer(d, false); if (this.riding) this.placePlayer(d); }
+    else { this.animatePlayer(d, this.player.sprint); if (this.riding) this.placePlayer(d); }
     this.updateRoots(d, t); this.updateShadows(d, t); this.updateNap(d, t);
     this.updateNemuri(t);
     if (!this.busy && !this.flight) { this.updatePlates(); this.updateSealTimers(d); this.updateStroke(); this.updateSizeReset(); this.updateLoop(); }
