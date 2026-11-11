@@ -12,6 +12,39 @@ const CAT = {
   HIPK: 0.22 / 1.03,    // 人型用ポーズの腰の上下を縮める比
 };
 
+// 足の裏が腰からどれだけ下にあるか（m）。th：脚の角度、kn：ひざ（ポーズの値）、lift：引き上げ、lean：体の前のめり、roll：横のかたむき（side：左足 1・右足 -1）
+//   buildCat の脚の寸法と合わせる
+function catFootDrop(th, kn, lift, lean = 0, roll = 0, side = 1) {
+  const ps = lean + th + kn * 0.6, c = Math.cos(ps), s = Math.sin(ps);   // 足の裏の、地面に対する角度
+  const y = 0.02 * Math.cos(lean) + 0.01 * Math.sin(lean) + (0.1 - lift * 0.05) * Math.cos(lean + th) + 0.055 * c + 0.03 * s + Math.hypot(0.0504 * c, 0.091 * s);
+  return y * Math.cos(roll) - side * 0.095 * Math.sin(roll);
+}
+const CAT_FOOT0 = catFootDrop(0, 0, 0);
+// 歩き・走りの一歩（探索と会話の舞台で共用）。P：ポーズ（立ち姿を入れてから呼ぶ）、ph：歩みの位相、amp：歩幅（0〜1.3）、run：走りの度合い（0〜1）
+//   軸足は、足の裏を地面につけたまま後ろへ送る。遊び足は、体のほうへ引き上げて前へ運び、つま先を下げて離れ、上げて着く。
+//   腰の高さは、低いほうの足がちょうど地面につくように決める（歩きは両足が開いたときに沈む）。走りは、足が開いたところで体が浮く。
+//   体は軸足のほうへ少しかたむき（roll）、腰のひねりと逆へ顔を戻して、顔は前を向いたまま
+function gaitPose(P, ph, amp, run = 0) {
+  const a = Math.min(1, amp), s = Math.sin(ph), c = Math.cos(ph);
+  const A = (0.6 + 0.1 * run) * amp;
+  P.lean = (0.06 + 0.16 * run) * a;
+  P.roll = -c * (0.055 - 0.02 * run) * a;
+  for (const [K, sg] of [['L', 1], ['R', -1]]) {
+    const ss = s * sg, sw = Math.max(0, -c * sg);   // sw：遊び足のあいだ 0→1→0
+    const th = ss * A - sw * 0.3 * a, lift = sw * a + (1 - sw) * run * 0.3 * a * (1 - ss * ss);   // 走りの軸足は、体の真下で少し沈む
+    P['leg' + K + 'x'] = th; P['lift' + K] = lift;
+    P['knee' + K] = (ss * sw * 0.7 * a - P.lean - th) / 0.6;   // 軸足は足の裏を水平に（前のめりのぶんも戻す）
+  }
+  P.hipsY = (Math.max(catFootDrop(P.legLx, P.kneeL, P.liftL, P.lean, P.roll, 1), catFootDrop(P.legRx, P.kneeR, P.liftR, P.lean, P.roll, -1)) - CAT_FOOT0) / CAT.HIPK
+    + run * a * Math.max(0, s * s - 0.25) * 0.22;
+  // 腕は脚と逆に、少しおくれて振る。前へ出たときに、ひじを多めに曲げる
+  const sa = Math.sin(ph - 0.35), wa = 0.6 + 0.15 * run;
+  P.armLx = -sa * wa * amp; P.armRx = sa * wa * amp - 0.1;
+  P.elbowL = -0.3 - (0.5 + Math.max(0, sa) * 0.45) * a; P.elbowR = -0.3 - (0.5 + Math.max(0, -sa) * 0.45) * a;
+  P.twist = s * 0.14 * a; P.headY = -P.twist * 0.6;
+  P.headX = (Math.cos(ph * 2 - 0.9) * 0.035 - 0.1 * run) * a;
+}
+
 // 表情の追加（猫用）
 Object.assign(FACE_EXPR, {
   sleepy: { lidIn: 5.5, lidOut: 5.5, mouth: 'line' },
@@ -255,14 +288,16 @@ function buildCat(key, opt = {}) {
   const armR = arm(-1), armL = arm(1);
 
   // ---------- しっぽ ----------
+  //   節は「根もとがわの半球 ＋ 先へ細くなる筒」。半球の中心を節の軸に置くので、曲げても継ぎ目が出ず、一本のなめらかな線に見える
   const tail = [];
   {
     const n = sp === 'mouse' ? 9 : sp === 'dog' ? 4 : 6, r0 = sp === 'mouse' ? 0.018 : sp === 'dog' ? 0.05 : 0.048, seg = sp === 'mouse' ? 0.07 : 0.075;
     const tailM = sp === 'mouse' ? T('#f2b8c0') : furM, tipM = L.tailTip ? T(L.tailTip) : tailM;
+    const rad = j => r0 * (1 - 0.32 * j / n);   // 節 j の太さ（先へ行くほど細く）
     let parent = new THREE.Group(); parent.position.set(0, 0.03, -0.16); hips.add(parent);
     for (let i = 0; i < n; i++) {
       const g = new THREE.Group(); if (i) g.position.y = seg; parent.add(g);
-      const m = P(new THREE.CapsuleGeometry(r0 * (1 - i * 0.05), seg * 0.7, 3, 8), i >= n - 2 ? tipM : tailM, { oc: lineCol }); m.position.y = seg / 2; g.add(m);
+      const m = P(tailSegGeo(rad(i), rad(i + 1), seg, i === n - 1), i >= n - 2 ? tipM : tailM, { oc: lineCol }); g.add(m);
       tail.push(g); parent = g;
     }
   }
@@ -321,11 +356,10 @@ function buildCat(key, opt = {}) {
       e.position.set(s * 0.3, 0.12, -0.02); e.rotation.z = s * 0.5;
       const o = P(new THREE.SphereGeometry(0.1, 12, 10), T(L.earCol || L.fur), { oc: lineCol }); o.scale.set(0.55, 1.3, 0.35); o.position.y = -0.08; e.add(o);
     } else {
-      e.position.set(s * 0.2, 0.2, -0.01); e.rotation.set(-0.06, 0, -s * 0.4);
-      const earGeo = new THREE.ConeGeometry(0.11, 0.21, 4, 1); earGeo.rotateY(Math.PI / 4);
-      const o = P(earGeo, L.pattern === 'point' ? T((L.patches || [])[0] || L.fur) : furM, { oc: lineCol }); o.scale.z = 0.5; o.position.y = 0.09; e.add(o);
-      const inGeo = new THREE.ConeGeometry(0.07, 0.14, 4, 1); inGeo.rotateY(Math.PI / 4);
-      const i = new THREE.Mesh(inGeo, T(L.earIn || '#f7b8c0')); i.scale.z = 0.35; i.position.set(0, 0.07, 0.022); e.add(i);
+      // 丸みのある三角の耳：ふちはふくらんだ弧、先は丸く、うしろは丸くふくらみ、前（耳の内がわ）は浅い。少し外を向く
+      e.position.set(s * 0.2, 0.2, -0.01); e.rotation.set(-0.06, s * 0.22, -s * 0.4);
+      const o = P(catEarGeo(0.088, 0.225, 0.05, 0.011), L.pattern === 'point' ? T((L.patches || [])[0] || L.fur) : furM, { oc: lineCol }); o.position.y = -0.02; e.add(o);
+      const i = new THREE.Mesh(catEarGeo(0.056, 0.145, 0.004, 0.008), T(L.earIn || '#f7b8c0')); i.position.set(0, 0.0, 0.006); e.add(i);
     }
     e.userData.base = e.rotation.clone();
     ears.push(e);
@@ -513,7 +547,17 @@ function buildCat(key, opt = {}) {
     // ひねり：腕を前に出すときは手のひらが内を向く
     a.pv.quaternion.multiply(tmpQ.setFromAxisAngle(down, 0));
   };
-  let mood = 0, earT = 2 + Math.random() * 4, earFlick = 0;
+  let mood = 0, earT = 2 + Math.random() * 4, earFlick = 0, earSide = 1;
+  // しっぽ・耳のおくれ（体の動きについていく、ばね）。lx〜ly：前のコマの位置と向き、tz・tz2：横ゆれ（根もと・先）、tx：上下、eb：耳のはずみ
+  const dyn = { has: false, lx: 0, ly: 0, lz: 0, lr: 0, tz: 0, vz: 0, tz2: 0, vz2: 0, tx: 0, vx: 0, eb: 0, ve: 0, wag: Math.random() * 6, flickT: 3 + Math.random() * 5, flick: 0, hy: 0 };
+  const spring = (x, v, to, k, c, dt) => { v += ((to - x) * k - v * c) * dt; return [x + v * dt, v]; };
+  // しっぽの線（節ごとの曲げ。0 で前の節からまっすぐ、負で後ろへ倒れる）：ふだんは後ろへ出てから上へ反り、先だけ軽く後ろへ返す。
+  //   up：うれしい（根もとから立てて、先を「？」の形に）、low：しょんぼり（垂らして、先は地面につかないよう少し上げる）、
+  //   マントの子は、しっぽが布をつきぬけないよう、すその下をくぐらせてから先を上へ返す。
+  //   すわりこむ・ねむる・たおれる（lie）ときは、気分によらず、地面へ垂らして体のほうへ丸める（update の中で、根もとの高さから決める）
+  const TC = L.cape
+    ? { rest: [-1.95, 0, 0.1, 0.45, 0.5, 0.35], up: [-1.9, 0, 0.15, 0.55, 0.6, 0.4], low: [-2.1, 0.03, 0.05, 0.1, 0.15, 0.2] }
+    : { rest: [-1.2, 0.28, 0.3, 0.24, 0.1, -0.2], up: [-0.55, 0.12, 0.1, 0, -0.2, -0.45], low: [-2.0, 0.05, 0.1, 0.15, 0.2, 0.25] };
   const model = {
     group: root, hips, headPivot, armR, armL, legR, legL, mats, pose, height: CAT.H * (c.scale || 1), radius: 0.4 * (c.scale || 1), key,
     style: G.style || 'melee', charCol, idleAmp: 1, flashAmt: 0, flashCol: new THREE.Color(1, 1, 1), extras, face, cat: true, tail, ears,
@@ -524,9 +568,12 @@ function buildCat(key, opt = {}) {
       else if (face.closed && !face.shut) { face.closed = false; face.apply(); }
       const br = Math.sin(t * 2.2) * this.idleAmp;
       hips.position.y = CAT.HIP + pose.hipsY * CAT.HIPK + br * 0.004;
-      hips.rotation.x = pose.lean; hips.rotation.y = pose.twist;
+      hips.rotation.x = pose.lean; hips.rotation.y = pose.twist; hips.rotation.z = pose.roll || 0;
+      // 息づかい：胸が少しふくらむ（服・ベルトの下にかくれる程度）
+      body.scale.set(1 + br * 0.012, 1 + br * 0.006, 0.86 * (1 + br * 0.018));
       headPivot.rotation.x = pose.headX + br * 0.025; headPivot.rotation.y = pose.headY;
-      headPivot.rotation.z = (pose.headZ || 0) + Math.sin(t * 0.7 + this.seed) * 0.03;   // headZ：首をかしげる（POSE_KEYS の外。動きのある決めポーズが直接入れる）
+      // headZ：首をかしげる（POSE_KEYS の外。動きのある決めポーズが直接入れる）。体が左右へかたむいても（roll）、顔はほぼ水平のまま
+      headPivot.rotation.z = (pose.headZ || 0) + Math.sin(t * 0.7 + this.seed) * 0.03 - (pose.roll || 0) * 0.75;
       // 武器が腕の動きを決めるもの（お手玉の腕）は、ポーズより優先する
       const ja = extras.arms && extras.arms(t);
       if (ja) { setArm(armR, ja[0], ja[1], -1); setArm(armL, ja[2], ja[3], 1); armR.el.rotation.x = ja[4] * 0.8; armL.el.rotation.x = ja[5] * 0.8; }
@@ -536,22 +583,56 @@ function buildCat(key, opt = {}) {
       }
       legR.pv.rotation.x = pose.legRx; legL.pv.rotation.x = pose.legLx;
       legR.kn.rotation.x = pose.kneeR * 0.6; legL.kn.rotation.x = pose.kneeL * 0.6;
+      legR.kn.position.y = -0.1 + (pose.liftR || 0) * 0.05; legL.kn.position.y = -0.1 + (pose.liftL || 0) * 0.05;
+      // 体の動き（進む・向きを変える・跳ねる）から、しっぽと耳の「おくれ」を出す。位置は親の中での位置（group を動かす側は書きかえなくてよい）
+      const D = dyn, gp = root.position, ry = root.rotation.y;
+      let vf = 0, vs = 0, vy = 0, wr = 0;
+      if (dt > 1e-4 && D.has) {
+        const dx = gp.x - D.lx, dy = gp.y - D.ly, dz = gp.z - D.lz, sn = Math.sin(ry), cs = Math.cos(ry);
+        if (dx * dx + dy * dy + dz * dz < 1) {   // 場面の切りかえで遠くへ移されたコマは、動きに数えない
+          vf = clamp((dx * sn + dz * cs) / dt, -9, 9); vs = clamp((dx * cs - dz * sn) / dt, -9, 9); vy = clamp(dy / dt, -6, 6);
+          wr = clamp((((ry - D.lr) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI) / dt, -9, 9);
+        }
+      }
+      D.has = true; D.lx = gp.x; D.ly = gp.y; D.lz = gp.z; D.lr = ry;
+      const hv = dt > 1e-4 ? clamp((hips.position.y - D.hy) / dt, -2, 2) : 0; D.hy = hips.position.y;   // 腰の上下（歩きのはずみ）
+      const adt = this.still ? 0 : dt, sdt = Math.min(adt, 0.034), stride = (pose.legLx - pose.legRx) * 0.5;   // still：凍結中は、しっぽ・耳も止まる
+      // 横：向きを変えると逆へ流れ、歩くと腰の振りにつられて左右にゆれる。先（tz2）は根もと（tz）を追いかけて、さらにおくれる
+      [D.tz, D.vz] = spring(D.tz, D.vz, clamp(-wr * 0.07 - vs * 0.05, -0.5, 0.5) + stride * 0.22, 70, 9, sdt);
+      [D.tz2, D.vz2] = spring(D.tz2, D.vz2, D.tz, 55, 7, sdt);
+      // 上下：前へ進むと後ろへなびき、跳びあがると下へ残って、着地でゆれもどす
+      [D.tx, D.vx] = spring(D.tx, D.vx, clamp(-Math.max(0, vf) * 0.045 - (vy + hv) * 0.07, -0.5, 0.4), 80, 9, sdt);
+      [D.eb, D.ve] = spring(D.eb, D.ve, clamp(-(vy + hv * 1.5) * 0.09 - Math.abs(vf) * 0.012, -0.35, 0.35), 160, 11, sdt);
       // しっぽ：気分で上がり下がり、ゆらゆら（rotation.x が 0 で真上、負へ回すほど後ろへ倒れる。正へ回すと体の前へ入りこむ）
-      //   うれしいと根もとから立てて先を後ろへ丸め、しょんぼりすると後ろへ垂らして、先は地面につかないよう少し持ち上げる
       const ex = face.expr, want = ['sad', 'worry', 'pained', 'cry'].includes(ex) ? -1 : ['joy', 'smile', 'surprise'].includes(ex) ? 1 : 0;
       mood += (want - mood) * Math.min(1, dt * 3);
-      const wag = mood > 0.5 ? 6 : 2.4, out = this.tailOut || 0;
+      const out = this.tailOut || 0, mu = Math.max(0, mood), ml = Math.max(0, -mood), lie = clamp((-pose.hipsY - 0.2) / 0.25, 0, 1);
+      D.wag += adt * (2.2 + mu * 3.6);   // うれしいと、せわしなく振る
+      if (!this.still && (D.flickT -= dt) <= 0) { D.flickT = 3 + Math.random() * 6; D.flick = 1; }   // ときどき、先だけぴくっと動かす
+      D.flick = Math.max(0, D.flick - adt * 3.5);
+      const fl = Math.sin(D.flick * Math.PI) * D.flick, n1 = tail.length - 1;
+      // ねそべるとき：根もとの高さから、先が地面にとどくだけ垂らす（根もとで大きく垂れて、先へ行くほど地面にそう）
+      const lb = lie > 0 ? Math.asin(clamp((hips.position.y + 0.03 * Math.cos(pose.lean) + 0.16 * Math.sin(pose.lean) - 0.05) / 0.45, 0, 0.8)) : 0;
       tail.forEach((g, i) => {
-        const base = sp === 'mouse' ? -0.35 + i * 0.12 : sp === 'dog' ? -0.9 : i === 0 ? -1.15 + mood * (mood > 0 ? 0.55 : 0.8) : -0.12 - mood * (mood > 0 ? 0.08 : 0.18);
-        g.rotation.x = base + (i ? Math.sin(t * 1.3 - i * 0.5) * 0.05 : 0) - pose.lean * (i ? 0 : 0.6);
-        g.rotation.z = Math.sin(t * wag - i * 0.6 + this.seed) * (0.08 + i * 0.03);
+        const k = i / n1;
+        if (sp !== 'cat') {
+          const base = sp === 'mouse' ? -0.35 + i * 0.12 : -0.9;
+          g.rotation.x = base + (i ? Math.sin(t * 1.3 - i * 0.5) * 0.05 : 0) - pose.lean * (i ? 0 : 0.6) + D.tx * (i ? 0.1 : 0.5);
+          g.rotation.z = Math.sin(D.wag - i * 0.6 + this.seed) * (0.08 + i * 0.03) + lerp(D.tz, D.tz2, k) * (i ? 0.25 : 0.5);
+        } else {
+          let bx = TC.rest[i] + (TC.up[i] - TC.rest[i]) * mu + (TC.low[i] - TC.rest[i]) * ml - (i ? 0 : pose.lean * 0.6);
+          if (lie > 0) bx += ((i ? 0.4 * lb : -1.5708 - 2 * lb - pose.lean) - bx) * lie;
+          g.rotation.x = bx + (i ? Math.sin(t * 1.3 - i * 0.5) * 0.04 * (1 - lie) : 0) + D.tx * (i ? 0.12 : 0.55) - (i >= n1 - 1 ? fl * 0.35 : 0);
+          // 横：根もとはあまり振らず、先へ行くほど大きく、おくれて振る。ねそべっているときは、体のほうへ丸める
+          g.rotation.z = Math.sin(D.wag - i * 0.55 + this.seed) * (0.03 + k * 0.13) * (1 - lie * 0.7) + lerp(D.tz, D.tz2, k) * (i ? 0.3 : 0.45) + (i ? lie * 0.36 : 0);
+        }
         // tailOut：しっぽを後ろへまっすぐ伸ばす（しっぽでなぎ払う技）
         if (out) { g.rotation.x = lerp(g.rotation.x, i ? 0.04 : -1.5 - pose.lean, out); g.rotation.z *= 1 - out; }
       });
-      // 耳：ときどきぴくっと動く。しょんぼりすると伏せる
-      if (!this.still && (earT -= dt) <= 0) { earT = 2 + Math.random() * 5; earFlick = 1; }
+      // 耳：ときどき、どちらかがぴくっと動く。しょんぼりすると伏せる。歩く・跳ねると、はずみで少しゆれる
+      if (!this.still && (earT -= dt) <= 0) { earT = 2 + Math.random() * 5; earFlick = 1; earSide = Math.random() < 0.5 ? 0 : 1; }
       earFlick = Math.max(0, earFlick - dt * 6);
-      ears.forEach((e, i) => { const s = i ? 1 : -1, b = e.userData.base; e.rotation.set(b.x - (mood < 0 ? -mood * 0.5 : 0), b.y, b.z - s * (mood < 0 ? -mood * 0.45 : 0) + (i ? earFlick * 0.25 : 0)); });
+      ears.forEach((e, i) => { const s = i ? 1 : -1, b = e.userData.base; e.rotation.set(b.x - (mood < 0 ? -mood * 0.5 : 0) + D.eb, b.y, b.z - s * (mood < 0 ? -mood * 0.45 : 0) + (i === earSide ? s * earFlick * 0.25 : 0) - s * D.eb * 0.5); });
       for (const f of upd) f(dt, t, pose);
       if (extras.update) extras.update(dt, t);
       if (this.flashAmt > 0.001) {
@@ -579,6 +660,27 @@ function buildCat(key, opt = {}) {
   mergeRigid(root, [head, armR.paw, armL.paw, ...Object.values(extras).filter(o => o && o.isObject3D)], () => { model.update(0.1, 0.7); model.update(0.1, 1.9); });
   model.update(0, 0);
   return model;
+}
+
+// しっぽの節：下の半球（半径 ra、中心が原点）＋ 上へ len のびて半径 rb になる筒。tip：先の節は上も半球で閉じる
+function tailSegGeo(ra, rb, len, tip) {
+  const pts = [], C = 4;
+  for (let i = 0; i <= C; i++) { const a = -Math.PI / 2 + i / C * Math.PI / 2; pts.push([Math.max(0.0005, Math.cos(a) * ra), Math.sin(a) * ra]); }
+  if (tip) for (let i = 0; i <= C; i++) { const a = i / C * Math.PI / 2; pts.push([Math.max(0.0005, Math.cos(a) * rb), len + Math.sin(a) * rb]); }
+  else pts.push([rb, len]);
+  return lathe(pts, 12);
+}
+// 猫の耳：下のふち（y=0）の半幅 w、高さ h。うしろへ db、前へ df ふくらむ。上へ行くほど細くなり、先は丸い
+function catEarGeo(w, h, db, df, R = 12, S = 6) {
+  const pos = [], idx = [];
+  for (let j = 0; j <= S; j++) {
+    const v = 1 - Math.pow(1 - j / S, 1.5), k = j === S ? 0 : Math.pow(1 - v * v, 0.62) * (1 - v * 0.38);   // 幅：下はほぼまっすぐ、先で丸くすぼまる
+    for (let i = 0; i < R; i++) { const a = i / R * Math.PI * 2, sn = Math.sin(a); pos.push(Math.cos(a) * w * k, v * h, sn * (sn > 0 ? df : db) * k); }
+  }
+  for (let j = 0; j < S; j++) for (let i = 0; i < R; i++) { const a = j * R + i, b = j * R + (i + 1) % R; idx.push(a, a + R, b, b, a + R, b + R); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return g;
 }
 
 // 輪郭線だけのメッシュ（旋盤や板の衣装用）
