@@ -192,12 +192,16 @@ class Actor {
     for (const k of POSE_KEYS) this.cur[k] = lerp(this.cur[k] || 0, tgt[k] || 0, r);
     for (const k of POSE_KEYS) P[k] = this.cur[k];
     // 歩きのポーズ
-    if (moving) {
-      this.phase += dt * (4 + this.speed * 1.35);
-      const s = Math.sin(this.phase), a = Math.min(1, this.speed / 3);
-      P.legLx = s * 0.7 * a; P.legRx = -s * 0.7 * a; P.kneeL = Math.max(0, -s) * 1.0 * a + 0.05; P.kneeR = Math.max(0, s) * 1.0 * a + 0.05;
-      P.armLx = -s * 0.55 * a; P.armRx = s * 0.55 * a - 0.1; P.hipsY = -Math.abs(Math.cos(this.phase)) * 0.04 * a; P.lean = 0.08 * a + (this.speed > 4 ? 0.3 : 0);
-      if (this.speed > 4) Object.assign(P, { armRx: 0.9, armRz: -0.4, elbowR: -0.2, armLx: -0.9, armLz: 0.3, elbowL: -1.0 });
+    //   歩きだし・立ちどまりは、歩きの姿と立ち姿をまぜて、なめらかに移る（gait：歩きの姿の割合）
+    this.gait = (this.gait || 0) + ((moving ? 1 : 0) - (this.gait || 0)) * (1 - Math.exp(-(moving ? 18 : 9) * dt));
+    if (moving) { this.phase += dt * (5 + this.speed * 1.45); this.gaitV = this.speed; }
+    if (this.gait > 0.02) {
+      const v = this.gaitV, a = Math.min(1, v / 3), Q = this.gaitQ || (this.gaitQ = {});
+      for (const k of POSE_KEYS) Q[k] = P[k];
+      gaitPose(Q, this.phase, a, clamp((v - 3.5) / 1.5, 0, 1));   // js/gfx/cats.js
+      Q.lean = 0.08 * a + (v > 4 ? 0.3 : 0);
+      if (v > 4) Object.assign(Q, { armRx: 0.9, armRz: -0.4, elbowR: -0.2, armLx: -0.9, armLz: 0.3, elbowL: -1.0 });
+      for (const k of POSE_KEYS) P[k] = lerp(P[k], Q[k], this.gait);
     }
     // 視線：頭を見ている相手へ（体の向きとの差ぶん）
     const lp = this.lookPoint();

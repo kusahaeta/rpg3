@@ -5,7 +5,8 @@
 // ============================================================
 
 // 関節角度で定義したポーズ（モデルは +Z 向き）。値は人型の比率で書き、にゃんこ側で縮める
-const POSE_KEYS = ['hipsY', 'lean', 'twist', 'headX', 'headY', 'armLx', 'armLz', 'armRx', 'armRz', 'elbowL', 'elbowR', 'legLx', 'legRx', 'kneeL', 'kneeR'];
+//   roll：体を左右へかたむける（歩くときの重心の移り。頭は水平にもどす）。liftL / liftR：足を体のほうへ引き上げる（1 で 5cm。歩きの遊び足）
+const POSE_KEYS = ['hipsY', 'lean', 'twist', 'roll', 'headX', 'headY', 'armLx', 'armLz', 'armRx', 'armRz', 'elbowL', 'elbowR', 'legLx', 'legRx', 'kneeL', 'kneeR', 'liftL', 'liftR'];
 const POSES = {
   idle:    { armLz: 0.14, armRz: -0.14, elbowL: -0.2, elbowR: -0.3, armRx: -0.1 },
   ready:   { hipsY: -0.03, lean: 0.06, armRx: -0.5, elbowR: -0.9, armRz: -0.15, armLx: -0.25, armLz: 0.3, elbowL: -0.6, legLx: -0.25, legRx: 0.18, kneeL: 0.25, kneeR: 0.3 },
@@ -103,7 +104,7 @@ class FaceRig {
     let ch = false;
     // shut：眠っているあいだは、まばたきせずに目を閉じたまま
     if (this.shut) { if (!this.closed) { this.closed = true; this.blinkT = 0.3; ch = true; } }
-    else if ((this.blinkT -= dt) <= 0) { this.closed = !this.closed; this.blinkT = this.closed ? 0.11 : 1.8 + Math.random() * 3.6; ch = true; }
+    else if ((this.blinkT -= dt) <= 0) { this.closed = !this.closed; this.blinkT = this.closed ? 0.11 : Math.random() < 0.18 ? 0.16 : 1.8 + Math.random() * 3.6; ch = true; }   // 5〜6 回に一度は、ぱちぱちと二度つづけて
     if (this.talking) { if ((this.mouthT -= dt) <= 0) { this.mouth = !this.mouth; this.mouthT = this.mouth ? 0.07 + Math.random() * 0.1 : 0.05 + Math.random() * 0.08; ch = true; } }
     else if (this.mouth) { this.mouth = false; ch = true; }
     if (ch) this.apply();

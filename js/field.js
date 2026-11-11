@@ -1080,19 +1080,10 @@ class FieldView extends BaseView {
   walkPose(w, d, sprint) {
     const P = w.m.pose;
     const amp = Math.min(1.3, w.speed / 4.2);
-    w.phase += d * (4 + w.speed * 1.35);
-    const s = Math.sin(w.phase);
+    w.phase += d * (5 + w.speed * 1.45);
+    w.run = (w.run || 0) + ((sprint ? 1 : 0) - (w.run || 0)) * (1 - Math.exp(-8 * d));   // 歩き ⇔ 走りは、なめらかに移る
     for (const k of POSE_KEYS) P[k] = POSES.idle[k] || 0;
-    if (amp > 0.03) {
-      const a = Math.min(1, amp);
-      P.legLx = s * 0.75 * amp; P.legRx = -s * 0.75 * amp;
-      P.kneeL = Math.max(0, -s) * 1.1 * a + 0.05; P.kneeR = Math.max(0, s) * 1.1 * a + 0.05;
-      P.armLx = -s * 0.65 * amp; P.armRx = s * 0.65 * amp - 0.1;
-      P.elbowL = -0.3 - 0.6 * a; P.elbowR = -0.3 - 0.6 * a;
-      P.lean = 0.06 * a + (sprint ? 0.16 * a : 0);
-      P.hipsY = -Math.abs(Math.cos(w.phase)) * 0.04 * a;
-      P.twist = s * 0.12 * a;
-    }
+    if (amp > 0.03) gaitPose(P, w.phase, amp, w.run);   // js/gfx/cats.js
     w.m.idleAmp = amp > 0.1 ? 0.2 : 1;
   }
   animatePlayer(d, sprint) {
