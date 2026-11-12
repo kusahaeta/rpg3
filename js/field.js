@@ -677,8 +677,9 @@ class FieldView extends BaseView {
   }
   // 頭から off の向きに、カメラをどこまで離せるか（壁・天井・障害物にぶつかる手前まで）
   viewDist(head, off, foot, ceil, py) {
-    const T = this.T, cd = this.camDist * this.camScale();
+    const T = this.T, cd = this.camDist * this.camScale(), fMax = this.wallReach(head, off, cd, ceil);
     const blocked = f => {
+      if (f > fMax) return true;
       const x = head.x + off.x * cd * f, y = Math.min(ceil, head.y + off.y * cd * f), z = head.z + off.z * cd * f;
       // 太さは頭から離れるほど大きく（頭のそばで太いと、壁ぞいを歩くだけでカメラが寄ってしまう）
       const R = Math.min(0.55, 0.15 + 0.3 * cd * f);
@@ -695,6 +696,22 @@ class FieldView extends BaseView {
       return cd * lo;
     }
     return cd;
+  }
+  // 木立の区画（outdoor: flora。森・村・街道・ねこ神の夢の庭など）：木立の壁を越えたカメラが、壁の向こうの道や区画の外から主人公を映さないよう、
+  //   頭から off の向きに進めて、木立のマスに入ってから WALL_IN m より奥、または木立をぬけた所の手前で止める（cd に対する割合。1 ならどこまでも離せる）。
+  //   木立のきわのマスに少し入るのはゆるす（入れないと、森の小道で横を向くだけで主人公のすぐ後ろまで寄る）。木立のてっぺんより上はすり抜ける
+  wallReach(head, off, cd, ceil) {
+    const T = this.T;
+    if (!T || T.outdoor !== 'flora') return 1;
+    const WALL_IN = 1.0, step = 0.1, n = Math.ceil(cd / step), hl = Math.hypot(off.x, off.z) * cd / n;
+    let inside = 0;
+    for (let s = 1; s <= n; s++) {
+      const f = s / n, x = head.x + off.x * cd * f, y = Math.min(ceil, head.y + off.y * cd * f), z = head.z + off.z * cd * f;
+      const i = T.at(x, z), wall = i >= 0 && T.kind[i] === TK.SOLID && !T.water[i] && y < T.top[i] + 0.3;
+      if (wall) { if ((inside += hl) > WALL_IN) return (s - 1) / n; }
+      else if (inside > 0.25) return (s - 1) / n;
+    }
+    return 1;
   }
   // 出入口の門：門の面の近く（柱が張り出している）と門の外側（扉・奥の通路）には、門の高さまでカメラを入れない
   inGate(x, y, z) {
@@ -3319,6 +3336,7 @@ class FieldView extends BaseView {
     this.camera.position.lerp(cp, 1 - Math.exp(-12 * d));
     // すばやく回したとき、追いかけ途中のカメラが壁や屋根を横切らないようにする
     if (this.viewBlocked(cam.x, cam.y, cam.z)) cam.copy(cp);
+    else { const to = cam.clone().sub(head), len = to.length(); if (len > 0.3 && this.wallReach(head, to.divideScalar(len), len, ceil) < 0.98) cam.copy(cp); }   // 森の木立の壁ごしに回りこまない
     // カメラが主人公の頭に近いときは、主人公を消して前が見えるようにする
     p.m.group.visible = this.curDist > 0.9;
     this.curLook.lerp(head, 1 - Math.exp(-14 * d));
