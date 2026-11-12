@@ -62,7 +62,9 @@ const Story = {
   battle(id, next) {
     if (Save.data.cleared[id]) { next(); return; }
     const st = this.stageById(id);
-    startStage(st.ci, st, [], res => { if (res.win) next(); else App.go(FieldScreen); });
+    // 探索から来たときは、爪とぎの丸太で整えた初手技も発動する
+    const techs = typeof FieldSession !== 'undefined' ? FieldSession.takeTechs() : [];
+    startStage(st.ci, st, techs, res => { if (res.win) next(); else App.go(FieldScreen); });
   },
   // 続きから：探索の段階なら前回の場所から歩き、ほかの段階（会話・戦闘など）ならその段階を始める
   resume() {

@@ -119,7 +119,8 @@ function startStage(ci, st, techs, after) {
     },
     onExit: (res, act) => {
       if (res.retreat) { keepCarried(res.team); Save.save(); }
-      if (act === 'retry') startStage(ci, st, [], after);
+      // やりなおしは戦いのはじめから（初手技ももう一度）
+      if (act === 'retry') startStage(ci, st, techs, after);
       else after(res);
     },
   });
