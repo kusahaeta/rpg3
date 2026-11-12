@@ -43,6 +43,8 @@ class FieldSession {
   }
   // 探索を離れる前に呼ぶ。次に作るセッションが引きつぐ
   stash() { FieldSession.carry = { defeated: this.defeated, broken: this.broken, techs: this.techs }; }
+  // 物語の戦闘（Story.battle）が、探索で整えた初手技を受けとる。使ったぶんは消える（次に作るセッションには残らない）
+  static takeTechs() { const c = FieldSession.carry; if (!c || !c.techs) return []; const t = [...c.techs]; c.techs.clear(); return t; }
   set(map, zone) { return map[zone] || (map[zone] = new Set()); }
   // 区画に入るとき：ほかの区画で倒した敵・研いだ丸太は元にもどす（区画を移ると敵がよみがえり、丸太も研げる）
   enter(zone) { for (const map of [this.defeated, this.broken]) for (const k of Object.keys(map)) if (k !== zone) delete map[k]; }
