@@ -3800,6 +3800,92 @@ const INST_CELL = 32;   // 木・岩などの InstancedMesh を分ける区切�
 const ROOT_Q = { perM: 1.0, ends: 0.3, rs: 12 };   // 1m に 1.6 輪・14 角（5.3 千三角形）とほぼ同じ見た目で 2.9 千。これより粗いと、アーチのてっぺんが折れ線に見えた
 // 置いた場所から決まる 0 以上の整数（小物の向き・模様を、乱数を使わずにばらけさせる）
 const posHash = (x, z) => Math.abs(Math.floor(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453));
+// ---------------- 石（区画のあちこちの石・岩・小石。ZoneKit.stone で置き、flushStones でまとめて描く） ----------------
+// 形の元：ノイズで少しゆがめた丸い石（正二十面体）を、何枚かの平らな面で削った、割れ面のある石。
+//   大きさはもとの十二面体（半径 1）と同じくらい。底は平ら（y = ROCK_BOT）で、見えない底の面は持たない。
+//   形は ROCK_N 種類（置いた場所で選ぶ。区画の乱数は使わない）× 細かさ（0：小石 20 面、1：ふつう 80 面、2：大岩 320 面）。同じ種類は細かさがちがっても同じ形
+//   頂点ごとの濃さ（shade）：根もとほど暗く、割れ面のふち（二枚の面の境）は明るく、少しまだら
+const ROCK_N = 6, ROCK_BOT = -0.8, ROCK_GEO = {};
+// 石肌の模様（stoneMaterial）：灰色 128 が 1 倍。細かいぽつぽつ（明・暗）、うすいむら、短いひび。256px で 1.6m 四方、ふちでつながる
+function stoneGrainTex() {
+  if (TexCache.stoneGrain) return TexCache.stoneGrain;
+  const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d'), rnd = seeded(59);
+  g.fillStyle = 'rgb(128,128,128)'; g.fillRect(0, 0, S, S);
+  const wrap = fn => { for (const ox of [0, -S, S]) for (const oy of [0, -S, S]) fn(ox, oy); };
+  // むら：大きくぼかした明暗
+  g.filter = 'blur(10px)';
+  for (const [v, n] of [[104, 9], [150, 9]]) { g.fillStyle = `rgba(${v},${v},${v},.5)`; g.beginPath(); for (let i = 0; i < n; i++) { const x = rnd() * S, y = rnd() * S, r = 18 + rnd() * 30; wrap((ox, oy) => { g.moveTo(x + ox + r, y + oy); g.arc(x + ox, y + oy, r, 0, Math.PI * 2); }); } g.fill(); }
+  g.filter = 'none';
+  // ぽつぽつ：色（濃さ）ごとに一つの path
+  for (const [v, n, r0, r1] of [[78, 220, 0.6, 1.5], [100, 420, 0.5, 1.2], [168, 220, 0.5, 1.2], [200, 40, 0.6, 1.3]]) {
+    g.fillStyle = `rgb(${v},${v},${v})`; g.beginPath();
+    for (let i = 0; i < n; i++) { const x = rnd() * S, y = rnd() * S, r = r0 + rnd() * (r1 - r0); wrap((ox, oy) => { g.moveTo(x + ox + r, y + oy); g.arc(x + ox, y + oy, r, 0, Math.PI * 2); }); }
+    g.fill();
+  }
+  // 短いひび（暗い線の下に、明るいふち）
+  const cracks = Array.from({ length: 7 }, () => { let x = rnd() * S, y = rnd() * S, a = rnd() * Math.PI * 2; const p = [[x, y]]; for (let j = 0; j < 4; j++) { a += (rnd() - 0.5) * 1.2; x += Math.cos(a) * (8 + rnd() * 12); y += Math.sin(a) * (8 + rnd() * 12); p.push([x, y]); } return p; });
+  for (const [col, w, dy] of [['rgba(190,190,190,.6)', 1.6, 1], ['rgba(56,56,56,.75)', 1.1, 0]]) {
+    g.strokeStyle = col; g.lineWidth = w; g.beginPath();
+    for (const p of cracks) wrap((ox, oy) => p.forEach(([x, y], j) => g[j ? 'lineTo' : 'moveTo'](x + ox, y + oy + dy)));
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.NoColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4;
+  return (TexCache.stoneGrain = t);
+}
+// 石の材質：色は頂点に。石肌の模様は、面の向きでいちばん近い軸から見た向きで貼る（面は平らなので、面ごとに一回だけ読む。UV はいらない）
+function stoneMaterial() {
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0 });
+  m.onBeforeCompile = sh => {
+    sh.uniforms.grainMap = { value: stoneGrainTex() };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vStoneW;')
+      .replace('#include <fog_vertex>', '#include <fog_vertex>\nvStoneW = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vStoneW;\nuniform sampler2D grainMap;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+      vec3 sn = abs( normalize( cross( dFdx( vStoneW ), dFdy( vStoneW ) ) ) );
+      vec2 suv = sn.y > max( sn.x, sn.z ) ? vStoneW.xz : sn.x > sn.z ? vStoneW.zy : vStoneW.xy;
+      diffuseColor.rgb *= texture2D( grainMap, suv * 0.625 ).r * 2.0;`);
+  };
+  m.customProgramCacheKey = () => 'stoneGrain';
+  return m;
+}
+function rockShape(k, detail) {
+  const key = k * 4 + detail; if (ROCK_GEO[key]) return ROCK_GEO[key];
+  const rnd = seededRnd(7919 + k * 104729); rnd(); rnd();
+  const g = THREEX.BufferGeometryUtils.mergeVertices((() => { const q = new THREE.IcosahedronGeometry(1, detail); q.deleteAttribute('normal'); q.deleteAttribute('uv'); return q; })());
+  // 削る面：上に少し傾いた一枚、横に 4〜6 枚（ぐるりと、上や下に向けて）
+  const planes = [], plane = (nx, ny, nz, d) => { const l = Math.hypot(nx, ny, nz); planes.push([nx / l, ny / l, nz / l, d]); };
+  const a0 = rnd() * Math.PI * 2, tilt = 0.15 + rnd() * 0.35;
+  plane(Math.cos(a0) * tilt, 1, Math.sin(a0) * tilt, 0.5 + rnd() * 0.16);
+  const ns = 4 + Math.floor(rnd() * 3);
+  for (let i = 0; i < ns; i++) { const a = a0 + Math.PI * 0.5 + (i + (rnd() - 0.5) * 0.7) / ns * Math.PI * 2; plane(Math.cos(a), (rnd() - 0.3) * 1.1, Math.sin(a), 0.58 + rnd() * 0.2); }
+  const ey = 0.85 + rnd() * 0.25, ez = 0.8 + rnd() * 0.25, ph = rnd() * 20;
+  const P = g.attributes.position, n = P.count, v = V3(), on = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    v.fromBufferAttribute(P, i);
+    v.multiplyScalar(1.06 + (fnoise(v.x * 1.6 + ph, v.y * 1.6, v.z * 1.6) - 0.5) * 0.3);
+    v.y *= ey; v.z *= ez;
+    // 面の外にはみ出た所を面までけずる（となりの面へ押し出すことがあるので二度）
+    for (let pass = 0; pass < 2; pass++) for (const [nx, ny, nz, d] of planes) { const t = v.x * nx + v.y * ny + v.z * nz - d; if (t > 0) v.set(v.x - t * nx, v.y - t * ny, v.z - t * nz); }
+    for (const [nx, ny, nz, d] of planes) if (Math.abs(v.x * nx + v.y * ny + v.z * nz - d) < 0.02) on[i]++;
+    if (v.y < ROCK_BOT) v.y = ROCK_BOT;
+    P.setXYZ(i, v.x, v.y, v.z);
+  }
+  // けずって小さくなったぶん、大きさをもとの十二面体（横 0.95・上 0.9）にそろえる
+  let rr = 0, y1 = -1; for (let i = 0; i < n; i++) { rr = Math.max(rr, Math.hypot(P.getX(i), P.getZ(i))); y1 = Math.max(y1, P.getY(i)); }
+  const ky = (0.9 - ROCK_BOT) / (y1 - ROCK_BOT);
+  for (let i = 0; i < n; i++) P.setXYZ(i, P.getX(i) * 0.95 / rr, ROCK_BOT + (P.getY(i) - ROCK_BOT) * ky, P.getZ(i) * 0.95 / rr);
+  // 底の面（三つの頂点がみな底）は描かない（idx）。大きく傾けて置く石・動く石は底まで描く（all）
+  const I0 = g.index.array, I = [];
+  for (let t = 0; t < I0.length; t += 3) if (!(P.getY(I0[t]) <= ROCK_BOT && P.getY(I0[t + 1]) <= ROCK_BOT && P.getY(I0[t + 2]) <= ROCK_BOT)) I.push(I0[t], I0[t + 1], I0[t + 2]);
+  g.setIndex(I); g.computeVertexNormals();
+  let top = -1; for (let i = 0; i < n; i++) top = Math.max(top, P.getY(i));
+  const shade = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = P.getX(i), y = P.getY(i), z = P.getZ(i), h = (y - ROCK_BOT) / (top - ROCK_BOT), s = Math.min(1, h / 0.7);
+    shade[i] = (0.45 + 0.55 * s * s * (3 - 2 * s)) * (on[i] >= 2 ? 1.2 : on[i] ? 1.04 : 0.9) * (0.86 + fnoise(x * 3.1 + ph, y * 3.1, z * 3.1) * 0.28);
+  }
+  return (ROCK_GEO[key] = { pos: P.array, nrm: g.attributes.normal.array, idx: Uint16Array.from(I), all: Uint16Array.from(I0), n, shade });
+}
 // 木の板の色（タル・ベンチ・木箱のテクスチャ）
 const WOOD_COLS = ['#b07a4a', '#a06c40', '#bb8654', '#966238', '#a87446', '#9c6a3e'];
 // canvas の (x0, y0, w, h) に、ゆらいだ木目の線を n 本描く。vertical：縦の木目（なければ横）
@@ -3874,7 +3960,7 @@ class ZoneKit {
     return (this.batches[key] = this.batches[key] || { acc: new GeoAcc(4), mat: this.M(mat) }).acc;
   }
   flush() {
-    this.flushTrees(); this.flushFar(); this.flushToon(); this.flushRoots();
+    this.flushTrees(); this.flushFar(); this.flushToon(); this.flushRoots(); this.flushStones();
     for (const b of Object.values(this.batches || {})) { const m = b.acc.mesh(b.mat); if (m) { m.castShadow = true; this.scene.add(m); } }
     this.batches = {};
     // 形の違う部品（町の建物など）は、材質ごとに一つのジオメトリにまとめて描く
@@ -3918,7 +4004,6 @@ class ZoneKit {
       trunk: [up(new THREE.CylinderGeometry(0.7, 1, 1, 7)), std({ roughness: 0.95 })],
       blob: [new THREE.IcosahedronGeometry(1, 1), std({ roughness: 0.85 })],
       cone: [up(new THREE.ConeGeometry(1, 1, 8)), std({ roughness: 0.85 })],
-      rock: [new THREE.DodecahedronGeometry(1, 0), std({ roughness: 0.95, flatShading: true })],
       cap: [new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), std({ roughness: 0.6 })],
       stick: [up(new THREE.CylinderGeometry(1, 1, 1, 6)), std({ roughness: 0.8 })],
       ring: [new THREE.TorusGeometry(1, 0.4, 8, 18), std({ roughness: 0.4 })],
@@ -3929,7 +4014,56 @@ class ZoneKit {
     }[key];
     return (this.insts[key] = { geo: def[0], mat: def[1], list: [], noShadow: !!def[2] });
   }
-  put(key, x, y, z, s, rot, color) { this.part(key).list.push([x, y, z, s, rot, color]); }
+  put(key, x, y, z, s, rot, color) { if (key === 'rock') this.stone(x, y, z, s, rot, color); else this.part(key).list.push([x, y, z, s, rot, color]); }
+  // 石を一つ置く（rockShape の形）。(x, y, z)：形の中心、s：大きさ（数か [x, y, z]。半径 1 の石の何倍か）、rot：[x, y, z] の回り、col：色（ZMAT の名前・色）
+  stone(x, y, z, s, rot, col = 'rock') {
+    const m = Array.isArray(s) ? Math.max(s[0], s[1], s[2]) : s;
+    const G = rockShape(posHash(x * 1.7, z * 1.3) % ROCK_N, m < 0.3 ? 0 : m < 1.6 ? 1 : 2);
+    const tilt = rot && (Math.abs(rot[0]) > 0.3 || Math.abs(rot[2]) > 0.3);
+    (this.stones = this.stones || []).push([x, y, z, s, rot, col, G, tilt ? G.all : G.idx]);
+  }
+  // 石の形を一つの Mesh に（動く・消える岩のかたまりに使う）。col：色、k：形の種類
+  stoneMesh(col = 'rock', k = 0, detail = 1) {
+    const G = rockShape(k % ROCK_N, detail), c = this.stoneCol(col), C = new Float32Array(G.n * 3);
+    for (let i = 0; i < G.n; i++) C.set([c.r * G.shade[i], c.g * G.shade[i], c.b * G.shade[i]], i * 3);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(G.pos.slice(), 3)); g.setAttribute('normal', new THREE.BufferAttribute(G.nrm.slice(), 3));   // 取りおきの形は写して持つ（よそで形を書きかえても、ほかの石に移らない）
+    g.setAttribute('color', new THREE.BufferAttribute(C, 3)); g.setIndex(new THREE.BufferAttribute(G.all.slice(), 1));
+    const m = new THREE.Mesh(g, this.stoneMat()); m.castShadow = true; m.receiveShadow = true; return m;
+  }
+  stoneMat() { return this.mc.stoneM || (this.mc.stoneM = stoneMaterial()); }
+  stoneCol(col) { return col && col.isColor ? col : typeof col === 'string' && ZMAT[col] ? this.mat(col).color : new THREE.Color(col || '#9a9488'); }
+  // 置いた石を INST_CELL 四方ごとに一つの形にまとめる（色は頂点に。描く回数は区切りごとに 1 回）
+  flushStones() {
+    const L = this.stones; this.stones = []; if (!L || !L.length) return;
+    const cells = new Map();
+    for (const p of L) { const k = Math.floor(p[0] / INST_CELL) + ',' + Math.floor(p[2] / INST_CELL); (cells.get(k) || cells.set(k, []).get(k)).push(p); }
+    const M4 = new THREE.Matrix4(), N3 = new THREE.Matrix3(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = V3(), pos = V3(), v = V3(), nv = V3();
+    const strata = (ARCH_STYLES[this.zone.arch] || {}).strata;
+    for (const list of cells.values()) {
+      let NV = 0, NI = 0; for (const p of list) { NV += p[6].n; NI += p[7].length; }
+      const Pa = new Float32Array(NV * 3), Na = new Float32Array(NV * 3), Ca = new Float32Array(NV * 3), Ia = NV > 65535 ? new Uint32Array(NI) : new Uint16Array(NI);
+      let ov = 0, oi = 0;
+      for (const [x, y, z, s, rot, col, G, idx] of list) {
+        e.set(rot ? rot[0] : 0, rot ? rot[1] : 0, rot ? rot[2] : 0); q.setFromEuler(e);
+        if (Array.isArray(s)) sc.set(s[0], s[1], s[2]); else sc.set(s, s, s);
+        M4.compose(pos.set(x, y, z), q, sc); N3.getNormalMatrix(M4);
+        const c = this.stoneCol(col);
+        for (let i = 0; i < G.n; i++) {
+          v.fromArray(G.pos, i * 3).applyMatrix4(M4); nv.fromArray(G.nrm, i * 3).applyMatrix3(N3).normalize();
+          let sh = G.shade[i];
+          if (strata) sh *= 0.94 + 0.12 * fnoise(0.5, v.y * 2.2, 0.5);   // 地層の岩山の区画：崖と同じ高さで横のすじ
+          Pa.set([v.x, v.y, v.z], (ov + i) * 3); Na.set([nv.x, nv.y, nv.z], (ov + i) * 3); Ca.set([c.r * sh, c.g * sh, c.b * sh], (ov + i) * 3);
+        }
+        for (let t = 0; t < idx.length; t++) Ia[oi + t] = idx[t] + ov;
+        ov += G.n; oi += idx.length;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(Pa, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(Na, 3)); geo.setAttribute('color', new THREE.BufferAttribute(Ca, 3)); geo.setIndex(new THREE.BufferAttribute(Ia, 1));
+      geo.computeBoundingSphere();
+      const m = new THREE.Mesh(geo, this.stoneMat()); m.castShadow = true; m.receiveShadow = true; this.scene.add(m);
+    }
+  }
   // 色を少しだけばらつかせる
   tint(c, k = 0.08) { const col = new THREE.Color(c), v = 1 + (this.r() - 0.5) * k * 2; return col.multiplyScalar(v).getStyle(); }
   // 1本の木（kind：round 丸い木／pine 針葉樹／dead 枯れ木／spooky 魔王領の木／mush 大きなきのこ／candy お菓子／crystal 水晶）
@@ -4522,7 +4656,7 @@ class ZoneKit {
         if (r() < 0.6) this.bush(x - out[0] * 0.5 + (r() - 0.5) * 2, z - out[1] * 0.5 + (r() - 0.5) * 2, 0.9 + r() * 0.5);
         break;
       }
-      case 'rock': { const s = 1.6 + r() * 2; const m = this.mesh(new THREE.DodecahedronGeometry(s, 0), 'rock', x + out[0] * 1.2, s * 0.5, z + out[1] * 1.2, { ry: r() * 3 }); m.scale.y = 0.8 + r() * 0.8; break; }
+      case 'rock': { const s = 1.6 + r() * 2, px = x + out[0] * 1.2, pz = z + out[1] * 1.2, ry = r() * 3; this.stone(px, s * 0.5 + this.gy(px, pz), pz, [s, s * (0.8 + r() * 0.8), s], [0, ry, 0], 'rock'); break; }
       case 'wall': {
         this.box(x, z, ry ? 0.9 : seg, 4.2, ry ? seg : 0.9, 'stone', { col: false });
         this.box(x, z, ry ? 1.1 : seg, 0.35, ry ? seg : 1.1, 'stone2', { y: 4.2, col: false });
@@ -4534,7 +4668,7 @@ class ZoneKit {
         break;
       }
       case 'void': {
-        if (r() < 0.5) { const s = 1 + r() * 1.5; this.mesh(new THREE.DodecahedronGeometry(s, 0), 'darkStone', x + out[0] * 1.5, -0.3, z + out[1] * 1.5, { ry: r() * 3 }); }
+        if (r() < 0.5) { const s = 1 + r() * 1.5, px = x + out[0] * 1.5, pz = z + out[1] * 1.5; this.stone(px, -0.3 + this.gy(px, pz), pz, s, [0, r() * 3, 0], 'darkStone'); }
         this.mesh(new THREE.BoxGeometry(ry ? 0.1 : seg, 0.06, ry ? seg : 0.1), this.glow('#b8a8ff', 1.8), x, 0.04, z, { noShadow: true });
         break;
       }
@@ -5347,18 +5481,18 @@ class ZoneKit {
         // ひび割れた大岩（ram）：まん中から二つに割れかけた大岩（割れ目の奥は暗い）。上に小さな岩がのり、足もとに欠けらがころがる
         const [hw, hd] = R.box || [r0, r0], hh = R.h || 3.2, fa = R.face || [0, 1], alongX = Math.abs(fa[0]) > 0.5, span = alongX ? hd : hw, dep = alongX ? hw : hd;
         for (const k of [-1, 1]) {
-          const m = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), this.mat('rock'));
+          const m = this.stoneMesh('rock', k + 1, 2);
           m.scale.set(alongX ? dep * 1.3 : span * 0.62, hh * 0.58, alongX ? span * 0.62 : dep * 1.3);
           m.position.set(alongX ? 0 : k * span * 0.43, hh * 0.47, alongX ? k * span * 0.43 : 0);
           m.rotation.set(alongX ? k * 0.1 : 0, (this.r() - 0.5) * 0.25, alongX ? 0 : -k * 0.1); m.castShadow = true; g.add(m);
         }
         this.mesh(new THREE.BoxGeometry(alongX ? dep * 1.7 : 0.5, hh * 0.85, alongX ? 0.5 : dep * 1.7), new THREE.MeshBasicMaterial({ color: '#1e1610' }), 0, hh * 0.45, 0, { parent: g });
-        const top = new THREE.Mesh(new THREE.DodecahedronGeometry(Math.min(span, dep) * 0.55, 0), this.mat('rockDark')); top.position.set(alongX ? 0 : span * 0.3, hh * 0.98, alongX ? span * 0.3 : 0); top.rotation.set(0.4, 1, 0); top.castShadow = true; g.add(top);
-        for (const [sx, sz, sc] of [[1.25, 0.9, 0.3], [1.35, -0.6, 0.24], [-1.2, 0.3, 0.26]]) { const m = new THREE.Mesh(new THREE.DodecahedronGeometry(sc, 0), this.mat('rockDark')); m.position.set(alongX ? sx * dep * fa[0] : sz * span, sc * 0.5, alongX ? sz * span : sx * dep * fa[1]); m.rotation.set(this.r() * 3, this.r() * 3, 0); g.add(m); }
+        const top = this.stoneMesh('rockDark', 3); top.scale.setScalar(Math.min(span, dep) * 0.55); top.position.set(alongX ? 0 : span * 0.3, hh * 0.98, alongX ? span * 0.3 : 0); top.rotation.set(0.4, 1, 0); top.castShadow = true; g.add(top);
+        for (const [sx, sz, sc] of [[1.25, 0.9, 0.3], [1.35, -0.6, 0.24], [-1.2, 0.3, 0.26]]) { const m = this.stoneMesh('rockDark', Math.round(sx * 10), 0); m.scale.setScalar(sc); m.position.set(alongX ? sx * dep * fa[0] : sz * span, sc * 0.5, alongX ? sz * span : sx * dep * fa[1]); m.rotation.set(this.r() * 3, this.r() * 3, 0); g.add(m); }
         o.g = g; o.col = { box: true, x, z, hw, hd, top: hh, y: o.pos.y }; this.v.colliders.push(o.col);
         return o;
       }
-      for (let i = 0; i < 8; i++) { const s = 0.45 + this.r() * 0.55, m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), this.mat(i % 3 ? 'rockDark' : 'rock')); m.position.set((this.r() - 0.5) * r0 * 1.5, s * 0.55 + (i > 5 ? 0.8 : 0), (this.r() - 0.5) * r0 * 0.9); m.rotation.set(this.r() * 3, this.r() * 3, 0); m.castShadow = true; g.add(m); }
+      for (let i = 0; i < 8; i++) { const s = 0.45 + this.r() * 0.55, m = this.stoneMesh(i % 3 ? 'rockDark' : 'rock', i); m.scale.setScalar(s); m.position.set((this.r() - 0.5) * r0 * 1.5, s * 0.55 + (i > 5 ? 0.8 : 0), (this.r() - 0.5) * r0 * 0.9); m.rotation.set(this.r() * 3, this.r() * 3, 0); m.castShadow = true; g.add(m); }
       o.g = g; o.col = R.box ? { box: true, x, z, hw: R.box[0], hd: R.box[1], top: 2, y: o.pos.y } : { x, z, r: r0, top: 2, y: o.pos.y }; this.v.colliders.push(o.col);
       return o;
     }));
@@ -5424,17 +5558,18 @@ class ZoneKit {
       const ch = T.ch[i]; if (ch !== 'R' && ch !== 'A') continue;
       const x = T.cx(T.colOf(i)), z = T.cz(T.rowOf(i)), y = this.gy(x, z), g = new THREE.Group(); g.position.set(x, y, z); this.scene.add(g);
       const add = (geo, mat, px, py, pz, parent = g) => { const m = new THREE.Mesh(geo, typeof mat === 'string' ? this.mat(mat) : mat); m.position.set(px, py, pz); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+      const addStone = (col, k, sc, px, py, pz, parent) => { const m = this.stoneMesh(col, k, sc < 0.3 ? 0 : 1); m.scale.setScalar(sc); m.position.set(px, py, pz); parent.add(m); return m; };
       const now = new THREE.Group(), past = new THREE.Group(); g.add(now, past);
       if (ch === 'R') {
         // 今：崩れた岩の山（通れない）
-        for (let k = 0; k < 6; k++) { const s = 0.5 + this.r() * 0.6, m = add(new THREE.DodecahedronGeometry(s, 0), k % 2 ? 'rock' : 'stone', (this.r() - 0.5) * 1.4, s * 0.6 + (k > 3 ? 0.9 : 0), (this.r() - 0.5) * 1.4, now); m.rotation.set(this.r() * 3, this.r() * 3, 0); }
+        for (let k = 0; k < 6; k++) { const s = 0.5 + this.r() * 0.6, m = addStone(k % 2 ? 'rock' : 'stone', k, s, (this.r() - 0.5) * 1.4, s * 0.6 + (k > 3 ? 0.9 : 0), (this.r() - 0.5) * 1.4, now); m.rotation.set(this.r() * 3, this.r() * 3, 0); }
       } else {
         // 昔：組み石の壁（金の文様の帯）。今：崩れた根もと
         add(new THREE.BoxGeometry(2, 4.6, 2), wallM, 0, 2.3, 0, past); add(new THREE.BoxGeometry(2.02, 0.16, 2.02), runeM, 0, 2.6, 0, past);
         // 今の根もとは、上を歩くので床とほぼ同じ高さ（低い段にすると、仲間が埋まって見える）：割れた石の板と、すみの小石
         add(new THREE.BoxGeometry(1.94, 0.05, 1.94), wallM, 0, 0.025, 0, now);
         add(new THREE.BoxGeometry(1.94, 0.012, 0.06), runeM, 0, 0.056, (this.r() - 0.5) * 1.2, now).rotation.y = (this.r() - 0.5) * 0.6;
-        for (let k = 0; k < 2; k++) { const sx = this.r() < 0.5 ? -1 : 1, sz = this.r() < 0.5 ? -1 : 1, chip = add(new THREE.DodecahedronGeometry(0.12 + this.r() * 0.06, 0), 'stone', sx * 0.82, 0.1, sz * 0.82, now); chip.rotation.set(this.r() * 3, 0, this.r() * 3); }
+        for (let k = 0; k < 2; k++) { const sx = this.r() < 0.5 ? -1 : 1, sz = this.r() < 0.5 ? -1 : 1, chip = addStone('stone', k + 2, 0.12 + this.r() * 0.06, sx * 0.82, 0.1, sz * 0.82, now); chip.rotation.set(this.r() * 3, 0, this.r() * 3); }
       }
       this.reserve(x, z, 1.6);
       o.cells.push({ ch, now, past, col: { box: true, x, z, hw: 1, hd: 1, top: 4.6, y }, on: false });
@@ -6436,7 +6571,7 @@ class ZoneKit {
     }
   }
   // 小さな岩：材質ごとに一つの形にまとめて描く（一つずつだと、岩の多い区画で描く回数がふえて、非力なスマホで重い）
-  rock(x, z, s = 1, mat = 'rock') { this.mg(mat, new THREE.DodecahedronGeometry(s, 0), x, s * 0.45 + this.gy(x, z), z, [0, this.r() * 3, 0], [1, 0.7, 1]); this.col(x, z, s * 0.9, s); }
+  rock(x, z, s = 1, mat = 'rock') { this.stone(x, s * 0.45 + this.gy(x, z), z, [s, s * 0.7, s], [0, this.r() * 3, 0], mat); this.col(x, z, s * 0.9, s); }
   mushroom(x, z, s = 1, cap = '#e05a6a', glowCol) {
     if (this.v.canopy) {   // 豊かな森（テーマの lush）：作り直したトゥーンのきのこ
       this.shroom(x, this.gy(x, z), z, { H: 0.55 * s, R: 0.4 * s, rs: 0.1 * s, cap: cap || '#e05a6a', glow: glowCol, kids: true, ground: true });
@@ -6806,8 +6941,8 @@ class ZoneKit {
       const [px, pz, rad, dx, dz] = linePoint(L, s), ox = dx * out, oz = dz * out, at = (f, u) => [px + ox * f + dz * u, pz + oz * f - dx * u], half = rad * 0.67;
       if (o.rock) {
         for (const [f, u, sz] of [[0.9, -half * 0.55, 1.4], [1.1, half * 0.5, 1.6], [0.5, 0, 1.0], [2.4, -half * 0.2, 2.0], [2.6, half + 0.6, 1.7], [2.5, -half - 0.6, 1.8]]) {
-          const [x, z] = at(f + r() * 0.4, u + (r() - 0.5) * 0.4), m = this.mesh(new THREE.DodecahedronGeometry(sz, 0), o.rock, x, this.T.pond.y + sz * 0.3, z, { abs: true, ry: r() * 3 });
-          m.scale.y = 0.75;
+          const [x, z] = at(f + r() * 0.4, u + (r() - 0.5) * 0.4);
+          this.stone(x, this.T.pond.y + sz * 0.3, z, [sz, sz * 0.75, sz], [0, r() * 3, 0], o.rock);
         }
         continue;
       }
@@ -7837,7 +7972,7 @@ class ZoneKit {
   campfire(x, z, o = {}) {
     for (let i = 0; i < 6; i++) {
       const a = i / 6 * Math.PI * 2 + (o.cold ? (this.r() - 0.5) * 0.4 : 0), d = o.cold ? 0.6 + (this.r() - 0.3) * 0.25 : 0.6;
-      this.mesh(new THREE.DodecahedronGeometry(0.22, 0), o.cold ? 'rockDark' : 'rock', x + Math.cos(a) * d, 0.12, z + Math.sin(a) * d);
+      const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; this.stone(px, 0.12 + this.gy(px, pz), pz, 0.22, [0, a, 0], o.cold ? 'rockDark' : 'rock');
     }
     if (o.cold) {
       this.mesh(new THREE.CircleGeometry(0.5, 14), this.stdM('#6e6866', 1), x, 0.02, z, { rx: -Math.PI / 2, noShadow: true });
@@ -8230,8 +8365,8 @@ class ZoneKit {
   shadowSword(i, x, z, o = {}) {
     const y0 = this.gy(x, z);
     if (o.mound) {
-      this.mesh(new THREE.DodecahedronGeometry(0.32, 0), 'rockDark', x, y0 + 0.02, z, { abs: true, ry: i * 1.3 }).scale.set(1.2, 0.42, 1);
-      for (let k = 0; k < 3; k++) { const a = i * 2 + k * 2.1; this.mesh(new THREE.DodecahedronGeometry(0.07 + 0.03 * (k % 2), 0), 'darkStone', x + Math.cos(a) * 0.38, y0 + 0.04, z + Math.sin(a) * 0.32, { abs: true, ry: a }); }
+      this.stone(x, y0 + 0.02, z, [0.384, 0.134, 0.32], [0, i * 1.3, 0], 'rockDark');
+      for (let k = 0; k < 3; k++) { const a = i * 2 + k * 2.1; this.stone(x + Math.cos(a) * 0.38, y0 + 0.04, z + Math.sin(a) * 0.32, 0.07 + 0.03 * (k % 2), [0, a, 0], 'darkStone'); }
     }
     if (o.blade === false) return;
     const steel = this.mc.swordSteel || (this.mc.swordSteel = new THREE.MeshStandardMaterial({ color: '#d8dce8', metalness: 0.7, roughness: 0.3, emissive: new THREE.Color('#3a3a5a'), emissiveIntensity: 0.5 }));
@@ -8409,7 +8544,7 @@ class ZoneKit {
     scorch.receiveShadow = true; scorch.renderOrder = 1; this.add(scorch);
     // 飛び散った岩：くぼみを除いた地面がクレーターと同じ高さのところにだけ置く（階段や崖の下に落ちないように）
     const y0 = flat(x, z);
-    for (let i = 0; i < 14; i++) { const a = this.r() * Math.PI * 2, d = r * (1.1 + this.r() * 0.45), s = 0.12 + this.r() * 0.22, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; if (Math.abs(flat(px, pz) - y0) < 0.1) this.mesh(new THREE.DodecahedronGeometry(s, 0), 'rockDark', px, 0.1, pz); }
+    for (let i = 0; i < 14; i++) { const a = this.r() * Math.PI * 2, d = r * (1.1 + this.r() * 0.45), s = 0.12 + this.r() * 0.22, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; if (Math.abs(flat(px, pz) - y0) < 0.1) this.stone(px, 0.1 + this.gy(px, pz), pz, s, [0, a, 0], 'rockDark'); }
   }
   // 友情の実のかけら（流れ星に見えた、樹から落ちた実の残り）
   starRock(x, z, s = 1, col = '#fff0a8') {
@@ -8978,14 +9113,14 @@ class ZoneKit {
   // 光る鉱石：小さな水晶の群れ（高さ 0.3〜0.7m ほど。根もとの岩から、少しずつかたむいて生える）
   ore(x, z, n = 4, col = '#a07bff', s = 1) {
     const g = this.glow(col, 1.7);
-    this.mesh(new THREE.DodecahedronGeometry(0.35 * s, 0), 'rockDark', x, 0.1 * s, z, { ry: this.r() * 3 }).scale.y = 0.5;
+    this.stone(x, 0.1 * s + this.gy(x, z), z, [0.35 * s, 0.175 * s, 0.35 * s], [0, this.r() * 3, 0], 'rockDark');
     for (let i = 0; i < n + 2; i++) { const h = (0.35 + this.r() * 0.45) * s, m = this.mesh(new THREE.OctahedronGeometry(0.11 * s, 0), g, x + (this.r() - 0.5) * 0.6 * s, h * 0.45, z + (this.r() - 0.5) * 0.6 * s, { rz: (this.r() - 0.5) * 0.9, rx: (this.r() - 0.5) * 0.6, ry: this.r() * 3, noShadow: true }); m.scale.y = h * 4; }
     this.col(x, z, 0.4 * s, 0.8 * s);
   }
   // 石筍
   stalag(x, z, h = 3) { const m = this.mesh(new THREE.ConeGeometry(0.5 + h * 0.12, h, 6), 'rockDark', x, h / 2, z, { ry: this.r() * 3 }); this.col(x, z, 0.4 + h * 0.1, h); return m; }
   floatRock(x, z, y, s = 1) {
-    const m = this.mesh(new THREE.DodecahedronGeometry(s, 0), 'darkStone', x, y, z, { ry: this.r() * 3 }); m.scale.y = 0.6;
+    const m = this.stoneMesh('darkStone', posHash(x, z), s < 1.6 ? 1 : 2); m.scale.set(s, s * 0.6, s); m.position.set(x, y + this.gy(x, z), z); m.rotation.y = this.r() * 3; this.add(m);
     const y0 = m.position.y, ph = this.r() * 6; this.tick((dt, t) => { m.position.y = y0 + Math.sin(t * 0.6 + ph) * 0.4; m.rotation.y += dt * 0.1; });
   }
   candy(x, z, s = 1) {
@@ -10285,7 +10420,7 @@ const ZONE_BUILD = {
       const x = (ax + bx) / 2, z = (az + bz) / 2;
       K.mg(M, new THREE.PlaneGeometry(Math.hypot(bx - ax, bz - az) + 2, w), x, 0.04 + K.gy(x, z), z, [-Math.PI / 2, 0, -Math.atan2(bz - az, bx - ax)]);
     };
-    const chips = (x, z) => { for (let i = 0; i < 3; i++) { const g = new THREE.DodecahedronGeometry(0.25 + K.r() * 0.2, 0), cx = x + (K.r() - 0.5) * 2, cz = z + (K.r() - 0.5) * 2; K.mg('rock', g, cx, 0.15 + K.gy(cx, cz), cz, [0, K.r() * 3, 0]); } };
+    const chips = (x, z) => { for (let i = 0; i < 3; i++) { const sz = 0.25 + K.r() * 0.2, cx = x + (K.r() - 0.5) * 2, cz = z + (K.r() - 0.5) * 2; K.stone(cx, 0.15 + K.gy(cx, cz), cz, sz, [0, K.r() * 3, 0], 'rock'); } };
     const holeM = noShadow(new THREE.MeshBasicMaterial({ color: '#140e0a' }));
     for (const R of K.zone.rollers || []) {
       if (R.kind === 'charge') {
@@ -10300,7 +10435,7 @@ const ZONE_BUILD = {
         const y = K.gy(x + ux * s, z + uz * s), ry = Math.atan2(ux * s, uz * s);
         K.mg(holeM, new THREE.CircleGeometry(rr, 18, 0, Math.PI), x + ux * s * 0.04, y - 0.05, z + uz * s * 0.04, [0, ry, 0]);
         K.mg('rockDark', new THREE.TorusGeometry(rr + 0.2, 0.32, 5, 14, Math.PI), x + ux * s * 0.05, y - 0.05, z + uz * s * 0.05, [0, ry, 0]);
-        for (let i = 0; i < 2; i++) { const g = new THREE.DodecahedronGeometry(0.3 + K.r() * 0.2, 0), cx = x + ux * s * 0.5, cz = z + (i ? 1 : -1) * (rr + 0.6); K.mg('rock', g, cx, 0.15 + K.gy(cx, cz), cz, [0, K.r() * 3, 0]); }
+        for (let i = 0; i < 2; i++) { const sz = 0.3 + K.r() * 0.2, cx = x + ux * s * 0.5, cz = z + (i ? 1 : -1) * (rr + 0.6); K.stone(cx, 0.15 + K.gy(cx, cz), cz, sz, [0, K.r() * 3, 0], 'rock'); }
       }
     }
     // ひび割れた大岩（rubble の ram）
@@ -10591,7 +10726,7 @@ const ZONE_BUILD = {
     // 崖くずれ：外門の先の道を、大岩が道幅いっぱいに埋めている（ごろごろ団の岩が、何度もぶつかって崩した）。上に小さな岩が積もり、手前の道にも岩がころがり出ている
     //   当たりは、岩の山ぜんたいを道幅より広い四角ひとつで（ジャンプでも越えられない）。大岩に丸い当たりをつけると、崖ぎわで
     //   崖の側へ押し出されて当たりごと取り消され、すり抜けてしまう
-    const boulder = (x, y, z, s) => { const m = K.mesh(new THREE.DodecahedronGeometry(s, 0), 'rock', x, y, z, { ry: K.r() * 3 }); m.scale.y = 0.7; };
+    const boulder = (x, y, z, s) => K.stone(x, y + K.gy(x, z), z, [s, s * 0.7, s], [0, K.r() * 3, 0], 'rock');
     for (const [x, z, s] of [[-3.6, 1.2, 1.4], [-1.2, 1.6, 1.5], [1.2, 1.8, 1.6], [3.6, 1.4, 1.4],
       [-3.4, -1.4, 1.6], [-0.6, -1.2, 1.7], [2.2, -1.6, 1.8], [3.8, 0, 1.2], [-1.2, -3.6, 1.4], [1.8, -3.8, 1.3]]) boulder(x, s * 0.45, z, s);
     for (const [x, y, z, s] of [[-2, 1.7, 0.4, 0.9], [0.4, 1.9, 0, 1], [2.6, 1.7, 0.2, 0.85], [-1.2, 2.1, -2, 0.8], [1.6, 2.2, -2.4, 0.9], [0.2, 2.9, -1, 0.7]]) boulder(x, y, z, s);
@@ -11235,7 +11370,7 @@ const ZONE_BUILD = {
     for (const [x, z] of [[-14, 0], [14, 4], [-6, 10], [10, -4], [-10, 36], [10, 44], [40, 40], [34, 22], [35, -30], [47, -24], [-40, -35], [-45, 35], [-8, 26], [-50, 2]]) K.stalag(x, z, 1.8 + K.r() * 1.6);
     K.scratches(-53.97, -11, Math.PI / 2);
     // 焚き火のあと：石の輪と焦げた薪（火は消えている）
-    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; K.mesh(new THREE.DodecahedronGeometry(0.22, 0), 'rockDark', -50 + Math.cos(a) * 0.6, 0.12, -14 + Math.sin(a) * 0.6); }
+    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2; const px = -50 + Math.cos(a) * 0.6, pz = -14 + Math.sin(a) * 0.6; K.stone(px, 0.12 + K.gy(px, pz), pz, 0.22, [0, a, 0], 'rockDark'); }
     for (let i = 0; i < 3; i++) K.mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.9, 6), '#2a2220', -50, 0.1, -14, { rz: Math.PI / 2, ry: i * 1.05 });
     K.v.emitters.push(dt => { if (Math.random() < dt * 5) K.v.p.emit(V3(-46 + (Math.random() - 0.5) * 5, K.gy(-46, -41) - 0.3, -41 + (Math.random() - 0.5) * 4), V3(0, 0.6, 0), hdr('#8a9aff', 2), { life: 2.4, size: 0.07, drag: 0 }); });
     K.seals(); K.rubbles();
