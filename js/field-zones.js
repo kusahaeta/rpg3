@@ -10156,8 +10156,8 @@ const ZONE_BUILD = {
     K.riverStream({ speed: 0.9, leaves: 10 }); K.riverPebbles(140); K.riverMouths(fo);
     // 立て札の広場と、橋のたもと
     K.flowers(16, 12, 12, 2, ['#ffe07a', '#ffffff']); K.stoneLantern(-2.8, 4.8); K.stoneLantern(2.8, 4.8);
-    // 南東の高台：切り株と花
-    K.cyl(20, 20, 0.7, 0.5, 'bark', { seg: 10 }); K.flowers(22, 28, 12, 2, ['#ffb8d8', '#ffffff']);
+    // 南東の高台：花
+    K.flowers(22, 28, 12, 2, ['#ffb8d8', '#ffffff']);
   },
   // ほしふる森・奥：巨木、星の泉、光るきのこの輪（南西の広場）
   forestDeep(K) {
@@ -10171,8 +10171,8 @@ const ZONE_BUILD = {
     for (const [deg, s] of [[200, 0.6], [330, 0.5], [12, 0.55]]) K.rock(...spEdge(deg, 0.1), s);
     for (const [deg, n, rad] of [[160, 10, 0.6], [290, 8, 0.5]]) K.reeds(...spEdge(deg, -0.15), n, rad);
     K.v.emitters.push(dt => { if (Math.random() < dt * 8) { const x = SP[0] + (Math.random() - 0.5) * 10, z = SP[1] + (Math.random() - 0.5) * 5; if (K.T.inPond(x, z)) K.v.p.emit(V3(x, SY + 0.05, z), V3(0, 0.8, 0), hdr('#fff4a8', 2.2), { life: 2.6, size: 0.07, drag: 0 }); } });
-    // 巨木の根の高台：古い切り株
-    K.cyl(-24, -18, 1.1, 0.7, 'bark', { seg: 12 }); K.flowers(-22, -14, 10, 1.6, ['#fff4a8', '#ffffff']);
+    // 巨木の根の高台：花
+    K.flowers(-22, -14, 10, 1.6, ['#fff4a8', '#ffffff']);
     K.log(6, -12, 3, 0.3);
   },
   // ネズミの王国：巨大な根のアーチの下の大広間、どんぐりの玉座、ネズミの家、チーズの倉
