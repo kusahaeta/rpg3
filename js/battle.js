@@ -16,6 +16,8 @@ const MULT_STATS = new Set(['atk', 'def', 'maxHp', 'spd']);
 const STAT_LABEL = { atk: '攻撃', def: '防御', maxHp: 'HP', spd: '速度', crit: '会心', critDmg: '会ダメ', dmg: '与ダメ', be: '撃破',
   vuln: '被ダメ', defDown: '防御', resDown: '耐性', err: '必殺技ゲージ', dmg_dot: '持続', dmg_ult: '必殺' };
 const DOWN_STATS = new Set(['defDown', 'resDown']);
+// 燃焼・凍結などのダメージが入ってから、次の行動が始まるまでに足す間（ms）
+const DOT_AFTER = 550;
 const DOT_INFO = { burn: ['燃焼', 'fire'], shock: ['感電', 'lightning'], bleed: ['裂創', 'physical'] };
 const BREAK_COEF = { physical: 2, fire: 2, ice: 1, lightning: 1, quantum: 0.5, imaginary: 0.5 };
 const ENEMY_TARGETS = new Set(['single', 'blast', 'bounce', 'aoe']);
@@ -516,7 +518,7 @@ class Battle {
         if (this.v) await wait(this.v.dotFx(u, 'freeze') * 1000);
         this.applyDamage(u, v, null, 'ice', 'dotf'); u.frozen = null;
         await this.resolveDeaths(null);
-        u.gauge = 5000; await wait(600); return;
+        u.gauge = 5000; await wait(250 + DOT_AFTER); return;
       }
       u.def.talent.onTurnStart && u.def.talent.onTurnStart(this, u);
       for (const m of this.mods) m.onTurnStart && m.onTurnStart(this, u);
@@ -1295,11 +1297,12 @@ class Battle {
     this.applyDamage(t, v, d.src, d.elem, 'dotf');
   }
   async tickDots(u) {
-    if (!u.dots.length) return;
+    if (!u.dots.length) return false;
     for (const d of u.dots) { if (!u.alive) break; await this.dotDamage(u, d); d.turns--; Sfx.hit(); await wait(250); }
     u.dots = u.dots.filter(d => d.turns > 0);
     this.updateUnit(u);
     await this.resolveDeaths(null);
+    return true;
   }
   async detonate(t, ratio) {
     for (const d of t.dots) { if (!t.alive) break; await this.dotDamage(t, d, ratio); await wait(150); }
@@ -1487,22 +1490,24 @@ class Battle {
     if (e.broken) { e.broken = false; e.toughness = e.maxTough; this.float(e, '弱点ゲージ回復', 'info'); }
     e.buffs = e.buffs.filter(b => b.key !== 'imprison');
     this.updateUnit(e);
-    await this.tickDots(e);
+    const dotted = await this.tickDots(e);
     if (!e.alive || this.battleBlocked()) return;
+    // 燃焼などの炎・数字が見えきる前に攻撃が始まらないよう、少し間をおく
+    if (dotted) await wait(DOT_AFTER);
     if (e.regen) { this.heal(e, e, e.maxHp * e.regen); await wait(400); }
     if (e.entangle) {
       const v = e.entangle.raw * e.entangle.stacks * this.defResMult(e.entangle.srcLv, e, 'quantum');
       e.entangle = null;
       if (this.v) await wait(this.v.dotFx(e, 'entangle') * 1000); else this.impact(e, 'quantum');
       this.applyDamage(e, v, null, 'quantum', 'dotf');
-      await wait(300); await this.resolveDeaths(null);
+      await wait(250 + DOT_AFTER); await this.resolveDeaths(null);
       if (!e.alive || this.battleBlocked()) return;
     }
     if (e.frozen) {
       const v = e.frozen.raw * this.defResMult(e.frozen.srcLv, e, 'ice');
       if (this.v) await wait(this.v.dotFx(e, 'freeze') * 1000);
       e.frozen = null; this.applyDamage(e, v, null, 'ice', 'dotf');
-      await wait(500); await this.resolveDeaths(null);
+      await wait(250 + DOT_AFTER); await this.resolveDeaths(null);
       e.gauge = 5000; this.updateUnit(e);
       return;
     }
