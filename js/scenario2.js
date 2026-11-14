@@ -1427,7 +1427,7 @@ const STORY = [
     { t: 'field', zone: 'pokapoka', at: [0, -9], scene: 'c1_04', g: '村に戻って、村長にクロのことを話す' },
     { t: 'field', zone: 'forest_in', at: [-2, -9], scene: 'c1_05', battle: '1-1', g: '村の南の、ほしふる森へ' },
     { t: 'field', zone: 'forest_deep', at: [-4, -5], scene: 'c1_06', battle: '1-2', g: 'ほしふる森の奥へ進む' },
-    { t: 'field', zone: 'rat_nest', at: [0, -7], scene: 'c1_07', battle: '1-3', after: 'c1_08', g: '森の北、ネズミの王国をたずねる' },
+    { t: 'field', zone: 'rat_nest', at: [0, -7], scene: 'c1_07', battle: '1-3', after: 'c1_08', g: '森の奥の東、ネズミの王国をたずねる' },
     { t: 'field', zone: 'pokapoka', at: [0, 5], scene: 'c1_09', g: '村に帰って、村長に報告する' },
     { t: 'reward', niboshi: 300, g: '第一章 おしまい' },
   ] },

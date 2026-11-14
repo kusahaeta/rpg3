@@ -1048,7 +1048,7 @@ Object.assign(EN, {
   '村に戻って、村長にクロのことを話す': 'Return to the village and tell the Chief about Kuro',
   '村の南の、ほしふる森へ': 'To Starfall Forest, south of the village',
   'ほしふる森の奥へ進む': 'Head deeper into Starfall Forest',
-  '森の北、ネズミの王国をたずねる': 'Visit the Mouse Kingdom, north of the forest',
+  '森の奥の東、ネズミの王国をたずねる': 'Visit the Mouse Kingdom, east of the forest depths',
   '村に帰って、村長に報告する': 'Return to the village and report to the Chief',
   '第一章 おしまい': 'Chapter 1 Complete',
   '第二章　にゃんこ大集合': 'Chapter 2　The Nyanko Gang Gathers',

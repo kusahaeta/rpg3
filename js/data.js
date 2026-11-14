@@ -405,7 +405,7 @@ const ENEMIES = {
   risu:     { name: 'おこりリス',     shape: 'squirrel', color: '#e0a060', hp: 2800, atk: 1000, spd: 115, tough: 20, weak: ['ice', 'physical', 'quantum'], moves: [['acorn', 2], ['bite', 1]] },
   nezumi:   { name: 'はぐれネズミ',   shape: 'rat',      color: '#a8a4b8', hp: 3000, atk: 1000, spd: 105, tough: 30, weak: ['fire', 'physical', 'imaginary'], moves: [['cheese', 2], ['bite', 1]] },
   king_nezumi: { name: 'キングネズミ', shape: 'kingrat', color: '#d8a840', boss: true, hp: 31000, atk: 1150, spd: 100, tough: 110, eres: 0.25, weak: ['fire', 'physical', 'lightning'],
-    turn: { at: 0.5, name: '子分総動員', cry: 'キングネズミ「子分ども、集まれチュウ！」', summon: ['nezumi', 2], moves: [['kingPress', 2], ['ratCharge', 1], ['summon', 2]] }, summon: 'nezumi', moves: [['kingPress', 2], ['aoe', 1], ['ratCharge', 1], ['summon', 1]] },
+    turn: { at: 0.5, name: '子分総動員', cry: 'キングネズミ「子分ども、集まれ！」', summon: ['nezumi', 2], moves: [['kingPress', 2], ['ratCharge', 1], ['summon', 2]] }, summon: 'nezumi', moves: [['kingPress', 2], ['aoe', 1], ['ratCharge', 1], ['summon', 1]] },
   // 第二章：ミャオ街道
   karasu:   { name: 'いたずらカラス', shape: 'crow',     color: '#4a4a6a', hp: 3000, atk: 1050, spd: 125, tough: 20, weak: ['lightning', 'imaginary', 'fire'], moves: [['peck', 2], ['slow', 1]] },
   iwa:      { name: 'ごろごろ岩',     shape: 'rock',     color: '#9a8a7a', hp: 5200, atk: 1000, spd: 75,  tough: 40, weak: ['physical', 'lightning', 'ice'], moves: [['roll', 2], ['heavy', 1]] },
