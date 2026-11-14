@@ -4274,7 +4274,7 @@ class ZoneKit {
     this.trees = this.trees || new Map();
     return this.trees.get(k) || this.trees.set(k, { B: mk(false), L: mk(true) }).get(k);
   }
-  lushKey() { return (this.v.zoneId || this.zone.name) + '|' + (GFX.low ? 1 : 0); }
+  lushKey() { return this.v.zoneId || this.zone.name; }   // 木の形は画質によらない（どの画質も、もとの軽量の葉の作り）
   // 植える木を一覧にためる（flushTrees で作る）。sig：形を決めるもの（種類・位置・大きさ・色・奥の木か・太さ）
   deferTree(fn, x, y, z, s, o) {
     const sig = [fn, x.toFixed(2), y.toFixed(2), z.toFixed(2), s.toFixed(3), o.lod ? 1 : 0, o.thick || 1, o.leaf, o.pine, o.bushLeaf, o.bark].join(',');
@@ -4389,7 +4389,8 @@ class ZoneKit {
     const cr = { x: F.x, y: F.y + 0.95 * s, z: F.z, rx: (1.45 + r() * 0.25) * s, ry: (1.1 + r() * 0.15) * s };
     const T = { y, h: cr.y + cr.ry - y, ph: posHash(x, z) % 1000 / 1000, r }, shade = this.crownShade(cr), C0 = V3(cr.x, cr.y, cr.z);
     this.lushTube(b.B, [V3(x, y - 0.15, z), V3(x + lx * 0.25, y + H * 0.5, z + lz * 0.25), F], 0.17 * s * thick, 0.11 * s * thick, bark, { ...T, flare: 0.7, fph: r() * 6, rs: big ? 12 : 7, seg: big ? 6 : 4 });
-    const low = GFX.low ? 1.7 : 1, w = 0.82 * Math.sqrt(s) * (o.lod ? 1.35 : 1) * Math.sqrt(low), step = 0.16 * Math.pow(s, 0.6) * (o.lod ? 1.8 : 1) * low;
+    // 葉はどの画質でも、もとの軽量の作り（板の間を 1.7 倍あけ、板を √1.7 倍に。葉の板は 4 割減り、遠目にはほぼ同じ。塗る面積は変わらない）
+    const low = 1.7, w = 0.82 * Math.sqrt(s) * (o.lod ? 1.35 : 1) * Math.sqrt(low), step = 0.16 * Math.pow(s, 0.6) * (o.lod ? 1.8 : 1) * low;
     const maxD = (big ? 3 : 2) - (o.lod ? 1 : 0), rv = () => V3(r() - 0.5, r() - 0.5, r() - 0.5);
     const away = (D, ang) => { const p = V3().crossVectors(D, rv()).normalize(); return D.clone().multiplyScalar(Math.cos(ang)).addScaledVector(p, Math.sin(ang)).normalize(); };
     const grow = (P0, D, len, rad, depth) => {
@@ -4410,7 +4411,7 @@ class ZoneKit {
       for (let t = 0.25 + r() * step / len; t <= 1.02; t += step / len) {
         const P = at(Math.min(1, t)), out = P.clone().sub(C0), T1 = tan();
         // 樹冠の奥の葉は、外の葉にかくれてほとんど見えないので、多くを省く（葉が重なるほど描くのが重い）
-        if (Math.sqrt((out.x / cr.rx) ** 2 + (out.y / cr.ry) ** 2 + (out.z / cr.rx) ** 2) < 0.5 && r() < (GFX.low ? 0.85 : 0.65)) continue;   // 軽量の画質では、もっと省く
+        if (Math.sqrt((out.x / cr.rx) ** 2 + (out.y / cr.ry) ** 2 + (out.z / cr.rx) ** 2) < 0.5 && r() < 0.85) continue;
         if (wall && this.openThin(P.x, P.z)) continue;
         out.normalize();
         for (let k = 0; k < (depth === maxD ? 2 : 1); k++) {
@@ -4430,7 +4431,7 @@ class ZoneKit {
   lushFir(x, y, z, s = 1, o = {}) {
     if (!this.makingTrees) return this.deferTree('lushFir', x, y, z, s, o);
     const r = this.treeRand(x, z), b = this.treeBin(x, z), col = lushTint(lushPick(o.pine || ['#3a7a44', '#2e6a3a', '#447e48'], r), 0.1, r), lit = col.clone().lerp(new THREE.Color('#cfe8a0'), 0.4);
-    const H = (3.9 + r() * 0.6) * s, T = { y, h: H, ph: posHash(x, z) % 1000 / 1000, r }, low = GFX.low ? 1.55 : 1, wall = this.inWall(x, z);
+    const H = (3.9 + r() * 0.6) * s, T = { y, h: H, ph: posHash(x, z) % 1000 / 1000, r }, low = 1.55, wall = this.inWall(x, z);   // 枝の段の間：どの画質でも、もとの軽量の作り
     this.lushTube(b.B, [V3(x, y - 0.15, z), V3(x, y + H * 0.5, z), V3(x, y + H * 0.97, z)], 0.16 * s, 0.03 * s, lushTint('#6a4a32', 0.1, r), { ...T, flare: 0.5, fph: r() * 6, rs: 6, seg: 4 });
     const h0 = 0.75 * s, span = H - h0 - 0.2 * s;
     // 円錐の面の向きと、幹に近いほど・下の段ほど暗い陰
