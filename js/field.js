@@ -3106,6 +3106,9 @@ class FieldView extends BaseView {
   }
   drawMap() {
     if (this.zoneMap) this.drawZoneMap();
+    // 省エネのミニマップは 15fps（2 コマに 1 回）。canvas の描画は iOS では別のプロセスで行われ、
+    // 毎コマ描くと iPhone 17 で CPU を 9% ほど使っていた
+    if (GFX.eco) { const now = performance.now(), iv = 1000 / 15, nx = this.mapNext || 0; if (now < nx - 4) return; this.mapNext = now - nx > iv ? now + iv : nx + iv; }
     if (this.T) { this.drawTerrainMap(); return; }
     const g = this.map, S = 200, c = S / 2, sc = 86 / Math.max(this.hw, this.hd);
     g.clearRect(0, 0, S, S);

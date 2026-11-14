@@ -83,6 +83,8 @@ const GFX = {
   ok: false, renderer: null, composer: null, view: null, tweens: [], time: 0, timeScale: 1, pixelRatio: 1,
   // tier：画質の段階（GFX_TIERS の番号）。eco は省エネ以下（30fps）、low は軽量
   tier: 0, Q: GFX_TIERS[0], eco: false, low: false, appScale: 1, lastFrame: 0, frameNo: 0,
+  // dimmed：メニューなどの窓を開いていて、3D が暗く隠れている（tick でときどき見る）。nextFrame：省エネで次に描く時刻
+  dimmed: false, dimCheck: 0, nextFrame: 0,
   // 診断（?debug のとき画面に出す）：3D 描画が止められた・戻った・作り直した回数、描いたコマ数
   diag: { lost: 0, restored: 0, rebuilt: 0, rebuildFail: '', frames: 0 },
   shakeAmt: 0,
@@ -97,10 +99,17 @@ const GFX = {
       this.lazyPortraits();
       const tick = now => {
         requestAnimationFrame(tick);
-        // 省エネは 30fps（60Hz でも 120Hz の画面でも、約 33ms ごとに描く）
-        if (this.eco && now - this.lastFrame < 1000 / 30 - 8) return;
+        if (now - this.dimCheck > 250) { this.dimCheck = now; this.dimmed = !!this.app.querySelector('.overlay:not(.hidden) > .ov-box'); }
+        // 省エネは 30fps（メニューの裏はもっと落とす。ecoFps）。決まった時刻ごとに描く：画面の書きかえの間隔は揺れるので
+        // （iPhone 17 で 7〜32ms）、前のコマからの時間で決めると、すり抜けて 35fps ほど描いていた。4ms までの早めは許す
+        if (this.eco) {
+          const iv = 1000 / this.ecoFps();
+          if (now < this.nextFrame - 4) return;
+          this.nextFrame = now - this.nextFrame > iv ? now + iv : this.nextFrame + iv;
+        }
         this.watchFps(now);
         this.lastFrame = now; this.diag.frames++; this.frame();
+        this.syncCssAnims(now);
       };
       requestAnimationFrame(tick);
     } catch (e) {
@@ -172,10 +181,34 @@ const GFX = {
     this.smaa.enabled = Q.smaa;
     // 光のにじみを省くときは、その前の壊れた値を消す処理もいらない（ぼかさなければ広がらない）
     this.bloom.enabled = this.sanitize.enabled = Q.bloom;
+    if (!this.eco) this.syncCssAnims(0);
     if (this.view && prev !== Q) this.tierScene(this.view.scene);
     this.resize(this.appScale);
   },
   setEco(on) { this.setTier(on ? 1 : 0); },
+  // 省エネのときに描くコマ数。メニューの窓を開いている間は 15fps（3D は暗く隠れていて、動きはほとんど見えない）。
+  // 1 コマで進める時間は 0.05 秒までなので（frame）、15fps の間は動きが 4 分の 3 の速さになる（メニューの裏はかまわない）
+  ecoFps() { return this.dimmed ? 15 : 30; },
+  // 省エネ：止まらない CSS アニメ（点滅・上下のゆれ・光る枠など）を止めておき、3D を描くコマごとに進める。
+  // iOS では CSS のアニメがあると、画面の書きかえ（60Hz）ごとに合成をやり直す。3D は 30fps なのに合成が 60 回になり、
+  // iPhone 17 のほしふる森で GPU の 5%（全体の 1 割）ほどを使っていた。3D のコマに合わせれば、合成は 3D の分だけで済む。
+  // 新しく出たアニメは 0.5 秒ごとに拾う。なめらかにもどしたら（eco でない）、CSS のアニメにもどす
+  cssAnims: [], cssScan: -1e9,
+  syncCssAnims(now) {
+    if (!this.eco) {
+      if (this.cssAnims.length) { this.cssAnims.forEach(a => { if (a.playState === 'paused') a.play(); }); this.cssAnims = []; }
+      return;
+    }
+    if (now - this.cssScan > 500 && document.getAnimations) {
+      this.cssScan = now;
+      this.cssAnims = document.getAnimations().filter(a => a.animationName && a.effect && a.effect.getComputedTiming().iterations === Infinity);
+      // 止めたときの進み具合から続ける（始まりの遅れ animation-delay も、そのまま守られる）
+      const t = document.timeline.currentTime;
+      this.cssAnims.forEach(a => { if (a.playState === 'running') { a.pause(); a.ecoBase = t - (a.currentTime || 0); } });
+    }
+    const t = document.timeline.currentTime;
+    for (const a of this.cssAnims) if (a.playState === 'paused' && a.ecoBase != null) a.currentTime = t - a.ecoBase;
+  },
   shadowSize() { return this.Q.shadow; },
   // いまの場面を画質に合わせる（影の画像の大きさ・空・小さな部品の影・つや）
   tierScene(scene) {
@@ -207,7 +240,8 @@ const GFX = {
   // コマ数を見張る：おまかせの省エネで、場面を出してから少したっても 30fps に遠く届かなければ、軽量へ落として覚えておく。
   // 読みこみ・場面の切りかえの重いコマは数えない（3 秒ずつ区切って、中央値で見る）
   watchFps(now) {
-    if (this.tier !== 1 || Save.data.eco != null || !this.view || document.hidden) { this.fpsWatch = null; return; }
+    // メニューの裏は、わざとコマ数を落としているので数えない
+    if (this.tier !== 1 || Save.data.eco != null || !this.view || document.hidden || this.dimmed) { this.fpsWatch = null; return; }
     let w = this.fpsWatch;
     if (!w || w.view !== this.view) w = this.fpsWatch = { view: this.view, t0: now + 2500, dts: [], bad: 0 };
     if (now < w.t0) return;

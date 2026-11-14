@@ -50,7 +50,7 @@ function diagHud() {
     const mem = performance.memory ? ` heap ${Math.round(performance.memory.usedJSHeapSize / 1048576)}MB` : '';
     el.textContent = [
       `3D ${lost}  止まった ${D.lost} / 戻った ${D.restored} / 作り直し ${D.rebuilt}${D.rebuildFail ? ' 失敗:' + D.rebuildFail : ''}`,
-      `fps ${fps.toFixed(0)}  画質 ${GFX.tier}  pr ${GFX.pixelRatio.toFixed(2)}  canvas ${c ? `${c.width}x${c.height} ${c.isConnected ? '' : '外れ'} 不透明度${c.style.opacity}` : 'なし'}`,
+      `fps ${fps.toFixed(0)}  画質 ${GFX.tier}${GFX.dimmed ? '  窓' : ''}  pr ${GFX.pixelRatio.toFixed(2)}  canvas ${c ? `${c.width}x${c.height} ${c.isConnected ? '' : '外れ'} 不透明度${c.style.opacity}` : 'なし'}`,
       R ? `画像 ${R.info.memory.textures}  形 ${R.info.memory.geometries}  シェーダー ${R.info.programs ? R.info.programs.length : '?'}  描画 ${R.info.render.calls}回${mem}` : '',
       `場所 ${f ? f.zoneId : '-'}  カメラ ${cam ? [cam.x, cam.y, cam.z].map(v => v.toFixed(1)).join(',') : '-'}  距離 ${f && f.curDist != null ? f.curDist.toFixed(1) : '-'}`,
       ...errs.map(m => 'エラー: ' + m),
@@ -69,19 +69,24 @@ function floaties() {
     }));
   };
   resize(); window.addEventListener('resize', resize);
-  const tick = () => {
+  let next = 0;
+  const tick = now => {
     requestAnimationFrame(tick);
-    // 省エネのときは、3D を出している間は止めておく（ほとんど隠れている）
-    if (GFX.eco && GFX.view) return;
+    // 省エネのときは、3D を出している間は止めておく（ほとんど隠れている）。出していないときも 30fps にする（GFX の tick と同じく決まった時刻ごと）
+    if (GFX.eco) {
+      if (GFX.view || now < next - 4) return;
+      next = now - next > 1000 / 30 ? now + 1000 / 30 : next + 1000 / 30;
+    }
     ctx.clearRect(0, 0, w, h);
+    const k = GFX.eco ? 2 : 1;   // 30fps のときは 1 コマで 2 コマぶん動かす
     for (const d of dots) {
-      d.p += d.s; d.y -= d.v; d.x += Math.sin(d.p) * 0.3; if (d.y < -5) { d.y = h + 5; d.x = Math.random() * w; }
+      d.p += d.s * k; d.y -= d.v * k; d.x += Math.sin(d.p) * 0.3 * k; if (d.y < -5) { d.y = h + 5; d.x = Math.random() * w; }
       ctx.globalAlpha = 0.35 + Math.sin(d.p) * 0.3;
       ctx.fillStyle = d.c;
       ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
     }
   };
-  tick();
+  tick(0);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
