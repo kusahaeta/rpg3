@@ -27,7 +27,7 @@ const SCENES = {
       ['mike', 'と、盗ってないよ！　ちょっと持ってるだけ！', { f: 'surprise', g: 'shrug' }],
       ['sonchou', 'ミケ！　また魚を盗ったな！', { enter: 'sonchou', move: { sonchou: [[-2, -2], [-1.3, 1.2]] }, speed: 3, f: 'angry', g: 'shake', look: { mike: 'sonchou' } }],
       ['mike', '違うよ！　これは味見！', { f: 'joy', g: 'raise', to: 'sonchou' }],
-      ['sonchou', '昨日も味見していただろ！', { f: 'angry', g: 'point', r: { sakanaya: ['angry', 'nod'] } }],
+      ['sonchou', '昨日も味見しておったじゃろ！', { f: 'angry', g: 'point', r: { sakanaya: ['angry', 'nod'] } }],
       ['sakanaya', 'おとといもだよ！', { f: 'angry', g: 'fist' }],
       { c: [
         ['……ごめんなさい。', [['sakanaya', '……まったく。ちゃんと謝れるなら、今回だけは許してあげるよ。', { f: 'gentle', g: 'nod' }], ['sonchou', 'ミケや、腹が減ったら、ちゃんと言いなさい。村のみんなは家族みたいなもんじゃ。', { f: 'gentle', g: 'handChest' }]], { f: 'sad', g: 'bow' }],
@@ -103,7 +103,8 @@ const SCENES = {
     lines: [
       ['sonchou', '空から猫が落ちてきた、じゃと？', { f: 'surprise', g: 'surprise', to: 'mike' }],
       ['kuro', '……クロだ。', { f: 'serious', g: 'nod', to: 'sonchou' }],
-      ['sonchou', '……ふむ。わしも気になっておった。今年は、にゃんだーの樹の実りがとても悪い。森の木の実も、ほとんど実らなかった。', { f: 'worry', g: 'explain' }],
+      ['mike', 'それでね、ゆうべの流れ星は、にゃんだーの樹の実だったんだ！　クロが言うには、樹が弱ってるんだって！', { f: 'worry', g: 'explain', to: 'sonchou' }],
+      ['sonchou', '……ふむ。樹の実りが悪いのは、わしも気になっておった。今年は、森の木の実も、ほとんど実らんかった。', { f: 'worry', g: 'explain' }],
       ['sonchou', 'そのせいかのう。ほしふる森のネズミどもが、夜な夜な村の食べ物を持っていくんじゃ。', { f: 'worry', g: 'point', look: { all: 'forest' } }],
       ['mike', 'ネズミ！？　ぼくの魚も！？', { f: 'angry', g: 'fist' }],
       ['sonchou', '……お前の魚は、お前が盗ったんじゃろうが。', { f: 'serious', g: 'shake' }],
@@ -136,7 +137,7 @@ const SCENES = {
       ['mike', 'クロだって、ひとりで突っこんでたじゃん！', { f: 'pout', g: 'point' }],
       ['kuro', '……俺は、いいんだ。', { f: 'sad', g: 'lookDown' }],
       ['mike', 'よくないよ！', { f: 'angry', g: 'fist' }],
-      ['n', '言い合う二人の前に、怒ったリスたちが飛び出してきた！', { enter: ['e:risu', 'e:nezumi'], cam: 'wide', r: { all: 'surprise' } }],
+      ['n', '言い合う二匹の前に、怒ったリスたちが飛び出してきた！', { enter: ['e:risu', 'e:nezumi'], cam: 'wide', r: { all: 'surprise' } }],
       ['e:risu', 'ここから先は通さないぞ！　ぼくたちのどんぐりは、あげないんだから！'],
       ['mike', 'どんぐりなんていらないよ！　……ちょっと食べてみたいけど。', { f: 'smile', g: 'shrug' }],
       ['kuro', '……来るぞ。', { f: 'serious', stance: { all: 'ready' } }],
@@ -177,8 +178,8 @@ const SCENES = {
       cast: { sonchou: { at: [-0.8, 2.6], face: 'mike' }, sakanaya: { at: [4, 5], hidden: true, face: 'mike' } } },
     lines: [
       ['sonchou', 'そうか……ネズミたちも、腹をすかせておったのか。', { f: 'sad', g: 'lookDown' }],
-      ['sonchou', '……実はな、旅の商人から妙な噂を聞いた。北のニャハハ王国では、誰も笑わなくなったそうじゃ。', { f: 'worry', g: 'explain' }],
-      ['sonchou', '笑い声も、どこでも少しずつ減っておる。けんかしたまま口をきかなくなる猫や、思い出話をしなくなる猫も、あちこちで増えておるらしい。', { f: 'worry', g: 'shake' }],
+      ['sonchou', '……実はな、北から来た旅の商人に、妙な噂を聞いた。このごろは、どこの土地でも、笑い声が少しずつ減っておるそうじゃ。', { f: 'worry', g: 'explain' }],
+      ['sonchou', 'けんかしたまま口をきかなくなる猫や、思い出話をしなくなる猫も、あちこちで増えておるらしい。', { f: 'worry', g: 'shake' }],
       ['kuro', '……やはりな。世界中で、心のつながりが消えかけている。', { f: 'serious', g: 'nod' }],
       ['mike', 'それって、魔王のしわざ？　北の魔王領には、「世界を滅ぼす」って言ってる魔王がいるんでしょ？', { f: 'worry', g: 'tilt' }],
       ['sonchou', '……そう言うておるらしいがの。じゃが、魔王に何かされたという話は、とんと聞かん。怖がられておるだけの、ふしぎな王さまじゃよ。', { f: 'neutral', g: 'shake' }],
@@ -193,7 +194,7 @@ const SCENES = {
       ['sakanaya', '……ほら、弁当。焼き魚、入れといたよ。', { f: 'gentle', g: 'give', hold: { sakanaya: 'fish' } }],
       ['mike', 'おばちゃん……！', { f: 'joy', g: 'cheer' }],
       ['sakanaya', 'お代は、ちゃんと帰ってきてから払いな！', { f: 'smile', g: 'point', hold: { sakanaya: null, mike: 'fish' } }],
-      ['sonchou', '北のミャオ街道を進めば、ニャハハ王国じゃ。……気をつけて行っておいで。', { f: 'gentle', g: 'wave' }],
+      ['sonchou', '北のミャオ街道を進めば、「笑いの国」と呼ばれるニャハハ王国じゃ。旅の者も噂も、あそこに集まる。……気をつけて行っておいで。', { f: 'gentle', g: 'wave' }],
       ['n', 'こうして、ミケとクロの冒険が始まった。', { cam: 'wide', dur: 7, r: { mike: ['joy', 'wave'] } }],
     ] },
 

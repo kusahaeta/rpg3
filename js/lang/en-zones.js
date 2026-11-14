@@ -83,7 +83,7 @@ Object.assign(EN, {
   'すみきった泉。水面に、星のような光がゆらめいている。': 'A crystal-clear spring. Lights like stars shimmer on the surface.',
   // ── field-zones.js FIELD_ZONES.rat_nest
   '……魚、うまかったぞ。': '...That fish was delicious.',
-  '森のどんぐりが実らなくてな。みんな腹をすかせておったのだ。': 'The forest acorns didn\'t grow this year. Everyone was starving.',
+  '森のどんぐりが実らなくてな。みんな、腹をすかせてたんだ。': 'The forest acorns didn\'t grow this year. Everyone was starving.',
   '魚……分けてやるよ。俺にとっては大事なんだ！': 'Fish... I\'ll share it with you. It means a lot to me!',
   'おう、勇者か。……今年はどんぐりが豊作だ。分けてやろう。': 'Oh, it\'s the hero. ...We\'ve got a bumper crop of acorns this year. Here, have some.',
   '王さまがね、ぼくたちの分まで食べ物を探してくれてたの。': 'The king was looking for food for all of us, even more than for himself.',

@@ -374,7 +374,7 @@ Object.assign(EN, {
   // ── data.js ENEMIES.king_nezumi
   'キングネズミ': 'King Mouse',
   '子分総動員': 'All Hands on Deck',
-  'キングネズミ「子分ども、集まれチュウ！」': 'King Mouse: "Underlings, gather \'round, squeak!"',
+  'キングネズミ「子分ども、集まれ！」': 'King Mouse: "Underlings, gather \'round!"',
   // ── data.js ENEMIES.karasu
   'いたずらカラス': 'Prankster Crow',
   // ── data.js ENEMIES.iwa
