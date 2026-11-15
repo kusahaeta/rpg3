@@ -244,7 +244,7 @@ for n in combo demon woods tower yoroi fit-mike fit-kuro fit-shiro fit-tama shir
 node tools/store-compose.mjs <撮るフォルダ>/ja ja     # ios/screenshots/ の 3 サイズと android/store/screenshots/
 ```
 
-英語版は `SHOT_LANG=en` を付けて `<撮るフォルダ>/en/` に撮り、`node tools/store-compose.mjs <撮るフォルダ>/en en`（`ios/screenshots/en/` と、Google Play の `android/store/screenshots/en/` に書く）。ヘッダは `node tools/shoot-store.mjs title ios/screenshots/header.png 1280x720 4.096875`（5244×2950。英語版は `SHOT_LANG=en` で `en/header.png`）。フィーチャー グラフィックは、日本語の title.png（3840×2160）を 1024×576 に縮めて、上から 60px のところで 500px の高さに切る（`sips -z 576 1024 title.png --out t.png && sips -c 500 1024 --cropOffset 60 0 t.png --out android/store/feature-graphic.png`）。
+英語版は `SHOT_LANG=en` を付けて `<撮るフォルダ>/en/` に撮り、`node tools/store-compose.mjs <撮るフォルダ>/en en`（`ios/screenshots/en/` と、Google Play の `android/store/screenshots/en/` に書く）。ヘッダは `node tools/shoot-store.mjs title ios/screenshots/header.png 1280x720 4.096875`（5244×2950。英語版は `SHOT_LANG=en` で `en/header.png`）。フィーチャー グラフィックは、日本語の title.png（3840×2160）を 1024×576 に縮めて、上から 60px のところで 500px の高さに切る（`sips -z 576 1024 title.png --out t.png && sips -c 500 1024 --cropOffset 60 0 t.png --out android/store/feature-graphic.png`）英語版（`android/store/en/feature-graphic.png`）は、`SHOT_LANG=en` で撮った title.png から同じ切り方で作る。
 
 ## プレビュー動画
 
