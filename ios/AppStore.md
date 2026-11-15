@@ -33,36 +33,53 @@ App Store Connect に入れる文面と、答える項目の案。審査に出�
 ## 説明
 
 ```
-ぽかぽか村の、くいしんぼうなにゃんこ・ミケ。
-流れ星の落ちた村はずれの丘で出会ったのは、空から落ちてきた黒猫だった。
-生命樹「にゃんだーの樹」が弱りはじめ、世界のあちこちで、次々と異変が起きていく。
-一匹では弱くても、仲間がいれば世界を変えられる――。
+くせが強いけど、なぜか憎めない。
+そんなにゃんこたちと、世界を救う冒険へ！
 
-2頭身のにゃんこたちが旅をする、3D のコマンド RPG です。
+ぽかぽか村に暮らす、くいしんぼうなにゃんこ・ミケ。
+流れ星が落ちた村はずれの丘で出会ったのは、空からやってきた不思議な黒猫だった。
+世界を支える生命樹「にゃんだーの樹」が弱りはじめ、世界のあちこちで不思議な異変が起きている。
+一匹ではできないことも、仲間とならきっと乗り越えられる。
 
-■ にゃんこたちの冒険
-ミケ、クロ、シロ、タマ、そして……。
-くせの強い仲間たちと、村・森・王国・洞窟・遺跡・魔王城をめぐります。
-笑って、ぶつかって、助けあって。旅をするほど、にゃんこたちの絆は深まっていきます。
+2頭身のかわいいにゃんこたちが、ぽかぽか村から魔王城まで旅をする3DコマンドRPGです。
 
-■ ターン制バトル
-速さで決まる行動順、仲間で分けあうスキルポイント、ためて撃つ必殺技。
-敵の弱点を突いて「弱点撃破」をねらいましょう。
-のんびり屋の仲間は戦闘中に寝てしまい、天才魔法使いの魔法からは、たまに魚が降ってくる……！？
+■ くせの強い仲間たち
+・ミケ：勇者なのに、魚を見るとついつまみ食い。困っている猫はほうっておけない
+・クロ：無口でクールなツッコミ役。……でも、すぐ照れる
+・シロ：自称・天才魔法使い。「ファイア！」と唱えたのに、なぜか魚が降ってくる
+・タマ：とにかくよく寝る。戦闘中でも寝る。たんぽぽの綿毛のてっぺんでも寝る
+そして……？
+ボケとツッコミが止まらない旅のなかで、笑って、ケンカして、助けあって。
+にゃんこたちは少しずつ、本当の仲間になっていきます。
 
-■ 友情とコンボ技
-いっしょに戦い、話すほど、仲間どうしの友情が深まります。
-友情が深まると、戦闘中の掛け合いや、ふたりで撃つコンボ技、特別なイベントが見られます。
+■ 戦略とユーモアがいっぱいのターン制バトル
+速さで決まる行動順を読み、仲間で分けあうスキルポイントをやりくり。
+敵の弱点を突いて「弱点撃破」を決めたら、ためた必殺技で一気にたたみかけよう！
+ただし、タマはときどき戦闘中に寝てしまうし、シロの魔法はたまに失敗して、魚が降ってくることも……！？
 
-■ フィールドの探索
-宝箱、お店、爪とぎの丸太、住人との会話。
-笑わせて道をひらくお笑いの舞台や、光と影の謎ときも。
+■ 仲よくなるほど、強くなる
+いっしょに戦い、話すほど、二匹ずつの友情が深まります。
+戦闘中にふたりの掛け合いが聞けるようになり、ふたりで放つコンボ技も解放！
+友情から生まれる、ふたりだけの特別なイベントも見られます。
 
-・横画面で遊びます
-・インターネットにつながなくても遊べます
-・セーブは自動です
-・広告・アプリ内課金はありません
+■ 行く先々で、ひと騒動！
+坂を転がってくる大岩をよけながら進んだり、仲間を入れかえて、それぞれの得意わざで道をひらいたり。
+笑わせないと通れない道や、ひらめきで解く謎も……！？
+場所が変わるたびに、ちがう遊びが待っています。
+宝箱さがしや、ちょっと変わった住人たちとのおしゃべりも、旅のお楽しみ。
+
+■ おしゃれも楽しめる
+シルクハットにタキシード、むぎわら帽子にはっぴ。
+着せかえた姿のまま、冒険も会話も戦闘も。お気に入りのコーデで旅に出よう！
+
+■ 安心して遊べる
+・広告なし・アプリ内課金なし。最後まで無料で遊べます
+・オフライン対応（インターネット接続不要）
+・セーブは自動
+・横画面でプレイ
 ```
+
+（2026-11-15 に書き直した。ねらいは、読んだ人が「楽しそう」と思うこと。しくみの名前（行動順・共有のスキルポイント・弱点撃破）は残したうえで、そのしくみで何が起きるかを具体的な場面で言う：猫ごとのボケ、おしゃれ。技の名前と動きの説明、仕掛けや場所の中身（むすっと幕・光の鏡・時の水晶など）は入れない。遊ぶ前の人には伝わらず、ネタバレにもなる。探索は寄り道を売りにしない（寄り道は行き止まりの宝箱と住人の会話くらい。笑わせる道や仕掛けは本筋にある）。探索の売りは、本筋の道にある場所ごとの仕掛け（切り通しの大岩・関所で仲間の得意わざ・笑わせる道・光や時の謎）。例はネタバレの少ない第二章のものにする。宝箱と住人はおまけなので最後に軽く。呼びかけ（「〜しよう！」）で遊ぶ人の目線にする）
 
 ## キーワード（100字まで・カンマ区切り）
 
@@ -92,36 +109,51 @@ Cute two-head-tall cats journey from a cozy village to the end of the world in t
 説明：
 
 ```
-Mike is a food-loving calico cat from the village of Cozyville.
-On the hill where a shooting star fell, he meets a black cat who tumbled down from the sky.
-The great Nyander Tree is weakening, and strange things are starting to happen all over the world.
-Alone we may be weak, but together we can change the world—.
+Quirky, but impossible not to love.
+Join these cats on an adventure to save the world!
 
-A 3D turn-based RPG starring adorable two-head-tall cats.
+Mike is a food-loving calico cat who lives in the village of Cozyville.
+On the hill outside the village where a shooting star fell, Mike meets a mysterious black cat who came from the sky.
+The great Nyander Tree that supports the world is weakening, and strange things are happening all over the world.
+What one cat can't do alone, friends can surely overcome together.
 
-■ A Cat-Sized Adventure
-Mike, Kuro, Shiro, Tama, and... someone else.
-Travel with a quirky crew through villages, forests, kingdoms, caves, ancient ruins, and the Demon King's castle.
-Laugh, clash, and help each other out. The farther you travel, the deeper their bonds become.
+A 3D turn-based command RPG in which adorable two-head-tall cats travel from their village all the way to the Demon King's castle.
 
-■ Turn-Based Battles
-Turn order decided by speed, skill points shared by the whole party, and Ultimates you charge up and unleash.
-Strike enemy weaknesses to land a "Weakness Break."
-Your sleepy friend might doze off mid-battle, and the self-proclaimed genius mage's spells sometimes make fish rain from the sky...?!
+■ A Quirky Crew
+・Mike: A hero who can't resist snacking on any fish in sight, and can't ignore a cat in trouble
+・Kuro: The quiet, cool-headed straight man. ...But easily flustered
+・Shiro: A (self-proclaimed) genius mage. She casts "Fire!" and somehow, fish rain from the sky
+・Tama: Sleeps. A lot. Sleeps in battle. Sleeps on top of a dandelion puff
+And then...?
+On a journey full of jokes and comebacks, they laugh, squabble, and help each other out,
+and little by little, they become true friends.
 
-■ Bonds and Combo Moves
-Fight and talk together, and the bonds between your party members grow.
-Deeper bonds unlock banter in battle, combo moves for two, and special events.
+■ Turn-Based Battles Full of Strategy and Humor
+Read the turn order decided by speed, and manage the skill points your whole party shares.
+Strike enemy weaknesses for a "Weakness Break," then finish them off with your charged-up Ultimates!
+Just know that Tama sometimes dozes off mid-battle, and Shiro's spells sometimes fail and make fish rain from the sky...?!
 
-■ Explore the Field
-Treasure chests, shops, scratching posts, and chats with the locals.
-Open the way with comedy routines on stage, and solve puzzles of light and shadow.
+■ The Closer They Get, the Stronger They Are
+Fight and talk together, and the bond between each pair of cats grows.
+Unlock their banter in battle, and powerful combo moves for two!
+You can also see special events just for the two of them, born from their friendship.
 
-・Play in English or Japanese (switch anytime from the title screen or Options)
-・Played in landscape
-・Play offline, no internet needed
+■ Something's Always Happening!
+Dodge giant boulders rolling down a slope, or swap your lead cat and use each friend's special skill to clear the way.
+There are paths you can only pass by making someone laugh, and puzzles that take a flash of inspiration...?!
+Every new place brings a new kind of fun.
+Hunting for treasure chests and chatting with some delightfully odd locals add to the journey, too.
+
+■ Dress Up, Too
+Top hats and tuxedos, straw hats and happi coats.
+Your outfits show up everywhere: exploring, in story scenes, and in battle. Head out in your favorite look!
+
+■ Play with Peace of Mind
+・No ads, no in-app purchases. Free all the way to the end
+・Play offline (no internet connection needed)
 ・Saves automatically
-・No ads, no in-app purchases
+・Played in landscape
+・Play in English or Japanese (switch anytime from the title screen or Options)
 ```
 
 キーワード（100字まで）：
