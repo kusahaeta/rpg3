@@ -1,9 +1,10 @@
 // 紹介動画の録画：ヘッドレス Chrome の時計を差しかえて、1/30 秒ずつ進めては撮る（コマ落ちしない）。
 //   node tools/promo/rec.mjs <場面の名前> <出力のフォルダ>
-// 場面は tools/promo/scenes.mjs。PROMO_NOZONE=1 で、探索に入ったときの地名を出さない（字幕版で、字幕と重なるため）。出力のフォルダに 00000.jpg… と、効果音の記録 sfx.json を書く。
+// 場面は tools/promo/scenes.mjs。PROMO_NOZONE=1 で、探索に入ったときの地名を出さない（字幕版で、字幕と重なるため）。出力のフォルダに 00000.jpg… と、効果音の記録 sfx.json、目印 marks.json を書く。
 // 先に `PORT=8937 node .claude/serve.js` を動かしておく。
 // 画面は 936×432 を 2.5 倍（2340×1080）で撮る。iPhone と同じ横長で、まん中の 16:9（1920×1080）がゲームの画面、
 // 両はしは星の帯。App Store 用は全体を 1920×886 に縮め、Google Play 用はまん中を切り出す（tools/promo/make.mjs）。
+// 場面に view があるもの（scenes.mjs の wide）は、ゲームの画面（16:9）だけを 1280×720 の 1.5 倍（1920×1080）で撮る。
 import { spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -67,6 +68,8 @@ const SHIM = `(() => {
 // 効果音を鳴らさずに「いつ・どれが鳴ったか」を記録する（あとで BGM といっしょにオフラインで書き出す）
 const SFX_LOG = `(() => {
   window.__sfx = []; window.__sfxT0 = null; let depth = 0;
+  // 目印：場面の中の出来事（技を選んだ・決めた など）の時刻。make.mjs が「目印から何コマ」で切り出せるように
+  window.__marks = []; window.__mark = name => { if (window.__sfxT0 != null) __marks.push([name, (__vt() - __sfxT0) / 1000]); };
   for (const k of Object.keys(Sfx)) {
     if (typeof Sfx[k] !== 'function' || ['init', 'tone', 'noise', 'setVol'].includes(k)) continue;
     const f = Sfx[k];
@@ -163,7 +166,9 @@ export async function session(fn, { w = VW, h = VH, scale = SCALE, lang } = {}) 
       // 時間が来るまで条件を待つ（撮らない）
       until: async (cond, max = 20) => { for (let i = 0; i < max * FPS; i++) { if (await ev(cond)) return true; await ev(`__step(${1000 / FPS})`); } console.warn('待ちきれなかった:', cond); return false; },
       // 撮りはじめ：dir に書く。効果音の記録も 0 秒にそろえる
-      start: async out => { dir = out; mkdirSync(dir, { recursive: true }); frames = 0; await ev(`__sfxT0 = __vt(); __sfx.length = 0; true`); },
+      start: async out => { dir = out; mkdirSync(dir, { recursive: true }); frames = 0; await ev(`__sfxT0 = __vt(); __sfx.length = 0; __marks.length = 0; true`); },
+      // 目印をつける（いま撮ったコマの次のコマ）
+      mark: name => ev(`__mark(${JSON.stringify(name)}); true`),
       // sec 秒ぶん撮る。each(i) はコマごとに呼ぶ（カメラを動かすなど）
       rec: async (sec, each) => {
         for (let i = 0, n = Math.round(sec * FPS); i < n; i++) {
@@ -173,7 +178,15 @@ export async function session(fn, { w = VW, h = VH, scale = SCALE, lang } = {}) 
           writeFileSync(join(dir, String(frames++).padStart(5, '0') + '.jpg'), Buffer.from(s.result.data, 'base64'));
         }
       },
-      stop: async () => { writeFileSync(join(dir, 'sfx.json'), JSON.stringify(await ev(`__sfx`), null, 1)); return frames; },
+      // 効果音の記録 sfx.json と、目印 marks.json（名前 → コマ。同じ名前は最初のもの。効果音は sfx:名前 で、最初に鳴ったコマ）
+      stop: async () => {
+        const sfx = await ev(`__sfx`), marks = {};
+        writeFileSync(join(dir, 'sfx.json'), JSON.stringify(sfx, null, 1));
+        for (const [k, t] of await ev(`__marks`)) marks[k] ??= Math.round(t * FPS);
+        for (const e of sfx) marks['sfx:' + e.k] ??= Math.round(e.t * FPS);
+        writeFileSync(join(dir, 'marks.json'), JSON.stringify(marks, null, 1));
+        return frames;
+      },
       shot: async file => { const s = await send('Page.captureScreenshot', { format: 'jpeg', quality: 90 }); writeFileSync(file, Buffer.from(s.result.data, 'base64')); },
       // 画面をタップ（CSS ピクセル）
       tap: async (x, y) => {
@@ -194,9 +207,12 @@ if (process.argv[1] && process.argv[1].endsWith('rec.mjs')) {
   const { SCENES } = await import('./scenes.mjs');
   if (!SCENES[name]) { console.error('場面:', Object.keys(SCENES).join(' ')); process.exit(1); }
   const t = Date.now();
+  // 場面に view（{ w, h, scale }）があれば、その大きさで撮る。PROMO_SCALE で倍率だけ変えられる（下見は 0.5 など）
+  const view = { ...SCENES[name].view };
+  if (process.env.PROMO_SCALE) view.scale = +process.env.PROMO_SCALE;
   await session(async api => {
     await SCENES[name](api, out);
     const n = await api.stop();
     console.log(`${name}: ${n} コマ（${(n / FPS).toFixed(1)} 秒）を ${out} へ。${((Date.now() - t) / 1000).toFixed(0)} 秒かかった`);
-  });
+  }, view);
 }
