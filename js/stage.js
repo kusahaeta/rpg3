@@ -1237,7 +1237,8 @@ const STAGE_FX = {
     const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#fff0c8', 5), blending: THREE.AdditiveBlending, depthWrite: false }));
     m.scale.setScalar(2.4);
     this.fx.add(m, 2.2, (k, o) => { const e = Ease.in(k); o.position.lerpVectors(from, to, e); for (let i = 0; i < 6; i++) this.p.emit(o.position, V3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)), hdr(Math.random() < 0.5 ? '#fff0c8' : '#8ad8ff', 3), { life: 1.2, size: 0.5 }); });
-    GFX.delay(2.2).then(() => { GFX.flash('#ffffff', 0.9, 1.0); GFX.shake(0.5); Sfx.slam(); this.fx.ring(to, '#fff0c8', { r: 14, life: 1.2, width: 0.5 }); this.p.burst(to, '#fff0c8', 200, { speed: 12, up: 1, life: 1.6, size: 0.2 }); this.fx.pillar(to, '#fff0c8', { h: 30, r: 1.6, life: 1.4, k: 3 }); });
+    // 着地は、玉と同じ時計（効果の時間は Game.speed をかけない）で。GFX.delay だと、速度 2 倍の設定のとき玉が空の途中で地面が光る
+    GFX.tween(2.2, () => {}, Ease.linear, true).then(() => { GFX.flash('#ffffff', 0.9, 1.0); GFX.shake(0.5); Sfx.slam(); this.fx.ring(to, '#fff0c8', { r: 14, life: 1.2, width: 0.5 }); this.p.burst(to, '#fff0c8', 200, { speed: 12, up: 1, life: 1.6, size: 0.2 }); this.fx.pillar(to, '#fff0c8', { h: 30, r: 1.6, life: 1.4, k: 3 }); });
   },
   // 空から魚が降ってくる（シロの魔法の失敗）
   fishRain(arg) {
