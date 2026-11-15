@@ -41,9 +41,10 @@ const hideFieldUi = api => api.ev(`{ document.querySelectorAll('.fd-zone, .fd-ti
 // 画面の横の位置 x（先頭の子から。- が左）で、左から クロ・タマ・ミケ・シロ。タマは少し後ろにして、ミケの肩ごしに顔が見えるように。
 // 仲間は歩いた跡の gap 後ろにつくので、ななめに歩くと跡のぶん横へずれる。そのずれを side で打ち消す
 const SPREAD = { kuro: { gap: 0.7, x: -1.4 }, tama: { gap: 1.1, x: -0.72 }, shiro: { gap: 0.6, x: 0.85 } };
-async function comeBack(api, yaw, n, sx) {
+// k は横の広がりの倍率（カメラが近いと 4 匹が縦長の列からはみ出すので、詰める）
+async function comeBack(api, yaw, n, sx, k = 1) {
   await api.ev(`{ const S = ${JSON.stringify(SPREAD)}, a = Math.atan2(${sx}, 0.8);
-    Game.activeField.followers.forEach(f => { const s = S[f.mem.key]; if (s) { f.gap = s.gap; f.side = (s.x + s.gap * Math.sin(a)) / Math.cos(a); } }); } true`);
+    Game.activeField.followers.forEach(f => { const s = S[f.mem.key]; if (s) { f.gap = s.gap; f.side = (s.x * ${k} + s.gap * Math.sin(a)) / Math.cos(a); } }); } true`);
   for (let i = 0; i < n; i++) {
     // 撮る少し前から、まばたきで目を閉じないようにする
     const open = i === n - 6 ? `[v.player, ...v.followers].forEach(c => { c.m.face.closed = false; c.m.face.blinkT = 99; c.m.face.apply(); });` : '';
@@ -52,6 +53,8 @@ async function comeBack(api, yaw, n, sx) {
   }
 }
 // 会話を始める（左上の場面名と、右上の AUTO・スキップのボタンは隠す。3 枚を並べて切り抜くと、場面名が半分だけ残るため）
+// 05 の 4 枚は、会話ウィンドウと選択肢を隠して撮る（セリフの代わりに、合成で猫ごとの紹介文を入れる）
+const noBox = api => api.ev(`document.querySelectorAll('.dl-box, .dl-choices').forEach(e => e.style.visibility = 'hidden'); true`);
 const scene = (api, id) => api.ev(`App.go(DialogueScreen, '${id}', () => {}); document.querySelectorAll('.dl-title, .dl-ctrl').forEach(e => e.style.visibility = 'hidden'); true`);
 
 // 戦闘：who の番（null なら最初の番）に act（b・inp が使える）を実行して止める。ほかの子はふつうの攻撃で、だれも倒れないようにする
@@ -100,18 +103,29 @@ const SHOTS = {
     await comeBack(api, 0, 60, -0.22);
   },
 
-  // 02：冒険（風車の街道・まどろみの林・笑顔の塔を縦に 3 つ並べる）。まどろみの林の綿毛の丘で、みんなで綿毛につかまって、ねむり川を越えるところ
-  async woods(api) {
-    await api.ev(`P.prep(1, 4); P.field('woods', -19, -6, 0)`);
+  // 02：冒険（魔王城・まどろみの林・笑顔の塔を縦に 3 つ並べる）。魔王領の南の広場で、4 匹がこちらへ歩いてくるところ。
+  // うしろに城門と、猫の頭の形の魔王城の大塔（耳と光る目）。カメラはミケの前の低いところに置いて少し見上げ、大塔の顔を見出しより下に入れる
+  async demon(api) {
+    await api.ev(`P.prep(6, 0, 40); P.field('demon_land', -2, 12, 0); true`);
     await api.run(1.5);
-    await api.ev(`P.noFoes(); { const v = Game.activeField; v.camPitch = 0.3; v.camDist = 6; } true`);
     await hideFieldUi(api);
-    for (let i = 0; i < 6 * FPS; i++) {
-      const d = await api.ev(`P.steer(-19, -11, false, 0.2)`);
-      if (d < 1.2) { await api.ev(`P.halt(); Game.activeField.interact(); true`); break; }
-      await step(api, 1);
-    }
-    await step(api, 25);   // 川の上にさしかかったところ
+    await api.ev(`P.noFoes(); P.cam = v => { const p = v.player.pos; v.camera.position.set(p.x + 0.3, p.y + 0.7, p.z + 4.5); v.camera.lookAt(p.x, p.y + 2.2, p.z - 20); }; true`);
+    await comeBack(api, 0, 60, 0.15, 0.8);
+  },
+
+  // 02：冒険。まどろみの林・大樹のうろの東の高台を、地面すれすれから見上げる（綿毛のたんぽぽと、まわりの大きなきのこ）。4 匹がこちらへ歩いてくる。
+  // カメラは高台の空き地の南に置いたまま（猫について動かすと、まわりの木立の幹がカメラの前に来る。これより南は木の葉にかかる）。
+  // 猫は綿毛の茎の左を、茎より手前で歩かせる（奥だと茎が顔の前を通る）。右奥に赤いきのこ。
+  // 綿毛ときのこは離れているので、画角を広げて（fov 66）縦長の列に猫・綿毛・きのこを入れる
+  async woods(api) {
+    const E = process.env, n = (k, d) => +(E[k] ?? d);   // 構図を試すときは環境変数で上書きできる（WX・WZ 猫の出だし、CX・CY・CZ カメラ、LX・LY・LZ 見る点、FOV 画角、WN 歩くコマ数、DK 並びの広がり）
+    const x = n('WX', 19.7), z = n('WZ', -6.1), cx = n('CX', 20.4), cz = n('CZ', -1.5), cy = n('CY', 0.45), lx = n('LX', 21.2), lz = n('LZ', -12), ly = n('LY', 2.8), fov = n('FOV', 66);
+    await api.ev(`P.prep(1, 5); P.field('woods_deep', ${x}, ${z}, 0); true`);
+    await api.run(1.5);
+    await hideFieldUi(api);
+    await api.ev(`document.querySelector('.fd-prompt').style.visibility = 'hidden'; true`);   // 綿毛のそばを通ると「綿毛につかまる」が出る
+    await api.ev(`P.noFoes(); P.cam = v => { const y = v.player.pos.y; if (${fov}) { v.camera.fov = ${fov}; v.camera.updateProjectionMatrix(); } v.camera.position.set(${cx}, y + ${cy}, ${cz}); v.camera.lookAt(${lx}, y + ${ly}, ${lz}); }; true`);
+    await comeBack(api, 0, n('WN', 10), n('DS', 0.1), n('DK', 0.6));
   },
 
   // 02：冒険。笑顔の塔 1F の大ロビーで、むすっと幕の舞台を背に、玉のりの玉のあいだを 4 匹がこちらへ歩いてくるところ
@@ -131,6 +145,7 @@ const SHOTS = {
     await talkTo(api, '……すぴー……。', false);
     await step(api, 30);
     await faceCam(api, 'tama', 3.0, 0.9, -1.5, -0.3);   // 寄って、下から見上げる（寝ている子は頭を前に下げるので、上からだと頭のてっぺんしか写らない）
+    await noBox(api);
   },
 
   // 05：会話。第一章「空から来た黒猫」で「それより、魚もう一匹食べる？」を選び、クロが照れて「……もらう。」と言うところ。
@@ -149,7 +164,8 @@ const SHOTS = {
     }
     await talkTo(api, '……もらう。', false);
     await step(api, 20);
-    await faceCam(api, 'kuro', 2.4, 0.9, 0.8, 0.15);   // 低めから、顔が下を向きすぎないように（横の 0.9 で、手前のミケがほぼ外れる）
+    await faceCam(api, 'kuro', 2.4, 0.9, 0.8, -0.2);   // 低めから、顔が下を向きすぎないように（横の 0.9 で、手前のミケがほぼ外れる）
+    await noBox(api);
   },
 
   // 05：会話。第一章「魚どろぼう」で「でも、すっごくおいしかったよ！」を選び、ミケが両手を挙げたところ。
@@ -168,6 +184,8 @@ const SHOTS = {
     await step(api, 3);
     await tap(api);
     await step(api, 4);
+    await faceCam(api, 'mike', 2.8, 0.8, 0.9, -0.2);   // 会話のカメラは引いていき、手前の子の後ろ頭が入るので、ミケの正面から
+    await noBox(api);
   },
 
   // 05：会話。第二章「自称・天才魔法使い」で、シロが「さあさあ、よってらっしゃい！…」と名のるところ
@@ -177,7 +195,8 @@ const SHOTS = {
     await api.run(2);
     await talkTo(api, 'さあさあ、よってらっしゃい！　世界一の天才魔法使い、シロさまの魔法をお見せするわ！');
     await step(api, 12);
-    await faceCam(api, 'shiro', 3.2, 0.5, 1.3, 0.25);   // 手前のミケの後ろ頭が入らないよう、シロの正面から
+    await faceCam(api, 'shiro', 3.2, 0.5, 1.3, -0.2);   // 手前のミケの後ろ頭が入らないよう、シロの正面から
+    await noBox(api);
   },
 
   // 03：くろねこ谷の戦場で、影ねこ 2 匹とさまよう鎧（4-1 の 2 戦目と同じ顔ぶれ）。ミケの番に「勇者のつるぎ」を選んで鎧に狙いを合わせ、
