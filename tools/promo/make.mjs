@@ -2,6 +2,7 @@
 //   node tools/promo/make.mjs <場面のフォルダ> <出力のフォルダ> [--plan=tour|ult|world] [--captions]
 // --plan で並べかた（PLANS）。tour は街めぐり（もとの 30 秒）、ult は必殺技から始まる版（名前のおしりに -ult）、
 //   world は第一章〜第六章をめぐる版（名前のおしりに -world。見出しの文字はいつも入る。場面は scenes.mjs の w_…）
+//   --lang=en で英語版（見出しは PLANS の captionsEn。場面は PROMO_LANG=en で撮ったもの。名前のおしりに -en）
 // --captions で字幕入り（CAPTIONS）。字幕はゲームと同じフォントで Chrome に透明な画像として描かせて重ねる（ffmpeg の drawtext がないため）。
 //   字幕版の探索の場面は、入ったときの地名が字幕と重なるので、PROMO_NOZONE=1 で撮った場面を使う
 // 場面のフォルダには rec.mjs で撮った title/ hill/ … が並んでいること（`for n in …; do node tools/promo/rec.mjs $n <場面のフォルダ>/$n; done`）。
@@ -17,6 +18,7 @@ import { join, resolve } from 'node:path';
 import { session, FPS } from './rec.mjs';
 
 const args = process.argv.slice(2), CAP = args.includes('--captions');
+const LANG = args.find(a => a.startsWith('--lang='))?.slice(7) || 'ja';
 const planArg = args.find(a => a.startsWith('--plan='))?.slice(7) || 'tour';
 const [clipsArg, outArg] = args.filter(a => !a.startsWith('--'));
 if (!clipsArg || !outArg) { console.error('使い方: node tools/promo/make.mjs <場面のフォルダ> <出力のフォルダ> [--plan=tour|ult] [--captions]'); process.exit(1); }
@@ -122,6 +124,21 @@ const PLANS = {
       [38.5, 40, '<b>……やりすぎた。</b>'],
       [41, 48, 'このにゃんこたちが、<b>世界を救う。</b><small>……たぶん。</small>', { size: 70, top: -14 }],
     ],
+    // 英語版の見出し（同じ拍。日本語の直訳ではなく、同じ笑い・同じオチを英語で言う。名前・技の名前はゲームの英語と同じ）
+    captionsEn: [
+      [0, 5, 'Cute faces. <b>Huge moves.</b>'],
+      [5, 8, 'Hit the road with <b>4 goofy cats.</b>'],
+      [8, 16, 'From a <b>fallen star</b> to the <b>Demon King.</b>'],
+      [16, 19, '<b>Mike</b> the Hero. Snacking on fish again.'],
+      [19, 22, 'Cool, calm <b>Kuro</b>. ...Still takes the fish.'],
+      [22, 25, 'Genius(ish) <b>Shiro</b>. Casts fire. Gets fish.'],
+      [25, 28, '<b>Tama</b> is asleep. Usually asleep.'],
+      [28, 30.5, 'The enemies? <b>Just as quirky.</b>'],
+      [30.5, 34, 'One cat alone is weak. <b>But two...</b>'],
+      [34, 38.5, 'With friends, <b>there\'s no limit.</b>'],
+      [38.5, 40, '<b>...Overdid it.</b>'],
+      [41, 48, 'These cats will <b>save the world.</b><small> ...Probably.</small>', { size: 80, top: -14 }],
+    ],
     // 曲：タイトルの曲を 96bpm に。A' のおしまいの小節（旋律が主音に着く）は、ドラムを止めてシンバルだけにし、その前の小節にドラムの締めを移す。
     //   _c は組み立てずみの曲なので写さない（写すと、もとのテンポ・ドラムのまま鳴る）
     tracks: `{ const T = JSON.parse(JSON.stringify({ ...TRACKS.title, _c: null })), put = (k, i, p) => { const d = T.drums; d[k] = d[k].slice(0, i) + p + d[k].slice(i + p.length); };
@@ -136,8 +153,10 @@ const PLANS = {
   },
 };
 if (!PLANS[planArg]) { console.error('プラン:', Object.keys(PLANS).join(' ')); process.exit(1); }
-const PLAN = PLANS[planArg], { edit: EDIT, captions: CAPTIONS } = PLAN;
-const SUFFIX = planArg === 'tour' ? '' : '-' + planArg;
+const PLAN = PLANS[planArg], { edit: EDIT } = PLAN;
+if (LANG !== 'ja' && !PLAN.captionsEn) { console.error(`${planArg} には英語の見出しがない`); process.exit(1); }
+const CAPTIONS = LANG === 'en' ? PLAN.captionsEn : PLAN.captions;
+const SUFFIX = (planArg === 'tour' ? '' : '-' + planArg) + (LANG === 'ja' ? '' : '-' + LANG);
 const X0 = PLAN.x0 ?? 210;   // 撮った画面の中の、ゲームの画面（1920×1080）の左はし
 
 // 小節にあわせて、それぞれのコマ数を決める（おわりのない場面は、小節の区切りまで）

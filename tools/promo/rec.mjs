@@ -1,6 +1,6 @@
 // 紹介動画の録画：ヘッドレス Chrome の時計を差しかえて、1/30 秒ずつ進めては撮る（コマ落ちしない）。
 //   node tools/promo/rec.mjs <場面の名前> <出力のフォルダ>
-// 場面は tools/promo/scenes.mjs。PROMO_NOZONE=1 で、探索に入ったときの地名を出さない（字幕版で、字幕と重なるため）。出力のフォルダに 00000.jpg… と、効果音の記録 sfx.json、目印 marks.json を書く。
+// 場面は tools/promo/scenes.mjs。PROMO_LANG=en で英語の画面。PROMO_NOZONE=1 で、探索に入ったときの地名を出さない（字幕版で、字幕と重なるため）。出力のフォルダに 00000.jpg… と、効果音の記録 sfx.json、目印 marks.json を書く。
 // 先に `PORT=8937 node .claude/serve.js` を動かしておく。
 // 画面は 936×432 を 2.5 倍（2340×1080）で撮る。iPhone と同じ横長で、まん中の 16:9（1920×1080）がゲームの画面、
 // 両はしは星の帯。App Store 用は全体を 1920×886 に縮め、Google Play 用はまん中を切り出す（tools/promo/make.mjs）。
@@ -210,6 +210,8 @@ if (process.argv[1] && process.argv[1].endsWith('rec.mjs')) {
   // 場面に view（{ w, h, scale }）があれば、その大きさで撮る。PROMO_SCALE で倍率だけ変えられる（下見は 0.5 など）
   const view = { ...SCENES[name].view };
   if (process.env.PROMO_SCALE) view.scale = +process.env.PROMO_SCALE;
+  // PROMO_LANG=en で英語の画面（会話・技の名前・タイトルのロゴ）。英語版の PV 用
+  if (process.env.PROMO_LANG) view.lang = process.env.PROMO_LANG;
   await session(async api => {
     await SCENES[name](api, out);
     const n = await api.stop();
