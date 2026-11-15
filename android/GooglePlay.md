@@ -25,7 +25,7 @@ Play Console に入れる文面と、答える項目の案。出すまでの手�
 ## 簡単な説明（80字まで）
 
 ```
-2頭身のにゃんこたちが世界の果てまで旅をする3DコマンドRPG。友情が深まるとコンボ技が増えていく。
+ゆかいなにゃんこたちと、世界を救う旅へ。仲よくなるほどコンボ技が増える、広告なしの3D RPG。
 ```
 
 ## 詳しい説明（4000字まで）
@@ -39,7 +39,7 @@ Play Console の「メインのストア掲載情報」→「翻訳を管理」�
 | 項目 | 内容 |
 | --- | --- |
 | アプリ名（30字まで） | Nyanko Fantasy |
-| 簡単な説明（80字まで） | A 3D turn-based RPG: cute cats journey to the end of the world, growing bonds. |
+| 簡単な説明（80字まで） | Save the world with a quirky crew of cats. Grow closer, unlock combos. No ads. |
 | 詳しい説明（4000字まで） | `ios/AppStore.md` の「英語の文面」の説明をそのまま使う |
 
 画像は日本語の画面のもの。英語の翻訳に画像を入れなければ、デフォルトの言語の画像が出る。
