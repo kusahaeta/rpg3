@@ -162,7 +162,7 @@ Your outfits show up everywhere: exploring, in story scenes, and in battle. Head
 rpg,cat,cats,kitten,turn-based,3d,adventure,offline,cute,story,party,jrpg,friendship,meow,quest
 ```
 
-スクリーンショットは、英語の画面のものを `ios/screenshots/en/` に用意した（日本語版と同じ 6 枚・同じサイズ。下の「スクリーンショット」）。English (U.S.) のローカリゼーションにはこちらを入れる。プレビュー動画は日本語の画面のものだけで、英語のローカリゼーションには主な言語の分が出る。
+スクリーンショットは、英語の画面のものを `ios/screenshots/en/` に用意した（日本語版と同じ 6 枚・同じサイズ。下の「スクリーンショット」）。English (U.S.) のローカリゼーションにはこちらを入れる。プレビュー動画も英語版 `promo/app-store-1920x886-world-en.mp4`（英語の画面・英語の見出し。下の「プレビュー動画」）を English (U.S.) に入れる。入れないと、主な言語（日本語）の分が出る。
 
 ## 年齢レーティングの答え
 
@@ -240,11 +240,11 @@ iPhone 6.9 インチ（横 2868×1320）を 3〜10 枚。`ios/screenshots/` の 
 
 ```
 PORT=8937 node .claude/serve.js
-for n in combo field woods tower yoroi fit-mike fit-kuro fit-shiro fit-tama shiro kuro oishii tama title; do node tools/shoot-store.mjs $n <撮るフォルダ>/ja/$n.png; done
+for n in combo demon woods tower yoroi fit-mike fit-kuro fit-shiro fit-tama shiro kuro oishii tama title; do node tools/shoot-store.mjs $n <撮るフォルダ>/ja/$n.png; done
 node tools/store-compose.mjs <撮るフォルダ>/ja ja     # ios/screenshots/ の 3 サイズと android/store/screenshots/
 ```
 
-英語版は `SHOT_LANG=en` を付けて `<撮るフォルダ>/en/` に撮り、`node tools/store-compose.mjs <撮るフォルダ>/en en`（`ios/screenshots/en/` に書く）。ヘッダは `node tools/shoot-store.mjs title ios/screenshots/header.png 1280x720 4.096875`（5244×2950。英語版は `SHOT_LANG=en` で `en/header.png`）。フィーチャー グラフィックは、日本語の title.png（3840×2160）を 1024×576 に縮めて、上から 60px のところで 500px の高さに切る（`sips -z 576 1024 title.png --out t.png && sips -c 500 1024 --cropOffset 60 0 t.png --out android/store/feature-graphic.png`）。
+英語版は `SHOT_LANG=en` を付けて `<撮るフォルダ>/en/` に撮り、`node tools/store-compose.mjs <撮るフォルダ>/en en`（`ios/screenshots/en/` と、Google Play の `android/store/screenshots/en/` に書く）。ヘッダは `node tools/shoot-store.mjs title ios/screenshots/header.png 1280x720 4.096875`（5244×2950。英語版は `SHOT_LANG=en` で `en/header.png`）。フィーチャー グラフィックは、日本語の title.png（3840×2160）を 1024×576 に縮めて、上から 60px のところで 500px の高さに切る（`sips -z 576 1024 title.png --out t.png && sips -c 500 1024 --cropOffset 60 0 t.png --out android/store/feature-graphic.png`）英語版（`android/store/en/feature-graphic.png`）は、`SHOT_LANG=en` で撮った title.png から同じ切り方で作る。
 
 ## プレビュー動画
 
@@ -275,6 +275,15 @@ node tools/promo/make.mjs <場面のフォルダ> <出力のフォルダ>
 for n in w_bMoon w_run w_forest w_town w_tower w_cave w_demon w_mike w_kuro w_shiro w_tama w_boar w_bField w_bWave w_bBoom w_title; do node tools/promo/rec.mjs $n <場面のフォルダ>/$n; done
 node tools/promo/make.mjs <場面のフォルダ> <出力のフォルダ> --plan=world
 ```
+
+英語版（`promo/app-store-1920x886-world-en.mp4`・`promo/google-play-1920x1080-world-en.mp4`）は、ゲームを英語にして同じ場面を撮り（`PROMO_LANG=en`。会話の行は `Tx` で英語の文にして探す）、見出しを `PLANS.world.captionsEn` にする。見出しは直訳でなく、同じ笑い・同じオチを英語で言う（"Cute faces. Huge moves."「……やりすぎた。」→ "...Overdid it." など）：
+
+```
+for n in w_bMoon w_run w_forest w_town w_tower w_cave w_demon w_mike w_kuro w_shiro w_tama w_boar w_bField w_bWave w_bBoom w_title; do PROMO_LANG=en node tools/promo/rec.mjs $n <英語の場面のフォルダ>/$n; done
+node tools/promo/make.mjs <英語の場面のフォルダ> <出力のフォルダ> --plan=world --lang=en
+```
+
+Google Play は言語ごとに YouTube の URL を登録できるので、英語版を別の動画として上げて英語の掲載情報に入れる。
 
 必殺技から始まる版は `promo/app-store-1920x886-ult.mp4`（28 秒。Google Play 用は `promo/google-play-1920x1080-ult.mp4`）。検索結果ではプレビューの頭が音なしで流れるので、いちばん動きのある必殺技を先にした。ミケ「炎の大車輪」→ シロ「ダイヤモンドダスト」→ マオウ「暗黒ねこ波」（それぞれカットイン → 技 → ダメージの数字）→ シロの「ファイア！」で魚が降る → 綿毛のてっぺんで眠るタマ → タイトル。曲は戦闘の曲から、魚の場面でタイトルの曲へ（後半はちょうど 6 小節で、街めぐり版と同じ所で終わる）。両わきの星の帯は入れず、ゲームの画面を横いっぱいにして上下を切る（場面ごとの位置は `PLANS.ult.crop`）。並びは `make.mjs` の `PLANS.ult`：
 

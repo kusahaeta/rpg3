@@ -3,7 +3,7 @@
 //   node tools/store-compose.mjs <撮ったフォルダ> <ja|en> [出力の根=.]
 // 撮ったフォルダには combo.png demon.png woods.png tower.png yoroi.png fit-mike.png fit-kuro.png fit-shiro.png fit-tama.png shiro.png kuro.png oishii.png tama.png title.png。
 // 書き出すもの（ja は ios/screenshots/、en は ios/screenshots/en/ の下）：6.9 インチ（すぐ下）・6.3inch/・6.5inch/。
-// ja は Google Play（android/store/screenshots/、1920×1080）も。見出しはゲームと同じ丸ゴシックで、Chrome に描かせる。
+// Google Play（1920×1080）も：ja は android/store/screenshots/、en は android/store/screenshots/en/。見出しはゲームと同じ丸ゴシックで、Chrome に描かせる。
 import { spawn } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,7 +15,7 @@ if (!rawDir || !['ja', 'en'].includes(lang)) { console.error('使い方: node to
 // 書き出す大きさ（出力のフォルダ・幅・高さ）
 const iosDir = join(root, 'ios/screenshots', lang === 'en' ? 'en' : '');
 const SIZES = [[iosDir, 2868, 1320], [join(iosDir, '6.3inch'), 2622, 1206], [join(iosDir, '6.5inch'), 2778, 1284]];
-if (lang === 'ja') SIZES.push([join(root, 'android/store/screenshots'), 1920, 1080]);
+SIZES.push([join(root, 'android/store/screenshots', lang === 'en' ? 'en' : ''), 1920, 1080]);
 
 // 並べ方。one：1 枚を枠のはばいっぱいに（y は上下の切り方。0 で下を切る・1 で上を切る）。
 // cols：縦に分けて並べる（cx・cy はその絵の中の、列のまん中に来る点。zoom は列の高さに対する絵の高さ）。
@@ -67,7 +67,7 @@ function page(spec, cap, W, H) {
     body = spec.grid.map(([name, cx, cy, label], i) => {
       const x = (i % 2) * (w + g), y = Math.floor(i / 2) * (h + g);
       return pane(name, x, y, w, h, cx, cy, 1, 0.12) + (label ? `<div class="lshade" style="left:${x}px;top:${y + h * 0.62}px;width:${w}px;height:${h * 0.38}px"></div>
-        <div class="label" style="left:${x + w / 2}px;bottom:${H - y - h + Math.round(H * 0.025)}px"><div>${label[0]}</div><div class="sub">${label[1]}</div></div>` : '');
+        <div class="label" data-w="${w}" style="left:${x + w / 2}px;bottom:${H - y - h + Math.round(H * 0.025)}px"><div>${label[0]}</div><div class="sub">${label[1]}</div></div>` : '');
     }).join('');
   } else if (spec.trio) {
     // 大きい絵はセリフの行（はばの 13〜88%）が切れないはばにする（iPhone の横長は 3 分の 2、Google Play の 16:9 は 4 分の 3）
@@ -118,6 +118,9 @@ try {
       if (ONLY && !ONLY.includes(file)) continue;
       await send('Page.setDocumentContent', { frameId, html: page(spec, cap, W, H) });
       await send('Runtime.evaluate', { expression: `Promise.all([...document.images].map(i => i.decode())).then(() => document.fonts.ready).then(() => true)`, awaitPromise: true });
+      // 紹介文がコマのはばの 88% をこえるときは、2 行ともそろえて縮める（Play の 1920×1080 はコマがせまく、英語の長い名前の行がふちに付いた）
+      await send('Runtime.evaluate', { expression: `document.querySelectorAll('.label[data-w]').forEach(l => { const k = l.dataset.w * 0.88 / l.offsetWidth;
+        if (k < 1) { l.style.transformOrigin = 'bottom center'; l.style.transform = 'translateX(-50%) scale(' + k + ')'; } }); true` });
       const shot = await send('Page.captureScreenshot', { format: 'jpeg', quality: 92 });
       const out = join(dir, file + '.jpg');
       writeFileSync(out, Buffer.from(shot.result.data, 'base64'));
