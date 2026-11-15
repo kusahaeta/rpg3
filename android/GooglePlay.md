@@ -42,7 +42,7 @@ Play Console の「メインのストア掲載情報」→「翻訳を管理」�
 | 簡単な説明（80字まで） | Save the world with a quirky crew of cats. Grow closer, unlock combos. No ads. |
 | 詳しい説明（4000字まで） | `ios/AppStore.md` の「英語の文面」の説明をそのまま使う |
 
-画像は日本語の画面のもの。英語の翻訳に画像を入れなければ、デフォルトの言語の画像が出る。
+英語の翻訳には、英語の画面のスクリーンショット `screenshots/en/*.jpg` の 6 枚を入れる（下の「画像」）。入れなければ、デフォルトの言語（日本語）の画像が出る。
 
 ## 画像（`android/store/`）
 
@@ -53,7 +53,7 @@ Play Console の「メインのストア掲載情報」→「翻訳を管理」�
 | スマートフォンのスクリーンショット | `screenshots/*.jpg` の 6 枚 | 1920×1080（16:9）。2〜8 枚、長い辺は短い辺の 2 倍まで |
 | 7 インチ・10 インチのタブレット | 同じ 6 枚 | 任意。入れるとタブレットの検索で出やすい |
 
-スクリーンショットは App Store と同じ 6 枚・同じ見出し（`ios/AppStore.md` の「スクリーンショット」）。`tools/store-compose.mjs <撮ったフォルダ> ja` が iPhone の分といっしょに 1920×1080 で書き出す（16:9 なので上下は切らない）。iPhone の 2868×1320 は横長すぎて（2.17:1）Play では受け付けない。
+スクリーンショットは App Store と同じ 6 枚・同じ見出し（`ios/AppStore.md` の「スクリーンショット」）。`tools/store-compose.mjs <撮ったフォルダ> ja` が iPhone の分といっしょに 1920×1080 で書き出す（16:9 なので上下は切らない）。英語版は `SHOT_LANG=en` で撮った絵から `tools/store-compose.mjs <撮ったフォルダ> en` で、`screenshots/en/` に書く（見出しは App Store の英語版と同じ）。iPhone の 2868×1320 は横長すぎて（2.17:1）Play では受け付けない。
 
 フィーチャー グラフィックは、夕暮れの空にしたあと（2026-10-25）に `tools/shoot-title.mjs` で撮った。撮りなおすときは：
 

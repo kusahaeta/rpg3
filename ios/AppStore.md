@@ -240,11 +240,11 @@ iPhone 6.9 インチ（横 2868×1320）を 3〜10 枚。`ios/screenshots/` の 
 
 ```
 PORT=8937 node .claude/serve.js
-for n in combo field woods tower yoroi fit-mike fit-kuro fit-shiro fit-tama shiro kuro oishii tama title; do node tools/shoot-store.mjs $n <撮るフォルダ>/ja/$n.png; done
+for n in combo demon woods tower yoroi fit-mike fit-kuro fit-shiro fit-tama shiro kuro oishii tama title; do node tools/shoot-store.mjs $n <撮るフォルダ>/ja/$n.png; done
 node tools/store-compose.mjs <撮るフォルダ>/ja ja     # ios/screenshots/ の 3 サイズと android/store/screenshots/
 ```
 
-英語版は `SHOT_LANG=en` を付けて `<撮るフォルダ>/en/` に撮り、`node tools/store-compose.mjs <撮るフォルダ>/en en`（`ios/screenshots/en/` に書く）。ヘッダは `node tools/shoot-store.mjs title ios/screenshots/header.png 1280x720 4.096875`（5244×2950。英語版は `SHOT_LANG=en` で `en/header.png`）。フィーチャー グラフィックは、日本語の title.png（3840×2160）を 1024×576 に縮めて、上から 60px のところで 500px の高さに切る（`sips -z 576 1024 title.png --out t.png && sips -c 500 1024 --cropOffset 60 0 t.png --out android/store/feature-graphic.png`）。
+英語版は `SHOT_LANG=en` を付けて `<撮るフォルダ>/en/` に撮り、`node tools/store-compose.mjs <撮るフォルダ>/en en`（`ios/screenshots/en/` と、Google Play の `android/store/screenshots/en/` に書く）。ヘッダは `node tools/shoot-store.mjs title ios/screenshots/header.png 1280x720 4.096875`（5244×2950。英語版は `SHOT_LANG=en` で `en/header.png`）。フィーチャー グラフィックは、日本語の title.png（3840×2160）を 1024×576 に縮めて、上から 60px のところで 500px の高さに切る（`sips -z 576 1024 title.png --out t.png && sips -c 500 1024 --cropOffset 60 0 t.png --out android/store/feature-graphic.png`）。
 
 ## プレビュー動画
 
