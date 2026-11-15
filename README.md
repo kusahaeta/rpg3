@@ -35,7 +35,7 @@ xcrun devicectl device install app --device <iPhone の名前か ID> ios/build/B
 xcrun devicectl device process launch --console --device <iPhone の名前か ID> com.kusahaeta.nyanko
 ```
 
-iPhone は「設定 → プライバシーとセキュリティ → デベロッパモード」をオンにしておく。横画面固定・全画面・画面スリープなし。裏に回すと BGM を止める。音は消音スイッチに従う。セーブはアプリ内の localStorage に残ります。デバッグ版は Mac の Safari の「開発」メニューから中身を調べられ、`--console` で起動するとページのエラーがそのまま出ます（起動引数 `-query debug` で `?debug` 付きで開く）。アイコンは `swift ios/tools/make-icon.swift ios/Nyanko/Assets.xcassets/AppIcon.appiconset/icon-1024.png` で描き直せます。
+iPhone は「設定 → プライバシーとセキュリティ → デベロッパモード」をオンにしておく。横画面固定・全画面・画面スリープなし。裏に回すと BGM を止める。音は消音スイッチに従う。セーブはアプリ内の localStorage に残ります。デバッグ版は Mac の Safari の「開発」メニューから中身を調べられ、`--console` で起動するとページのエラーがそのまま出ます（起動引数 `-query debug` で `?debug` 付きで開く）。アイコン（ストアのアイコンも兼ねる）は、タイトルの丘でミケの顔に寄った画を `PORT=8937 node .claude/serve.js` を動かしたまま `node tools/shoot-store.mjs icon icon.png` で撮り（2160px）、`sips -z 1024 1024 icon.png --out ios/Nyanko/Assets.xcassets/AppIcon.appiconset/icon-1024.png` と `sips -z 512 512 icon.png --out android/store/icon-512.png` で縮めます（透明なしの PNG）。
 
 App Store に出すリリース版は `sh ios/tools/release.sh` で `ios/build/export/Nyanko.ipa` に書き出し、`sh ios/tools/release.sh upload` で App Store Connect へ送ります（ビルド番号は main のコミット数）。iPhone 専用で、ストアの文面・年齢レーティング・審査へのメモ・出すまでの手順は `ios/AppStore.md`、スクリーンショットは `ios/screenshots/`、プライバシーポリシーとサポートのページは `privacy.html`・`support.html`（GitHub Pages で公開。`.github/workflows/pages.yml` がこの2ページだけを出すので、ゲーム本体は Pages では遊べない）にあります。
 

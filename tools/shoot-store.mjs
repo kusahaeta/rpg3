@@ -235,12 +235,34 @@ SHOTS.title = async api => {
   await step(api, 45);
 };
 
+// アイコン：タイトルの丘で、ミケだけをこちらへ向け、顔に寄る（うしろは夕暮れの空）。ほかの 4 匹とにゃんだーの樹は隠す（樹は小さくしか写らず、何かわからない）。
+// タイトルは夕日の逆光で顔が暗いので、カメラのほうから光をひとつ足す。目は開けて（smile）こちらを見て、首を少しかしげる（headZ）。
+// 小さく出たときに顔が背景にまぎれないよう、少し下から見上げて、頭のうしろを濃い空にする（明るい地平線と草はあごより下へ）。
+// 見上げると頭が平たく見えて耳がはちまきに隠れるので、そのぶんあごを引かせる（headX）。首の軸は首もとなので、かしげると頭が横へずれる。そのぶんカメラを横へずらして、顔をまん中に（dx）。
+// 画面のまん中の 720×720 を撮る（倍率 3 で 2160px。README のとおり 1024・512 に縮める）
+SHOTS.icon = async api => {
+  await api.ev(`document.querySelectorAll('.screen').forEach(e => e.style.visibility = 'hidden'); true`);
+  await api.run(2);
+  await api.ev(`{ const v = GFX.view, m = v.cats[0], p = m.group.position;
+    v.cats.forEach((o, i) => { o.group.visible = !i; });
+    v.scene.children.forEach(o => { if (o.position.z === -150) o.visible = false; });   // にゃんだーの樹（TitleView の TP）
+    m.group.rotation.y = 0; Object.assign(m.look, { t: 1e9, y: 0, tw: 0, up: 0 });
+    m.face.set('smile'); m.face.closed = false; m.face.blinkT = 99;
+    const fill = new THREE.DirectionalLight('#fff4ea', 1.1); fill.position.set(p.x, 2.7, p.z + 5.25); fill.target.position.copy(p); v.scene.add(fill, fill.target);
+    const dx = -0.04, pos = V3(p.x + dx, 0.55, p.z + 1.65), look = V3(p.x + dx, 0.93, p.z), up = v.update.bind(v);
+    v.update = (...a) => { up(...a); for (const k of POSE_KEYS) m.pose[k] = (POSES.idle[k] || 0); Object.assign(m.pose, { headX: 0.22, headY: 0.05, headZ: 0.18 });
+      v.camera.fov = 38; v.camera.updateProjectionMatrix();
+      v.camPos.copy(pos); v.camera.position.copy(pos); v.camLook.copy(look); v.curLook.copy(look); v.camera.lookAt(look); }; } true`);
+  await api.run(1.5);
+  return { clip: { x: 280, y: 0, width: 720, height: 720, scale: 1 } };
+};
+
 const [name, out, sizeArg = '1280x720', scaleArg = '3'] = process.argv.slice(2);
 if (!SHOTS[name] || !out) { console.error(`使い方: node tools/shoot-store.mjs <${Object.keys(SHOTS).join('|')}> <出力.png> [幅x高さ] [倍率]`); process.exit(1); }
 const [w, h] = sizeArg.split('x').map(Number);
 await session(async api => {
-  await SHOTS[name](api);
-  const shot = await api.send('Page.captureScreenshot', { format: 'png' });
+  const { clip } = (await SHOTS[name](api)) || {};
+  const shot = await api.send('Page.captureScreenshot', { format: 'png', ...(clip && { clip }) });
   const png = Buffer.from(shot.result.data, 'base64');
   writeFileSync(out, png);
   console.log(`${out}（${png.readUInt32BE(16)}×${png.readUInt32BE(20)}）`);
