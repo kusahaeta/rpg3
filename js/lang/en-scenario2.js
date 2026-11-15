@@ -885,7 +885,6 @@ Object.assign(EN, {
   '……え。……い、いまの、もう一回！': '...Huh. ...S-say that one more time!',
   '……言わない。': '...No.',
   'へへっ……いち！': 'Hehe... one!',
-  '……数えるな。': '...Don\'t count.',
   'だって、クロの「いっしょに行く」は、はじめてだもん。……これからは、ぼくが数えるね！': 'But that\'s the first time you\'ve said "I\'m coming with you," Kuro. ...From now on, I\'ll be the one counting!',
   '……好きにしろ。……すぐに、数えきれなくしてやる。': '...Do what you want. ...I\'ll make you lose count soon enough.',
   // ── scenario2.js .b_mike_shiro_5
