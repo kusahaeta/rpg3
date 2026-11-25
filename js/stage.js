@@ -1421,12 +1421,14 @@ const STAGE_FX = {
     GFX.flash('#e0ffd0', 0.25, 0.6);
   },
   // 樹の心臓の光が、役を引きよせる（第七章、コドクに勝ったあと、タマが樹に取りこまれかける）
-  //   treePull:役,in,前,高さ … 光につつまれ、心臓のほうへ浮いて引きよせられる（前：舞台の前の位置まで。高さ：浮く高さ）。光の粒は、役のまわりから心臓へ流れこむ
+  //   treePull:役,in,前,高さ … 心臓から光の流れがのびて役をつつみ、役は浮いて、心臓のほうへ引きよせられる（前：舞台の前の位置まで。高さ：浮く高さ）
+  //                            光の流れは、役から心臓へ、らせんの帯が流れこむ筒。役の体は光にそまり、体からはがれた光の粒が流れに乗って心臓へ吸われる。
+  //                            心臓は明るくなり、鼓動のたびに、役がぐっと心臓のほうへ引かれる（区画の heartFx。樹の心臓の間のほかでは、自分で数える）
   //   treePull:役,slip,前     … ぐいっと、もう少し引かれる（つないだ手がはなれかける）
-  //   treePull:役,back,前     … 流れが逆になる。光の粒は心臓から役をこえて一行のほうへ流れ、役は押しもどされて床へ下りる
+  //   treePull:役,back,前,高さ … 流れが逆になる。光は金色にかわって、心臓から役をこえて一行のほうへ流れ、役は押しもどされて、床の近く（高さ。ないときは床）まで下りる
   //   treePull:役,hold,手の役  … 手の役が、役の手をつかむ（つないだ手のあいだに、小さなあたたかい光をともす）
-  //   treePull:役,off          … 光がおさまる（つないだ手の光も消える）
-  //   引かれているあいだ、役は一行のほうを向いたまま（話し手も見ない）
+  //   treePull:役,off          … 光がおさまる（つないだ手の光も消える）。まだ浮いていたら、すとんと床へ下りる
+  //   引かれているあいだ、役は一行のほうを向いたまま（話し手も見ない）。体の置き場所は、この演出が決める（S.base・S.lift に、鼓動の引きと浮きのゆれを足す）
   treePull(arg) {
     const [k, mode = 'in', z, h] = String(arg).split(','), a = this.actors[k]; if (!a) return;
     const core = this.point('core') || this.W(0, 12, 4.6);
@@ -1434,11 +1436,48 @@ const STAGE_FX = {
     if (!S) {
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#b8ff9a', 1.5), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
       this.scene.add(sp);
-      S = this.pull = { a, dir: 0, k: 0, sp, hold: {} };
+      // 光の流れ：役（y=0）から心臓（y=1）へのびる筒。心臓に近いほど太い。らせんの帯が、uDir の向きへ流れる。uReach：心臓の側から、どこまでのびたか
+      const geo = new THREE.CylinderGeometry(1, 1, 1, 24, 40, true); geo.translate(0, 0.5, 0);
+      const mat = new THREE.ShaderMaterial({
+        uniforms: { uCol: { value: hdr('#b8ff9a', 1.3) }, uK: { value: 0 }, uT: { value: 0 }, uDir: { value: 1 }, uLen: { value: 8 }, uReach: { value: 0 }, uRa: { value: 0.5 }, uRb: { value: 1.5 }, uBeat: { value: 0 } },
+        vertexShader: `uniform float uT, uDir, uLen, uRa, uRb; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+          void main() {
+            vUv = uv; float s = position.y, a = uv.x * 6.2832;
+            float r = mix(uRa, uRb, s * s) * (1.0 + 0.1 * sin(s * uLen * 1.6 - uT * 7.0 * uDir + a * 2.0));
+            vec4 mv = modelViewMatrix * vec4(position.x * r, s, position.z * r, 1.0);
+            vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv;
+          }`,
+        fragmentShader: `uniform vec3 uCol; uniform float uK, uT, uDir, uLen, uReach, uBeat; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+          void main() {
+            float face = pow(abs(dot(normalize(vN), normalize(vV))), 1.3);
+            float sp = fract(vUv.y * uLen / 1.5 - uT * 1.8 * uDir + vUv.x * 2.0);
+            float band = smoothstep(0.0, 0.18, sp) * (1.0 - smoothstep(0.3, 0.7, sp));
+            float ends = smoothstep(0.0, 0.16, vUv.y) * (1.0 - smoothstep(0.72, 0.92, vUv.y));
+            float reach = smoothstep(1.0 - uReach - 0.12, 1.0 - uReach, vUv.y);
+            float k = uK * ends * reach * face * (0.16 + band * (0.75 + uBeat * 0.6));
+            gl_FragColor = vec4(uCol, k);
+          }`,
+        transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      });
+      const stream = new THREE.Mesh(geo, mat); stream.frustumCulled = false; stream.renderOrder = 2; stream.visible = false; this.scene.add(stream);
+      S = this.pull = { a, dir: 0, k: 0, hk: 0, reach: 0, sp, stream, hold: {}, base: null, lift: 0, go: 0, beatT: 0 };
+      const cGreen = hdr('#b8ff9a', 1.3), cGold = hdr('#ffe6a0', 1.5), up = V3(0, 1, 0);
       this.zoneTicks.push((dt, t) => {
         S.k = lerp(S.k, S.dir ? 1 : 0, 1 - Math.exp(-3 * dt));
-        const b = S.a, c = b.pos.clone(); c.y += b.lift + b.headH * 0.55;
-        sp.position.copy(c); sp.scale.setScalar((1.3 + Math.sin(t * 7) * 0.12) * S.k + 0.01); sp.material.opacity = S.k * 0.4;
+        S.hk = lerp(S.hk, S.dir > 0 ? 1 : S.dir < 0 ? 0.5 : 0, 1 - Math.exp(-2.5 * dt));
+        S.reach = S.dir ? Math.min(1, S.reach + dt / 0.7) : S.reach;
+        // 心臓の鼓動（樹の心臓の間なら、区画の鼓動にあわせる）。引かれているあいだ、心臓も明るくなる
+        const H = this.heartFx; let beat;
+        if (H) { H.pull = S.hk; beat = H.beat; } else { const q = (S.beatT += dt) % 1.9; beat = 0.65 * (Math.exp(-(((q - 0.06) / 0.07) ** 2)) + 0.55 * Math.exp(-(((q - 0.34) / 0.08) ** 2))); }
+        const b = S.a;
+        // 鼓動のたびに、ぐっと心臓のほうへ引かれる。浮いているあいだは、ゆっくり上下にゆれる
+        if (S.base) {
+          const pull = S.dir > 0 ? beat * 0.2 * S.k : 0;
+          b.pos.copy(S.base).addScaledVector(this.F, pull); b.pos.y = this.gy(b.pos.x, b.pos.z);
+          b.lift = S.lift + (S.lift > 0.05 ? Math.sin(t * 1.7) * 0.05 * S.k : 0);
+        }
+        const c = b.pos.clone(); c.y += b.lift + b.headH * 0.55;
+        sp.position.copy(c); sp.scale.setScalar((1.3 + Math.sin(t * 7) * 0.12 + beat * 0.3) * S.k + 0.01); sp.material.opacity = S.k * 0.4;
         // つないだ手：つかんでいる役の手と、役の手のあいだに光をともす（左右の手のうち、近いほう）
         const near = (q, to) => ['L', 'R'].map(s => q.m['arm' + s].grip.getWorldPosition(V3())).sort((p, r) => p.distanceTo(to) - r.distanceTo(to))[0];
         for (const [hk, hs] of Object.entries(S.hold)) {
@@ -1446,13 +1485,31 @@ const STAGE_FX = {
           const hp = near(ha, c), tp = near(b, hp);
           hs.position.lerpVectors(hp, tp, 0.5); hs.scale.setScalar(0.34 + Math.sin(t * 9 + hk.length) * 0.05);
         }
+        // 光の流れ：役の体の中ほどから、心臓の光の中まで
+        const to = V3().subVectors(core, c), len = to.length(), dir = to.clone().multiplyScalar(1 / len), U = stream.material.uniforms;
+        stream.visible = S.k > 0.01;
+        stream.position.copy(c); stream.quaternion.setFromUnitVectors(up, dir); stream.scale.set(1, len, 1);
+        U.uK.value = S.k; U.uT.value = t; U.uLen.value = len; U.uReach.value = S.reach; U.uBeat.value = S.dir > 0 ? beat : 0;
+        U.uDir.value = lerp(U.uDir.value, S.dir < 0 ? -1 : 1, 1 - Math.exp(-4 * dt)); U.uCol.value.lerp(S.dir < 0 ? cGold : cGreen, 1 - Math.exp(-3 * dt));
         if (S.k < 0.05) return;
+        // 役の体が光にそまる（引かれているあいだは若葉の色、押しもどされると金色）
+        if (S.dir) b.m.flash(S.dir > 0 ? '#c8ffb0' : '#ffe8b0', S.k * (S.dir > 0 ? 0.32 + beat * 0.3 : 0.25));
         const jit = s => V3((Math.random() - 0.5) * s, (Math.random() - 0.5) * s * 0.8, (Math.random() - 0.5) * s);
-        for (let i = 0; i < 4; i++) if (Math.random() < dt * (S.dir > 0 ? 30 : 45) * S.k) {
-          const col = hdr(pick(['#b8ff9a', '#fff0a8', '#d8ffc0']), 2.4), life = 0.8 + Math.random() * 0.4;
-          if (S.dir > 0) {   // 役のまわりから心臓へ
-            const from = c.clone().add(jit(1.6)), to = core.clone().add(jit(1.2));
-            this.p.emit(from, to.sub(from).multiplyScalar(1 / life), col, { life, size: 0.09, drag: 0 });
+        const side = () => { const r = V3().crossVectors(dir, up).normalize(), u = V3().crossVectors(r, dir), a = Math.random() * Math.PI * 2; return r.multiplyScalar(Math.cos(a)).addScaledVector(u, Math.sin(a)); };
+        const along = (s, rr) => c.clone().addScaledVector(dir, s * len).addScaledVector(side(), rr * (0.5 + s * s * 1.0));
+        if (S.dir > 0 && S.reach > 0.9) {
+          // 役の体からはがれた光の粒が、流れに乗って心臓へ吸われる
+          for (let i = 0; i < 3; i++) if (Math.random() < dt * 16 * S.k) {
+            const from = c.clone().add(jit(0.8)), life = 0.9 + Math.random() * 0.4, dest = along(0.35 + Math.random() * 0.2, Math.random() * 0.4);
+            this.p.emit(from, dest.sub(from).multiplyScalar(1 / life), hdr(pick(['#d8ffc0', '#ffffff', '#b8ff9a']), 2.4), { life, size: 0.07 + Math.random() * 0.04, drag: 0 });
+          }
+        }
+        // 流れの中を進む光の粒（引かれているあいだは心臓へ、押しもどされると心臓から一行のほうへ）
+        for (let i = 0; i < 4; i++) if (Math.random() < dt * (S.dir > 0 ? 22 : 40) * S.k * S.reach) {
+          const col = hdr(S.dir > 0 ? pick(['#b8ff9a', '#fff0a8', '#d8ffc0']) : pick(['#fff0a8', '#ffe0a0', '#ffffff']), 2.4), life = 0.8 + Math.random() * 0.4;
+          if (S.dir > 0) {
+            const s0 = 0.08 + Math.random() * 0.5, from = along(s0, 0.5 + Math.random() * 0.6), dest = along(Math.min(0.85, s0 + 0.45), Math.random() * 0.4);
+            this.p.emit(from, dest.sub(from).multiplyScalar(1 / life), col, { life, size: 0.09 + Math.random() * 0.05, drag: 0 });
           } else {           // 心臓のほうから、役をこえて一行のほうへ（心臓は根にかこまれて見えないので、少し手前から）
             const from = V3().lerpVectors(core, c, 0.45).add(jit(1.6)), to = c.clone().addScaledVector(this.F, -3.5).add(jit(2.4)); to.y = Math.max(to.y, this.O.y + 0.3);
             this.p.emit(from, to.sub(from).multiplyScalar(1 / life), col, { life, size: 0.11, drag: 0 });
@@ -1467,14 +1524,32 @@ const STAGE_FX = {
       if (!S.hold[z]) { const hs = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffe8b0', 2.2), blending: THREE.AdditiveBlending, depthWrite: false })); this.scene.add(hs); S.hold[z] = hs; }
       Sfx.tone(880, 0.25, 'sine', 0.04); return;
     }
-    if (mode === 'off') { S.dir = 0; a.faceLock = null; for (const hs of Object.values(S.hold)) hs.removeFromParent(); S.hold = {}; return; }
+    if (mode === 'off') {
+      S.dir = 0; a.faceLock = null; for (const hs of Object.values(S.hold)) hs.removeFromParent(); S.hold = {};
+      // 体の置き場所を役に返す（押しもどされきる前に進めたら、行き先まで急いで運んで、床へ下ろす）
+      if (S.base) {
+        S.go++; const from = S.base.clone(), to = S.to || from, l = S.lift; S.base = null;
+        if (from.distanceTo(to) > 0.01 || l > 0.01) GFX.tween(0.3, e => { a.pos.lerpVectors(from, to, Ease.out(e)); a.pos.y = this.gy(a.pos.x, a.pos.z); a.lift = l * (1 - e * e); }).then(() => {
+          if (l < 0.05) return;
+          const foot = V3(a.pos.x, a.pos.y + 0.05, a.pos.z);   // 下りたところに、光の粒が小さく舞う
+          this.p.burst(foot, '#fff0c8', 18, { speed: 1.4, up: 0.4, life: 0.6, size: 0.05 }); this.fx.ring(foot, '#fff0c8', { r: 0.7, life: 0.5, width: 0.08, k: 1.6 });
+          Sfx.tone(330, 0.18, 'sine', 0.05, -80);
+        });
+        else { a.pos.copy(to); a.pos.y = this.gy(a.pos.x, a.pos.z); a.lift = 0; }
+      }
+      return;
+    }
     // 役は一行のほうを向いたまま、前（心臓の方向）へ流される
     a.faceLock = Math.atan2(-this.F.x, -this.F.z);
-    const lx = V3().subVectors(a.pos, this.O).dot(this.R), p0 = a.pos.clone(), l0 = a.lift;
-    const go = (to, lift, dur, ease) => GFX.tween(dur, e => { a.pos.lerpVectors(p0, to, e); a.pos.y = this.gy(a.pos.x, a.pos.z); a.lift = lerp(l0, lift, e); }, ease);
+    if (!S.base) { a.path = null; S.base = a.pos.clone(); S.lift = a.lift; }
+    const lx = V3().subVectors(S.base, this.O).dot(this.R), p0 = S.base.clone(), l0 = S.lift;
+    const go = (to, lift, dur, ease, wait = 0) => { const id = ++S.go; S.to = to.clone(); return GFX.delay(wait).then(() => GFX.tween(dur, e => { if (S.go !== id || !S.base) return; S.base.lerpVectors(p0, to, e); S.lift = lerp(l0, lift, e); }, ease)); };
     if (mode === 'in') {
-      S.dir = 1;
-      go(this.W(lx, +z), +(h ?? 0.4), 3.2, Ease.inOut);
+      // 光が心臓からのびてタマに届いてから、体が浮く
+      S.dir = 1; S.reach = 0;
+      go(this.W(lx, +z), +(h ?? 0.4), 3.2, Ease.inOut, 0.6);
+      this.fx.sprite(core, '#d8ffc0', 5, 0.8, { k: 2.2, grow: 1.3 });
+      GFX.delay(0.6).then(() => { if (S.dir > 0) { this.fx.sprite(a.headPos().addScaledVector(V3(0, -1, 0), a.headH * 0.4), '#e8ffd8', 2.2, 0.6, { k: 2.4, grow: 1.6 }); GFX.flash('#e8ffd8', 0.18, 0.4); } });
       Sfx.tone(110, 2.4, 'sine', 0.06, 160); Sfx.tone(440, 2.2, 'sine', 0.03, 220, 0.3);
     } else if (mode === 'slip') {
       go(this.W(lx, +z), l0 + 0.08, 0.5, Ease.out);
@@ -1482,7 +1557,7 @@ const STAGE_FX = {
     } else if (mode === 'back') {
       S.dir = -1;
       this.fx.sprite(core, '#fff0a8', 6, 0.9, { k: 2.6, grow: 1.4 }); GFX.flash('#fff8e0', 0.35, 0.7);
-      go(this.W(lx, +z), 0, 2.4, Ease.inOut);
+      go(this.W(lx, +z), +(h ?? 0), 2.4, Ease.inOut);
       Sfx.tone(660, 0.8, 'sine', 0.05, -220); Sfx.tone(990, 1, 'sine', 0.04, -330, 0.25);
     }
   },
