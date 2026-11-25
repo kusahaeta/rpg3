@@ -12443,13 +12443,15 @@ const ZONE_BUILD = {
     });
 
     // ---- 鼓動にあわせて動かす
+    // heartFx：会話の舞台の演出（treePull）とのやりとり。beat は今の鼓動の強さ（引かれている子が、鼓動にあわせて引かれる）、pull は心臓が光を強める割合
+    const hfx = K.v.heartFx = { beat: 0, pull: 0 };
     K.tick((dt, t) => {
-      const b = beat(t);
-      heart.scale.setScalar(1 + b * 0.07); wrap.rotation.y += dt * 0.12; core.rotation.y -= dt * 0.05;
-      coreM.emissiveIntensity = (revived ? 1.1 : 0.55) + b * 1.1;
-      auraM[0].opacity = 0.12 + b * 0.18; auraM[1].opacity = 0.04 + b * 0.07; aura[1].scale.setScalar(1 + b * 0.12);
+      const b = beat(t), pk = hfx.pull; hfx.beat = b;
+      heart.scale.setScalar(1 + b * (0.07 + pk * 0.05)); wrap.rotation.y += dt * 0.12; core.rotation.y -= dt * 0.05;
+      coreM.emissiveIntensity = (revived ? 1.1 : 0.55) + b * 1.1 + pk * (0.9 + b * 1.4);
+      auraM[0].opacity = 0.12 + b * 0.18 + pk * (0.14 + b * 0.16); auraM[1].opacity = 0.04 + b * 0.07 + pk * 0.08; aura[1].scale.setScalar(1 + b * 0.12 + pk * 0.15);
       lineM.opacity = 0.5 + b * 0.5;
-      if (hl) hl.intensity = 6 + b * 9;
+      if (hl) hl.intensity = 6 + b * 9 + pk * (6 + b * 8);
       runes.forEach((g, i) => { g.rotation.y = t * (i % 2 ? -0.05 : 0.04) * (1 + i * 0.4); });
       // 光の輪は、鼓動が心臓から外へ伝わるように、内から順に明るくなる
       const k0 = ((t % period) + period) % period;
