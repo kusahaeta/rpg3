@@ -43,6 +43,10 @@ Object.assign(POSES, {
   // 浮いている子の手を、高めにのばしてつかむ（grab は左手、grabR は右手）
   grab:        { armLx: -2.8, armLz: -0.05, elbowL: -0.1, lean: 0.1, headX: -0.25, legLx: -0.35, kneeL: 0.2 },
   grabR:       { armRx: -2.8, armRz: 0.05, elbowR: -0.1, lean: 0.1, headX: -0.25, legRx: -0.35, kneeR: 0.2 },
+  // 浮いている子の手をつかんだまま、いっしょに引きずられまいと、うしろへ体をそらしてふんばる（シロ）
+  dragged:     { armLx: -2.7, armLz: -0.05, elbowL: -0.1, armRx: -0.7, armRz: 0.4, elbowR: -0.5, lean: -0.27, hipsY: -0.08, headX: -0.2, legLx: -0.65, kneeL: 0.08, legRx: 0.35, kneeR: 0.6 },
+  // 浮いている子の手へ、右手を高くのばす（まだ届かない。ミケ）
+  reachR:      { armRx: -2.5, armRz: 0.1, elbowR: -0.15, armLx: -0.4, armLz: -0.3, elbowL: -0.4, lean: 0.14, headX: -0.3, legRx: -0.4, kneeR: 0.2 },
   // 樹の心臓の光に引かれて浮かぶ（タマ）：両手を下の一行のほうへのばし、足はうしろへ流れる
   pulled:      { armLx: -0.5, armLz: 0.12, elbowL: -0.1, armRx: -0.5, armRz: -0.12, elbowR: -0.1, lean: -0.1, headX: -0.1, legLx: 0.45, kneeL: 0.35, legRx: 0.3, kneeR: 0.45 },
   // うしろから両手で肩をささえて、ふんばる（クロがシロを）
@@ -1427,6 +1431,10 @@ const STAGE_FX = {
   //   treePull:役,slip,前     … ぐいっと、もう少し引かれる（つないだ手がはなれかける）
   //   treePull:役,back,前,高さ … 流れが逆になる。光は金色にかわって、心臓から役をこえて一行のほうへ流れ、役は押しもどされて、床の近く（高さ。ないときは床）まで下りる
   //   treePull:役,hold,手の役  … 手の役が、役の手をつかむ（つないだ手のあいだに、小さなあたたかい光をともす）
+  //   treePull:役,drag,手の役  … 手の役まで、いっしょに心臓のほうへ引きずられる（はじめにぐいっと、あとはじわじわ。鼓動のたびにぐっと。足もとに土ぼこり）
+  //   treePull:役,catch,支え役 … 支え役が自分から駆けてきて、手の役のうしろから肩をつかむ。着いたところで引きずられるのが止まる
+  //   treePull:役,join,仲間    … 仲間が駆けてきて、手の役の右どなりから、浮いた役へ手をのばす（つかむのは、その仲間の hold で）
+  //                            着いた子は、手の役といっしょに動く（back で、みんなそろって、もとの所へすべりもどる）
   //   treePull:役,off          … 光がおさまる（つないだ手の光も消える）。まだ浮いていたら、すとんと床へ下りる
   //   引かれているあいだ、役は一行のほうを向いたまま（話し手も見ない）。体の置き場所は、この演出が決める（S.base・S.lift に、鼓動の引きと浮きのゆれを足す）
   treePull(arg) {
@@ -1460,7 +1468,7 @@ const STAGE_FX = {
         transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
       });
       const stream = new THREE.Mesh(geo, mat); stream.frustumCulled = false; stream.renderOrder = 2; stream.visible = false; this.scene.add(stream);
-      S = this.pull = { a, dir: 0, k: 0, hk: 0, reach: 0, sp, stream, hold: {}, base: null, lift: 0, go: 0, beatT: 0 };
+      S = this.pull = { a, dir: 0, k: 0, hk: 0, reach: 0, sp, stream, hold: {}, base: null, lift: 0, go: 0, beatT: 0, off: 0, drag: null, catch: {}, offGo: null };
       const cGreen = hdr('#b8ff9a', 1.3), cGold = hdr('#ffe6a0', 1.5), up = V3(0, 1, 0);
       this.zoneTicks.push((dt, t) => {
         S.k = lerp(S.k, S.dir ? 1 : 0, 1 - Math.exp(-3 * dt));
@@ -1470,11 +1478,44 @@ const STAGE_FX = {
         const H = this.heartFx; let beat;
         if (H) { H.pull = S.hk; beat = H.beat; } else { const q = (S.beatT += dt) % 1.9; beat = 0.65 * (Math.exp(-(((q - 0.06) / 0.07) ** 2)) + 0.55 * Math.exp(-(((q - 0.34) / 0.08) ** 2))); }
         const b = S.a;
+        // 引きずられる（drag）：はじめの勢いがじわじわまで落ち、鼓動のたびにぐっと進む。S.off：みんながそろって前へずれた長さ
+        const D = S.drag;
+        if (D) {
+          D.sp = 0;
+          if (D.on) { D.v = lerp(D.v, 0.2, 1 - Math.exp(-1.2 * dt)); const v = D.v + beat * 0.5; S.off = Math.min(1.4, S.off + v * dt); D.sp = v; if (S.off >= 1.4) D.on = false; }
+        }
+        // 押しもどし（back）：みんないっしょに、もとの所へすべりもどる
+        if (S.offGo) { const g = S.offGo; g.t = Math.min(1, g.t + dt / g.dur); S.off = lerp(g.from, g.to, Ease.inOut(g.t)); if (D) D.sp = Math.abs(g.from - g.to) / g.dur * 1.5 * Math.sin(g.t * Math.PI); if (g.t >= 1) S.offGo = null; }
         // 鼓動のたびに、ぐっと心臓のほうへ引かれる。浮いているあいだは、ゆっくり上下にゆれる
+        const surge = S.dir > 0 ? beat * 0.2 * S.k : 0;
         if (S.base) {
-          const pull = S.dir > 0 ? beat * 0.2 * S.k : 0;
-          b.pos.copy(S.base).addScaledVector(this.F, pull); b.pos.y = this.gy(b.pos.x, b.pos.z);
+          b.pos.copy(S.base).addScaledVector(this.F, S.off + surge); b.pos.y = this.gy(b.pos.x, b.pos.z);
           b.lift = S.lift + (S.lift > 0.05 ? Math.sin(t * 1.7) * 0.05 * S.k : 0);
+        }
+        if (D) {
+          const h = this.actors[D.k];
+          D.sk = lerp(D.sk, D.on ? 1 : 0, 1 - Math.exp(-6 * dt));   // 支えられたら、鼓動の引きは、なめらかに消える
+          h.pos.copy(D.base).addScaledVector(this.F, S.off + surge * D.sk); h.pos.y = this.gy(h.pos.x, h.pos.z);
+          // すべる足もとに、土ぼこりが立つ
+          if (D.sp > 0.12) for (const c of [h, ...Object.values(S.catch).filter(c => c.at).map(c => c.a)]) for (let i = 0; i < 2; i++) if (Math.random() < dt * 22 * Math.min(1.5, D.sp)) {
+            const p = c.pos.clone().addScaledVector(this.R, (Math.random() - 0.5) * 0.35).addScaledVector(this.F, (Math.random() - 0.3) * 0.3); p.y += 0.04;
+            this.p.emit(p, V3((Math.random() - 0.5) * 0.5, 0.25 + Math.random() * 0.35, 0).addScaledVector(this.F, -0.3 - Math.random() * 0.4), hdr(pick(['#e8e0c8', '#d4c8a8', '#f4eedc']), 1.4), { life: 0.7 + Math.random() * 0.4, size: 0.09 + Math.random() * 0.07, drag: 1.5 });
+          }
+          // 駆けつける仲間：手の役の、決まったそばへ（手の役が動くので、毎フレーム行き先をかえる）。着いたら、いっしょに動く
+          for (const c of Object.values(S.catch)) {
+            const ca = c.a;
+            if (c.at) { ca.pos.copy(c.base).addScaledVector(this.F, S.off); ca.pos.y = this.gy(ca.pos.x, ca.pos.z); continue; }
+            if ((c.wait -= dt) > 0) continue;
+            const want = h.pos.clone().addScaledVector(this.R, c.r).addScaledVector(this.F, c.f); want.y = this.gy(want.x, want.z);
+            if (Math.hypot(want.x - ca.pos.x, want.z - ca.pos.z) > 0.1) { ca.path = [want]; ca.speed = c.speed; continue; }
+            c.at = true; ca.path = null; c.base = ca.pos.clone().addScaledVector(this.F, -S.off);
+            ca.setStance(c.stance); ca.faceT = b.key;
+            if (c.stop) {
+              // うしろから肩をつかんで、ふんばる。引きずられるのが止まる
+              D.on = false; GFX.shake(0.15); Sfx.tone(150, 0.25, 'triangle', 0.06, -50);
+              const p = h.pos.clone(); p.y += 0.05; this.p.burst(p, '#cfc4a8', 14, { speed: 1.2, up: 0.3, life: 0.6, size: 0.06 });
+            }
+          }
         }
         const c = b.pos.clone(); c.y += b.lift + b.headH * 0.55;
         sp.position.copy(c); sp.scale.setScalar((1.3 + Math.sin(t * 7) * 0.12 + beat * 0.3) * S.k + 0.01); sp.material.opacity = S.k * 0.4;
@@ -1524,11 +1565,29 @@ const STAGE_FX = {
       if (!S.hold[z]) { const hs = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: hdr('#ffe8b0', 2.2), blending: THREE.AdditiveBlending, depthWrite: false })); this.scene.add(hs); S.hold[z] = hs; }
       Sfx.tone(880, 0.25, 'sine', 0.04); return;
     }
+    if (mode === 'drag') {
+      const h = this.actors[z]; if (!h) return;
+      h.path = null; S.drag = { k: z, base: h.pos.clone().addScaledVector(this.F, -S.off), on: true, v: 0.8, sp: 0, sk: 1 };
+      GFX.shake(0.25); Sfx.tone(120, 0.7, 'sawtooth', 0.05, -40);
+      return;
+    }
+    if (mode === 'catch' || mode === 'join') {
+      const c = this.actors[z]; if (!c || !S.drag) return;
+      S.catch[z] = mode === 'catch' ? { a: c, r: 0, f: -0.5, speed: 2.9, wait: 0.7, stance: 'brace', stop: true } : { a: c, r: 0.85, f: 0.35, speed: 3.4, wait: 0.85, stance: 'reachR' };
+      return;
+    }
     if (mode === 'off') {
       S.dir = 0; a.faceLock = null; for (const hs of Object.values(S.hold)) hs.removeFromParent(); S.hold = {};
+      // 引きずられていた子・駆けつけた子の置き場所を返す（すべりもどる途中なら、もどった先へ。歩きだした子はそのまま）
+      const off = S.offGo ? S.offGo.to : S.off; S.offGo = null;
+      if (S.drag) {
+        const h = this.actors[S.drag.k], ms = [[h, S.drag.base], ...Object.values(S.catch).filter(c => c.at).map(c => [c.a, c.base])];
+        for (const [m, base] of ms) if (m && !m.path) { m.pos.copy(base).addScaledVector(this.F, off); m.pos.y = this.gy(m.pos.x, m.pos.z); }
+        S.drag = null; S.catch = {};
+      }
       // 体の置き場所を役に返す（押しもどされきる前に進めたら、行き先まで急いで運んで、床へ下ろす）
       if (S.base) {
-        S.go++; const from = S.base.clone(), to = S.to || from, l = S.lift; S.base = null;
+        S.go++; const from = a.pos.clone(), to = (S.to || S.base).clone().addScaledVector(this.F, off), l = S.lift; S.base = null; S.off = 0;
         if (from.distanceTo(to) > 0.01 || l > 0.01) GFX.tween(0.3, e => { a.pos.lerpVectors(from, to, Ease.out(e)); a.pos.y = this.gy(a.pos.x, a.pos.z); a.lift = l * (1 - e * e); }).then(() => {
           if (l < 0.05) return;
           const foot = V3(a.pos.x, a.pos.y + 0.05, a.pos.z);   // 下りたところに、光の粒が小さく舞う
@@ -1558,6 +1617,7 @@ const STAGE_FX = {
       S.dir = -1;
       this.fx.sprite(core, '#fff0a8', 6, 0.9, { k: 2.6, grow: 1.4 }); GFX.flash('#fff8e0', 0.35, 0.7);
       go(this.W(lx, +z), +(h ?? 0), 2.4, Ease.inOut);
+      if (S.off > 0.01) S.offGo = { from: S.off, to: 0, t: 0, dur: 2.4 };
       Sfx.tone(660, 0.8, 'sine', 0.05, -220); Sfx.tone(990, 1, 'sine', 0.04, -330, 0.25);
     }
   },

@@ -431,7 +431,7 @@ Object.assign(EN, {
   '……（あの日と、おなじ。……つめたい川。ぱちんとはじけた魔法。……指のあいだから、すべっていった、ユキの手……）': '...(Just like that day. ...The cold river. The spell that popped apart. ...Yuki\'s hand, slipping through my fingers...)',
   '……（こわい。……また、失敗したら……）': '...(I\'m scared. ...What if I fail again...)',
   '……それでも！': '...Even so!',
-  'シロは、タマの手をつかんだまま、魔法をとなえた。……光が、はじける。': 'Still holding Tama\'s hand, Shiro cast her spell. ...The light burst apart.',
+  'シロは、タマの手をつかんだまま、魔法をとなえた。……光が、はじける。はずみで、シロの足まで、ずるずると心臓のほうへ引きずられていく。': 'Still holding Tama\'s hand, Shiro cast her spell. ...The light burst apart. The jolt sent Shiro\'s feet skidding, and she was dragged toward the heart too.',
   '失敗した！　……クロ、支えて！　ミケ、タマの手を！': 'I failed! ...Kuro, hold me steady! Mike, grab Tama\'s hand!',
   '……ああ。言ったはずだ。手がはなれそうになったら、俺がつかむと。': '...Got it. I told you. If your hand ever starts to slip, I\'ll grab it.',
   'クロはシロのうしろから肩をつかみ、ふたりを押し流そうとする光の圧力を、ふんばって受け止めた。': 'Kuro took Shiro by the shoulders from behind, dug in his heels, and held fast against the light trying to sweep them both away.',

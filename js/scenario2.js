@@ -556,11 +556,13 @@ Object.assign(SCENES, {
     // call：光の流れを背にしたタマの寄り（pull と同じ右の側から）。hands：浮いたタマの手をつかむシロを、右の横から
     // held：タマの手をつかんだまま見上げるシロの寄りを、左の前から（話し手の寄りの画は、浮いたタマが顔の前をふさいで、うしろから撮ってしまう）
     // land：シロの前に下りたタマを、シロの左の肩ごしに（タマの顔が見える）
-    // tug：タマの手をつかむシロ・ミケと、シロをうしろからささえるクロを、一行のうしろの高いところから（浮いたタマの顔が、みんなの頭の上に見える）
+    // pull は、魔法がはじけたあと、心臓のほうへ引きずられるシロと、うしろから駆けてくるクロ・ミケも映す。そのあとの画は、引きずられて前へ出た所（約 0.95m 前）に合わせる
+    // call3：引きずられながらクロ・ミケを呼ぶシロの顔を、左の前の高めから（左に浮いたタマ、うしろにクロ）。held2：held を、引きずられた先に合わせたもの
+    // tug：タマの手をつかむシロ・ミケと、シロをうしろからささえるクロを、一行のうしろの高いところから（浮いたタマの顔が、みんなの頭の上に見える）。tug0：もとの所へすべりもどったあとの同じ画
     // ward：闇の前に立つマオウを、横のうしろから（画の右に闇のかたまり、左のうしろでタマをつかむ仲間が見える）
     stage: { zone: 'tree_under_3', at: [0, 2], face: 180, cast: { 'e:kodoku_kage': { at: [0, 9], hidden: true }, shiro: { at: [-1.15, 0.3] }, tama: { at: [1.15, 0.35] }, kuro: { at: [-2.2, -0.35] } }, points: { heart: [0, 3.4, 14], core: [0, 4.8, 12], ward: [1.6, 0, 8.2] },
-      shots: { pull: { pos: [4.6, 1.5, -0.4], look: [-0.9, 1.5, 5.8] }, call: { pos: [2.2, 1.5, 1.6], look: [-0.2, 1.4, 6.2] }, kuro: { pos: [-2.3, 1.25, 3.2], look: [-0.7, 0.85, 0.7] }, step: { pos: [1.6, 1.2, -1.5], look: [0, 1.0, 3.2] }, up: { pos: [-0.5, 0.75, 5.6], look: [0, 1.05, 2.8] }, smile: { pos: [0.45, 1.05, 1.3], look: [0, 0.72, 3.0] }, near: { pos: [-0.5, 1.25, 4.6], look: [-0.8, 0.85, 2.25] }, hands: { pos: [2.9, 1.7, 4.3], look: [0, 0.68, 4.0] }, held: { pos: [-0.9, 1.0, 5.0], look: [-0.25, 0.85, 3.7] }, land: { pos: [-2.6, 1.25, 3.6], look: [0, 0.8, 4.2] },
-        tug: { pos: [0.9, 3.3, 0.1], look: [0.05, 0.5, 4.3] }, ward: { pos: [5.6, 1.9, 5.2], look: [0.9, 0.85, 6.4] } } },
+      shots: { pull: { pos: [4.6, 1.5, -0.4], look: [-0.9, 1.5, 5.8] }, call: { pos: [2.2, 1.5, 1.6], look: [-0.2, 1.4, 6.2] }, kuro: { pos: [-2.3, 1.25, 3.2], look: [-0.7, 0.85, 0.7] }, step: { pos: [1.6, 1.2, -1.5], look: [0, 1.0, 3.2] }, up: { pos: [-0.5, 0.75, 5.6], look: [0, 1.05, 2.8] }, smile: { pos: [0.45, 1.05, 1.3], look: [0, 0.72, 3.0] }, near: { pos: [-0.5, 1.25, 4.6], look: [-0.8, 0.85, 2.25] }, hands: { pos: [2.9, 1.7, 4.3], look: [0, 0.68, 4.0] }, held: { pos: [-0.9, 1.0, 5.0], look: [-0.25, 0.85, 3.7] }, land: { pos: [-2.6, 1.25, 3.6], look: [0, 0.8, 4.2] }, call3: { pos: [-2.6, 1.9, 5.6], look: [-0.3, 0.95, 4.2] }, held2: { pos: [-0.9, 1.0, 5.95], look: [-0.25, 0.85, 4.65] },
+        tug: { pos: [0.9, 3.3, 1.05], look: [0.05, 0.5, 5.25] }, tug0: { pos: [0.9, 3.3, 0.1], look: [0.05, 0.5, 4.3] }, ward: { pos: [5.6, 1.9, 5.2], look: [0.9, 0.85, 6.4] } } },
     lines: [
       ['n', '影は散った。……だが、すぐにまた、闇が集まりはじめる。', { fx: 'shadow:heart', cam: 'wide', dur: 6 }],
       ['maou', '……倒しても、消えぬのか。', { f: 'serious' }],
@@ -588,18 +590,19 @@ Object.assign(SCENES, {
       ['shiro', '……（あの日と、おなじ。……つめたい川。ぱちんとはじけた魔法。……指のあいだから、すべっていった、ユキの手……）', { f: 'pained', fx: 'gray', look: { shiro: 'tama' }, face: { shiro: 'tama' }, cam: 'held', dur: 8 }],
       ['shiro', '……（こわい。……また、失敗したら……）', { f: 'cry', look: { shiro: 'tama' }, face: { shiro: 'tama' }, cam: 'keep' }],
       ['shiro', '……それでも！', { f: 'serious', fx: 'color', look: { shiro: 'tama' }, face: { shiro: 'tama' }, cam: 'hands', dur: 4 }],
-      ['n', 'シロは、タマの手をつかんだまま、魔法をとなえた。……光が、はじける。', { fx: 'fizzle:shiro,tama', look: { shiro: 'tama' }, cam: 'hands', dur: 5, later: [0.5, { r: { shiro: 'pained', mike: 'surprise', kuro: 'surprise' } }] }],
-      ['shiro', '失敗した！　……クロ、支えて！　ミケ、タマの手を！', { f: 'serious', look: { shiro: 'kuro' }, face: { shiro: 'tama' }, cam: 'pull', dur: 5 }],
-      ['kuro', '……ああ。言ったはずだ。手がはなれそうになったら、俺がつかむと。', { f: 'serious', move: { kuro: [-0.25, 3.2], mike: [0.4, 3.85] }, speed: 4.5, look: { kuro: 'shiro', mike: 'tama', shiro: 'tama' }, cam: 'pull', dur: 6 }],
+      // 魔法がはじけたはずみで、シロまで引きずられる。クロとミケは、呼ばれる前に自分から駆けだす（クロが着いたところで、引きずられるのが止まる）
+      ['n', 'シロは、タマの手をつかんだまま、魔法をとなえた。……光が、はじける。はずみで、シロの足まで、ずるずると心臓のほうへ引きずられていく。', { fx: 'fizzle:shiro,tama', look: { shiro: 'tama' }, cam: 'hands', dur: 5, later: [0.5, { r: { shiro: 'pained', mike: 'surprise', kuro: 'surprise' }, fx: 'treePull:tama,drag,shiro', stance: { shiro: 'dragged' }, later: [0.5, { cam: 'pull', dur: 7, fx: ['treePull:tama,catch,kuro', 'treePull:tama,join,mike'], look: { kuro: 'shiro', mike: 'tama' } }] }] }],
+      ['shiro', '失敗した！　……クロ、支えて！　ミケ、タマの手を！', { f: 'serious', look: { shiro: 'tama' }, face: { shiro: 'tama' }, cam: 'call3', dur: 5 }],
+      ['kuro', '……ああ。言ったはずだ。手がはなれそうになったら、俺がつかむと。', { f: 'serious', look: { kuro: 'shiro', mike: 'tama', shiro: 'tama' }, cam: 'pull', dur: 6 }],
       ['n', 'クロはシロのうしろから肩をつかみ、ふたりを押し流そうとする光の圧力を、ふんばって受け止めた。', { waitMove: true, face: { kuro: 'tama', mike: 'tama' }, stance: { kuro: 'brace' }, look: { kuro: 'tama' }, shake: 0.2, cam: 'tug', dur: 6 }],
       ['mike', 'つかまえた！　……タマ、ぜったい、はなさないからね！', { f: 'serious', stance: { mike: 'grabR' }, face: { mike: 'tama' }, look: { mike: 'tama', shiro: 'tama', kuro: 'tama' }, fx: 'treePull:tama,hold,mike', cam: 'tug', dur: 5 }],
       // はじめから集まりはじめていた闇が、ここで濃くなって押しよせる。マオウは名前を呼ばれなくても、自分から闇の前に立つ（あとでコドクがもどってくる前ぶれ）
       ['n', '……そのとき、心臓の根もとに集まりはじめていた闇が、ぐっと濃さを増し、一行へ押しよせてきた。', { fx: 'gloom:ward', cam: 'tug', dur: 6, look: { maou: 'ward' }, r: { maou: 'serious' } }],
-      ['maou', '……ふん。闇の相手なら、余のほうが慣れておる。……こやつは、余が引き受けた。', { f: 'serious', move: { maou: [1.5, 5.2] }, speed: 4, look: { maou: 'ward' }, cam: 'ward', dur: 6 }],
+      ['maou', '……ふん。闇の相手なら、余のほうが慣れておる。……こやつは、余が引き受けた。', { f: 'serious', move: { maou: [1.7, 6.3] }, speed: 4, look: { maou: 'ward' }, cam: 'ward', dur: 6 }],
       ['n', 'マオウは影の前に立ちはだかり、押しよせる闇を、ひとりで食い止めた。', { waitMove: true, face: { maou: 'ward' }, look: { maou: 'ward' }, stance: { maou: 'ready' }, fx: 'ward:maou', cam: 'ward', dur: 6 }],
       ['n', 'クロとミケに支えられ、押しよせる闇はマオウにまかせて、シロは、もう一度、魔法をとなえた。', { look: { all: 'tama', maou: 'ward' }, fx: 'spell:shiro', cam: 'tug', dur: 5 }],
-      ['shiro', '……樹へ流れていくんじゃない。……かえって。……タマを、みんなのところへ！', { f: 'serious', look: { shiro: 'tama' }, face: { shiro: 'tama' }, cam: 'held', dur: 5 }],
-      ['n', '光の流れが、ゆっくりと向きを変えた。タマを心臓へ引きこんでいた光は、反対に、タマを仲間たちのほうへ押しもどし、マオウの前の影までも、はらっていく。', { fx: ['wave:shiro', 'treePull:tama,back,4.45,0.12', 'ward:maou,off', 'gloom:off', 'dawn'], look: { all: 'tama' }, cam: 'tug', dur: 8 }],
+      ['shiro', '……樹へ流れていくんじゃない。……かえって。……タマを、みんなのところへ！', { f: 'serious', look: { shiro: 'tama' }, face: { shiro: 'tama' }, cam: 'held2', dur: 5 }],
+      ['n', '光の流れが、ゆっくりと向きを変えた。タマを心臓へ引きこんでいた光は、反対に、タマを仲間たちのほうへ押しもどし、マオウの前の影までも、はらっていく。', { fx: ['wave:shiro', 'treePull:tama,back,4.45,0.12', 'ward:maou,off', 'gloom:off', 'dawn'], look: { all: 'tama' }, cam: 'tug0', dur: 8 }],
       ['n', 'タマの体が、すとんと、シロの前に下りてきた。', { fx: 'treePull:tama,off', stance: { tama: 'idle', shiro: 'bothChest', mike: 'idle', kuro: 'idle', maou: 'armsCrossed' }, weapon: { maou: false }, move: { mike: [0.75, 2.7], kuro: [-0.8, 2.7], maou: [1.6, 2.4] }, speed: 1.2, look: { all: 'tama', tama: 'shiro' }, face: { tama: 'shiro', shiro: 'tama' }, cam: 'land', dur: 7 }],
       ['tama', '……シロ……。', { f: 'cry', to: 'shiro', face: { mike: 'tama', kuro: 'tama', maou: 'tama' }, look: { tama: 'shiro' }, cam: 'keep' }],
       ['shiro', '……はあ……はあ……。……ほら。……はなさなかったでしょ。', { f: 'cry', stance: { shiro: 'hipHand' }, to: 'tama' }],
